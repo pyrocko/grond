@@ -1,0 +1,277 @@
+#!/usr/bin/env python
+
+import math
+import sys
+import logging
+from optparse import OptionParser
+
+from pyrocko import util
+from pyrocko.gf import Range
+
+import grond
+from grond import plot
+
+logger = logging.getLogger('main')
+
+km = 1000.
+
+
+def d2u(d):
+    if isinstance(d, dict):
+        return dict((k.replace('-', '_'), v) for (k, v) in d.iteritems())
+    else:
+        return d.replace('-', '_')
+
+
+subcommand_descriptions = {
+    'init': 'print example configuration',
+    'go': 'run Grond optimization',
+    'forward': 'run forward modelling',
+    'harvest': 'manually run harvesting',
+    'map-geometry': 'make station map',
+    'plot': 'plot optimization result',
+    'export': 'export results',
+}
+
+subcommand_usages = {
+    'init': 'init [options]',
+    'go': 'go <configfile> [options]',
+    'forward': 'forward <rundir> [options]',
+    'harvest': 'harvest <rundir> [options]',
+    'map-geometry': 'map-geometry <configfile> [options]',
+    'plot': 'plot <plotnames> <rundir> [options]',
+    'export': 'export <rundir> <outputfile> [options]',
+}
+
+subcommands = subcommand_descriptions.keys()
+
+program_name = 'grond'
+
+usage_tdata = d2u(subcommand_descriptions)
+usage_tdata['program_name'] = program_name
+
+usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
+
+Subcommands:
+
+    init          %(init)s
+    go            %(go)s
+    forward       %(forward)s
+    harvest       %(harvest)s
+    map-geometry  %(map_geometry)s
+    plot          %(plot)s
+    export        %(export)s
+
+To get further help and a list of available options for any subcommand run:
+
+    %(program_name)s <subcommand> --help
+
+''' % usage_tdata
+
+
+def add_common_options(parser):
+    parser.add_option(
+        '--loglevel',
+        action='store',
+        dest='loglevel',
+        type='choice',
+        choices=('critical', 'error', 'warning', 'info', 'debug'),
+        default='info',
+        help ='set logger level to '
+              '"critical", "error", "warning", "info", or "debug". '
+              'Default is "%default".')
+
+
+def process_common_options(options):
+    util.setup_logging(program_name, options.loglevel)
+
+
+def cl_parse(command, args, setup=None):
+    usage = subcommand_usages[command]
+    descr = subcommand_descriptions[command]
+
+    if isinstance(usage, basestring):
+        usage = [usage]
+
+    susage = '%s %s' % (program_name, usage[0])
+    for s in usage[1:]:
+        susage += '\n%s%s %s' % (' '*7, program_name, s)
+
+    parser = OptionParser(
+        usage=susage,
+        description=descr[0].upper() + descr[1:] + '.')
+
+    if setup:
+        setup(parser)
+
+    add_common_options(parser)
+    (options, args) = parser.parse_args(args)
+    process_common_options(options)
+    return parser, options, args
+
+
+def die(message, err=''):
+    if err:
+        sys.exit('%s: error: %s \n %s' % (program_name, message, err))
+    else:
+        sys.exit('%s: error: %s' % (program_name, message))
+
+
+def help_and_die(parser, message):
+    parser.print_help(sys.stderr)
+    sys.stderr.write('\n')
+    die(message)
+
+
+def command_init(args):
+
+    dataset_config = grond.DatasetConfig(
+        stations_path='stations.txt',
+        events_path='events.txt',
+        waveform_paths=['data'])
+
+    target_configs = [grond.TargetConfig(
+        distance_min=10*km,
+        distance_max=1000*km,
+        channels=['Z', 'R', 'T'],
+        interpolation='multilinear',
+        store_id='global_2s',
+        inner_misfit_config=grond.InnerMisfitConfig(
+            fmin=0.01,
+            fmax=0.1))]
+
+    s2 = math.sqrt(2.0)
+
+    problem_config = grond.CMTProblemConfig(
+        name_template='cmt_%(event_name)s',
+        distance_min=2.*km,
+        nbootstrap=100,
+        mt_type='deviatoric',
+        ranges=dict(
+            time=Range(0, 10.0, relative='add'),
+            north_shift=Range(-16*km, 16*km),
+            east_shift=Range(-16*km, 16*km),
+            depth=Range(1*km, 11*km),
+            magnitude=Range(4.0, 6.0),
+            rmnn=Range(-s2, s2),
+            rmee=Range(-s2, s2),
+            rmdd=Range(-s2, s2),
+            rmne=Range(-1.0, 1.0),
+            rmnd=Range(-1.0, 1.0),
+            rmed=Range(-1.0, 1.0),
+            duration=Range(1.0, 15.0)))
+
+    config = grond.Config(
+        dataset_config=dataset_config,
+        target_configs=target_configs,
+        problem_config=problem_config)
+
+    print config
+
+
+def command_go(args):
+    def setup(parser):
+        parser.add_option(
+            '--force', dest='force', action='store_true',
+            help='overwrite existing run directory')
+        parser.add_option(
+            '--status', dest='status', default='state',
+            help='status output selection (choices: state, matrix)')
+
+    parser, options, args = cl_parse('go', args, setup)
+    if len(args) != 1:
+        help_and_die(parser, 'no config file given')
+
+    config_path = args[0]
+    config = grond.read_config(config_path)
+    if options.status == 'quiet':
+        status = ()
+    else:
+        status = tuple(options.status.split(','))
+
+    grond.go(config, force=options.force, status=status)
+
+
+def command_forward(args):
+    parser, options, args = cl_parse('forward', args)
+    if len(args) != 1:
+        help_and_die(parser, 'incorrect number of arguments')
+
+    run_path, = args
+    grond.forward(run_path)
+
+
+def command_harvest(args):
+    def setup(parser):
+        parser.add_option(
+            '--force', dest='force', action='store_true',
+            help='overwrite existing harvest directory')
+        parser.add_option(
+            '--neach', dest='neach', type=int, default=10,
+            help='take NEACH best samples from each chain (default: 10)')
+
+    parser, options, args = cl_parse('harvest', args, setup)
+    if len(args) != 1:
+        help_and_die(parser, 'no rundir')
+
+    run_path, = args
+    grond.harvest(run_path, force=options.force, nbest=options.neach)
+
+
+def command_map_geometry(args):
+    parser, options, args = cl_parse('map-geometry', args)
+    if len(args) != 2:
+        help_and_die(parser, 'two arguments required')
+
+    config_path = args[0]
+    output_path = args[1]
+    config = grond.read_config(config_path)
+    plot.map_geometry(config, output_path)
+
+
+def command_plot(args):
+    parser, options, args = cl_parse('plot', args)
+    if len(args) != 2:
+        help_and_die(parser, 'two arguments required')
+
+    plotnames = args[0].split(',')
+    dirname = args[1]
+    plot.plot_result(dirname, plotnames)
+
+
+def command_export(args):
+    parser, options, args = cl_parse('export', args)
+    if len(args) not in (1, 2):
+        help_and_die(parser, 'one or two arguments required')
+
+    dirname = args[0]
+    if len(args) == 2:
+        filename = args[1]
+    else:
+        filename = None
+
+    grond.export(dirname, filename)
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        sys.exit('Usage: %s' % usage)
+
+    args = list(sys.argv)
+    args.pop(0)
+    command = args.pop(0)
+
+    if command in subcommands:
+        globals()['command_' + d2u(command)](args)
+
+    elif command in ('--help', '-h', 'help'):
+        if command == 'help' and args:
+            acommand = args[0]
+            if acommand in subcommands:
+                globals()['command_' + acommand](['--help'])
+
+        sys.exit('Usage: %s' % usage)
+
+    else:
+        die('no such subcommand: %s' % command)
