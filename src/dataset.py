@@ -6,6 +6,7 @@ from pyrocko import util, pile, model, config, trace, snuffling
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import Object, Tuple, String, Float, dump_all, load_all
 
+guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.dataset')
 

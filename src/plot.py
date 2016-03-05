@@ -13,6 +13,13 @@ from pyrocko.cake_plot import mpl_init, labelspace, colors, \
 km = 1000.
 
 
+def ordersort(x):
+    isort = num.argsort(x)
+    iorder = num.empty(isort.size)
+    iorder[isort] = num.arange(isort.size)
+    return iorder
+
+
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
@@ -326,13 +333,29 @@ def draw_jointpar_figures(
     gms = gms[isort]
     xs = xs[isort, :]
 
-    iorder = num.empty_like(isort)
-    iorder = num.arange(iorder.size)
-
-    if misfit_cutoff is None:
-        ibest = num.ones(gms.size, dtype=num.bool)
-    else:
+    if misfit_cutoff is not None:
         ibest = gms < misfit_cutoff
+        gms = gms[ibest]
+        xs = xs[ibest]
+
+    nmodels = xs.shape[0]
+
+    color = 'misfit'
+
+    if color == 'dist':
+        mx = num.mean(xs, axis=0)
+        cov = num.cov(xs.T)
+        mdists = core.mahalanobis_distance(xs, mx, cov)
+        color = ordersort(mdists)
+
+    elif color == 'misfit':
+        iorder = num.arange(nmodels)
+        color = iorder
+
+    elif color in problem.parameter_names:
+        print 'xx'
+        ind = problem.name_to_index(color)
+        color = ordersort(problem.extract(xs, ind))
 
     # npar = problem.nparameters
     ncomb = problem.ncombined
@@ -340,6 +363,7 @@ def draw_jointpar_figures(
     neach = 8
     cmap = cm.YlOrRd
     cmap = cm.jet
+    #cmap = cm.coolwarm
 
     nfig = (ncomb-1) / neach + 1
 
@@ -397,11 +421,9 @@ def draw_jointpar_figures(
                     verticalalignment='center',
                     horizontalalignment='right')
 
-            fx = problem.extract(xs[ibest, :], jpar)
-            fy = problem.extract(xs[ibest, :], ipar)
+            fx = problem.extract(xs, jpar)
+            fy = problem.extract(xs, ipar)
 
-            if color is None:
-                color = iorder[ibest]
 
             axes.scatter(
                 xpar.scaled(fx),
@@ -600,7 +622,6 @@ def draw_bootstrap_figure(model, plt):
 
     problem = model.problem
     gms = problem.global_misfits(model.misfits)
-    isort = num.argsort(gms)[::-1]
 
     imodels = num.arange(model.nmodels)
 
@@ -614,13 +635,34 @@ def draw_bootstrap_figure(model, plt):
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])
+        print num.argmin(bms), isort_bms[-1]
 
         bms_softclip = num.where(bms > 1.0, 0.1 * num.log10(bms) + 1.0, bms)
         axes.plot(imodels, bms_softclip[isort_bms], color='red', alpha=0.2)
 
-    axes.plot(imodels[ibests], gms_softclip[isort][ibests], 'x', color='black')
+
+    isort = num.argsort(gms)[::-1]
+    iorder = num.empty(isort.size)
+    iorder[isort] = imodels
+
+    axes.plot(iorder[ibests], gms_softclip[ibests], 'x', color='black')
+
+    m = num.median(gms[ibests])
+    s = num.std(gms[ibests])
+
+    axes.axhline(m+s, color='black', alpha=0.5)
+    axes.axhline(m, color='black')
+    axes.axhline(m-s, color='black', alpha=0.5)
+
+
+    #axes.plot(imodels[ibests], gms_softclip[isort[ibests]], 'x', color='black')
+    #axes.plot(imodels[ibests], gms_softclip[isort][ibests], '+', color='black')
+    #iii = isort[-1]
+    #axes.plot(imodels[iii], gms_softclip[isort][iii], 'o')
     axes.plot(imodels, gms_softclip[isort], color='black')
 
+    axes.set_xlim(imodels[0], imodels[-1])
+    axes.set_xlabel('Tested model, sorted descending by global misfit value')
 
 def gather(l, key, sort=None, filter=None):
     d = {}

@@ -12,12 +12,20 @@ import numpy as num
 from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
     StringChoice, Dict
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
+from pyrocko import parimap
 
 from grond import dataset
 
 logger = logging.getLogger('grond.core')
 
 guts_prefix = 'grond'
+
+
+def mahalanobis_distance(xs, mx, cov):
+    imask = num.diag(cov) != 0.
+    icov = num.linalg.inv(cov[imask, :][:, imask])
+    temp = xs[:, imask] - mx[imask]
+    return num.sqrt(num.sum(temp * num.dot(icov, temp.T).T, axis=1))
 
 
 class Parameter(Object):
@@ -82,6 +90,10 @@ class Problem(Object):
 
     def parameter_array(self, d):
         return num.array([d[p.name] for p in self.parameters], dtype=num.float)
+
+    @property
+    def parameter_names(self):
+        return [p.name for p in self.combined]
 
     def dump_problem_info(self, dirname):
         fn = op.join(dirname, 'problem.yaml')
@@ -357,14 +369,18 @@ class HasPaths(Object):
                 val.set_basepath(
                     basepath, self.path_prefix or self._parent_path_prefix)
 
+    def get_basepath(self):
+        assert self._basepath is not None
+        return self._basepath
+
     def change_basepath(self, new_basepath, parent_path_prefix=None):
         assert self._basepath is not None
 
         self._parent_path_prefix = parent_path_prefix
         if self.path_prefix or not self._parent_path_prefix:
 
-            self.path_prefix = xjoin(xrelpath(
-                self._basepath, new_basepath), self.path_prefix)
+            self.path_prefix = op.normpath(xjoin(xrelpath(
+                self._basepath, new_basepath), self.path_prefix))
 
         for val in self.T.ivals(self):
             if isinstance(val, HasPaths):
@@ -537,8 +553,8 @@ def weed(origin, targets, limit, neighborhood=3):
 class TargetConfig(Object):
 
     groupname = gf.StringID.T(optional=True)
-    distance_min = Float.T()
-    distance_max = Float.T()
+    distance_min = Float.T(optional=True)
+    distance_max = Float.T(optional=True)
     limit = Int.T(optional=True)
     channels = List.T(String.T())
     inner_misfit_config = InnerMisfitConfig.T()
@@ -602,6 +618,7 @@ class SamplerDistributionChoice(StringChoice):
 
 class SolverConfig(Object):
     niter_uniform = Int.T(default=1000)
+    niter_transition = Int.T(default=0)
     niter_explorative = Int.T(default=10000)
     niter_non_explorative = Int.T(default=0)
     sampler_distribution = SamplerDistributionChoice.T(
@@ -610,6 +627,7 @@ class SolverConfig(Object):
     def get_solver_kwargs(self):
         return dict(
             niter_uniform=self.niter_uniform,
+            niter_transition=self.niter_transition,
             niter_explorative=self.niter_explorative,
             niter_non_explorative=self.niter_non_explorative,
             sampler_distribution=self.sampler_distribution)
@@ -626,7 +644,6 @@ class Config(HasPaths):
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
-        self._stations = None
 
     def get_dataset(self):
         ds = self.dataset_config.get_dataset()
@@ -788,7 +805,7 @@ def solve(problem,
     chains_m = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.float)
     chains_i = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.int)
     nlinks = 0
-    mbxs = None
+    mbx = None
 
     if xs_inject is not None and xs_inject.size != 0:
         niter_inject = xs_inject.shape[0]
@@ -799,8 +816,8 @@ def solve(problem,
         niter_non_explorative
 
     iiter = 0
-    sbxs = None
-    mxss = None
+    sbx = None
+    mxs = None
     covs = None
     xhist = num.zeros((niter, npar))
     isbad_mask = None
@@ -825,7 +842,7 @@ def solve(problem,
             while True:
                 ntries_preconstrain += 1
 
-                if mbxs is None or iiter < niter_inject + niter_uniform:
+                if mbx is None or iiter < niter_inject + niter_uniform:
                     x = []
                     for i in xrange(npar):
                         v = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
@@ -840,7 +857,7 @@ def solve(problem,
                         ichoice = num.random.randint(0, nlinks)
                         xb = xhist[chains_i[jchoice, ichoice]]
                     else:
-                        xb = mxss[jchoice]
+                        xb = mxs[jchoice]
 
                     if sampler_distribution == 'multivariate_normal':
                         ntries_sample = 0
@@ -859,7 +876,9 @@ def solve(problem,
                     if sampler_distribution == 'normal':
                         for i in xrange(npar):
                             while True:
-                                v = num.random.normal(xb[i], factor*sbxs[i])
+                                v = num.random.normal(
+                                    xb[i], math.sqrt(factor)*sbx[i])
+
                                 if xbounds[i, 0] <= v and v <= xbounds[i, 1]:
                                     break
 
@@ -926,18 +945,26 @@ def solve(problem,
         gms = chains_m[0, :nlinks]
 
         if nlinks > (nlinks_cap-1)/2:
-            mbxs = num.mean(bxs, axis=0)
-            mgxs = num.mean(gxs, axis=0)
-            sbxs = num.std(bxs, axis=0)
-            sgxs = num.std(gxs, axis=0)
-            best_gxs = xhist[chains_i[0, 0], :]
-            # bcov = num.cov(bxs.T)
+            # mean and std of all bootstrap ensembles together
+            mbx = num.mean(bxs, axis=0)
+            sbx = num.std(bxs, axis=0)
+
+            # mean and std of global configuration
+            mgx = num.mean(gxs, axis=0)
+            sgx = num.std(gxs, axis=0)
+
+            # best in global configuration
+            bgx = xhist[chains_i[0, 0], :]
+
             covs = []
-            mxss = []
+            mxs = []
             for i in xrange(1 + problem.nbootstrap):
                 xs = xhist[chains_i[i, :nlinks], :]
-                mxss.append(num.mean(xs, axis=0))
-                covs.append(num.cov(xs.T))
+                mx = num.mean(xs, axis=0)
+                cov = num.cov(xs.T)
+
+                mxs.append(mx)
+                covs.append(cov)
 
             if 'state' in status:
                 lines.append(
@@ -945,13 +972,13 @@ def solve(problem,
                     ('parameter', 'B mean', 'B std', 'G mean', 'G std',
                      'G best'))
 
-                for (pname, mbx, sbx, mgx, sgx, best_gx) in zip(
+                for (pname, mbv, sbv, mgv, sgv, bgv) in zip(
                         [p.name for p in problem.parameters],
-                        mbxs, sbxs, mgxs, sgxs, best_gxs):
+                        mbx, sbx, mgx, sgx, bgx):
 
                     lines.append(
                         '%-15s %15.4g %15.4g %15.4g %15.4g %15.4g' %
-                        (pname, mbx, sbx, mgx, sgx, best_gx))
+                        (pname, mbv, sbv, mgv, sgv, bgv))
 
                 lines.append('%-15s %15s %15s %15.4g %15.4g %15.4g' % (
                     'misfit', '', '',
@@ -988,6 +1015,24 @@ def solve(problem,
         iiter += 1
 
 
+def bootstrap_outliers(problem, misfits, std_factor=1.0):
+    '''
+    Identify bootstrap configurations performing bad in global configuration
+    '''
+
+    gms = problem.global_misfits(misfits)
+
+    ibests = []
+    for ibootstrap in xrange(problem.nbootstrap):
+        bms = problem.bootstrap_misfits(misfits, ibootstrap)
+        ibests.append(num.argmin(bms))
+
+    m = num.median(gms[ibests])
+    s = num.std(gms[ibests])
+
+    return num.where(gms > m+s)[0]
+
+
 def forward(rundir):
 
     # config = guts.load(filename=op.join('.', 'grond_td.conf'))
@@ -1022,7 +1067,7 @@ def forward(rundir):
     trace.snuffle(all_trs)
 
 
-def harvest(rundir, problem=None, nbest=10, force=False):
+def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     if problem is None:
         problem, xs, misfits = load_problem_info_and_data(rundir)
@@ -1038,86 +1083,140 @@ def harvest(rundir, problem=None, nbest=10, force=False):
 
     util.ensuredir(dumpdir)
 
-    xs_best_list = []
-    misfits_best_list = []
+    ibests_list = []
+    ibests = []
     for ibootstrap in xrange(problem.nbootstrap):
         bms = problem.bootstrap_misfits(misfits, ibootstrap)
         isort = num.argsort(bms)
-        xs_best_list.append(xs[isort[:nbest], :])
-        misfits_best_list.append(misfits[isort[:nbest], :, :])
+        ibests_list.append(isort[:nbest])
+        ibests.append(isort[0])
 
     gms = problem.global_misfits(misfits)
     isort = num.argsort(gms)
 
-    xs_best_list.append(xs[isort[:nbest], :])
-    misfits_best_list.append(misfits[isort[:nbest], :, :])
+    ibests_list.append(isort[:nbest])
 
-    xs_best = num.vstack(xs_best_list)
-    misfits_best = num.vstack(misfits_best_list)
+    if weed:
+        mean_gm_best = num.median(gms[ibests])
+        std_gm_best = num.std(gms[ibests])
+        ibad = set()
 
-    for i in xrange(xs_best.shape[0]):
-        x = xs_best[i]
-        ms = misfits_best[i, :, 0]
-        ns = misfits_best[i, :, 1]
+        for ibootstrap, ibest in enumerate(ibests):
+            if gms[ibest] > mean_gm_best + std_gm_best:
+                ibad.add(ibootstrap)
+
+        print ibad
+        ibests_list = [
+            ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
+            if ibootstrap not in ibad]
+
+    ibests = num.vstack(ibests_list)
+
+    if weed == 2:
+        ibests = ibests[gms[ibests] < mean_gm_best]
+
+    for i in ibests:
+        x = xs[i]
+        ms = misfits[i, :, 0]
+        ns = misfits[i, :, 1]
         problem.dump_problem_data(dumpdir, x, ms, ns)
 
 
-def go(config, force=False, status=('state',)):
+def check(problem):
+    if len(problem.targets) == 0:
+        raise GrondError('no targets available')
+
+
+g_state = {}
+
+
+def go(config, force=False, nparallel=1, status=('state',)):
 
     status = tuple(status)
 
     ds = config.get_dataset()
     events = ds.get_events()
     nevents = len(events)
-    for ievent, event in enumerate(events):
-        logger.info(
-            'start %i / %i' % (ievent+1, nevents))
 
-        tstart = time.time()
+    g_data = (config, force, status, nparallel)
 
-        problem = config.get_problem(event)
+    g_state[id(g_data)] = g_data
 
-        ds.empty_cache()
+    for x in parimap.parimap(
+            process_event, 
+            xrange(nevents),
+            [id(g_data)] * nevents,
+            nprocs=nparallel):
 
-        rundir = config.rundir_template % dict(
-            problem_name=problem.name)
+        pass
 
-        if op.exists(rundir):
-            if force:
-                shutil.rmtree(rundir)
-            else:
-                logger.warn('skipping problem %s: rundir already exists: %s' %
-                            (problem.name, rundir))
-                continue
 
-        util.ensuredir(rundir)
+def process_event(ievent, g_data_id):
 
-        analyse(
-            problem,
-            niter=config.analyser_config.niter,
-            show_progress=True)
+    config, force, status, nparallel = g_state[g_data_id]
 
-        config_copy = copy.deepcopy(config)
-        config_copy.change_basepath(rundir)
-        guts.dump(config_copy, filename=op.join(rundir, 'config.yaml'))
-        problem.dump_problem_info(rundir)
+    if nparallel > 1:
+        status = ()
 
-        xs_inject = None
-        synt = ds.synthetic_test
-        if synt and synt.inject_solution:
-            xs_inject = synt.get_x()[num.newaxis, :]
+    ds = config.get_dataset()
 
-        solve(problem,
-              rundir=rundir,
-              status=tuple(status),
-              xs_inject=xs_inject,
-              **config.solver_config.get_solver_kwargs())
+    events = ds.get_events()
+    nevents = len(events)
 
-        harvest(rundir, problem)
+    event = events[ievent]
 
-        tstop = time.time()
-        logger.info(
-            'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
+    ds.empty_cache()
+
+    tstart = time.time()
+
+    problem = config.get_problem(event)
+
+    check(problem)
+
+    rundir = config.rundir_template % dict(
+        problem_name=problem.name)
+
+    if op.exists(rundir):
+        if force:
+            shutil.rmtree(rundir)
+        else:
+            logger.warn('skipping problem %s: rundir already exists: %s' %
+                        (problem.name, rundir))
+            return
+
+    util.ensuredir(rundir)
+
+    logger.info(
+        'start %i / %i' % (ievent+1, nevents))
+
+    analyse(
+        problem,
+        niter=config.analyser_config.niter,
+        show_progress=nparallel==1)
+
+    basepath = config.get_basepath()
+    config.change_basepath(rundir)
+    guts.dump(config, filename=op.join(rundir, 'config.yaml'))
+    config.change_basepath(basepath)
+
+    problem.dump_problem_info(rundir)
+
+    xs_inject = None
+    synt = ds.synthetic_test
+    if synt and synt.inject_solution:
+        xs_inject = synt.get_x()[num.newaxis, :]
+
+    solve(problem,
+          rundir=rundir,
+          status=status,
+          xs_inject=xs_inject,
+          **config.solver_config.get_solver_kwargs())
+
+    harvest(rundir, problem)
+
+    tstop = time.time()
+    logger.info(
+        'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
 
 
 def export(rundir, output_filename=None):
@@ -1140,7 +1239,7 @@ def export(rundir, output_filename=None):
             source.lat,
             source.lon,
             source.depth,
-            ] + list(source.m6_astuple)
+            ] + list(source.m6_astuple) + [source.stf.duration]
 
         print >>out, '%12.5g' % gm, util.time_to_str(source.time), ' '.join(
             '%12.5g' % x for x in values)
