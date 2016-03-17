@@ -20,22 +20,22 @@ as_km = dict(scale_factor=km, scale_unit='km')
 class CMTProblem(core.Problem):
 
     parameters = [
-        core.Parameter('time', 's'),
-        core.Parameter('north_shift', 'm', **as_km),
-        core.Parameter('east_shift', 'm', **as_km),
-        core.Parameter('depth', 'm', **as_km),
-        core.Parameter('magnitude'),
-        core.Parameter('rmnn'),
-        core.Parameter('rmee'),
-        core.Parameter('rmdd'),
-        core.Parameter('rmne'),
-        core.Parameter('rmnd'),
-        core.Parameter('rmed'),
-        core.Parameter('duration')]
+        core.Parameter('time', 's', label='Time'),
+        core.Parameter('north_shift', 'm', label='Northing', **as_km),
+        core.Parameter('east_shift', 'm', label='Easting', **as_km),
+        core.Parameter('depth', 'm', label='Depth', **as_km),
+        core.Parameter('magnitude', label='Magnitude'),
+        core.Parameter('rmnn', label='$m_{nn} / M_0$'),
+        core.Parameter('rmee', label='$m_{ee} / M_0$'),
+        core.Parameter('rmdd', label='$m_{dd} / M_0$'),
+        core.Parameter('rmne', label='$m_{ne} / M_0$'),
+        core.Parameter('rmnd', label='$m_{nd} / M_0$'),
+        core.Parameter('rmed', label='$m_{ed} / M_0$'),
+        core.Parameter('duration', 's', label='Duration')]
 
     dependants = [
-        core.Parameter('rel_moment_iso'),
-        core.Parameter('rel_moment_clvd')]
+        core.Parameter('rel_moment_iso', label='$M_{0}^{ISO}/M_{0}$'),
+        core.Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
     base_source = gf.Source.T()
     targets = List.T(core.MisfitTarget.T())
@@ -43,7 +43,7 @@ class CMTProblem(core.Problem):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nbootstrap = Int.T(default=10)
-    mt_type = StringChoice.T(choices=['full', 'deviatoric'])
+    mt_type = StringChoice.T(default='full', choices=['full', 'deviatoric'])
 
     def unpack(self, x):
         d = self.parameter_dict(x)
@@ -113,6 +113,15 @@ class CMTProblem(core.Problem):
             ] + rm6.tolist() + [source.stf.duration], dtype=num.float)
 
         return x
+
+    def random_uniform(self, xbounds):
+        x = num.zeros(self.nparameters)
+        for i in [0, 1, 2, 3, 4, 11]:
+            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+
+        x[5:11] = mtm.random_m6()
+
+        return x.tolist()
 
     def preconstrain(self, x):
 

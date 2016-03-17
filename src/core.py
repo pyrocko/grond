@@ -33,6 +33,7 @@ class Parameter(Object):
     unit = String.T(optional=True)
     scale_factor = Float.T(default=1., optional=True)
     scale_unit = String.T(optional=True)
+    label = String.T(optional=True)
 
     def __init__(self, *args, **kwargs):
         if len(args) >= 1:
@@ -42,14 +43,34 @@ class Parameter(Object):
 
         Object.__init__(self, **kwargs)
 
-    def get_label(self):
-        l = [self.name]
-        if self.scale_unit is not None:
-            l.append('[%s]' % self.scale_unit)
-        elif self.unit is not None:
-            l.append('[%s]' % self.unit)
+    def get_label(self, with_unit=True):
+        l = [self.label or self.name]
+        if with_unit:
+            unit = self.get_unit_label()
+            if unit:
+                l.append('[%s]' % unit)
 
         return ' '.join(l)
+
+    def get_value_label(self, value, format='%(value)g%(unit)s'):
+        value = self.scaled(value)
+        unit = self.get_unit_suffix()
+        return format % dict(value=value, unit=unit)
+
+    def get_unit_label(self):
+        if self.scale_unit is not None:
+            return self.scale_unit
+        elif self.unit:
+            return self.unit
+        else:
+            return None
+
+    def get_unit_suffix(self):
+        unit = self.get_unit_label()
+        if not unit:
+            return ''
+        else:
+            return ' %s' % unit
 
     def scaled(self, x):
         if isinstance(x, tuple):
@@ -72,7 +93,7 @@ class Problem(Object):
     name = String.T()
     parameters = List.T(Parameter.T())
     dependants = List.T(Parameter.T())
-    apply_balancing_weights = Bool.T()
+    apply_balancing_weights = Bool.T(default=True)
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -822,6 +843,7 @@ def solve(problem,
     xhist = num.zeros((niter, npar))
     isbad_mask = None
     accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
+    accept_hist = num.zeros(niter, dtype=num.int)
 
     while iiter < niter:
 
@@ -843,10 +865,7 @@ def solve(problem,
                 ntries_preconstrain += 1
 
                 if mbx is None or iiter < niter_inject + niter_uniform:
-                    x = []
-                    for i in xrange(npar):
-                        v = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
-                        x.append(v)
+                    x = problem.random_uniform(xbounds)
                 else:
                     # jchoice = num.random.randint(0, 1 + problem.nbootstrap)
                     jchoice = num.argmin(accept_sum)
@@ -932,6 +951,7 @@ def solve(problem,
             accept = num.ones(1 + problem.nbootstrap, dtype=num.int)
 
         accept_sum += accept
+        accept_hist[iiter] = num.sum(accept)
 
         lines = []
         if 'state' in status:
@@ -1105,12 +1125,11 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
             if gms[ibest] > mean_gm_best + std_gm_best:
                 ibad.add(ibootstrap)
 
-        print ibad
         ibests_list = [
             ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
             if ibootstrap not in ibad]
 
-    ibests = num.vstack(ibests_list)
+    ibests = num.concatenate(ibests_list)
 
     if weed == 2:
         ibests = ibests[gms[ibests] < mean_gm_best]
@@ -1143,7 +1162,7 @@ def go(config, force=False, nparallel=1, status=('state',)):
     g_state[id(g_data)] = g_data
 
     for x in parimap.parimap(
-            process_event, 
+            process_event,
             xrange(nevents),
             [id(g_data)] * nevents,
             nprocs=nparallel):
@@ -1170,6 +1189,12 @@ def process_event(ievent, g_data_id):
     tstart = time.time()
 
     problem = config.get_problem(event)
+
+
+    # FIXME
+    synt = ds.synthetic_test
+    if synt and synt.inject_solution:
+        problem.base_source = problem.unpack(synt.get_x())
 
     check(problem)
 

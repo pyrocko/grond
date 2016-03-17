@@ -1,14 +1,18 @@
 import math
 import random
+import logging
 import os.path as op
 import numpy as num
 from scipy import signal
 from pyrocko import automap, moment_tensor as mtm, beachball, guts, trace, util
+from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
 from matplotlib import cm, patches
 from pyrocko.cake_plot import mpl_init, labelspace, colors, \
     str_to_mpl_color as scolor, light
+
+logger = logging.getLogger('grond.plot')
 
 km = 1000.
 
@@ -22,6 +26,21 @@ def ordersort(x):
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
+
+
+def get_mean_source(problem, xs):
+    x_mean = num.mean(xs, axis=0)
+    source = problem.unpack(x_mean)
+    return source
+
+
+def get_best_source(problem, xs, misfits):
+    gms = problem.global_misfits(misfits)
+    print gms.min(), gms.mean()
+    ibest = num.argmin(gms)
+    x_best = xs[ibest, :]
+    source = problem.unpack(x_best)
+    return source
 
 
 def fixlim(lo, hi):
@@ -311,7 +330,16 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
 
 def draw_jointpar_figures(
-        model, plt, misfit_cutoff=None, ibootstrap=None, color=None):
+        model, plt, misfit_cutoff=None, ibootstrap=None, color=None,
+        exclude=None):
+
+    color = 'magnitude'
+    #exclude = ['duration']
+    neach = 6
+    figsize = (8, 8)
+    #cmap = cm.YlOrRd
+    #cmap = cm.jet
+    cmap = cm.coolwarm
 
     problem = model.problem
     if not problem:
@@ -340,8 +368,6 @@ def draw_jointpar_figures(
 
     nmodels = xs.shape[0]
 
-    color = 'misfit'
-
     if color == 'dist':
         mx = num.mean(xs, axis=0)
         cov = num.cov(xs.T)
@@ -353,38 +379,47 @@ def draw_jointpar_figures(
         color = iorder
 
     elif color in problem.parameter_names:
-        print 'xx'
         ind = problem.name_to_index(color)
         color = ordersort(problem.extract(xs, ind))
 
-    # npar = problem.nparameters
-    ncomb = problem.ncombined
+    smap = {}
+    iselected = 0
+    for ipar in xrange(problem.ncombined):
+        par = problem.combined[ipar]
+        if exclude and par.name in exclude:
+            continue
 
-    neach = 8
-    cmap = cm.YlOrRd
-    cmap = cm.jet
-    #cmap = cm.coolwarm
+        smap[iselected] = ipar
+        iselected += 1
 
-    nfig = (ncomb-1) / neach + 1
+    nselected = iselected
+
+    if nselected == 0:
+        return
+
+
+    nfig = (nselected-2) / neach + 1
 
     figs = []
     for ifig in xrange(nfig):
         figs_row = []
         for jfig in xrange(nfig):
             if ifig >= jfig:
-                figs_row.append(plt.figure())
+                figs_row.append(plt.figure(figsize=figsize))
             else:
                 figs_row.append(None)
 
         figs.append(figs_row)
 
-    for ipar in xrange(ncomb):
+    for iselected in xrange(nselected):
+        ipar = smap[iselected]
         ypar = problem.combined[ipar]
-        for jpar in xrange(ipar):
+        for jselected in xrange(iselected):
+            jpar = smap[jselected]
             xpar = problem.combined[jpar]
 
-            ixg = (ipar - 1)
-            iyg = jpar
+            ixg = (iselected - 1)
+            iyg = jselected
 
             ix = ixg % neach
             iy = iyg % neach
@@ -398,15 +433,48 @@ def draw_jointpar_figures(
 
             axes = fig.add_subplot(*aind)
 
-            axes.set_xlim(*fixlim(*xpar.scaled(bounds[jpar])))
-            axes.set_ylim(*fixlim(*ypar.scaled(bounds[ipar])))
+            axes.axvline(0., color=scolor('aluminium3'), lw=0.5)
+            axes.axhline(0., color=scolor('aluminium3'), lw=0.5)
+            for spine in axes.spines.values():
+                spine.set_edgecolor(scolor('aluminium5'))
+                spine.set_linewidth(0.5)
+
+            xmin, xmax = fixlim(*xpar.scaled(bounds[jpar]))
+            ymin, ymax = fixlim(*ypar.scaled(bounds[ipar]))
+
+            if ix == 0 or jselected + 1 == iselected:
+                for (xpos, xoff, x) in [(0.0, 10., xmin), (1.0, -10., xmax)]:
+                    axes.annotate(
+                        '%.2g%s' % (x, xpar.get_unit_suffix()),
+                        xy=(xpos, 1.05),
+                        xycoords='axes fraction',
+                        xytext=(xoff, 5.),
+                        textcoords='offset points',
+                        verticalalignment='bottom',
+                        horizontalalignment='left',
+                        rotation=45.)
+
+            if iy == neach - 1 or jselected + 1 == iselected:
+                for (ypos, yoff, y) in [(0., 10., ymin), (1.0, -10., ymax)]:
+                    axes.annotate(
+                        '%.2g%s' % (y, ypar.get_unit_suffix()),
+                        xy=(1.0, ypos),
+                        xycoords='axes fraction',
+                        xytext=(5., yoff),
+                        textcoords='offset points',
+                        verticalalignment='bottom',
+                        horizontalalignment='left',
+                        rotation=45.)
+
+            axes.set_xlim(xmin, xmax)
+            axes.set_ylim(ymin, ymax)
 
             axes.get_xaxis().set_ticks([])
             axes.get_yaxis().set_ticks([])
 
-            if ipar == ncomb - 1 or ix == neach - 1:
+            if iselected == nselected - 1 or ix == neach - 1:
                 axes.annotate(
-                    xpar.get_label(),
+                    xpar.get_label(with_unit=False),
                     xy=(0.5, -0.05),
                     xycoords='axes fraction',
                     verticalalignment='top',
@@ -415,21 +483,21 @@ def draw_jointpar_figures(
 
             if iy == 0:
                 axes.annotate(
-                    ypar.get_label(),
+                    ypar.get_label(with_unit=False),
                     xy=(-0.05, 0.5),
                     xycoords='axes fraction',
-                    verticalalignment='center',
-                    horizontalalignment='right')
+                    verticalalignment='top',
+                    horizontalalignment='right',
+                    rotation=45.)
 
             fx = problem.extract(xs, jpar)
             fy = problem.extract(xs, ipar)
-
 
             axes.scatter(
                 xpar.scaled(fx),
                 ypar.scaled(fy),
                 c=color,
-                s=3, alpha=0.5, lw=0, cmap=cmap)
+                s=3, alpha=0.5, cmap=cmap, edgecolors='none')
 
             cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
             evals, evecs = eigh_sorted(cov)
@@ -445,8 +513,17 @@ def draw_jointpar_figures(
 
             fx = problem.extract(xref, jpar)
             fy = problem.extract(xref, ipar)
-            axes.axvline(xpar.scaled(fx), color='black', alpha=0.3)
-            axes.axhline(ypar.scaled(fy), color='black', alpha=0.3)
+
+            ref_color = scolor('aluminium6')
+            ref_color_light = 'none'
+            axes.plot(
+                xpar.scaled(fx), ypar.scaled(fy), 's',
+                mew=1.5, ms=5, color=ref_color_light, mec=ref_color)
+
+    for jfig, figs_row in enumerate(figs):
+        for ifig, fig in enumerate(figs_row):
+            if fig is not None:
+                fig.savefig('jointpar-%i-%i.pdf' % (jfig, ifig))
 
 
 def draw_solution_figure(
@@ -640,7 +717,6 @@ def draw_bootstrap_figure(model, plt):
         bms_softclip = num.where(bms > 1.0, 0.1 * num.log10(bms) + 1.0, bms)
         axes.plot(imodels, bms_softclip[isort_bms], color='red', alpha=0.2)
 
-
     isort = num.argsort(gms)[::-1]
     iorder = num.empty(isort.size)
     iorder[isort] = imodels
@@ -654,15 +730,11 @@ def draw_bootstrap_figure(model, plt):
     axes.axhline(m, color='black')
     axes.axhline(m-s, color='black', alpha=0.5)
 
-
-    #axes.plot(imodels[ibests], gms_softclip[isort[ibests]], 'x', color='black')
-    #axes.plot(imodels[ibests], gms_softclip[isort][ibests], '+', color='black')
-    #iii = isort[-1]
-    #axes.plot(imodels[iii], gms_softclip[isort][iii], 'o')
     axes.plot(imodels, gms_softclip[isort], color='black')
 
     axes.set_xlim(imodels[0], imodels[-1])
     axes.set_xlabel('Tested model, sorted descending by global misfit value')
+
 
 def gather(l, key, sort=None, filter=None):
     d = {}
@@ -859,7 +931,7 @@ def draw_fits_figures(ds, model, plt):
                 ixx = ix/nxmax
                 iyy = iy/nymax
                 if (iyy, ixx) not in figures:
-                    figures[iyy, ixx] = plt.figure()
+                    figures[iyy, ixx] = plt.figure(figsize=(16, 9))
 
                 fig = figures[iyy, ixx]
 
@@ -992,8 +1064,91 @@ def draw_fits_figures(ds, model, plt):
                 title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
 
             fig.suptitle(title, fontsize=fontsize)
+            fig.savefig('fits-%s-%i-%i.pdf' % (
+                title, iyy, ixx))
 
     plt.show()
+
+
+def draw_hudson_figure(model, plt):
+
+    color = 'black'
+    fontsize = 12.
+    markersize = fontsize * 1.5
+    markersize_small = markersize * 0.2
+    beachballsize = markersize
+    beachballsize_small = beachballsize * 0.5
+    width = 7.
+    figsize = (width, width / (4./3.))
+
+    problem = model.problem
+    mean_source = get_mean_source(problem, model.xs)
+    best_source = get_best_source(problem, model.xs, model.misfits)
+
+    fig = plt.figure(figsize=figsize)
+    axes = fig.add_subplot(1, 1, 1)
+
+    data = []
+    for ix, x in enumerate(model.xs):
+        source = problem.unpack(x)
+        mt = source.pyrocko_moment_tensor()
+        u, v = hudson.project(mt)
+
+        if random.random() < 0.1:
+            try:
+                beachball.plot_beachball_mpl(
+                    mt, axes,
+                    beachball_type='dc',
+                    position=(u, v),
+                    size=beachballsize_small,
+                    color_t=color,
+                    alpha=0.5,
+                    zorder=1,
+                    linewidth=0.25)
+            except beachball.BeachballError, e:
+                logger.warn(str(e))
+
+        else:
+            data.append((u, v))
+
+    if data:
+        u, v = num.array(data).T
+        axes.plot(
+            u, v, 'o',
+            color=color,
+            ms=markersize_small,
+            mec='none',
+            mew=0,
+            alpha=0.25,
+            zorder=0)
+
+    hudson.draw_axes(axes)
+
+    mt = mean_source.pyrocko_moment_tensor()
+    u, v = hudson.project(mt)
+
+    beachball.plot_beachball_mpl(
+        mt, axes,
+        beachball_type='dc',
+        position=(u, v),
+        size=beachballsize,
+        color_t=color,
+        zorder=-1,
+        linewidth=0.5)
+
+    mt = best_source.pyrocko_moment_tensor()
+    u, v = hudson.project(mt)
+
+    axes.plot(
+        u, v, 's',
+        markersize=markersize,
+        mew=1,
+        mec='black',
+        color='none',
+        zorder=1)
+
+
+    fig.savefig('hudson.pdf')
 
 
 def xpop(s, k):
@@ -1010,6 +1165,7 @@ plot_dispatch = {
     'sequence': draw_sequence_figures,
     'contributions': draw_contributions_figure,
     'jointpar': draw_jointpar_figures,
+    'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
     'solution': draw_solution_figure}
 
@@ -1037,7 +1193,7 @@ def plot_result(dirname, plotnames_want):
             if plotname in plotnames_want:
                 plot_dispatch[plotname](model, plt)
 
-    if 3 != len({'fits', 'jointpar', 'solution'} - plotnames_want):
+    if 4 != len({'fits', 'jointpar', 'hudson', 'solution'} - plotnames_want):
         problem, xs, misfits = core.load_problem_info_and_data(
             dirname, subset='harvest')
 
@@ -1052,7 +1208,7 @@ def plot_result(dirname, plotnames_want):
                 ds = config.get_dataset()
                 plot_dispatch[plotname](ds, model, plt)
 
-        for plotname in ['jointpar', 'solution']:
+        for plotname in ['jointpar', 'hudson', 'solution']:
             if plotname in plotnames_want:
                 plot_dispatch[plotname](model, plt)
 
