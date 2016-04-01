@@ -10,7 +10,7 @@ import os.path as op
 import numpy as num
 
 from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
-    StringChoice, Dict
+    StringChoice, Dict, Timestamp
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model
 
@@ -270,7 +270,6 @@ class MisfitTarget(gf.Target):
     def post_process(self, engine, source, tr_syn):
 
         tr_syn = tr_syn.pyrocko_trace()
-        print tr_syn.deltat
         nslc = self.codes
 
         config = self.misfit_config
@@ -280,6 +279,7 @@ class MisfitTarget(gf.Target):
         ds = self.get_dataset()
 
         tobs_shift = 0.0
+        tsyn = None
         if config.pick_synthetic_traveltime and config.pick_phasename:
             store = engine.get_store(self.store_id)
             tsyn = source.time + store.t(
@@ -293,8 +293,6 @@ class MisfitTarget(gf.Target):
             if marker:
                 tobs = marker.tmin
                 tobs_shift = tobs - tsyn
-
-        print tobs_shift
 
         freqlimits = (
             config.fmin/config.ffactor,
@@ -314,9 +312,10 @@ class MisfitTarget(gf.Target):
 
         tr_syn.chop(tmin_fit - 2*tfade, tmax_fit + 2*tfade)
 
-        tmin_obs = (math.floor((tmin_fit - tfade + tobs_shift) / tinc_obs) - 1.0) * tinc_obs
-        tmax_obs = (math.ceil((tmax_fit + tfade + tobs_shift) / tinc_obs) + 1.0) * tinc_obs
-
+        tmin_obs = (math.floor(
+            (tmin_fit - tfade + tobs_shift) / tinc_obs) - 1.0) * tinc_obs
+        tmax_obs = (math.ceil(
+            (tmax_fit + tfade + tobs_shift) / tinc_obs) + 1.0) * tinc_obs
 
         try:
             if nslc[-1] == 'R':
@@ -364,6 +363,8 @@ class MisfitTarget(gf.Target):
                 result.processed_obs = tr_obs_proc
                 result.processed_syn = tr_syn_proc
                 result.taper = ms.taper
+                result.tobs_shift = tobs_shift
+                result.tsyn_pick = tsyn
 
             return result
 
@@ -384,6 +385,8 @@ class MisfitResult(gf.Result):
     filtered_obs = Trace.T(optional=True)
     filtered_syn = Trace.T(optional=True)
     taper = trace.Taper.T(optional=True)
+    tobs_shift = Float.T(optional=True)
+    tsyn_pick = Timestamp.T(optional=True)
 
 
 def xjoin(basepath, path):
@@ -1158,10 +1161,8 @@ def forward(rundir):
     xs = xs[isort, :]
 
     all_trs = []
-    print gms[0]
     for xbest in xs[:1, :]:
         ms, ns, results = problem.evaluate(xbest, return_traces=True)
-        print problem.global_misfit(ms, ns)
 
         for result in results:
             if result:
@@ -1234,19 +1235,20 @@ def check_problem(problem):
 
 g_state = {}
 
+
 def check(config):
     ds = config.get_dataset()
     events = ds.get_events()
     nevents = len(events)
 
     from matplotlib import pyplot as plt
+    from grond.plot import colors
 
     if nevents == 0:
         raise GrondError('no events found')
 
     for ievent, event in enumerate(events):
         try:
-            all_trs = []
             problem = config.get_problem(event)
             check_problem(problem)
 
@@ -1258,9 +1260,7 @@ def check(config):
                 ms, ns, results = problem.evaluate(x, return_traces=True)
                 results_list.append(results)
 
-
             for itarget, target in enumerate(problem.targets):
-
                 yabsmaxs = []
                 for results in results_list:
                     result = results[itarget]
@@ -1274,6 +1274,7 @@ def check(config):
                     yabsmax = None
 
                 fig = None
+                ii = 0
                 for results in results_list:
                     result = results[itarget]
                     if result:
@@ -1289,17 +1290,21 @@ def check(config):
                         ydata = result.filtered_obs.get_ydata() / yabsmax
                         axes.plot(xdata, ydata*0.5 + 3.5, color='black')
 
+                        color = colors[ii % len(colors)]
+
                         xdata = result.filtered_syn.get_xdata()
                         ydata = result.filtered_syn.get_ydata()
                         ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
 
-                        axes.plot(xdata, ydata*0.5 + 2.5, color='red')
+                        axes.plot(xdata, ydata*0.5 + 2.5, color=color)
 
                         xdata = result.processed_syn.get_xdata()
                         ydata = result.processed_syn.get_ydata()
                         ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
 
-                        axes.plot(xdata, ydata*0.5 + 1.5, color='red')
+                        axes.plot(xdata, ydata*0.5 + 1.5, color=color)
+                        if result.tsyn_pick:
+                            axes.axvline(result.tsyn_pick, color=(0.7, 0.7, 0.7), zorder=2)
 
                         t = result.processed_syn.get_xdata()
                         taper = result.taper
@@ -1309,6 +1314,7 @@ def check(config):
                         y2 = num.concatenate((y, -y[::-1]))
                         t2 = num.concatenate((t, t[::-1]))
                         axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
+                        ii += 1
 
                 if fig:
                     plt.show()
@@ -1318,7 +1324,6 @@ def check(config):
                 ievent,
                 event.name or util.time_to_str(event.time),
                 str(e)))
-
 
 
 def go(config, force=False, nparallel=1, status=('state',)):
