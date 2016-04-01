@@ -2,7 +2,7 @@
 import logging
 from collections import defaultdict
 import numpy as num
-from pyrocko import util, pile, model, config, trace, snuffling
+from pyrocko import util, pile, model, config, trace, snuffling, gui_util
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import Object, Tuple, String, Float, dump_all, load_all
 
@@ -51,6 +51,7 @@ class Dataset(object):
         self.whitelist_nsl = None
         self.station_corrections = {}
         self.station_factors = {}
+        self.pick_markers = []
         self.apply_correction_delays = True
         self.apply_correction_factors = True
         self.clip_handling = 'by_nsl'
@@ -63,14 +64,25 @@ class Dataset(object):
     def set_synthetic_test(self, synthetic_test):
         self.synthetic_test = synthetic_test
 
-    def add_stations(self, stations=None, filename=None):
+    def add_stations(
+            self,
+            stations=None,
+            pyrocko_stations_filename=None,
+            stationxml_filenames=None):
+
         if stations is not None:
             for station in stations:
                 self.stations[station.nsl()] = station
 
-        if filename is not None:
-            for station in model.load_stations(filename):
+        if pyrocko_stations_filename is not None:
+            for station in model.load_stations(pyrocko_stations_filename):
                 self.stations[station.nsl()] = station
+
+        if stationxml_filenames is not None:
+            for stationxml_filename in stationxml_filenames:
+                sx = fs.load_xml(filename=stationxml_filename)
+                for station in sx.get_pyrocko_stations():
+                    self.stations[station.nsl()] = station
 
     def add_events(self, events=None, filename=None):
         if events is not None:
@@ -146,6 +158,10 @@ class Dataset(object):
     def add_station_corrections(self, filename):
         self.station_corrections.update(
             (sc.codes, sc) for sc in load_station_corrections(filename))
+
+    def add_picks(self, filename):
+        self.pick_markers.extend(
+            gui_util.load_markers(filename))
 
     def is_blacklisted(self, obj):
         try:
@@ -335,6 +351,7 @@ class Dataset(object):
 
         if deltat is not None:
             tr.downsample_to(deltat, snap=True)
+            tr.deltat = deltat
 
         resp = self.get_response(tr)
         return tr.transfer(tfade=tfade, freqlimits=freqlimits,
@@ -465,6 +482,34 @@ class Dataset(object):
 
         return ev_x
 
+    def get_pick(self, eventname, obj, phasename):
+        nsl = self.get_nsl(obj)
+
+        hash_to_name = {}
+        for marker in self.pick_markers:
+            if isinstance(marker, gui_util.EventMarker):
+                hash_to_name[marker.get_event_hash()] = marker.get_event().name
+
+        candidates = []
+        for marker in self.pick_markers:
+            if (isinstance(marker, gui_util.PhaseMarker) and
+                    marker.one_nslc()[:3] == nsl and
+                    marker.get_phasename() == phasename and
+                    hash_to_name[marker.get_event_hash()] == eventname):
+
+                candidates.append(marker)
+
+        candidates.sort(key=lambda marker: marker.tmin)
+
+        if len(candidates) == 1:
+            return candidates[0]
+        elif len(candidates) == 0:
+            return None
+        else:
+            logger.warn('multiple picks match %s.%s.%s, %s, %s' % (
+                nsl + (phasename, event.name or util.time_to_str(event.time))))
+
+            return candidates[0]
 
 __all__ = '''
     InvalidObject

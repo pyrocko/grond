@@ -25,6 +25,7 @@ def d2u(d):
 
 subcommand_descriptions = {
     'init': 'print example configuration',
+    'check': 'check data and configuration',
     'go': 'run Grond optimization',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
@@ -35,12 +36,13 @@ subcommand_descriptions = {
 
 subcommand_usages = {
     'init': 'init [options]',
+    'check': 'check <configfile> [options]',
     'go': 'go <configfile> [options]',
     'forward': 'forward <rundir> [options]',
     'harvest': 'harvest <rundir> [options]',
     'map-geometry': 'map-geometry <configfile> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
-    'export': 'export <rundir> <outputfile> [options]',
+    'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -55,6 +57,7 @@ usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
 Subcommands:
 
     init          %(init)s
+    check         %(check)s
     go            %(go)s
     forward       %(forward)s
     harvest       %(harvest)s
@@ -169,6 +172,20 @@ def command_init(args):
     print config
 
 
+def command_check(args):
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('check', args, setup)
+    if len(args) != 1:
+        help_and_die(parser, 'no config file given')
+
+    config_path = args[0]
+    config = grond.read_config(config_path)
+
+    grond.check(config)
+
+
 def command_go(args):
     def setup(parser):
         parser.add_option(
@@ -254,17 +271,58 @@ def command_plot(args):
 
 
 def command_export(args):
-    parser, options, args = cl_parse('export', args)
-    if len(args) not in (1, 2):
-        help_and_die(parser, 'one or two arguments required')
 
-    dirname = args[0]
-    if len(args) == 2:
-        filename = args[1]
+    def setup(parser):
+        parser.add_option(
+            '--type', dest='type', metavar='TYPE',
+            choices=('event', 'source', 'vector'),
+            help='select type of objects to be exported. Choices: '
+                 '"event" (default), "source", "vector".')
+
+        parser.add_option(
+            '--parameters', dest='parameters', metavar='PLIST',
+            help='select parameters to be exported. PLIST is a '
+                 'comma-separated list where each entry has the form '
+                 '"<parameter>[.<measure>]". Available measures: "best", '
+                 '"mean", "std", "minimum", "percentile16", "median", '
+                 '"percentile84", "maximum".')
+
+        parser.add_option(
+            '--output', dest='filename', metavar='FILE',
+            help='write output to FILE')
+
+    parser, options, args = cl_parse('export', args, setup)
+    if len(args) < 2:
+        help_and_die(parser, 'arguments required')
+
+    what = args[0]
+
+    dirnames = args[1:]
+
+    what_choices = ('best', 'mean', 'ensemble', 'stats')
+
+    if what not in what_choices:
+        help_and_die(
+            parser,
+            'invalid choice: %s (choose from %s)' % (
+                repr(what), ', '.join(repr(x) for x in what_choices)))
+
+    if options.parameters:
+        pnames = options.parameters.split(',')
     else:
-        filename = None
+        pnames = None
 
-    grond.export(dirname, filename)
+    try:
+        grond.export(
+            what,
+            dirnames,
+            filename=options.filename,
+            type=options.type,
+            pnames=pnames)
+
+    except grond.GrondError, e:
+        die(str(e))
+
 
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ import numpy as num
 from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
     StringChoice, Dict
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
-from pyrocko import parimap
+from pyrocko import parimap, model
 
 from grond import dataset
 
@@ -99,6 +99,10 @@ class Problem(Object):
         Object.__init__(self, **kwargs)
         self._bootstrap_weights = None
         self._target_weights = None
+        self._engine = None
+
+    def get_engine(self):
+        return self._engine
 
     def copy(self):
         o = copy.copy(self)
@@ -176,6 +180,9 @@ class Problem(Object):
         else:
             return self._bootstrap_weights[ibootstrap, :]
 
+    def set_engine(self, engine):
+        self._engine = engine
+
 
 class ProblemConfig(Object):
     name_template = String.T()
@@ -200,6 +207,8 @@ class InnerMisfitConfig(Object):
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T()
     tmax = gf.Timing.T()
+    pick_synthetic_traveltime = gf.Timing.T(optional=True)
+    pick_phasename = String.T(optional=True)
     domain = trace.DomainChoice.T(default='time_domain')
 
 
@@ -261,11 +270,31 @@ class MisfitTarget(gf.Target):
     def post_process(self, engine, source, tr_syn):
 
         tr_syn = tr_syn.pyrocko_trace()
+        print tr_syn.deltat
         nslc = self.codes
 
         config = self.misfit_config
 
         tmin_fit, tmax_fit, tfade = self.get_taper_params(engine, source)
+
+        ds = self.get_dataset()
+
+        tobs_shift = 0.0
+        if config.pick_synthetic_traveltime and config.pick_phasename:
+            store = engine.get_store(self.store_id)
+            tsyn = source.time + store.t(
+                config.pick_synthetic_traveltime, source, self)
+
+            marker = ds.get_pick(
+                source.name,
+                self.codes[:3],
+                config.pick_phasename)
+
+            if marker:
+                tobs = marker.tmin
+                tobs_shift = tobs - tsyn
+
+        print tobs_shift
 
         freqlimits = (
             config.fmin/config.ffactor,
@@ -285,10 +314,9 @@ class MisfitTarget(gf.Target):
 
         tr_syn.chop(tmin_fit - 2*tfade, tmax_fit + 2*tfade)
 
-        tmin_obs = (math.floor((tmin_fit - tfade) / tinc_obs) - 1.0) * tinc_obs
-        tmax_obs = (math.ceil((tmax_fit + tfade) / tinc_obs) + 1.0) * tinc_obs
+        tmin_obs = (math.floor((tmin_fit - tfade + tobs_shift) / tinc_obs) - 1.0) * tinc_obs
+        tmax_obs = (math.ceil((tmax_fit + tfade + tobs_shift) / tinc_obs) + 1.0) * tinc_obs
 
-        ds = self.get_dataset()
 
         try:
             if nslc[-1] == 'R':
@@ -307,6 +335,10 @@ class MisfitTarget(gf.Target):
                 deltat=tr_syn.deltat,
                 cache=True,
                 backazimuth=backazimuth)
+
+            if tobs_shift != 0.0:
+                tr_obs = tr_obs.copy()
+                tr_obs.shift(-tobs_shift)
 
             ms = trace.MisfitSetup(
                 norm=2,
@@ -499,7 +531,8 @@ class SyntheticTest(Object):
 
 class DatasetConfig(HasPaths):
 
-    stations_path = Path.T()
+    stations_path = Path.T(optional=True)
+    stations_stationxml_paths = List.T(Path.T())
     events_path = Path.T()
     waveform_paths = List.T(Path.T())
     clippings_path = Path.T(optional=True)
@@ -508,6 +541,7 @@ class DatasetConfig(HasPaths):
     station_corrections_path = Path.T(optional=True)
     apply_correction_factors = Bool.T(default=True)
     apply_correction_delays = Bool.T(default=True)
+    picks_paths = List.T(Path.T())
     blacklist = List.T(String.T())
     whitelist = List.T(String.T(), optional=True)
     synthetic_test = SyntheticTest.T(optional=True)
@@ -520,7 +554,10 @@ class DatasetConfig(HasPaths):
         if self._ds is None:
             fp = self.expand_path
             ds = dataset.Dataset()
-            ds.add_stations(filename=fp(self.stations_path))
+            ds.add_stations(
+                pyrocko_stations_filename=fp(self.stations_path),
+                stationxml_filenames=fp(self.stations_stationxml_paths))
+
             ds.add_events(filename=fp(self.events_path))
             ds.add_waveforms(paths=fp(self.waveform_paths))
             if self.clippings_path:
@@ -540,6 +577,10 @@ class DatasetConfig(HasPaths):
 
             ds.apply_correction_factors = self.apply_correction_factors
             ds.apply_correction_delays = self.apply_correction_delays
+
+            for picks_path in self.picks_paths:
+                ds.add_picks(
+                    filename=fp(picks_path))
 
             ds.add_blacklist(self.blacklist)
             if self.whitelist:
@@ -654,6 +695,26 @@ class SolverConfig(Object):
             sampler_distribution=self.sampler_distribution)
 
 
+class EngineConfig(HasPaths):
+    gf_stores_from_pyrocko_config = Bool.T(default=True)
+    gf_store_superdirs = List.T(Path.T())
+    gf_store_dirs = List.T(Path.T())
+
+    def __init__(self, *args, **kwargs):
+        HasPaths.__init__(self, *args, **kwargs)
+        self._engine = None
+
+    def get_engine(self):
+        if self._engine is None:
+            fp = self.expand_path
+            self._engine = gf.LocalEngine(
+                use_config=self.gf_stores_from_pyrocko_config,
+                store_superdirs=fp(self.gf_store_superdirs),
+                store_dirs=fp(self.gf_store_dirs))
+
+        return self._engine
+
+
 class Config(HasPaths):
     rundir_template = Path.T()
     dataset_config = DatasetConfig.T()
@@ -662,6 +723,7 @@ class Config(HasPaths):
     niter_analyse_problem = Int.T(default=1000)
     analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
     solver_config = SolverConfig.T(default=SolverConfig.D())
+    engine_config = EngineConfig.T(default=EngineConfig.D())
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
@@ -685,7 +747,9 @@ class Config(HasPaths):
 
     def get_problem(self, event):
         targets = self.get_targets(event)
-        return self.problem_config.get_problem(event, targets)
+        problem = self.problem_config.get_problem(event, targets)
+        problem.set_engine(self.engine_config.get_engine())
+        return problem
 
 
 def sarr(a):
@@ -728,6 +792,28 @@ def load_problem_data(dirname, problem):
     misfits = combi.reshape((nmodels, problem.ntargets, 2))
 
     return xs, misfits
+
+
+def get_mean_x(xs):
+    return num.mean(xs, axis=0)
+
+
+def get_best_x(problem, xs, misfits):
+    gms = problem.global_misfits(misfits)
+    ibest = num.argmin(gms)
+    return xs[ibest, :]
+
+
+def get_mean_source(problem, xs):
+    x_mean = get_mean_x(xs)
+    source = problem.unpack(x_mean)
+    return source
+
+
+def get_best_source(problem, xs, misfits):
+    x_best = get_best_x(problem, xs, misfits)
+    source = problem.unpack(x_best)
+    return source
 
 
 def mean_latlondist(lats, lons):
@@ -1141,12 +1227,98 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         problem.dump_problem_data(dumpdir, x, ms, ns)
 
 
-def check(problem):
+def check_problem(problem):
     if len(problem.targets) == 0:
         raise GrondError('no targets available')
 
 
 g_state = {}
+
+def check(config):
+    ds = config.get_dataset()
+    events = ds.get_events()
+    nevents = len(events)
+
+    from matplotlib import pyplot as plt
+
+    if nevents == 0:
+        raise GrondError('no events found')
+
+    for ievent, event in enumerate(events):
+        try:
+            all_trs = []
+            problem = config.get_problem(event)
+            check_problem(problem)
+
+            xbounds = num.array(problem.bounds(), dtype=num.float)
+
+            results_list = []
+            for i in xrange(10):
+                x = problem.random_uniform(xbounds)
+                ms, ns, results = problem.evaluate(x, return_traces=True)
+                results_list.append(results)
+
+
+            for itarget, target in enumerate(problem.targets):
+
+                yabsmaxs = []
+                for results in results_list:
+                    result = results[itarget]
+                    if result:
+                        yabsmaxs.append(
+                            num.max(num.abs(result.filtered_obs.get_ydata())))
+
+                if yabsmaxs:
+                    yabsmax = max(yabsmaxs) or 1.0
+                else:
+                    yabsmax = None
+
+                fig = None
+                for results in results_list:
+                    result = results[itarget]
+                    if result:
+                        if fig is None:
+                            fig = plt.figure()
+                            axes = fig.add_subplot(1, 1, 1)
+                            axes.set_ylim(0., 4.)
+                            axes.set_title('%s %s' % (
+                                '.'.join(x for x in target.codes if x),
+                                target.groupname))
+
+                        xdata = result.filtered_obs.get_xdata()
+                        ydata = result.filtered_obs.get_ydata() / yabsmax
+                        axes.plot(xdata, ydata*0.5 + 3.5, color='black')
+
+                        xdata = result.filtered_syn.get_xdata()
+                        ydata = result.filtered_syn.get_ydata()
+                        ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+
+                        axes.plot(xdata, ydata*0.5 + 2.5, color='red')
+
+                        xdata = result.processed_syn.get_xdata()
+                        ydata = result.processed_syn.get_ydata()
+                        ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+
+                        axes.plot(xdata, ydata*0.5 + 1.5, color='red')
+
+                        t = result.processed_syn.get_xdata()
+                        taper = result.taper
+
+                        y = num.ones(t.size) * 0.9
+                        taper(y, t[0], t[1] - t[0])
+                        y2 = num.concatenate((y, -y[::-1]))
+                        t2 = num.concatenate((t, t[::-1]))
+                        axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
+
+                if fig:
+                    plt.show()
+
+        except GrondError, e:
+            logger.error('event %i, %s: %s' % (
+                ievent,
+                event.name or util.time_to_str(event.time),
+                str(e)))
+
 
 
 def go(config, force=False, nparallel=1, status=('state',)):
@@ -1156,6 +1328,9 @@ def go(config, force=False, nparallel=1, status=('state',)):
     ds = config.get_dataset()
     events = ds.get_events()
     nevents = len(events)
+
+    if nevents == 0:
+        raise GrondError('no events found')
 
     g_data = (config, force, status, nparallel)
 
@@ -1190,13 +1365,12 @@ def process_event(ievent, g_data_id):
 
     problem = config.get_problem(event)
 
-
     # FIXME
     synt = ds.synthetic_test
     if synt and synt.inject_solution:
         problem.base_source = problem.unpack(synt.get_x())
 
-    check(problem)
+    check_problem(problem)
 
     rundir = config.rundir_template % dict(
         problem_name=problem.name)
@@ -1217,7 +1391,7 @@ def process_event(ievent, g_data_id):
     analyse(
         problem,
         niter=config.analyser_config.niter,
-        show_progress=nparallel==1)
+        show_progress=nparallel == 1)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -1244,30 +1418,156 @@ def process_event(ievent, g_data_id):
         'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
 
 
-def export(rundir, output_filename=None):
-    problem, xs, misfits = load_problem_info_and_data(rundir, subset='harvest')
+class ParameterStats(Object):
+    name = String.T()
+    mean = Float.T()
+    std = Float.T()
+    best = Float.T()
+    minimum = Float.T()
+    percentile5 = Float.T()
+    percentile16 = Float.T()
+    median = Float.T()
+    percentile84 = Float.T()
+    percentile95 = Float.T()
+    maximum = Float.T()
 
-    if output_filename is None:
-        out = sys.stdout
+    def __init__(self, *args, **kwargs):
+        kwargs.update(zip(self.T.propnames, args))
+        Object.__init__(self, **kwargs)
 
-    else:
-        out = open(output_filename, 'w')
 
+class ResultStats(Object):
+    problem = Problem.T()
+    parameter_stats_list = List.T(ParameterStats.T())
+
+
+def make_stats(problem, xs, misfits, pnames=None):
     gms = problem.global_misfits(misfits)
-    isort = num.argsort(gms)
-    for i in isort:
-        x = xs[i]
-        gm = gms[i]
-        source = problem.unpack(x)
+    ibest = num.argmin(gms)
+    rs = ResultStats(problem=problem)
+    if pnames is None:
+        pnames = problem.parameter_names
 
-        values = [
-            source.lat,
-            source.lon,
-            source.depth,
-            ] + list(source.m6_astuple) + [source.stf.duration]
+    for pname in pnames:
+        iparam = problem.name_to_index(pname)
+        vs = problem.extract(xs, iparam)
+        mi, p5, p16, median, p84, p95, ma = map(float, num.percentile(
+            vs, [0., 5., 16., 50., 84., 95., 100.]))
 
-        print >>out, '%12.5g' % gm, util.time_to_str(source.time), ' '.join(
-            '%12.5g' % x for x in values)
+        mean = float(num.mean(vs))
+        std = float(num.std(vs))
+        best = float(vs[ibest])
+        s = ParameterStats(
+            pname, mean, std, best, mi, p5, p16, median, p84, p95, ma)
+
+        rs.parameter_stats_list.append(s)
+
+    return rs
+
+
+def format_stats(rs, fmt):
+    pname_to_pindex = dict(
+        (p.name, i) for (i, p) in enumerate(rs.parameter_stats_list))
+
+    values = []
+    headers = []
+    for x in fmt:
+        pname, qname = x.split('.')
+        pindex = pname_to_pindex[pname]
+        values.append(getattr(rs.parameter_stats_list[pindex], qname))
+        headers.append(x)
+
+    return ' '.join('%16.7g' % v for v in values)
+
+
+def export(what, rundirs, type=None, pnames=None, filename=None):
+    if pnames is not None:
+        pnames_clean = [pname.split('.')[0] for pname in pnames]
+        shortform = all(len(pname.split('.')) == 2 for pname in pnames)
+    else:
+        pnames_clean = None
+        shortform = False
+
+    if what == 'stats' and type is not None:
+        raise GrondError('invalid argument combination: what=%s, type=%s' % (
+            repr(what), repr(type)))
+
+    if what != 'stats' and shortform:
+        raise GrondError('invalid argument combination: what=%s, pnames=%s' % (
+            repr(what), repr(pnames)))
+
+    if what != 'stats' and type != 'vector' and pnames is not None:
+        raise GrondError(
+            'invalid argument combination: what=%s, type=%s, pnames=%s' % (
+                repr(what), repr(type), repr(pnames)))
+
+    if filename is None:
+        out = sys.stdout
+    else:
+        out = open(filename, 'w')
+
+    if type is None:
+        type = 'event'
+
+    if shortform:
+        print >>out, '#', ' '.join('%16s' % x for x in pnames)
+
+    def dump(x, indices):
+        if type == 'vector':
+            print >>out, ' ', ' '.join('%16.7g' % v for v in x[indices])
+
+        elif type == 'source':
+            source = problem.unpack(x)
+            guts.dump(source, stream=out)
+
+        elif type == 'event':
+            ev = problem.unpack(x).pyrocko_event()
+            model.dump_events([ev], stream=out)
+
+        else:
+            raise GrondError('invalid argument: type=%s' % repr(type))
+
+    header = None
+    for rundir in rundirs:
+        problem, xs, misfits = load_problem_info_and_data(
+            rundir, subset='harvest')
+
+        if type == 'vector':
+            pnames_take = pnames_clean or \
+                problem.parameter_names[:problem.nparameters]
+
+            indices = num.array(
+                [problem.name_to_index(pname) for pname in pnames_take])
+
+            new_header = '# ' + ' '.join('%16s' % x for x in pnames_take)
+            if type == 'vector' and header != new_header:
+                print >>out, new_header
+
+            header = new_header
+        else:
+            indices = None
+
+        if what == 'best':
+            dump(get_best_x(problem, xs, misfits), indices)
+
+        elif what == 'mean':
+            dump(get_mean_x(xs), indices)
+
+        elif what == 'ensemble':
+            gms = problem.global_misfits(misfits)
+            isort = num.argsort(gms)
+            for i in isort:
+                dump(xs[i], indices)
+
+        elif what == 'stats':
+            rs = make_stats(problem, xs, misfits, pnames_clean)
+            if shortform:
+                print >>out, ' ', format_stats(rs, pnames)
+            else:
+                print >>out, rs
+
+        else:
+            raise GrondError('invalid argument: what=%s' % repr(what))
 
     if out is not sys.stdout:
         out.close()
@@ -1288,6 +1588,7 @@ __all__ = '''
     TargetConfig
     SamplerDistributionChoice
     SolverConfig
+    EngineConfig
     Config
     HasPaths
     TargetAnalysisResult
@@ -1296,5 +1597,6 @@ __all__ = '''
     forward
     harvest
     go
+    check
     export
 '''.split()

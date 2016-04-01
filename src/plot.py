@@ -4,7 +4,7 @@ import logging
 import os.path as op
 import numpy as num
 from scipy import signal
-from pyrocko import automap, moment_tensor as mtm, beachball, guts, trace, util
+from pyrocko import automap, beachball, guts, trace, util
 from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
@@ -26,21 +26,6 @@ def ordersort(x):
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
-
-
-def get_mean_source(problem, xs):
-    x_mean = num.mean(xs, axis=0)
-    source = problem.unpack(x_mean)
-    return source
-
-
-def get_best_source(problem, xs, misfits):
-    gms = problem.global_misfits(misfits)
-    print gms.min(), gms.mean()
-    ibest = num.argmin(gms)
-    x_best = xs[ibest, :]
-    source = problem.unpack(x_best)
-    return source
 
 
 def fixlim(lo, hi):
@@ -334,11 +319,11 @@ def draw_jointpar_figures(
         exclude=None):
 
     color = 'magnitude'
-    #exclude = ['duration']
+    # exclude = ['duration']
     neach = 6
     figsize = (8, 8)
-    #cmap = cm.YlOrRd
-    #cmap = cm.jet
+    # cmap = cm.YlOrRd
+    # cmap = cm.jet
     cmap = cm.coolwarm
 
     problem = model.problem
@@ -396,7 +381,6 @@ def draw_jointpar_figures(
 
     if nselected == 0:
         return
-
 
     nfig = (nselected-2) / neach + 1
 
@@ -529,7 +513,11 @@ def draw_jointpar_figures(
 def draw_solution_figure(
         model, plt, misfit_cutoff=None, beachball_type='full'):
 
-    fig = plt.figure()
+    fontsize = 10.
+
+    fig = plt.figure(figsize=(6, 2))
+    axes = fig.add_subplot(1, 1, 1, aspect=1.0)
+    fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
 
     problem = model.problem
     if not problem:
@@ -540,50 +528,104 @@ def draw_solution_figure(
     if xs.size == 0:
         return
 
-    def get_mt_part(x):
-        source = problem.unpack(x)
-        mt = source.pyrocko_moment_tensor()
-        res = mt.standard_decomposition()
-        m = dict(
-            dc=res[1][2],
-            deviatoric=res[3][2],
-            full=res[4][2])[beachball_type]
-
-        return mtm.MomentTensor(m=m)
-
     gms = problem.global_misfits(model.misfits)
     isort = num.argsort(gms)
     iorder = num.empty_like(isort)
     iorder[isort] = num.arange(iorder.size)[::-1]
 
-    if misfit_cutoff is None:
-        iibest = num.where(iorder > iorder.size - 100)[0]
-    else:
-        iibest = num.where(gms < misfit_cutoff)[0]
+    mean_source = core.get_mean_source(problem, model.xs)
+    best_source = core.get_best_source(problem, model.xs, model.misfits)
+    ref_source = problem.base_source
 
-    nsamp = 10
-    for isamp in xrange(nsamp):
-        ichoice = iibest[random.randint(0, iibest.size-1)]
+    for xpos, label in [
+            (0., 'Full'),
+            (2., 'Isotropic'),
+            (4., 'Deviatoric'),
+            (6., 'CLVD'),
+            (8., 'DC')]:
 
-        axes = fig.add_subplot(1, nsamp+1, isamp+1, aspect=1.)
-        axes.axison = False
-        axes.set_xlim(-1.05, 1.05)
-        axes.set_ylim(-1.05, 1.05)
-        axes.set_title('#%i' % (iorder.size - iorder[ichoice] + 1))
+        axes.annotate(
+            label,
+            xy=(1+xpos, 3),
+            xycoords='data',
+            xytext=(0., 0.),
+            textcoords='offset points',
+            ha='center',
+            va='center',
+            color='black',
+            fontsize=fontsize)
 
-        x = xs[ichoice, :]
-        mt = get_mt_part(x)
-        beachball.plot_beachball_mpl(mt, axes)
+    decos = []
+    for source in [best_source, mean_source, ref_source]:
+        mt = source.pyrocko_moment_tensor()
+        deco = mt.standard_decomposition()
+        decos.append(deco)
 
-    axes = fig.add_subplot(1, nsamp+1, nsamp+1, aspect=1.)
+    moment_full_max = max(deco[-1][0] for deco in decos)
+
+    for ypos, label, deco, color_t in [
+            (2., 'Ensemble best', decos[0], scolor('aluminium5')),
+            (1., 'Ensemble mean', decos[1], scolor('scarletred1')),
+            (0., 'Reference', decos[2], scolor('aluminium3'))]:
+
+        [(moment_iso, ratio_iso, m_iso),
+         (moment_dc, ratio_dc, m_dc),
+         (moment_clvd, ratio_clvd, m_clvd),
+         (moment_devi, ratio_devi, m_devi),
+         (moment_full, ratio_full, m_full)] = deco
+
+        size0 = moment_full / moment_full_max
+
+        axes.annotate(
+            label,
+            xy=(-2., ypos),
+            xycoords='data',
+            xytext=(0., 0.),
+            textcoords='offset points',
+            ha='left',
+            va='center',
+            color='black',
+            fontsize=fontsize)
+
+        for xpos, mt_part, ratio, ops in [
+                (0., m_full, ratio_full, '-'),
+                (2., m_iso, ratio_iso, '='),
+                (4., m_devi, ratio_devi, '='),
+                (6., m_clvd, ratio_clvd, '+'),
+                (8., m_dc, ratio_dc, None)]:
+
+            if ratio != 0.0:
+                beachball.plot_beachball_mpl(
+                    mt_part, axes,
+                    beachball_type='full',
+                    position=(1.+xpos, ypos),
+                    size=0.9*size0*math.sqrt(ratio),
+                    size_units='data',
+                    color_t=color_t,
+                    linewidth=1.0)
+
+            else:
+                axes.annotate(
+                    'N/A',
+                    position=(1.+xpos, ypos),
+                    ha='center',
+                    va='center',
+                    color='black',
+                    fontsize=fontsize)
+
+            if ops is not None:
+                axes.annotate(
+                    ops,
+                    xy=(2. + xpos, ypos),
+                    ha='center',
+                    va='center',
+                    color='black',
+                    fontsize=fontsize)
+
     axes.axison = False
-    axes.set_xlim(-1.05, 1.05)
-    axes.set_ylim(-1.05, 1.05)
-    axes.set_title('Ref')
-
-    xref = problem.pack(problem.base_source)
-    mt = get_mt_part(xref)
-    beachball.plot_beachball_mpl(mt, axes)
+    axes.set_xlim(-2.25, 9.75)
+    axes.set_ylim(-0.5, 3.5)
+    fig.savefig('test.pdf')
 
 
 def draw_contributions_figure(model, plt):
@@ -1082,8 +1124,8 @@ def draw_hudson_figure(model, plt):
     figsize = (width, width / (4./3.))
 
     problem = model.problem
-    mean_source = get_mean_source(problem, model.xs)
-    best_source = get_best_source(problem, model.xs, model.misfits)
+    mean_source = core.get_mean_source(problem, model.xs)
+    best_source = core.get_best_source(problem, model.xs, model.misfits)
 
     fig = plt.figure(figsize=figsize)
     axes = fig.add_subplot(1, 1, 1)
@@ -1146,7 +1188,6 @@ def draw_hudson_figure(model, plt):
         mec='black',
         color='none',
         zorder=1)
-
 
     fig.savefig('hudson.pdf')
 

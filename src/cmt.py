@@ -166,7 +166,7 @@ class CMTProblem(core.Problem):
 
     def evaluate(self, x, return_traces=False):
         source = self.unpack(x)
-        engine = gf.get_engine()
+        engine = self.get_engine()
         for target in self.targets:
             target.set_return_traces(return_traces)
 
@@ -194,7 +194,7 @@ class CMTProblem(core.Problem):
 
     def forward(self, x):
         source = self.unpack(x)
-        engine = gf.get_engine()
+        engine = self.get_engine()
         plain_targets = [target.get_plain_target() for target in self.targets]
 
         resp = engine.process(source, plain_targets)
