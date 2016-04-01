@@ -19,6 +19,10 @@ class NotFound(Exception):
     pass
 
 
+class DatasetError(Exception):
+    pass
+
+
 class StationCorrection(Object):
     codes = Tuple.T(4, String.T())
     delay = Float.T()
@@ -56,6 +60,7 @@ class Dataset(object):
         self.apply_correction_factors = True
         self.clip_handling = 'by_nsl'
         self.synthetic_test = None
+        self._picks = None
         self._cache = {}
 
     def empty_cache(self):
@@ -162,6 +167,8 @@ class Dataset(object):
     def add_picks(self, filename):
         self.pick_markers.extend(
             gui_util.load_markers(filename))
+
+        self._picks = None
 
     def is_blacklisted(self, obj):
         try:
@@ -482,36 +489,53 @@ class Dataset(object):
 
         return ev_x
 
+    def get_picks(self):
+        if self._picks is None:
+            hash_to_name = {}
+            names = set()
+            for marker in self.pick_markers:
+                if isinstance(marker, gui_util.EventMarker):
+                    name = marker.get_event().name
+                    if name in names:
+                        raise DatasetError(
+                            'duplicate event name "%s" in picks' % name)
+
+                    names.add(name)
+                    hash_to_name[marker.get_event_hash()] = name
+
+            picks = {}
+            for marker in self.pick_markers:
+                if isinstance(marker, gui_util.PhaseMarker):
+                    ehash = marker.get_event_hash()
+
+                    nsl = marker.one_nslc()[:3]
+                    phasename = marker.get_phasename()
+
+                    if ehash is None or ehash not in hash_to_name:
+                        raise DatasetError(
+                            'unassociated pick %s.%s.%s, %s' %
+                            (nsl + (phasename, )))
+
+                    eventname = hash_to_name[ehash]
+
+                    if (nsl, phasename, eventname) in picks:
+                        raise DatasetError(
+                            'duplicate pick %s.%s.%s, %s' %
+                            (nsl + (phasename, )))
+
+                    picks[nsl, phasename, eventname] = marker
+
+            self._picks = picks
+
+        return self._picks
+
     def get_pick(self, eventname, obj, phasename):
         nsl = self.get_nsl(obj)
+        return self.get_picks().get((nsl, phasename, eventname), None)
 
-        hash_to_name = {}
-        for marker in self.pick_markers:
-            if isinstance(marker, gui_util.EventMarker):
-                hash_to_name[marker.get_event_hash()] = marker.get_event().name
-
-        candidates = []
-        for marker in self.pick_markers:
-            if (isinstance(marker, gui_util.PhaseMarker) and
-                    marker.one_nslc()[:3] == nsl and
-                    marker.get_phasename() == phasename and
-                    hash_to_name[marker.get_event_hash()] == eventname):
-
-                candidates.append(marker)
-
-        candidates.sort(key=lambda marker: marker.tmin)
-
-        if len(candidates) == 1:
-            return candidates[0]
-        elif len(candidates) == 0:
-            return None
-        else:
-            logger.warn('multiple picks match %s.%s.%s, %s, %s' % (
-                nsl + (phasename, event.name or util.time_to_str(event.time))))
-
-            return candidates[0]
 
 __all__ = '''
+    DatasetError
     InvalidObject
     NotFound
     StationCorrection
