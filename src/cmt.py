@@ -105,7 +105,7 @@ class CMTProblem(core.Problem):
         rm6 = m6 / mt.scalar_moment()
 
         x = num.array([
-            source.time,
+            source.time - self.base_source.time,
             source.north_shift,
             source.east_shift,
             source.depth,
@@ -267,7 +267,7 @@ class CMTProblemConfig(core.ProblemConfig):
             event.depth = 0.
 
         base_source = gf.MTSource.from_pyrocko_event(event)
-        base_source.stf = gf.HalfSinusoidSTF(duration=1.0)
+        base_source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
 
         subs = dict(
             event_name=event.name,

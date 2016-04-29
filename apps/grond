@@ -174,20 +174,31 @@ def command_init(args):
 
 def command_check(args):
     def setup(parser):
-        pass
+        parser.add_option(
+            '--event', dest='event_name', metavar='EVENTNAME',
+            help='process only event EVENTNAME')
 
     parser, options, args = cl_parse('check', args, setup)
     if len(args) != 1:
         help_and_die(parser, 'no config file given')
 
+    event_names = None
+    if options.event_name:
+        event_names = [options.event_name]
+
     config_path = args[0]
     config = grond.read_config(config_path)
 
-    grond.check(config)
+    grond.check(
+        config,
+        event_names=event_names)
 
 
 def command_go(args):
     def setup(parser):
+        parser.add_option(
+            '--event', dest='event_name', metavar='EVENTNAME',
+            help='process only event EVENTNAME')
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing run directory')
@@ -209,20 +220,36 @@ def command_go(args):
     else:
         status = tuple(options.status.split(','))
 
+    event_names = None
+    if options.event_name:
+        event_names = [options.event_name]
+
     grond.go(
         config,
+        event_names=event_names,
         force=options.force,
         status=status,
         nparallel=options.nparallel)
 
 
 def command_forward(args):
-    parser, options, args = cl_parse('forward', args)
+    def setup(parser):
+        parser.add_option(
+            '--event', dest='event_name', metavar='EVENTNAME',
+            help='process only event EVENTNAME')
+
+    parser, options, args = cl_parse('forward', args, setup)
     if len(args) != 1:
         help_and_die(parser, 'incorrect number of arguments')
 
+    event_names = None
+    if options.event_name:
+        event_names = [options.event_name]
+
     run_path, = args
-    grond.forward(run_path)
+    grond.forward(
+        run_path,
+        event_names=event_names)
 
 
 def command_harvest(args):

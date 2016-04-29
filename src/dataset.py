@@ -315,7 +315,13 @@ class Dataset(object):
 
         return trs
 
-    def get_waveform_raw(self, obj, tmin=None, tmax=None, tpad=0.):
+    def get_waveform_raw(
+            self, obj,
+            tmin=None,
+            tmax=None,
+            tpad=0.,
+            toffset_noise_extract=0.):
+
         net, sta, loc, cha = self.get_nslc(obj)
 
         if self.is_blacklisted((net, sta, loc, cha)):
@@ -337,9 +343,15 @@ class Dataset(object):
                     'waveform clipped', (net, sta, loc, cha))
 
         trs = self.pile.all(
-            tmin=tmin, tmax=tmax, tpad=tpad,
+            tmin=tmin+toffset_noise_extract,
+            tmax=tmax+toffset_noise_extract,
+            tpad=tpad,
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
             want_incomplete=False)
+
+        if toffset_noise_extract != 0.0:
+            for tr in trs:
+                tr.shift(-toffset_noise_extract)
 
         if len(trs) == 1:
             return trs[0]
@@ -352,15 +364,21 @@ class Dataset(object):
             self,
             obj, quantity='displacement',
             tmin=None, tmax=None, tpad=0.,
-            tfade=0., freqlimits=None, deltat=None):
+            tfade=0., freqlimits=None, deltat=None,
+            toffset_noise_extract=0.):
 
-        tr = self.get_waveform_raw(obj, tmin=tmin, tmax=tmax, tpad=tpad+tfade)
+        assert quantity == 'displacement'  # others not yet implemented
+
+        tr = self.get_waveform_raw(
+            obj, tmin=tmin, tmax=tmax, tpad=tpad+tfade,
+            toffset_noise_extract=toffset_noise_extract)
 
         if deltat is not None:
             tr.downsample_to(deltat, snap=True)
             tr.deltat = deltat
 
         resp = self.get_response(tr)
+        print resp
         return tr.transfer(tfade=tfade, freqlimits=freqlimits,
                            transfer_function=resp, invert=True)
 
@@ -372,6 +390,8 @@ class Dataset(object):
             backazimuth=None,
             source=None,
             target=None):
+
+        assert quantity == 'displacement'  # others not yet implemented
 
         if cache is True:
             cache = self._cache
@@ -394,14 +414,26 @@ class Dataset(object):
             else:
                 return obj
 
-        if self.synthetic_test:
-            tr = self.synthetic_test.get_waveform(
-                nslc, tmin, tmax,
-                tfade=tfade, freqlimits=freqlimits)
-            if cache is not None:
-                cache[tr.nslc_id, tmin, tmax] = tr
+        syn_test = self.synthetic_test
+        toffset_noise_extract = 0.0
+        if syn_test:
+            if syn_test.ignore_data_availability:
+                if syn_test.add_real_noise:
+                    raise DatasetError(
+                        'ignore_data_availability=True and '
+                        'add_real_noise=True cannot be combined.')
 
-            return tr
+                tr = syn_test.get_waveform(
+                    nslc, tmin, tmax,
+                    tfade=tfade, freqlimits=freqlimits)
+
+                if cache is not None:
+                    cache[tr.nslc_id, tmin, tmax] = tr
+
+                return tr
+
+            if syn_test.add_real_noise:
+                toffset_noise_extract = syn_test.toffset_real_noise
 
         abs_delays = []
         for ocha in 'ENZRT':
@@ -438,6 +470,7 @@ class Dataset(object):
                         trs.append(self.get_waveform_restituted(
                             station.nsl() + (cha,),
                             tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
+                            toffset_noise_extract=toffset_noise_extract,
                             tfade=tfade, freqlimits=freqlimits, deltat=deltat))
 
                     trs_projected.extend(
@@ -455,6 +488,22 @@ class Dataset(object):
                 if tmin is not None and tmax is not None:
                     tr.chop(tmin, tmax)
 
+            if syn_test:
+                trs_projected_synthetic = []
+                for tr in trs_projected:
+                    tr_syn = syn_test.get_waveform(
+                        tr.nslc_id, tmin, tmax,
+                        tfade=tfade, freqlimits=freqlimits)
+
+                    if tr_syn:
+                        if syn_test.add_real_noise:
+                            tr_syn = tr_syn.copy()
+                            tr_syn.add(tr)
+
+                        trs_projected_synthetic.append(tr_syn)
+
+                trs_projected = trs_projected_synthetic
+
             if cache is not None:
                 for tr in trs_projected:
                     cache[tr.nslc_id, tmin, tmax] = tr
@@ -469,10 +518,11 @@ class Dataset(object):
             cache[nslc, tmin, tmax] = e
             raise
 
-    def get_events(self, magmin=None):
+    def get_events(self, magmin=None, event_names=None):
         evs = []
         for ev in self.events:
-            if magmin is None or ev.magnitude >= magmin:
+            if ((magmin is None or ev.magnitude >= magmin) and
+                    (event_names is None or ev.name in event_names)):
                 evs.append(ev)
 
         return evs

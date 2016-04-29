@@ -333,6 +333,14 @@ def draw_jointpar_figures(
     xs = model.xs
 
     bounds = problem.bounds() + problem.dependant_bounds()
+    for ipar in xrange(problem.ncombined):
+        par = problem.combined[ipar]
+        lo, hi = bounds[ipar]
+        if lo == hi:
+            if exclude is None:
+                exclude = []
+
+            exclude.append(par.name)
 
     xref = problem.pack(problem.base_source)
 
@@ -504,10 +512,10 @@ def draw_jointpar_figures(
                 xpar.scaled(fx), ypar.scaled(fy), 's',
                 mew=1.5, ms=5, color=ref_color_light, mec=ref_color)
 
-    for jfig, figs_row in enumerate(figs):
-        for ifig, fig in enumerate(figs_row):
-            if fig is not None:
-                fig.savefig('jointpar-%i-%i.pdf' % (jfig, ifig))
+    #for jfig, figs_row in enumerate(figs):
+    #    for ifig, fig in enumerate(figs_row):
+    #        if fig is not None:
+    #            fig.savefig('jointpar-%i-%i.pdf' % (jfig, ifig))
 
 
 def draw_solution_figure(
@@ -854,6 +862,8 @@ def draw_fits_figures(ds, model, plt):
     dtraces = []
     for target, result in zip(problem.targets, results):
         if result is None:
+            print 'xxx'
+            print target
             dtraces.append(None)
             continue
 
@@ -861,6 +871,7 @@ def draw_fits_figures(ds, model, plt):
         w = target.get_combined_weight(problem.apply_balancing_weights)
 
         if target.misfit_config.domain != 'time_domain':
+            dtraces.append(None)
             continue
 
         for tr in (
@@ -879,12 +890,12 @@ def draw_fits_figures(ds, model, plt):
                 (result.processed_syn.get_ydata() -
                  result.processed_obs.get_ydata())**2))
         dtraces.append(dtrace)
-
         all_syn_trs.append(result.processed_syn)
 
     amin, amax = trace.minmax(all_syn_trs, lambda tr: None)[None]
 
-    dmin, dmax = trace.minmax([x for x in dtraces if x], lambda tr: None)[None]
+    dmin, dmax = trace.minmax(
+        [x for x in dtraces if x is not None], lambda tr: None)[None]
 
     for tr in dtraces:
         if tr:
@@ -970,6 +981,7 @@ def draw_fits_figures(ds, model, plt):
                 if (iy, ix) not in frame_to_target:
                     continue
 
+
                 ixx = ix/nxmax
                 iyy = iy/nymax
                 if (iyy, ixx) not in figures:
@@ -978,6 +990,11 @@ def draw_fits_figures(ds, model, plt):
                 fig = figures[iyy, ixx]
 
                 target = frame_to_target[iy, ix]
+                print target
+                print target.misfit_config.domain
+
+                if target.misfit_config.domain != 'time_domain':
+                    continue
 
                 ny_this = min(ny, nymax)
                 nx_this = min(nx, nxmax)
@@ -1175,7 +1192,7 @@ def draw_hudson_figure(model, plt):
         position=(u, v),
         size=beachballsize,
         color_t=color,
-        zorder=-1,
+        zorder=2,
         linewidth=0.5)
 
     mt = best_source.pyrocko_moment_tensor()
@@ -1187,7 +1204,19 @@ def draw_hudson_figure(model, plt):
         mew=1,
         mec='black',
         color='none',
-        zorder=1)
+        zorder=-2)
+
+    mt = problem.base_source.pyrocko_moment_tensor()
+    u, v = hudson.project(mt)
+
+    beachball.plot_beachball_mpl(
+        mt, axes,
+        beachball_type='dc',
+        position=(u, v),
+        size=beachballsize,
+        color_t='red',
+        zorder=2,
+        linewidth=0.5)
 
     fig.savefig('hudson.pdf')
 
@@ -1246,6 +1275,7 @@ def plot_result(dirname, plotnames_want):
             if plotname in plotnames_want:
                 config = guts.load(filename=op.join(dirname, 'config.yaml'))
                 config.set_basepath(dirname)
+                problem.set_engine(config.engine_config.get_engine())
                 ds = config.get_dataset()
                 plot_dispatch[plotname](ds, model, plt)
 

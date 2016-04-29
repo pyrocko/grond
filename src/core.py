@@ -12,7 +12,7 @@ import numpy as num
 from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
     StringChoice, Dict, Timestamp
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
-from pyrocko import parimap, model
+from pyrocko import parimap, model, gui_util
 
 from grond import dataset
 
@@ -356,15 +356,17 @@ class MisfitTarget(gf.Target):
                 mv, mn, tr_syn_proc, tr_obs_proc = tr_syn.misfit(
                     tr_obs, ms, nocache=True, debug=True)
 
-            result = MisfitResult(misfit_value=mv, misfit_norm=mn)
+            result = MisfitResult(
+                misfit_value=float(mv), misfit_norm=float(mn))
+
             if self._return_traces:
                 result.filtered_obs = tr_obs
                 result.filtered_syn = tr_syn
                 result.processed_obs = tr_obs_proc
                 result.processed_syn = tr_syn_proc
                 result.taper = ms.taper
-                result.tobs_shift = tobs_shift
-                result.tsyn_pick = tsyn
+                result.tobs_shift = float(tobs_shift)
+                result.tsyn_pick = float(tsyn)
 
             return result
 
@@ -460,23 +462,45 @@ class HasPaths(Object):
                 for p in path]
 
 
+class RandomResponse(trace.FrequencyResponse):
+
+    scale = Float.T(default=0.0)
+
+    def set_random_state(self, rstate):
+        self._rstate = rstate
+
+    def evaluate(self, freqs):
+        n = freqs.size
+        return 1.0 + freqs*(self._rstate.normal(scale=self.scale, size=n) + 
+            0.0J * self._rstate.normal(scale=self.scale, size=n))
+
+
+class SyntheticWaveformNotAvailable(Exception):
+    pass
+
+
 class SyntheticTest(Object):
     random_seed = Int.T(default=0)
     inject_solution = Bool.T(default=False)
+    ignore_data_availability = Bool.T(default=False)
+    add_real_noise = Bool.T(default=False)
+    toffset_real_noise = Float.T(default=-3600.)
     x = Dict.T(String.T(), Float.T())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
         self._synthetics = None
+        self._rstate = num.random.RandomState(self.random_seed)
 
     def set_config(self, config):
         self._config = config
 
     def get_problem(self):
+        raise Exception('TODO: fixme (event_names)')
+
         ds = self._config.get_dataset()
         events = ds.get_events()
-        rstate = num.random.RandomState(self.random_seed)
-        event = events[rstate.randint(0, len(events))]
+        event = events[0]
         return self._config.get_problem(event)
 
     def get_x_random(self):
@@ -484,11 +508,10 @@ class SyntheticTest(Object):
         xbounds = num.array(problem.bounds(), dtype=num.float)
         npar = xbounds.shape[0]
 
-        rstate = num.random.RandomState(self.random_seed)
         x = num.zeros(npar, dtype=num.float)
         while True:
             for i in xrange(npar):
-                x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
+                x[i] = self._rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
             try:
                 x = problem.preconstrain(x)
@@ -506,7 +529,13 @@ class SyntheticTest(Object):
                 problem.parameter_array(self.x))
 
         else:
-            x = self.get_x_random()
+            print problem.base_source
+            x = problem.preconstrain(
+                problem.pack(
+                    problem.base_source))
+
+            print x
+            print problem.unpack(x)
 
         return x
 
@@ -527,9 +556,22 @@ class SyntheticTest(Object):
             if result.trace.codes == nslc:
                 tr = result.trace.pyrocko_trace()
                 tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
+                tr2 = tr.copy()
+
+                randomresponse = RandomResponse(scale=10.)
+                randomresponse.set_random_state(self._rstate)
+
                 tr = tr.transfer(tfade=tfade, freqlimits=freqlimits)
+                tr2 = tr2.transfer(tfade=tfade, freqlimits=freqlimits,
+                    transfer_function=randomresponse)
+
                 tr.chop(tmin, tmax)
-                return tr
+                tr2.chop(tmin, tmax)
+
+                #trace.snuffle([tr, tr2])
+                return tr2
+
+        return None
 
 
 class DatasetConfig(HasPaths):
@@ -838,6 +880,9 @@ def stations_mean_latlondist(stations):
 
 def read_config(path):
     config = load(filename=path)
+    if not isinstance(config, Config):
+        raise GrondError('invalid Grond configuration in file "%s"' % path)
+
     config.set_basepath(op.dirname(path) or '.')
     return config
 
@@ -1142,27 +1187,45 @@ def bootstrap_outliers(problem, misfits, std_factor=1.0):
     return num.where(gms > m+s)[0]
 
 
-def forward(rundir):
+def forward(rundir_or_config_path, event_names=None):
 
-    # config = guts.load(filename=op.join('.', 'grond_td.conf'))
-    # config.set_basepath('.')
+    if os.path.isdir(rundir_or_config_path):
+        config = guts.load(filename=op.join(rundir_or_config_path, 'config.yaml'))
+        config.set_basepath(rundir)
+        problem, xs, misfits = load_problem_info_and_data(rundir, subset='harvest')
 
-    config = guts.load(filename=op.join(rundir, 'config.yaml'))
-    config.set_basepath(rundir)
-    ds = config.get_dataset()
+        gms = problem.global_misfits(misfits)
+        ibest = num.argmin(gms)
+        xbest = xs[ibest, :]
 
-    problem, xs, misfits = load_problem_info_and_data(rundir, subset='harvest')
-    for target in problem.targets:
-        target.set_dataset(ds)
+        ds = config.get_dataset()
+        problem.set_engine(config.engine_config.get_engine())
 
-    gms = problem.global_misfits(misfits)
-    isort = num.argsort(gms)
-    gms = gms[isort]
-    xs = xs[isort, :]
+        for target in problem.targets:
+            target.set_dataset(ds)
+
+        payload = [(problem, xbest)]
+
+    else:
+        config = read_config(rundir_or_config_path)
+        ds = config.get_dataset()
+        events = ds.get_events(event_names=event_names)
+
+        payload = []
+        for event in events:
+            problem = config.get_problem(event)
+            xref = problem.preconstrain(
+                problem.pack(problem.base_source))
+            payload.append((problem, xref))
 
     all_trs = []
-    for xbest in xs[:1, :]:
-        ms, ns, results = problem.evaluate(xbest, return_traces=True)
+    events = []
+    for (problem, x) in payload:
+        ds.empty_cache()
+        ms, ns, results = problem.evaluate(x, return_traces=True)
+
+        event = problem.unpack(x).pyrocko_event()
+        events.append(event)
 
         for result in results:
             if result:
@@ -1171,7 +1234,11 @@ def forward(rundir):
                 all_trs.append(result.filtered_obs)
                 all_trs.append(result.filtered_syn)
 
-    trace.snuffle(all_trs)
+    markers = []
+    for ev in events:
+        markers.append(gui_util.EventMarker(ev))
+
+    trace.snuffle(all_trs, markers=markers, stations=ds.get_stations())
 
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
@@ -1236,9 +1303,9 @@ def check_problem(problem):
 g_state = {}
 
 
-def check(config):
+def check(config, event_names=None):
     ds = config.get_dataset()
-    events = ds.get_events()
+    events = ds.get_events(event_names=event_names)
     nevents = len(events)
 
     from matplotlib import pyplot as plt
@@ -1257,6 +1324,7 @@ def check(config):
             results_list = []
             for i in xrange(10):
                 x = problem.random_uniform(xbounds)
+                print x
                 ms, ns, results = problem.evaluate(x, return_traces=True)
                 results_list.append(results)
 
@@ -1304,7 +1372,10 @@ def check(config):
 
                         axes.plot(xdata, ydata*0.5 + 1.5, color=color)
                         if result.tsyn_pick:
-                            axes.axvline(result.tsyn_pick, color=(0.7, 0.7, 0.7), zorder=2)
+                            axes.axvline(
+                                result.tsyn_pick,
+                                color=(0.7, 0.7, 0.7),
+                                zorder=2)
 
                         t = result.processed_syn.get_xdata()
                         taper = result.taper
@@ -1326,18 +1397,19 @@ def check(config):
                 str(e)))
 
 
-def go(config, force=False, nparallel=1, status=('state',)):
+def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     status = tuple(status)
 
     ds = config.get_dataset()
-    events = ds.get_events()
+    events = ds.get_events(event_names=event_names)
+
     nevents = len(events)
 
     if nevents == 0:
         raise GrondError('no events found')
 
-    g_data = (config, force, status, nparallel)
+    g_data = (config, force, status, nparallel, event_names)
 
     g_state[id(g_data)] = g_data
 
@@ -1352,14 +1424,14 @@ def go(config, force=False, nparallel=1, status=('state',)):
 
 def process_event(ievent, g_data_id):
 
-    config, force, status, nparallel = g_state[g_data_id]
+    config, force, status, nparallel, event_names = g_state[g_data_id]
 
     if nparallel > 1:
         status = ()
 
     ds = config.get_dataset()
 
-    events = ds.get_events()
+    events = ds.get_events(event_names=event_names)
     nevents = len(events)
 
     event = events[ievent]
