@@ -316,10 +316,11 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
 def draw_jointpar_figures(
         model, plt, misfit_cutoff=None, ibootstrap=None, color=None,
-        exclude=None):
+        exclude=None, include=None):
 
-    color = 'magnitude'
+    color = 'misfit'
     # exclude = ['duration']
+    # include = ['magnitude', 'rel_moment_iso', 'rel_moment_clvd', 'depth']
     neach = 6
     figsize = (8, 8)
     # cmap = cm.YlOrRd
@@ -379,7 +380,7 @@ def draw_jointpar_figures(
     iselected = 0
     for ipar in xrange(problem.ncombined):
         par = problem.combined[ipar]
-        if exclude and par.name in exclude:
+        if exclude and par.name in exclude or include and par.name not in include:
             continue
 
         smap[iselected] = ipar
