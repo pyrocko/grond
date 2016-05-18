@@ -380,7 +380,8 @@ def draw_jointpar_figures(
     iselected = 0
     for ipar in xrange(problem.ncombined):
         par = problem.combined[ipar]
-        if exclude and par.name in exclude or include and par.name not in include:
+        if exclude and par.name in exclude or \
+                include and par.name not in include:
             continue
 
         smap[iselected] = ipar
@@ -512,11 +513,6 @@ def draw_jointpar_figures(
             axes.plot(
                 xpar.scaled(fx), ypar.scaled(fy), 's',
                 mew=1.5, ms=5, color=ref_color_light, mec=ref_color)
-
-    #for jfig, figs_row in enumerate(figs):
-    #    for ifig, fig in enumerate(figs_row):
-    #        if fig is not None:
-    #            fig.savefig('jointpar-%i-%i.pdf' % (jfig, ifig))
 
 
 def draw_solution_figure(
@@ -862,9 +858,8 @@ def draw_fits_figures(ds, model, plt):
 
     dtraces = []
     for target, result in zip(problem.targets, results):
+        print target.misfit_config.domain
         if result is None:
-            print 'xxx'
-            print target
             dtraces.append(None)
             continue
 
@@ -892,6 +887,10 @@ def draw_fits_figures(ds, model, plt):
                  result.processed_obs.get_ydata())**2))
         dtraces.append(dtrace)
         all_syn_trs.append(result.processed_syn)
+
+    if not all_syn_trs:
+        logger.warn('no traces to show')
+        return
 
     amin, amax = trace.minmax(all_syn_trs, lambda tr: None)[None]
 
@@ -981,7 +980,6 @@ def draw_fits_figures(ds, model, plt):
             for ix in xrange(nx):
                 if (iy, ix) not in frame_to_target:
                     continue
-
 
                 ixx = ix/nxmax
                 iyy = iy/nymax

@@ -471,7 +471,8 @@ class RandomResponse(trace.FrequencyResponse):
 
     def evaluate(self, freqs):
         n = freqs.size
-        return 1.0 + freqs*(self._rstate.normal(scale=self.scale, size=n) + 
+        return 1.0 + freqs*(
+            self._rstate.normal(scale=self.scale, size=n) +
             0.0J * self._rstate.normal(scale=self.scale, size=n))
 
 
@@ -562,13 +563,13 @@ class SyntheticTest(Object):
                 randomresponse.set_random_state(self._rstate)
 
                 tr = tr.transfer(tfade=tfade, freqlimits=freqlimits)
-                tr2 = tr2.transfer(tfade=tfade, freqlimits=freqlimits,
+                tr2 = tr2.transfer(
+                    tfade=tfade,
+                    freqlimits=freqlimits,
                     transfer_function=randomresponse)
 
                 tr.chop(tmin, tmax)
                 tr2.chop(tmin, tmax)
-
-                #trace.snuffle([tr, tr2])
                 return tr2
 
         return None
@@ -978,6 +979,7 @@ def solve(problem,
     isbad_mask = None
     accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
+    pnames = [p.name for p in problem.parameters]
 
     while iiter < niter:
 
@@ -1015,25 +1017,50 @@ def solve(problem,
                     if sampler_distribution == 'multivariate_normal':
                         ntries_sample = 0
 
+                        ntry = 0
+                        ok_mask_sum = num.zeros(npar, dtype=num.int)
                         while True:
                             ntries_sample += 1
                             vs = num.random.multivariate_normal(
                                 xb, factor*covs[jchoice])
 
-                            if (num.all(xbounds[:, 0] <= vs) and
-                                    num.all(vs <= xbounds[:, 1])):
+                            ok_mask = num.logical_and(
+                                xbounds[:, 0] <= vs, vs <= xbounds[:, 1])
+
+                            if num.all(ok_mask):
                                 break
+
+                            ok_mask_sum += ok_mask
+
+                            if ntry > 1000:
+                                raise GrondError(
+                                    'failed to produce a suitable candidate '
+                                    'sample from multivariate normal '
+                                    'distribution, (%s)' %
+                                    ', '.join('%s:%i' % xx for xx in
+                                              zip(pnames, ok_mask_sum)))
+
+                            ntry += 1
 
                         x = vs.tolist()
 
                     if sampler_distribution == 'normal':
                         for i in xrange(npar):
+                            ntry = 0
                             while True:
                                 v = num.random.normal(
                                     xb[i], math.sqrt(factor)*sbx[i])
 
                                 if xbounds[i, 0] <= v and v <= xbounds[i, 1]:
                                     break
+
+                                if ntry > 1000:
+                                    raise GrondError(
+                                        'failed to produce a suitable '
+                                        'candidate sample from normal '
+                                        'distribution')
+
+                                ntry += 1
 
                             x.append(v)
 
@@ -1127,8 +1154,7 @@ def solve(problem,
                      'G best'))
 
                 for (pname, mbv, sbv, mgv, sgv, bgv) in zip(
-                        [p.name for p in problem.parameters],
-                        mbx, sbx, mgx, sgx, bgx):
+                        pnames, mbx, sbx, mgx, sgx, bgx):
 
                     lines.append(
                         '%-15s %15.4g %15.4g %15.4g %15.4g %15.4g' %
@@ -1190,9 +1216,13 @@ def bootstrap_outliers(problem, misfits, std_factor=1.0):
 def forward(rundir_or_config_path, event_names=None):
 
     if os.path.isdir(rundir_or_config_path):
-        config = guts.load(filename=op.join(rundir_or_config_path, 'config.yaml'))
+        rundir = rundir_or_config_path
+        config = guts.load(
+            filename=op.join(rundir, 'config.yaml'))
+
         config.set_basepath(rundir)
-        problem, xs, misfits = load_problem_info_and_data(rundir, subset='harvest')
+        problem, xs, misfits = load_problem_info_and_data(
+            rundir, subset='harvest')
 
         gms = problem.global_misfits(misfits)
         ibest = num.argmin(gms)
