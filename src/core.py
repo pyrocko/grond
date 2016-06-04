@@ -13,12 +13,34 @@ from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
     StringChoice, Dict, Timestamp
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model, gui_util
+from pyrocko.guts_array import Array
 
 from grond import dataset
 
 logger = logging.getLogger('grond.core')
 
 guts_prefix = 'grond'
+
+
+def float_or_none(x):
+    if x is None:
+        return x
+    else:
+        return float(x)
+
+
+class Trace(Object):
+    pass
+
+
+class TraceSpectrum(Object):
+    network = String.T()
+    station = String.T()
+    location = String.T()
+    channel = String.T()
+    deltaf = Float.T(default=1.0)
+    fmin = Float.T(default=0.0)
+    ydata = Array.T(shape=(None,), dtype=num.complex, serialize_as='list')
 
 
 def mahalanobis_distance(xs, mx, cov):
@@ -201,6 +223,15 @@ class GrondError(Exception):
     pass
 
 
+class DomainChoice(StringChoice):
+    choices = [
+        'time_domain',
+        'frequency_domain',
+        'envelope',
+        'absolute',
+        'cc_max_norm']
+
+
 class InnerMisfitConfig(Object):
     fmin = Float.T()
     fmax = Float.T()
@@ -209,7 +240,7 @@ class InnerMisfitConfig(Object):
     tmax = gf.Timing.T()
     pick_synthetic_traveltime = gf.Timing.T(optional=True)
     pick_phasename = String.T(optional=True)
-    domain = trace.DomainChoice.T(default='time_domain')
+    domain = DomainChoice.T(default='time_domain')
 
 
 class TargetAnalysisResult(Object):
@@ -220,17 +251,37 @@ class NoAnalysisResults(Exception):
     pass
 
 
+class MisfitResult(gf.Result):
+    misfit_value = Float.T()
+    misfit_norm = Float.T()
+    processed_obs = Trace.T(optional=True)
+    processed_syn = Trace.T(optional=True)
+    filtered_obs = Trace.T(optional=True)
+    filtered_syn = Trace.T(optional=True)
+    spectrum_obs = TraceSpectrum.T(optional=True)
+    spectrum_syn = TraceSpectrum.T(optional=True)
+    taper = trace.Taper.T(optional=True)
+    tobs_shift = Float.T(optional=True)
+    tsyn_pick = Timestamp.T(optional=True)
+    cc_shift = Float.T(optional=True)
+    cc = Trace.T(optional=True)
+
+
 class MisfitTarget(gf.Target):
     misfit_config = InnerMisfitConfig.T()
     flip_norm = Bool.T(default=False)
     manual_weight = Float.T(default=1.0)
     analysis_result = TargetAnalysisResult.T(optional=True)
-    groupname = gf.StringID.T(optional=True)
+    super_group = gf.StringID.T()
+    group = gf.StringID.T()
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
         self._ds = None
-        self._return_traces = False
+
+    def string_id(self):
+        return '.'.join(x for x in (
+            self.super_group, self.group) + self.codes if x)
 
     def get_plain_target(self):
         d = dict(
@@ -242,9 +293,6 @@ class MisfitTarget(gf.Target):
 
     def set_dataset(self, ds):
         self._ds = ds
-
-    def set_return_traces(self, return_traces):
-        self._return_traces = return_traces
 
     def get_combined_weight(self, apply_balancing_weights):
         w = self.manual_weight
@@ -339,56 +387,147 @@ class MisfitTarget(gf.Target):
                 tr_obs = tr_obs.copy()
                 tr_obs.shift(-tobs_shift)
 
-            ms = trace.MisfitSetup(
-                norm=2,
-                domain=config.domain,
-                filter=trace.PoleZeroResponse(),
+            mr = misfit(
+                tr_obs, tr_syn,
                 taper=trace.CosTaper(
                     tmin_fit - tfade,
                     tmin_fit,
                     tmax_fit,
-                    tmax_fit + tfade))
+                    tmax_fit + tfade),
+                domain=config.domain,
+                exponent=2,
+                flip=self.flip_norm)
 
-            if not self.flip_norm:
-                mv, mn, tr_obs_proc, tr_syn_proc = tr_obs.misfit(
-                    tr_syn, ms, nocache=True, debug=True)
-            else:
-                mv, mn, tr_syn_proc, tr_obs_proc = tr_syn.misfit(
-                    tr_obs, ms, nocache=True, debug=True)
+            mr.tobs_shift = float(tobs_shift)
+            mr.tsyn_pick = float_or_none(tsyn)
 
-            result = MisfitResult(
-                misfit_value=float(mv), misfit_norm=float(mn))
-
-            if self._return_traces:
-                result.filtered_obs = tr_obs
-                result.filtered_syn = tr_syn
-                result.processed_obs = tr_obs_proc
-                result.processed_syn = tr_syn_proc
-                result.taper = ms.taper
-                result.tobs_shift = float(tobs_shift)
-                result.tsyn_pick = float(tsyn)
-
-            return result
+            return mr
 
         except dataset.NotFound, e:
             logger.debug(str(e))
             raise gf.SeismosizerError('no waveform data, %s' % str(e))
 
 
-class Trace(Object):
-    pass
+def misfit(tr_obs, tr_syn, taper, domain, exponent, flip):
+
+    '''
+    Calculate misfit between observed and synthetic trace.
+
+    :param tr_obs: observed trace as :py:class:`pyrocko.trace.Trace`
+    :param tr_syn: synthetic trace as :py:class:`pyrocko.trace.Trace`
+    :param taper: taper applied in timedomain as
+        :py:class:`pyrocko.trace.Taper`
+    :param domain: how to calculate difference, see :py:class:`DomainChoice`
+    :param exponent: exponent of Lx type norms
+    :param flip: ``bool``, if set to ``True``, normalization factor is
+        computed against *tr_syn* rather than *tr_obs*
+
+    :returns: object of type :py:class:`MisfitResult`
+    '''
+
+    trace.assert_same_sampling_rate(tr_obs, tr_syn)
+    tmin, tmax = taper.time_span()
+
+    tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain)
+    tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain)
+
+    cc_shift = None
+    ctr = None
+    if domain in ('time_domain', 'envelope', 'absolute'):
+        a, b = tr_proc_syn.ydata, tr_proc_obs.ydata
+        if flip:
+            b, a = a, b
+
+        m, n = trace.Lx_norm(a, b, norm=exponent)
+
+    elif domain == 'cc_max_norm':
+
+        ctr = trace.correlate(
+            tr_proc_syn,
+            tr_proc_obs,
+            mode='same',
+            normalization='normal')
+
+        cc_shift, cc_max = ctr.max()
+        m = 0.5 - 0.5 * cc_max
+        n = 0.5
+
+    elif domain == 'frequency_domain':
+        a, b = trspec_proc_syn.ydata, trspec_proc_obs.ydata
+        if flip:
+            b, a = a, b
+
+        m, n = trace.Lx_norm(num.abs(a), num.abs(b), norm=exponent)
+
+    result = MisfitResult(
+        misfit_value=m,
+        misfit_norm=n,
+        processed_obs=tr_proc_obs,
+        processed_syn=tr_proc_syn,
+        filtered_obs=tr_obs,
+        filtered_syn=tr_syn,
+        spectrum_obs=trspec_proc_obs,
+        spectrum_syn=trspec_proc_syn,
+        taper=taper,
+        cc_shift=cc_shift,
+        cc=ctr)
+
+    return result
 
 
-class MisfitResult(gf.Result):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
-    processed_obs = Trace.T(optional=True)
-    processed_syn = Trace.T(optional=True)
-    filtered_obs = Trace.T(optional=True)
-    filtered_syn = Trace.T(optional=True)
-    taper = trace.Taper.T(optional=True)
-    tobs_shift = Float.T(optional=True)
-    tsyn_pick = Timestamp.T(optional=True)
+def _process(tr, tmin, tmax, taper, domain):
+    tr_proc = _extend_extract(tr, tmin, tmax)
+    tr_proc.taper(taper)
+
+    spectrum = None
+    df = None
+
+    if domain == 'envelope':
+        tr_proc = tr_proc.envelope(inplace=False)
+
+    elif domain == 'absolute':
+        tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
+
+    elif domain == 'frequency_domain':
+        ndata = tr_proc.ydata.size
+        nfft = trace.nextpow2(ndata)
+        padded = num.zeros(nfft, dtype=num.float)
+        padded[:ndata] = tr_proc.ydata
+        spectrum = num.fft.rfft(padded)
+        df = 1.0 / (tr_proc.deltat * nfft)
+
+    trspec_proc = TraceSpectrum(
+        network=tr.network,
+        station=tr.station,
+        location=tr.location,
+        channel=tr.channel,
+        deltaf=df,
+        fmin=0.0,
+        ydata=spectrum)
+
+    return tr_proc, trspec_proc
+
+
+def _extend_extract(tr, tmin, tmax):
+    deltat = tr.deltat
+    itmin_frame = int(math.floor(tmin/deltat))
+    itmax_frame = int(math.ceil(tmax/deltat))
+    nframe = itmax_frame - itmin_frame
+    n = tr.data_len()
+    a = num.empty(nframe, dtype=num.float)
+    itmin_tr = int(round(tr.tmin / deltat))
+    itmax_tr = itmin_tr + n
+    icut1 = min(max(0, itmin_tr - itmin_frame), nframe)
+    icut2 = min(max(0, itmax_tr - itmin_frame), nframe)
+    icut1_tr = min(max(0, icut1 + itmin_frame - itmin_tr), n)
+    icut2_tr = min(max(0, icut2 + itmin_frame - itmin_tr), n)
+    a[:icut1] = tr.ydata[0]
+    a[icut1:icut2] = tr.ydata[icut1_tr:icut2_tr]
+    a[icut2:] = tr.ydata[-1]
+    tr = tr.copy(data=False)
+    tr.tmin = tmin
+    tr.set_ydata(a)
+    return tr
 
 
 def xjoin(basepath, path):
@@ -660,7 +799,8 @@ def weed(origin, targets, limit, neighborhood=3):
 
 class TargetConfig(Object):
 
-    groupname = gf.StringID.T(optional=True)
+    super_group = gf.StringID.T(default='', optional=True)
+    group = gf.StringID.T(optional=True)
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
     limit = Int.T(optional=True)
@@ -670,7 +810,7 @@ class TargetConfig(Object):
     store_id = gf.StringID.T()
     weight = Float.T(default=1.0)
 
-    def get_targets(self, ds, event, default_groupname):
+    def get_targets(self, ds, event, default_group):
 
         origin = event
 
@@ -682,11 +822,13 @@ class TargetConfig(Object):
                     codes=st.nsl() + (cha,),
                     lat=st.lat,
                     lon=st.lon,
+                    depth=st.depth,
                     interpolation=self.interpolation,
                     store_id=self.store_id,
                     misfit_config=self.inner_misfit_config,
                     manual_weight=self.weight,
-                    groupname=self.groupname or default_groupname)
+                    super_group=self.super_group,
+                    group=self.group or default_group)
 
                 if self.distance_min is not None and \
                         target.distance_to(origin) < self.distance_min:
@@ -899,6 +1041,18 @@ def analyse(problem, niter=1000, show_progress=False):
         wtarget.weight = 1.0
         wtargets.append(wtarget)
 
+    super_group_names = set()
+    groups = num.zeros(len(problem.targets), dtype=num.int)
+    ngroups = 0
+    for itarget, target in enumerate(problem.targets):
+        if target.super_group not in super_group_names:
+            super_group_names.add(target.super_group)
+            ngroups += 1
+
+        groups[itarget] = ngroups - 1
+
+    ngroups += 1
+
     wproblem = problem.copy()
     wproblem.targets = wtargets
 
@@ -907,6 +1061,7 @@ def analyse(problem, niter=1000, show_progress=False):
 
     mss = num.zeros((niter, problem.ntargets))
     rstate = num.random.RandomState(123)
+    print groups
 
     if show_progress:
         pbar = util.progressbar('analysing problem', niter)
@@ -936,8 +1091,12 @@ def analyse(problem, niter=1000, show_progress=False):
 
     mean_ms = num.mean(mss, axis=0)
 
+
     weights = 1.0 / mean_ms
-    weights /= (num.nansum(weights)/num.nansum(num.isfinite(weights)))
+    for igroup in xrange(ngroups):
+        weights[groups == igroup] /= (
+            num.nansum(weights[groups == igroup]) /
+            num.nansum(num.isfinite(weights[groups == igroup])))
 
     for weight, target in zip(weights, problem.targets):
         target.analysis_result = TargetAnalysisResult(
@@ -1380,9 +1539,7 @@ def check(config, event_names=None):
                             fig = plt.figure()
                             axes = fig.add_subplot(1, 1, 1)
                             axes.set_ylim(0., 4.)
-                            axes.set_title('%s %s' % (
-                                '.'.join(x for x in target.codes if x),
-                                target.groupname))
+                            axes.set_title('%s' % target.string_id())
 
                         xdata = result.filtered_obs.get_xdata()
                         ydata = result.filtered_obs.get_ydata() / yabsmax

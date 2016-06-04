@@ -167,8 +167,6 @@ class CMTProblem(core.Problem):
     def evaluate(self, x, return_traces=False):
         source = self.unpack(x)
         engine = self.get_engine()
-        for target in self.targets:
-            target.set_return_traces(return_traces)
 
         resp = engine.process(source, self.targets)
         data = []

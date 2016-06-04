@@ -713,8 +713,7 @@ def draw_contributions_figure(model, plt):
             poly_x, rel_poly_y,
             alpha=0.5,
             color=colors[ii % len(colors)],
-            label='%s.%s.%s.%s.%s (%.2g)' % (
-                target.codes + (target.groupname, num.mean(rel_ms[-1]),)))
+            label='%s (%.2g)' % (target.string_id, num.mean(rel_ms[-1])))
 
         poly_y = num.concatenate(
             [ms_smooth_sum[::-1], ms_smooth_sum + ms_smooth])
@@ -814,15 +813,20 @@ def plot_taper(axes, t, taper, **kwargs):
     axes.fill(t2, y2, **kwargs)
 
 
-def plot_dtrace(axes, tr, **kwargs):
+def plot_dtrace(axes, tr, space, mi, ma, **kwargs):
     t = tr.get_xdata()
     y = tr.get_ydata()
-    y2 = num.concatenate(((y*0.2), num.zeros(y.size))) - 1.0
+    y2 = (num.concatenate((y, num.zeros(y.size))) - mi) / \
+        (ma-mi) * space - (1.0 + space)
     t2 = num.concatenate((t, t[::-1]))
-    return axes.fill(
+    axes.fill(
         t2, y2,
         clip_on=False,
         **kwargs)
+
+
+def plot_dtrace_vline(axes, t, space, **kwargs):
+    axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
 def draw_fits_figures(ds, model, plt):
@@ -858,7 +862,6 @@ def draw_fits_figures(ds, model, plt):
 
     dtraces = []
     for target, result in zip(problem.targets, results):
-        print target.misfit_config.domain
         if result is None:
             dtraces.append(None)
             continue
@@ -866,46 +869,72 @@ def draw_fits_figures(ds, model, plt):
         itarget = target_index[target]
         w = target.get_combined_weight(problem.apply_balancing_weights)
 
-        if target.misfit_config.domain != 'time_domain':
-            dtraces.append(None)
-            continue
+        if target.misfit_config.domain == 'cc_max_norm':
+            tref = (result.filtered_obs.tmin + result.filtered_obs.tmax) * 0.5
+            for tr_filt, tr_proc, tshift in (
+                    (result.filtered_obs,
+                     result.processed_obs,
+                     0.),
+                    (result.filtered_syn,
+                     result.processed_syn,
+                     result.cc_shift)):
 
-        for tr in (
-                result.filtered_obs,
-                result.filtered_syn,
-                result.processed_obs,
-                result.processed_syn):
+                norm = num.sum(num.abs(tr_proc.ydata)) / tr_proc.data_len()
+                tr_filt.ydata /= norm
+                tr_proc.ydata /= norm
 
-            tr.ydata *= w
+                tr_filt.shift(tshift)
+                tr_proc.shift(tshift)
+
+            ctr = result.cc
+            ctr.shift(tref)
+
+            dtrace = ctr
+
+        else:
+            for tr in (
+                    result.filtered_obs,
+                    result.filtered_syn,
+                    result.processed_obs,
+                    result.processed_syn):
+
+                tr.ydata *= w
+
+            dtrace = result.processed_syn.copy()
+            dtrace.set_ydata(
+                (
+                    (result.processed_syn.get_ydata() -
+                     result.processed_obs.get_ydata())**2))
 
         target_to_result[target] = result
 
-        dtrace = result.processed_syn.copy()
-        dtrace.set_ydata(
-            (
-                (result.processed_syn.get_ydata() -
-                 result.processed_obs.get_ydata())**2))
+        dtrace.meta = dict(super_group=target.super_group)
         dtraces.append(dtrace)
+
+        result.processed_syn.meta = dict(super_group=target.super_group)
         all_syn_trs.append(result.processed_syn)
 
     if not all_syn_trs:
         logger.warn('no traces to show')
         return
 
-    amin, amax = trace.minmax(all_syn_trs, lambda tr: None)[None]
+    aminmaxs = trace.minmax(
+        all_syn_trs,
+        lambda tr: tr.meta['super_group'])
 
-    dmin, dmax = trace.minmax(
-        [x for x in dtraces if x is not None], lambda tr: None)[None]
+    dminmaxs = trace.minmax(
+        [x for x in dtraces if x is not None],
+        lambda tr: tr.meta['super_group'])
 
     for tr in dtraces:
         if tr:
-            tr.ydata /= dmax
-
-    absmax = max(abs(amin), abs(amax))
+            dmin, dmax = dminmaxs[tr.meta['super_group']]
+            tr.ydata /= max(abs(dmin), abs(dmax))
 
     cg_to_targets = gather(
-        problem.targets, lambda t:
-            (t.codes[3], t.groupname), filter=lambda t: t in target_to_result)
+        problem.targets,
+        lambda t: (t.super_group, t.group, t.codes[3]),
+        filter=lambda t: t in target_to_result)
 
     cgs = sorted(cg_to_targets.keys())
 
@@ -989,11 +1018,9 @@ def draw_fits_figures(ds, model, plt):
                 fig = figures[iyy, ixx]
 
                 target = frame_to_target[iy, ix]
-                print target
-                print target.misfit_config.domain
 
-                if target.misfit_config.domain != 'time_domain':
-                    continue
+                amin, amax = aminmaxs[target.super_group]
+                absmax = max(abs(amin), abs(amax))
 
                 ny_this = min(ny, nymax)
                 nx_this = min(nx, nxmax)
@@ -1001,12 +1028,18 @@ def draw_fits_figures(ds, model, plt):
 
                 axes2 = fig.add_subplot(ny_this, nx_this, i_this)
 
+                space = 0.5
+                space_factor = 1.0 + space
                 axes2.set_axis_off()
-                axes2.set_ylim(-1.05, 1.05)
+                axes2.set_ylim(-1.05 * space_factor, 1.05)
 
                 axes = axes2.twinx()
                 axes.set_axis_off()
-                axes.set_ylim(-absmax*1.33, absmax*1.33)
+
+                if target.misfit_config.domain == 'cc_max_norm':
+                    axes.set_ylim(-10. * space_factor, 10.)
+                else:
+                    axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
 
                 itarget = target_index[target]
                 result = target_to_result[target]
@@ -1018,7 +1051,7 @@ def draw_fits_figures(ds, model, plt):
                 tap_color_fill = (0.95, 0.95, 0.90)
 
                 plot_taper(
-                    axes2, result.processed_syn.get_xdata(), result.taper,
+                    axes2, result.processed_obs.get_xdata(), result.taper,
                     fc=tap_color_fill, ec=tap_color_edge)
 
                 obs_color = scolor('aluminium5')
@@ -1030,10 +1063,25 @@ def draw_fits_figures(ds, model, plt):
                 misfit_color = scolor('scarletred2')
                 weight_color = scolor('chocolate2')
 
-                plot_dtrace(
-                    axes2, dtrace,
-                    fc=light(misfit_color, 0.5),
-                    ec=misfit_color)
+                cc_color = scolor('aluminium5')
+
+                if target.misfit_config.domain == 'cc_max_norm':
+                    tref = (result.filtered_obs.tmin +
+                            result.filtered_obs.tmax) * 0.5
+
+                    plot_dtrace(
+                        axes2, dtrace, space, -1., 1.,
+                        fc=light(cc_color, 0.5),
+                        ec=cc_color)
+
+                    plot_dtrace_vline(
+                        axes2, tref, space, color=tap_color_annot)
+
+                else:
+                    plot_dtrace(
+                        axes2, dtrace, space, 0., 1.,
+                        fc=light(misfit_color, 0.5),
+                        ec=misfit_color)
 
                 plot_trace(
                     axes, result.filtered_syn,

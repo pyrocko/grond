@@ -378,7 +378,6 @@ class Dataset(object):
             tr.deltat = deltat
 
         resp = self.get_response(tr)
-        print resp
         return tr.transfer(tfade=tfade, freqlimits=freqlimits,
                            transfer_function=resp, invert=True)
 
@@ -457,6 +456,10 @@ class Dataset(object):
             mios.extend(station.guess_projections_to_rtu(
                 out_channels=('R', 'T', 'Z'),
                 backazimuth=backazimuth))
+
+        if not mios:
+            raise NotFound(
+                'cannot determine projection of data components')
 
         try:
             trs_projected = []
