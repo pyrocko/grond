@@ -17,6 +17,19 @@ logger = logging.getLogger('grond.plot')
 km = 1000.
 
 
+def amp_spec_max(spec_trs, key):
+    amaxs = {}
+    for spec_tr in spec_trs:
+        amax = num.max(num.abs(spec_tr.ydata))
+        k = key(spec_tr)
+        if k not in amaxs:
+            amaxs[k] = amax
+        else:
+            amaxs[k] = max(amaxs[k], amax)
+
+    return amaxs
+
+
 def ordersort(x):
     isort = num.argsort(x)
     iorder = num.empty(isort.size)
@@ -817,6 +830,55 @@ def plot_dtrace(axes, tr, space, mi, ma, **kwargs):
         clip_on=False,
         **kwargs)
 
+def plot_spectrum(
+        axes, spec_syn, spec_obs, fmin, fmax, space, mi, ma,
+        syn_color='red', obs_color='black',
+        syn_lw=1.5, obs_lw=1.0, color_vline='gray', fontsize=9.):
+
+    fpad = (fmax - fmin) / 6.
+
+    for spec, color, lw in [
+            (spec_syn, syn_color, syn_lw),
+            (spec_obs, obs_color, obs_lw)]:
+
+        f = spec.get_xdata()
+        mask = num.logical_and(fmin - fpad <= f, f <= fmax + fpad)
+
+        f = f[mask]
+        y = num.abs(spec.get_ydata())[mask]
+
+        y2 = (num.concatenate((y, num.zeros(y.size))) - mi) / \
+            (ma-mi) * space - (1.0 + space)
+        f2 = num.concatenate((f, f[::-1]))
+        axes2 = axes.twiny()
+        axes2.set_axis_off()
+
+        axes2.set_xlim(fmin - fpad * 5, fmax + fpad * 5)
+
+        axes2.plot(f2, y2, clip_on=False, color=color, lw=lw)
+        axes2.fill(f2, y2, alpha=0.1, clip_on=False, color=color)
+
+    axes2.plot([fmin, fmin], [-1.0 - space, -1.0], color=color_vline)
+    axes2.plot([fmax, fmax], [-1.0 - space, -1.0], color=color_vline)
+
+
+    for (text, fx, ha) in [
+            ('%.3g Hz' % fmin, fmin, 'right'),
+            ('%.3g Hz' % fmax, fmax, 'left')]:
+
+        axes2.annotate(
+            text,
+            xy=(fx, -1.0),
+            xycoords='data',
+            xytext=(
+                fontsize*0.4 * [-1, 1][ha == 'left'],
+                -fontsize*0.2),
+            textcoords='offset points',
+            ha=ha,
+            va='top',
+            color=color_vline,
+            fontsize=fontsize)
+
 
 def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
@@ -851,6 +913,7 @@ def draw_fits_figures(ds, model, plt):
 
     target_to_result = {}
     all_syn_trs = []
+    all_syn_specs = []
     ms, ns, results = problem.evaluate(xbest, result_mode='full')
 
     dtraces = []
@@ -893,6 +956,13 @@ def draw_fits_figures(ds, model, plt):
 
                 tr.ydata *= w
 
+            for spec in (
+                    result.spectrum_obs,
+                    result.spectrum_syn):
+
+                if spec is not None:
+                    spec.ydata *= w
+
             dtrace = result.processed_syn.copy()
             dtrace.set_ydata(
                 (
@@ -907,13 +977,21 @@ def draw_fits_figures(ds, model, plt):
         result.processed_syn.meta = dict(super_group=target.super_group)
         all_syn_trs.append(result.processed_syn)
 
+        if result.spectrum_syn:
+            result.spectrum_syn.meta = dict(super_group=target.super_group)
+            all_syn_specs.append(result.spectrum_syn)
+
     if not all_syn_trs:
         logger.warn('no traces to show')
         return
 
-    aminmaxs = trace.minmax(
+    trace_minmaxs = trace.minmax(
         all_syn_trs,
         lambda tr: tr.meta['super_group'])
+
+    amp_spec_maxs = amp_spec_max(
+        all_syn_specs,
+        lambda spec_tr: spec_tr.meta['super_group'])
 
     dminmaxs = trace.minmax(
         [x for x in dtraces if x is not None],
@@ -1012,7 +1090,7 @@ def draw_fits_figures(ds, model, plt):
 
                 target = frame_to_target[iy, ix]
 
-                amin, amax = aminmaxs[target.super_group]
+                amin, amax = trace_minmaxs[target.super_group]
                 absmax = max(abs(amin), abs(amax))
 
                 ny_this = min(ny, nymax)
@@ -1070,10 +1148,29 @@ def draw_fits_figures(ds, model, plt):
                     plot_dtrace_vline(
                         axes2, tref, space, color=tap_color_annot)
 
+                elif target.misfit_config.domain == 'frequency_domain':
+
+                    asmax = amp_spec_maxs[target.super_group]
+                    fmin, fmax = target.misfit_config.get_full_frequency_range()
+
+                    plot_spectrum(
+                        axes2,
+                        result.spectrum_syn,
+                        result.spectrum_obs,
+                        fmin, fmax,
+                        space, 0., asmax,
+                        syn_color=syn_color,
+                        obs_color=obs_color,
+                        syn_lw=1.5,
+                        obs_lw=1.0,
+                        color_vline=tap_color_annot,
+                        fontsize=fontsize)
+
+
                 else:
                     plot_dtrace(
                         axes2, dtrace, space, 0., 1.,
-                        fc=light(misfit_color, 0.5),
+                        fc=light(misfit_color, 0.3),
                         ec=misfit_color)
 
                 plot_trace(

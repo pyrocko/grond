@@ -42,6 +42,12 @@ class TraceSpectrum(Object):
     fmin = Float.T(default=0.0)
     ydata = Array.T(shape=(None,), dtype=num.complex, serialize_as='list')
 
+    def get_ydata(self):
+        return self.ydata
+
+    def get_xdata(self):
+        return self.fmin + num.arange(self.ydata.size) * self.deltaf
+
 
 def mahalanobis_distance(xs, mx, cov):
     imask = num.diag(cov) != 0.
@@ -241,6 +247,9 @@ class InnerMisfitConfig(Object):
     pick_synthetic_traveltime = gf.Timing.T(optional=True)
     pick_phasename = String.T(optional=True)
     domain = DomainChoice.T(default='time_domain')
+
+    def get_full_frequency_range(self):
+        return self.fmin / self.ffactor, self.fmax * self.ffactor
 
 
 class TargetAnalysisResult(Object):
@@ -480,6 +489,7 @@ def misfit(
             taper=taper,
             cc_shift=cc_shift,
             cc=ctr)
+
     elif result_mode == 'sparse':
         result = MisfitResult(
             misfit_value=m,
@@ -494,8 +504,8 @@ def _process(tr, tmin, tmax, taper, domain):
     tr_proc = _extend_extract(tr, tmin, tmax)
     tr_proc.taper(taper)
 
-    spectrum = None
     df = None
+    trspec_proc = None
 
     if domain == 'envelope':
         tr_proc = tr_proc.envelope(inplace=False)
@@ -511,14 +521,14 @@ def _process(tr, tmin, tmax, taper, domain):
         spectrum = num.fft.rfft(padded)
         df = 1.0 / (tr_proc.deltat * nfft)
 
-    trspec_proc = TraceSpectrum(
-        network=tr.network,
-        station=tr.station,
-        location=tr.location,
-        channel=tr.channel,
-        deltaf=df,
-        fmin=0.0,
-        ydata=spectrum)
+        trspec_proc = TraceSpectrum(
+            network=tr_proc.network,
+            station=tr_proc.station,
+            location=tr_proc.location,
+            channel=tr_proc.channel,
+            deltaf=df,
+            fmin=0.0,
+            ydata=spectrum)
 
     return tr_proc, trspec_proc
 
