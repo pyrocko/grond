@@ -858,13 +858,7 @@ def draw_fits_figures(ds, model, plt):
 
     target_to_result = {}
     all_syn_trs = []
-    ms, ns, results = problem.evaluate(xbest, return_traces=True)
-    for result in results:
-        if result is not None:
-            result.filtered_obs = result.filtered_obs.copy()
-            result.filtered_syn = result.filtered_syn.copy()
-            result.processed_obs = result.processed_obs.copy()
-            result.processed_syn = result.processed_syn.copy()
+    ms, ns, results = problem.evaluate(xbest, result_mode='full')
 
     dtraces = []
     for target, result in zip(problem.targets, results):

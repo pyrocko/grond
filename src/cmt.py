@@ -164,9 +164,12 @@ class CMTProblem(core.Problem):
 
         return out
 
-    def evaluate(self, x, return_traces=False):
+    def evaluate(self, x, result_mode='sparse'):
         source = self.unpack(x)
         engine = self.get_engine()
+
+        for target in self.targets:
+            target.set_result_mode(result_mode)
 
         resp = engine.process(source, self.targets)
         data = []
@@ -177,15 +180,15 @@ class CMTProblem(core.Problem):
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
 
                 data.append((None, None))
-                if return_traces:
+                if result_mode == 'sparse':
                     results.append(None)
             else:
                 data.append((result.misfit_value, result.misfit_norm))
-                if return_traces:
+                if result_mode == 'full':
                     results.append(result)
 
         ms, ns = num.array(data, dtype=num.float).T
-        if return_traces:
+        if result_mode == 'full':
             return ms, ns, results
         else:
             return ms, ns
