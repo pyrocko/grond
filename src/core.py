@@ -746,7 +746,9 @@ class DatasetConfig(HasPaths):
         String.T(),
         help='stations/components to be excluded according to their STA, '
              'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
-    whitelist = List.T(String.T(), optional=True,
+    whitelist = List.T(
+        String.T(),
+        optional=True,
         help='if not None, list of stations/components to included according '
              'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
              'Note: ''when whitelisting on channel level, both, the raw and '
@@ -1112,7 +1114,6 @@ def analyse(problem, niter=1000, show_progress=False):
 
     mean_ms = num.mean(mss, axis=0)
 
-
     weights = 1.0 / mean_ms
     for igroup in xrange(ngroups):
         weights[groups == igroup] /= (
@@ -1259,7 +1260,9 @@ def solve(problem,
                 'skipping problem %s: inconsistency in data availability' %
                 problem.name)
 
-            for target, isbad_new, isbad in zip(problem.targets, isbad_mask_new, isbad_mask):
+            for target, isbad_new, isbad in zip(
+                    problem.targets, isbad_mask_new, isbad_mask):
+
                 if isbad_new != isbad:
                     logger.error('%s, %s -> %s' % (
                         target.string_id(), isbad, isbad_new))
