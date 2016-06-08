@@ -172,20 +172,20 @@ class CMTProblem(core.Problem):
             target.set_result_mode(result_mode)
 
         resp = engine.process(source, self.targets)
+
         data = []
         results = []
-        for source, target, result in resp.iter_results('results'):
+        for target, result in zip(self.targets, resp.results_list[0]):
+
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
 
                 data.append((None, None))
-                if result_mode == 'sparse':
-                    results.append(None)
+                results.append(None)
             else:
                 data.append((result.misfit_value, result.misfit_norm))
-                if result_mode == 'full':
-                    results.append(result)
+                results.append(result)
 
         ms, ns = num.array(data, dtype=num.float).T
         if result_mode == 'full':
@@ -200,7 +200,7 @@ class CMTProblem(core.Problem):
 
         resp = engine.process(source, plain_targets)
         results = []
-        for source, target, result in resp.iter_results('results'):
+        for target, result in zip(self.targets, resp.result_list[0]):
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
