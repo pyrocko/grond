@@ -1243,6 +1243,12 @@ def solve(problem,
             logger.error(
                 'skipping problem %s: inconsistency in data availability' %
                 problem.name)
+
+            for target, isbad_new, isbad in zip(problem.targets, isbad_mask_new, isbad_mask):
+                if isbad_new != isbad:
+                    logger.error('%s, %s -> %s' % (
+                        target.string_id(), isbad, isbad_new))
+
             return
 
         isbad_mask = isbad_mask_new
