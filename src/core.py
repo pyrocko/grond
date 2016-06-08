@@ -915,7 +915,6 @@ class Config(HasPaths):
     dataset_config = DatasetConfig.T()
     target_configs = List.T(TargetConfig.T())
     problem_config = ProblemConfig.T()
-    niter_analyse_problem = Int.T(default=1000)
     analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
     solver_config = SolverConfig.T(default=SolverConfig.D())
     engine_config = EngineConfig.T(default=EngineConfig.D())
