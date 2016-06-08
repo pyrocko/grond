@@ -727,8 +727,15 @@ class DatasetConfig(HasPaths):
     apply_correction_factors = Bool.T(default=True)
     apply_correction_delays = Bool.T(default=True)
     picks_paths = List.T(Path.T())
-    blacklist = List.T(String.T())
-    whitelist = List.T(String.T(), optional=True)
+    blacklist = List.T(
+        String.T(),
+        help='stations/components to be excluded according to their STA, '
+             'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
+    whitelist = List.T(String.T(), optional=True,
+        help='if not None, list of stations/components to included according '
+             'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
+             'Note: ''when whitelisting on channel level, both, the raw and '
+             'the processed channel codes have to be listed.')
     synthetic_test = SyntheticTest.T(optional=True)
 
     def __init__(self, *args, **kwargs):

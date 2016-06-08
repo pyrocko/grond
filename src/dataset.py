@@ -400,6 +400,14 @@ class Dataset(object):
 
         nslc = station.nsl() + (channel,)
 
+        if self.is_blacklisted(nslc):
+            raise NotFound(
+                'waveform is blacklisted', nslc)
+
+        if not self.is_whitelisted(nslc):
+            raise NotFound(
+                'waveform is not on whitelist', nslc)
+
         if tmin is not None:
             tmin = float(tmin)
 
