@@ -47,27 +47,20 @@ def str_dist(dist):
 
 
 def str_duration(t):
-    if t < 1.0:
-        return '%g s' % t
-    elif 1.0 <= t < 10.0:
-        return '%.1f s' % t
+    s = ''
+    if t < 0.:
+        s = '-'
+
+    t = abs(t)
+
+    if t < 10.0:
+        return s + '%.2g s' % t
     elif 10.0 <= t < 3600.:
-        return util.time_to_str(t, format='%M:%S min')
+        return s + util.time_to_str(t, format='%M:%S min')
     elif 3600. <= t < 24*3600.:
-        return util.time_to_str(t, format='%H:%M h')
+        return s + util.time_to_str(t, format='%H:%M h')
     else:
-        return '%.1f d' % (t / (24.*3600.))
-
-
-def str_duration2(t):
-    if t < 1.0:
-        return '%g s' % t
-    elif 1.0 <= t < 10.0:
-        return '%.1f s' % t
-    elif 10.0 <= t < 3600.:
-        return '%.0f s' % t
-    elif 10.0 <= t:
-        return '%.1f h' % (t / 3600.)
+        return s + '%.1f d' % (t / (24.*3600.))
 
 
 def eigh_sorted(mat):
@@ -1108,9 +1101,9 @@ def draw_fits_figures(ds, model, plt):
                         [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
 
                 for tmark, text, ha in [
-                        (tmarks[0], str_duration(tmarks[0] - source.time),
+                        (tmarks[0], '$\,$ ' + str_duration(tmarks[0] - source.time),
                          'right'),
-                        (tmarks[1], '+' + str_duration2(tmarks[1] - tmarks[0]),
+                        (tmarks[1], '$\Delta$ ' + str_duration(tmarks[1] - tmarks[0]),
                          'left')]:
 
                     axes2.annotate(
@@ -1145,7 +1138,15 @@ def draw_fits_figures(ds, model, plt):
 
                     axes.add_patch(bar)
 
+                scale_string = None
+
+                if target.misfit_config.domain == 'cc_max_norm':
+                    scale_string = 'Syn/obs scales differ!'
+
                 infos = []
+                if scale_string:
+                    infos.append(scale_string)
+
                 infos.append('.'.join(x for x in target.codes if x))
                 dist = source.distance_to(target)
                 azi = source.azibazi_to(target)[0]
