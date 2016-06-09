@@ -220,8 +220,31 @@ class CMTProblem(core.Problem):
 
         return self._target_weights
 
+    def inter_group_weights(self, ns):
+        group, ngroups = self.get_group_mask()
+
+        ws = num.zeros(self.ntargets)
+        for igroup in xrange(ngroups):
+            mask = group == igroup
+            ws[mask] = 1.0 / num.sqrt(num.nansum(ns[mask]**2))
+
+        return ws
+
+    def inter_group_weights2(self, ns):
+        group, ngroups = self.get_group_mask()
+
+        ws = num.zeros(ns.shape)
+        for igroup in xrange(ngroups):
+            mask = group == igroup
+            ws[:, mask] = (1.0 / num.sqrt(
+                num.nansum(ns[:, mask]**2, axis=1)))[:, num.newaxis]
+
+        return ws
+
     def bootstrap_misfit(self, ms, ns, ibootstrap=None):
-        w = self.get_bootstrap_weights(ibootstrap) * self.get_target_weights()
+        w = self.get_bootstrap_weights(ibootstrap) * \
+            self.get_target_weights() * self.inter_group_weights(ns)
+
         if ibootstrap is None:
             return num.sqrt(
                 num.nansum((w*ms[num.newaxis, :])**2, axis=1) /
@@ -231,25 +254,30 @@ class CMTProblem(core.Problem):
 
     def bootstrap_misfits(self, misfits, ibootstrap):
         w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
-            self.get_target_weights()[num.newaxis, :]
+            self.get_target_weights()[num.newaxis, :] * \
+            self.inter_group_weights2(misfits[:, :, 1])
 
         bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1) /
                        num.nansum((w*misfits[:, :, 1])**2, axis=1))
         return bms
 
     def global_misfit(self, ms, ns):
-        ws = self.get_target_weights()
+        ws = self.get_target_weights() * self.inter_group_weights(ns)
         m = num.sqrt(num.nansum((ws*ms)**2) / num.nansum((ws*ns)**2))
         return m
 
     def global_misfits(self, misfits):
-        ws = self.get_target_weights()[num.newaxis, :]
+        ws = self.get_target_weights()[num.newaxis, :] * \
+            self.inter_group_weights2(misfits[:, :, 1])
+
         gms = num.sqrt(num.nansum((ws*misfits[:, :, 0])**2, axis=1) /
                        num.nansum((ws*misfits[:, :, 1])**2, axis=1))
         return gms
 
     def global_contributions(self, misfits):
-        ws = self.get_target_weights()[num.newaxis, :]
+        ws = self.get_target_weights()[num.newaxis, :] * \
+            self.inter_group_weights2(misfits[:, :, 1])
+
         gcms = (ws*misfits[:, :, 0])**2 / \
             num.nansum((ws*misfits[:, :, 1])**2, axis=1)[:, num.newaxis]
 

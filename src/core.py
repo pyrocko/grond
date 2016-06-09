@@ -128,6 +128,7 @@ class Problem(Object):
         self._bootstrap_weights = None
         self._target_weights = None
         self._engine = None
+        self._group_mask = None
 
     def get_engine(self):
         return self._engine
@@ -210,6 +211,26 @@ class Problem(Object):
 
     def set_engine(self, engine):
         self._engine = engine
+
+    def make_group_mask(self):
+        super_group_names = set()
+        groups = num.zeros(len(self.targets), dtype=num.int)
+        ngroups = 0
+        for itarget, target in enumerate(self.targets):
+            if target.super_group not in super_group_names:
+                super_group_names.add(target.super_group)
+                ngroups += 1
+
+            groups[itarget] = ngroups - 1
+
+        ngroups += 1
+        return groups, ngroups
+
+    def get_group_mask(self):
+        if self._group_mask is None:
+            self._group_mask = self.make_group_mask()
+
+        return self._group_mask
 
 
 class ProblemConfig(Object):
@@ -1074,17 +1095,7 @@ def analyse(problem, niter=1000, show_progress=False):
         wtarget.weight = 1.0
         wtargets.append(wtarget)
 
-    super_group_names = set()
-    groups = num.zeros(len(problem.targets), dtype=num.int)
-    ngroups = 0
-    for itarget, target in enumerate(problem.targets):
-        if target.super_group not in super_group_names:
-            super_group_names.add(target.super_group)
-            ngroups += 1
-
-        groups[itarget] = ngroups - 1
-
-    ngroups += 1
+    groups, ngroups = problem.get_group_mask()
 
     wproblem = problem.copy()
     wproblem.targets = wtargets
@@ -1094,7 +1105,6 @@ def analyse(problem, niter=1000, show_progress=False):
 
     mss = num.zeros((niter, problem.ntargets))
     rstate = num.random.RandomState(123)
-    print groups
 
     if show_progress:
         pbar = util.progressbar('analysing problem', niter)
