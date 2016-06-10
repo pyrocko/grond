@@ -928,6 +928,7 @@ class SolverConfig(Object):
     niter_non_explorative = Int.T(default=0)
     sampler_distribution = SamplerDistributionChoice.T(
         default='multivariate_normal')
+    scatter_scale = Float.T(default=1.0)
 
     def get_solver_kwargs(self):
         return dict(
@@ -935,7 +936,8 @@ class SolverConfig(Object):
             niter_transition=self.niter_transition,
             niter_explorative=self.niter_explorative,
             niter_non_explorative=self.niter_non_explorative,
-            sampler_distribution=self.sampler_distribution)
+            sampler_distribution=self.sampler_distribution,
+            scatter_scale=self.scatter_scale)
 
 
 class EngineConfig(HasPaths):
@@ -1151,6 +1153,7 @@ def solve(problem,
           niter_transition=1000,
           niter_explorative=10000,
           niter_non_explorative=0,
+          scatter_scale=1.0,
           xs_inject=None,
           sampler_distribution='multivariate_normal',
           status=()):
@@ -1187,10 +1190,10 @@ def solve(problem,
         if niter_inject + niter_uniform <= iiter and \
                 iiter < niter_inject + niter_uniform + niter_transition:
 
-            factor = 4.0 * (1.0 - (iiter - niter_uniform - niter_inject) /
+            factor = scatter_scale * 4.0 * (1.0 - (iiter - niter_uniform - niter_inject) /
                             float(niter_transition))
         else:
-            factor = 1.0
+            factor = scatter_scale * 1.0
 
         ntries_preconstrain = 0
         ntries_sample = 0
