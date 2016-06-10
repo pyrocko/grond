@@ -1246,6 +1246,7 @@ def solve(problem,
                         x = vs.tolist()
 
                     if sampler_distribution == 'normal':
+                        x = []
                         for i in xrange(npar):
                             ntry = 0
                             while True:
