@@ -1253,8 +1253,12 @@ def solve(problem,
                         for i in xrange(npar):
                             ntry = 0
                             while True:
-                                v = num.random.normal(
-                                    xb[i], math.sqrt(factor)*sbx[i])
+                                if sbx[i] > 0.:
+                                    v = num.random.normal(
+                                        xb[i], math.sqrt(factor)*sbx[i])
+                                else:
+                                    v = xb[i]
+
 
                                 if xbounds[i, 0] <= v and v <= xbounds[i, 1]:
                                     break
