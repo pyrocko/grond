@@ -928,6 +928,7 @@ class SolverConfig(Object):
     niter_non_explorative = Int.T(default=0)
     sampler_distribution = SamplerDistributionChoice.T(
         default='multivariate_normal')
+    scatter_scale_transition = Float.T(default=2.0)
     scatter_scale = Float.T(default=1.0)
 
     def get_solver_kwargs(self):
@@ -937,6 +938,7 @@ class SolverConfig(Object):
             niter_explorative=self.niter_explorative,
             niter_non_explorative=self.niter_non_explorative,
             sampler_distribution=self.sampler_distribution,
+            scatter_scale_transition=self.scatter_scale_transition,
             scatter_scale=self.scatter_scale)
 
 
@@ -1153,6 +1155,7 @@ def solve(problem,
           niter_transition=1000,
           niter_explorative=10000,
           niter_non_explorative=0,
+          scatter_scale_transition=2.0,
           scatter_scale=1.0,
           xs_inject=None,
           sampler_distribution='multivariate_normal',
@@ -1187,32 +1190,44 @@ def solve(problem,
 
     while iiter < niter:
 
-        if niter_inject + niter_uniform <= iiter and \
-                iiter < niter_inject + niter_uniform + niter_transition:
+        if iiter < niter_inject:
+            phase = 'inject'
+        elif iiter < niter_inject + niter_uniform:
+            phase = 'uniform'
+        elif iiter < niter_inject + niter_uniform + niter_transition:
+            phase = 'transition'
+        elif iiter < niter_inject + niter_uniform + niter_transition + \
+                niter_explorative:
+            phase = 'explorative'
+        else:
+            phase = 'non_explorative'
 
-            factor = scatter_scale * 4.0 * (1.0 - (iiter - niter_uniform - niter_inject) /
-                            float(niter_transition))
+        factor = 1.0
+        if phase == 'transition':
+            factor = scatter_scale_transition + \
+                (scatter_scale - scatter_scale_transition) / \
+                ((iiter - niter_uniform - niter_inject) /
+                 float(niter_transition))
+
         else:
             factor = scatter_scale * 1.0
 
         ntries_preconstrain = 0
         ntries_sample = 0
 
-        if iiter < niter_inject:
+        if phase == 'inject':
             x = xs_inject[iiter, :]
         else:
             while True:
                 ntries_preconstrain += 1
 
-                if mbx is None or iiter < niter_inject + niter_uniform:
+                if mbx is None or phase == 'uniform':
                     x = problem.random_uniform(xbounds)
                 else:
                     # jchoice = num.random.randint(0, 1 + problem.nbootstrap)
                     jchoice = num.argmin(accept_sum)
 
-                    if iiter < niter_inject + niter_uniform + \
-                            niter_transition + niter_explorative:
-
+                    if phase in ('transition', 'explorative'):
                         ichoice = num.random.randint(0, nlinks)
                         xb = xhist[chains_i[jchoice, ichoice]]
                     else:
@@ -1226,7 +1241,7 @@ def solve(problem,
                         while True:
                             ntries_sample += 1
                             vs = num.random.multivariate_normal(
-                                xb, factor*covs[jchoice])
+                                xb, factor**2 * covs[jchoice])
 
                             ok_mask = num.logical_and(
                                 xbounds[:, 0] <= vs, vs <= xbounds[:, 1])
@@ -1255,10 +1270,9 @@ def solve(problem,
                             while True:
                                 if sbx[i] > 0.:
                                     v = num.random.normal(
-                                        xb[i], math.sqrt(factor)*sbx[i])
+                                        xb[i], factor*sbx[i])
                                 else:
                                     v = xb[i]
-
 
                                 if xbounds[i, 0] <= v and v <= xbounds[i, 1]:
                                     break
@@ -1382,21 +1396,9 @@ def solve(problem,
                     num.mean(gms), num.std(gms), num.min(gms)))
 
         if 'state' in status:
-            if iiter < niter_inject:
-                phase = 'inject'
-            elif iiter < niter_inject + niter_uniform:
-                phase = 'uniform'
-            elif iiter < niter_inject + niter_uniform + niter_transition:
-                phase = 'transition'
-            elif iiter < niter_inject + niter_uniform + niter_transition + \
-                    niter_explorative:
-                phase = 'explorative'
-            else:
-                phase = 'non-explorative'
-
             lines.append(
                 '%-15s %15i %-15s %15i %15i' % (
-                    'iteration', iiter+1, '(%s)' % phase,
+                    'iteration', iiter+1, '(%s, %g)' % (phase, factor),
                     ntries_sample, ntries_preconstrain))
 
         if 'matrix' in status:
