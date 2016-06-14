@@ -1172,8 +1172,8 @@ def solve(problem,
     else:
         niter_inject = 0
 
-    niter = niter_inject + niter_uniform + niter_explorative + \
-        niter_non_explorative
+    niter = niter_inject + niter_uniform + niter_transition + \
+            niter_explorative + niter_non_explorative
 
     iiter = 0
     sbx = None
