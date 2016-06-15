@@ -618,14 +618,18 @@ def draw_solution_figure(
                 (8., m_dc, ratio_dc, None)]:
 
             if ratio != 0.0:
-                beachball.plot_beachball_mpl(
-                    mt_part, axes,
-                    beachball_type='full',
-                    position=(1.+xpos, ypos),
-                    size=0.9*size0*math.sqrt(ratio),
-                    size_units='data',
-                    color_t=color_t,
-                    linewidth=1.0)
+                try:
+                    beachball.plot_beachball_mpl(
+                        mt_part, axes,
+                        beachball_type='full',
+                        position=(1.+xpos, ypos),
+                        size=0.9*size0*math.sqrt(ratio),
+                        size_units='data',
+                        color_t=color_t,
+                        linewidth=1.0)
+
+                except beachball.BeachballError, e:
+                    logger.warn(str(e))
 
             else:
                 axes.annotate(
