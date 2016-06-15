@@ -1176,7 +1176,7 @@ def solve(problem,
         niter_inject = 0
 
     niter = niter_inject + niter_uniform + niter_transition + \
-            niter_explorative + niter_non_explorative
+        niter_explorative + niter_non_explorative
 
     iiter = 0
     sbx = None
@@ -1202,15 +1202,18 @@ def solve(problem,
         else:
             phase = 'non_explorative'
 
-        factor = 1.0
+        factor = 0.0
         if phase == 'transition':
-            factor = scatter_scale_transition + \
-                (scatter_scale - scatter_scale_transition) / \
-                ((iiter - niter_uniform - niter_inject) /
-                 float(niter_transition))
+            T = float(niter_transition)
+            A = scatter_scale_transition
+            B = scatter_scale
+            tau = T/(math.log(A) - math.log(B))
+            t0 = math.log(A) * T / (math.log(A) - math.log(B))
+            t = float(iiter - niter_uniform - niter_inject)
+            factor = num.exp(-(t-t0) / tau)
 
-        else:
-            factor = scatter_scale * 1.0
+        elif phase in ('explorative', 'non_explorative'):
+            factor = scatter_scale
 
         ntries_preconstrain = 0
         ntries_sample = 0
