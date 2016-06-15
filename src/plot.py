@@ -971,35 +971,35 @@ def draw_fits_figures(ds, model, plt):
 
         target_to_result[target] = result
 
-        dtrace.meta = dict(super_group=target.super_group)
+        dtrace.meta = dict(super_group=target.super_group, group=target.group)
         dtraces.append(dtrace)
 
-        result.processed_syn.meta = dict(super_group=target.super_group)
+        result.processed_syn.meta = dict(
+            super_group=target.super_group, group=target.group)
+
         all_syn_trs.append(result.processed_syn)
 
         if result.spectrum_syn:
-            result.spectrum_syn.meta = dict(super_group=target.super_group)
+            result.spectrum_syn.meta = dict(
+                super_group=target.super_group, group=target.group)
+
             all_syn_specs.append(result.spectrum_syn)
 
     if not all_syn_trs:
         logger.warn('no traces to show')
         return
 
-    trace_minmaxs = trace.minmax(
-        all_syn_trs,
-        lambda tr: tr.meta['super_group'])
+    skey = lambda tr: (tr.meta['super_group'], tr.meta['group'])
 
-    amp_spec_maxs = amp_spec_max(
-        all_syn_specs,
-        lambda spec_tr: spec_tr.meta['super_group'])
+    trace_minmaxs = trace.minmax(all_syn_trs, skey)
 
-    dminmaxs = trace.minmax(
-        [x for x in dtraces if x is not None],
-        lambda tr: tr.meta['super_group'])
+    amp_spec_maxs = amp_spec_max(all_syn_specs, skey)
+
+    dminmaxs = trace.minmax([x for x in dtraces if x is not None], skey)
 
     for tr in dtraces:
         if tr:
-            dmin, dmax = dminmaxs[tr.meta['super_group']]
+            dmin, dmax = dminmaxs[skey(tr)]
             tr.ydata /= max(abs(dmin), abs(dmax))
 
     cg_to_targets = gather(
@@ -1090,7 +1090,7 @@ def draw_fits_figures(ds, model, plt):
 
                 target = frame_to_target[iy, ix]
 
-                amin, amax = trace_minmaxs[target.super_group]
+                amin, amax = trace_minmaxs[target.super_group, target.group]
                 absmax = max(abs(amin), abs(amax))
 
                 ny_this = min(ny, nymax)
@@ -1150,7 +1150,7 @@ def draw_fits_figures(ds, model, plt):
 
                 elif target.misfit_config.domain == 'frequency_domain':
 
-                    asmax = amp_spec_maxs[target.super_group]
+                    asmax = amp_spec_maxs[target.super_group, target.group]
                     fmin, fmax = target.misfit_config.get_full_frequency_range()
 
                     plot_spectrum(
