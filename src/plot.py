@@ -1,6 +1,8 @@
 import math
+import re
 import random
 import logging
+import os
 import os.path as op
 import numpy as num
 from scipy import signal
@@ -1418,6 +1420,19 @@ plot_dispatch = {
 
 
 def save_figs(figs, plot_dirname, plotname, formats, dpi):
+    for fmt in formats:
+        if fmt not in ['pdf', 'png']:
+            raise core.GrondError('unavailable output format: %s' % fmt)
+
+    assert re.match(r'^[a-z_]+$', plotname)
+
+    # remove files from previous runs
+    pat = re.compile(r'^%s-[0-9]+\.(%s)$' % (plotname, '|'.join(formats)))
+    if op.exists(plot_dirname):
+        for entry in os.listdir(plot_dirname):
+            if pat.match(entry):
+                os.unlink(op.join(plot_dirname, entry))
+
     fns = []
     for ifig, fig in enumerate(figs):
         for format in formats:
