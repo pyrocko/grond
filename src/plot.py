@@ -636,7 +636,6 @@ def draw_solution_figure(
     axes.axison = False
     axes.set_xlim(-2.25, 9.75)
     axes.set_ylim(-0.5, 3.5)
-    fig.savefig('test.pdf')
 
 
 def draw_contributions_figure(model, plt):
@@ -830,6 +829,7 @@ def plot_dtrace(axes, tr, space, mi, ma, **kwargs):
         clip_on=False,
         **kwargs)
 
+
 def plot_spectrum(
         axes, spec_syn, spec_obs, fmin, fmax, space, mi, ma,
         syn_color='red', obs_color='black',
@@ -860,7 +860,6 @@ def plot_spectrum(
 
     axes2.plot([fmin, fmin], [-1.0 - space, -1.0], color=color_vline)
     axes2.plot([fmax, fmax], [-1.0 - space, -1.0], color=color_vline)
-
 
     for (text, fx, ha) in [
             ('%.3g Hz' % fmin, fmin, 'right'),
@@ -1151,7 +1150,8 @@ def draw_fits_figures(ds, model, plt):
                 elif target.misfit_config.domain == 'frequency_domain':
 
                     asmax = amp_spec_maxs[target.super_group, target.group]
-                    fmin, fmax = target.misfit_config.get_full_frequency_range()
+                    fmin, fmax = \
+                        target.misfit_config.get_full_frequency_range()
 
                     plot_spectrum(
                         axes2,
@@ -1165,7 +1165,6 @@ def draw_fits_figures(ds, model, plt):
                         obs_lw=1.0,
                         color_vline=tap_color_annot,
                         fontsize=fontsize)
-
 
                 else:
                     plot_dtrace(
@@ -1198,9 +1197,11 @@ def draw_fits_figures(ds, model, plt):
                         [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
 
                 for tmark, text, ha in [
-                        (tmarks[0], '$\,$ ' + str_duration(tmarks[0] - source.time),
+                        (tmarks[0],
+                         '$\,$ ' + str_duration(tmarks[0] - source.time),
                          'right'),
-                        (tmarks[1], '$\Delta$ ' + str_duration(tmarks[1] - tmarks[0]),
+                        (tmarks[1],
+                         '$\Delta$ ' + str_duration(tmarks[1] - tmarks[0]),
                          'left')]:
 
                     axes2.annotate(
@@ -1268,8 +1269,6 @@ def draw_fits_figures(ds, model, plt):
                 title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
 
             fig.suptitle(title, fontsize=fontsize)
-            fig.savefig('fits-%s-%i-%i.pdf' % (
-                title, iyy, ixx))
 
     plt.show()
 
@@ -1362,8 +1361,6 @@ def draw_hudson_figure(model, plt):
         color_t='red',
         zorder=2,
         linewidth=0.5)
-
-    fig.savefig('hudson.pdf')
 
 
 def xpop(s, k):
