@@ -617,7 +617,7 @@ def draw_solution_figure(
                 (6., m_clvd, ratio_clvd, '+'),
                 (8., m_dc, ratio_dc, None)]:
 
-            if ratio != 0.0:
+            if ratio > 1e-4:
                 try:
                     beachball.plot_beachball_mpl(
                         mt_part, axes,
@@ -630,6 +630,14 @@ def draw_solution_figure(
 
                 except beachball.BeachballError, e:
                     logger.warn(str(e))
+
+                    axes.annotate(
+                        'ERROR',
+                        xy=(1.+xpos, ypos),
+                        ha='center',
+                        va='center',
+                        color='red',
+                        fontsize=fontsize)
 
             else:
                 axes.annotate(
