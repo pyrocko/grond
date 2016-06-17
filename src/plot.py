@@ -206,8 +206,6 @@ class GrondModel(object):
 
 def draw_sequence_figures(model, plt, misfit_cutoff=None):
     problem = model.problem
-    if not problem:
-        return
 
     imodels = num.arange(model.nmodels)
     bounds = problem.bounds() + problem.dependant_bounds()
@@ -243,6 +241,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
     cmap = cm.YlOrRd
     cmap = cm.jet
     axes = None
+    figs = []
     fig = None
     alpha = 0.5
     for ipar in xrange(npar):
@@ -250,6 +249,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
         if impl == 1:
             fig = plt.figure()
+            figs.append(fig)
 
         par = problem.parameters[ipar]
 
@@ -275,6 +275,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
         if impl == 1:
             fig = plt.figure()
+            figs.append(fig)
 
         par = problem.dependants[idep]
 
@@ -299,6 +300,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
     impl = (npar+ndep) % (nfx*nfy) + 1
     if impl == 1:
         fig = plt.figure()
+        figs.append(fig)
 
     axes = fig.add_subplot(nfy, nfx, impl, sharex=axes)
 
@@ -317,7 +319,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
     axes.set_ylabel('Misfit')
 
-    fig.canvas.draw()
+    return figs
 
 
 def draw_jointpar_figures(
@@ -335,7 +337,7 @@ def draw_jointpar_figures(
 
     problem = model.problem
     if not problem:
-        return
+        return []
 
     xs = model.xs
 
@@ -395,8 +397,10 @@ def draw_jointpar_figures(
 
     nselected = iselected
 
-    if nselected == 0:
-        return
+    if nselected < 2:
+        logger.warn('cannot draw joinpar figures with less than two '
+                    'parameters selected')
+        return []
 
     nfig = (nselected-2) / neach + 1
 
@@ -520,6 +524,12 @@ def draw_jointpar_figures(
                 xpar.scaled(fx), ypar.scaled(fy), 's',
                 mew=1.5, ms=5, color=ref_color_light, mec=ref_color)
 
+    figs_flat = []
+    for figs_row in figs:
+        figs_flat.extend(fig for fig in figs_row if fig is not None)
+
+    return figs_flat
+
 
 def draw_solution_figure(
         model, plt, misfit_cutoff=None, beachball_type='full'):
@@ -532,12 +542,14 @@ def draw_solution_figure(
 
     problem = model.problem
     if not problem:
-        return
+        logger.warn('problem not set')
+        return []
 
     xs = model.xs
 
     if xs.size == 0:
-        return
+        logger.warn('empty models vector')
+        return []
 
     gms = problem.global_misfits(model.misfits)
     isort = num.argsort(gms)
@@ -637,6 +649,8 @@ def draw_solution_figure(
     axes.set_xlim(-2.25, 9.75)
     axes.set_ylim(-0.5, 3.5)
 
+    return [fig]
+
 
 def draw_contributions_figure(model, plt):
 
@@ -644,12 +658,14 @@ def draw_contributions_figure(model, plt):
 
     problem = model.problem
     if not problem:
-        return
+        logger.warn('problem not set')
+        return []
 
     xs = model.xs
 
     if xs.size == 0:
-        return
+        logger.warn('empty models vector')
+        return []
 
     imodels = num.arange(model.nmodels)
 
@@ -743,6 +759,8 @@ def draw_contributions_figure(model, plt):
     axes2.axhline(1.0, color=(0.5, 0.5, 0.5))
     fig.tight_layout()
 
+    return [fig]
+
 
 def draw_bootstrap_figure(model, plt):
 
@@ -763,7 +781,6 @@ def draw_bootstrap_figure(model, plt):
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])
-        print num.argmin(bms), isort_bms[-1]
 
         bms_softclip = num.where(bms > 1.0, 0.1 * num.log10(bms) + 1.0, bms)
         axes.plot(imodels, bms_softclip[isort_bms], color='red', alpha=0.2)
@@ -785,6 +802,8 @@ def draw_bootstrap_figure(model, plt):
 
     axes.set_xlim(imodels[0], imodels[-1])
     axes.set_xlabel('Tested model, sorted descending by global misfit value')
+
+    return [fig]
 
 
 def gather(l, key, sort=None, filter=None):
@@ -986,7 +1005,7 @@ def draw_fits_figures(ds, model, plt):
 
     if not all_syn_trs:
         logger.warn('no traces to show')
-        return
+        return []
 
     skey = lambda tr: (tr.meta['super_group'], tr.meta['group'])
 
@@ -1008,6 +1027,7 @@ def draw_fits_figures(ds, model, plt):
 
     cgs = sorted(cg_to_targets.keys())
 
+    figs = []
     for cg in cgs:
         targets = cg_to_targets[cg]
         nframes = len(targets)
@@ -1084,6 +1104,7 @@ def draw_fits_figures(ds, model, plt):
                 iyy = iy/nymax
                 if (iyy, ixx) not in figures:
                     figures[iyy, ixx] = plt.figure(figsize=(16, 9))
+                    figs.append(figures[iyy, ixx])
 
                 fig = figures[iyy, ixx]
 
@@ -1270,7 +1291,7 @@ def draw_fits_figures(ds, model, plt):
 
             fig.suptitle(title, fontsize=fontsize)
 
-    plt.show()
+    return figs
 
 
 def draw_hudson_figure(model, plt):
@@ -1362,6 +1383,8 @@ def draw_hudson_figure(model, plt):
         zorder=2,
         linewidth=0.5)
 
+    return [fig]
+
 
 def xpop(s, k):
     try:
@@ -1382,9 +1405,34 @@ plot_dispatch = {
     'solution': draw_solution_figure}
 
 
-def plot_result(dirname, plotnames_want):
+def save_figs(figs, plot_dirname, plotname, formats, dpi):
+    fns = []
+    for ifig, fig in enumerate(figs):
+        for format in formats:
+            fn = op.join(plot_dirname, '%s-%02i.%s' % (plotname, ifig, format))
+            util.ensuredirs(fn)
+
+            fig.savefig(fn, format=format, dpi=dpi)
+            logger.info('figure saved: %s' % fn)
+            fns.append(fn)
+
+    return fns
+
+
+def available_plotnames():
+    return list(plot_dispatch.keys())
+
+
+def plot_result(dirname, plotnames_want,
+                save=False, formats=('pdf',), dpi=None):
+
+    if isinstance(formats, basestring):
+        formats = formats.split(',')
+
     plotnames_want = set(plotnames_want)
     plotnames_avail = set(plot_dispatch.keys())
+
+    plot_dirname = op.join(dirname, 'plots')
 
     unavailable = plotnames_want - plotnames_avail
     if unavailable:
@@ -1392,6 +1440,7 @@ def plot_result(dirname, plotnames_want):
             'unavailable plotname: %s' % ', '.join(unavailable))
 
     mpl_init()
+    fns = []
 
     if 3 != len({'bootstrap', 'sequence', 'contributions'} - plotnames_want):
         problem, xs, misfits = core.load_problem_info_and_data(
@@ -1403,7 +1452,10 @@ def plot_result(dirname, plotnames_want):
 
         for plotname in ['bootstrap', 'sequence', 'contributions']:
             if plotname in plotnames_want:
-                plot_dispatch[plotname](model, plt)
+                figs = plot_dispatch[plotname](model, plt)
+                if save:
+                    fns.extend(
+                        save_figs(figs, plot_dirname, plotname, formats, dpi))
 
     if 4 != len({'fits', 'jointpar', 'hudson', 'solution'} - plotnames_want):
         problem, xs, misfits = core.load_problem_info_and_data(
@@ -1419,10 +1471,17 @@ def plot_result(dirname, plotnames_want):
                 config.set_basepath(dirname)
                 problem.set_engine(config.engine_config.get_engine())
                 ds = config.get_dataset()
-                plot_dispatch[plotname](ds, model, plt)
+                figs = plot_dispatch[plotname](ds, model, plt)
+                if save:
+                    fns.extend(
+                        save_figs(figs, plot_dirname, plotname, formats, dpi))
 
         for plotname in ['jointpar', 'hudson', 'solution']:
             if plotname in plotnames_want:
-                plot_dispatch[plotname](model, plt)
+                figs = plot_dispatch[plotname](model, plt)
+                if save:
+                    fns.extend(
+                        save_figs(figs, plot_dirname, plotname, formats, dpi))
 
-    plt.show()
+    if not save:
+        plt.show()

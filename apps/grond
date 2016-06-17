@@ -9,7 +9,6 @@ from pyrocko import util
 from pyrocko.gf import Range
 
 import grond
-from grond import plot
 
 logger = logging.getLogger('main')
 
@@ -89,7 +88,7 @@ def process_common_options(options):
     util.setup_logging(program_name, options.loglevel)
 
 
-def cl_parse(command, args, setup=None):
+def cl_parse(command, args, setup=None, details=None):
     usage = subcommand_usages[command]
     descr = subcommand_descriptions[command]
 
@@ -100,9 +99,12 @@ def cl_parse(command, args, setup=None):
     for s in usage[1:]:
         susage += '\n%s%s %s' % (' '*7, program_name, s)
 
-    parser = OptionParser(
-        usage=susage,
-        description=descr[0].upper() + descr[1:] + '.')
+    description = descr[0].upper() + descr[1:] + '.'
+
+    if details:
+        description = description + '\n\n%s' % details
+
+    parser = OptionParser(usage=susage, description=description)
 
     if setup:
         setup(parser)
@@ -277,6 +279,8 @@ def command_harvest(args):
 
 
 def command_map_geometry(args):
+    from grond import plot
+
     parser, options, args = cl_parse('map-geometry', args)
     if len(args) != 2:
         help_and_die(parser, 'two arguments required')
@@ -288,13 +292,47 @@ def command_map_geometry(args):
 
 
 def command_plot(args):
-    parser, options, args = cl_parse('plot', args)
+    from grond import plot
+
+    def setup(parser):
+        parser.add_option(
+            '--save', dest='save', action='store_true', default=False,
+            help='save figures to files')
+
+        parser.add_option(
+            '--format', '--formats', dest='formats', default='pdf',
+            help='comma-separated list of ouptut formats (default: pdf)')
+
+        parser.add_option(
+            '--dpi', '--dpi', dest='dpi', type=float, default=72.,
+            help='DPI setting for raster formats (default=72)')
+
+    plotnames_avail = plot.available_plotnames()
+
+    details = '''Available <plotnames> are: %s, or "all". Multiple plots are
+selected by specifying a comma-separated list.''' % (
+        ', '.join('"%s"' % x for x in plotnames_avail))
+
+    parser, options, args = cl_parse('plot', args, setup, details)
+
     if len(args) != 2:
         help_and_die(parser, 'two arguments required')
 
-    plotnames = args[0].split(',')
+    if args[0] == 'all':
+        plotnames = plotnames_avail
+    else:
+        plotnames = args[0].split(',')
+
+    formats = options.formats.split(',')
     dirname = args[1]
-    plot.plot_result(dirname, plotnames)
+
+    try:
+        plot.plot_result(
+            dirname, plotnames,
+            save=options.save, formats=formats, dpi=options.dpi)
+
+    except grond.GrondError, e:
+        die(str(e))
 
 
 def command_export(args):
@@ -349,7 +387,6 @@ def command_export(args):
 
     except grond.GrondError, e:
         die(str(e))
-
 
 
 if __name__ == '__main__':
