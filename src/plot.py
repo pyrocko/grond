@@ -1365,14 +1365,17 @@ def draw_hudson_figure(model, plt):
     mt = mean_source.pyrocko_moment_tensor()
     u, v = hudson.project(mt)
 
-    beachball.plot_beachball_mpl(
-        mt, axes,
-        beachball_type='dc',
-        position=(u, v),
-        size=beachballsize,
-        color_t=color,
-        zorder=2,
-        linewidth=0.5)
+    try:
+        beachball.plot_beachball_mpl(
+            mt, axes,
+            beachball_type='dc',
+            position=(u, v),
+            size=beachballsize,
+            color_t=color,
+            zorder=2,
+            linewidth=0.5)
+    except beachball.BeachballError, e:
+        logger.warn(str(e))
 
     mt = best_source.pyrocko_moment_tensor()
     u, v = hudson.project(mt)
@@ -1388,14 +1391,17 @@ def draw_hudson_figure(model, plt):
     mt = problem.base_source.pyrocko_moment_tensor()
     u, v = hudson.project(mt)
 
-    beachball.plot_beachball_mpl(
-        mt, axes,
-        beachball_type='dc',
-        position=(u, v),
-        size=beachballsize,
-        color_t='red',
-        zorder=2,
-        linewidth=0.5)
+    try:
+        beachball.plot_beachball_mpl(
+            mt, axes,
+            beachball_type='dc',
+            position=(u, v),
+            size=beachballsize,
+            color_t='red',
+            zorder=2,
+            linewidth=0.5)
+    except beachball.BeachballError, e:
+        logger.warn(str(e))
 
     return [fig]
 
