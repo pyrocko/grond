@@ -1044,10 +1044,21 @@ def get_mean_x(xs):
     return num.mean(xs, axis=0)
 
 
+def get_mean_x_and_gm(problem, xs, misfits):
+    gms = problem.global_misfits(misfits)
+    return num.mean(xs, axis=0), num.mean(gms)
+
+
 def get_best_x(problem, xs, misfits):
     gms = problem.global_misfits(misfits)
     ibest = num.argmin(gms)
     return xs[ibest, :]
+
+
+def get_best_x_and_gm(problem, xs, misfits):
+    gms = problem.global_misfits(misfits)
+    ibest = num.argmin(gms)
+    return xs[ibest, :], gms[ibest]
 
 
 def get_mean_source(problem, xs):
@@ -1839,9 +1850,10 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
     if shortform:
         print >>out, '#', ' '.join('%16s' % x for x in pnames)
 
-    def dump(x, indices):
+    def dump(x, gm, indices):
         if type == 'vector':
-            print >>out, ' ', ' '.join('%16.7g' % v for v in x[indices])
+            print >>out, ' ', ' '.join('%16.7g' % v for v in x[indices]), \
+                '%16.7g' % gm
 
         elif type == 'source':
             source = problem.unpack(x)
@@ -1866,7 +1878,14 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             indices = num.array(
                 [problem.name_to_index(pname) for pname in pnames_take])
 
-            new_header = '# ' + ' '.join('%16s' % x for x in pnames_take)
+            if type == 'vector' and what in ('best', 'mean', 'ensemble'):
+                extra = ['global_misfit']
+            else:
+                extra = []
+
+            new_header = '# ' + ' '.join(
+                '%16s' % x for x in pnames_take + extra)
+
             if type == 'vector' and header != new_header:
                 print >>out, new_header
 
@@ -1875,16 +1894,18 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             indices = None
 
         if what == 'best':
-            dump(get_best_x(problem, xs, misfits), indices)
+            x_best, gm_best = get_best_x_and_gm(problem, xs, misfits)
+            dump(x_best, gm_best, indices)
 
         elif what == 'mean':
-            dump(get_mean_x(xs), indices)
+            x_mean, gm_mean = get_mean_x_and_gm(problem, xs, misfits)
+            dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
             gms = problem.global_misfits(misfits)
             isort = num.argsort(gms)
             for i in isort:
-                dump(xs[i], indices)
+                dump(xs[i], gms[i], indices)
 
         elif what == 'stats':
             rs = make_stats(problem, xs, misfits, pnames_clean)
