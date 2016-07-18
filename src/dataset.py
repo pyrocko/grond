@@ -80,10 +80,14 @@ class Dataset(object):
                 self.stations[station.nsl()] = station
 
         if pyrocko_stations_filename is not None:
+            logger.debug('Loading stations from file %s'
+                % pyrocko_stations_filename)
             for station in model.load_stations(pyrocko_stations_filename):
                 self.stations[station.nsl()] = station
 
-        if stationxml_filenames is not None:
+        if stationxml_filenames is not None and len(stationxml_filenames) > 0:
+            logger.debug('Loading stations from StationXML file %s'
+                % stationxml_filenames)
             for stationxml_filename in stationxml_filenames:
                 sx = fs.load_xml(filename=stationxml_filename)
                 for station in sx.get_pyrocko_stations():
@@ -94,10 +98,12 @@ class Dataset(object):
             self.events.extend(events)
 
         if filename is not None:
+            logger.debug('Loading events from file %s' % filename)
             self.events.extend(model.load_events(filename))
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
                       show_progress=True):
+        logger.debug('Loading waveform data from %s' % paths)
         cachedirname = config.config().cache_dir
         fns = util.select_files(paths, regex=regex,
                                 show_progress=show_progress)
@@ -107,6 +113,8 @@ class Dataset(object):
                              show_progress=show_progress)
 
     def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
+        if sacpz_dirname or stationxml_filenames:
+            logger.debug('Loading responses from %s' % paths)
         if sacpz_dirname:
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
                 self.responses[x.codes].append(x)
@@ -139,12 +147,14 @@ class Dataset(object):
                 self.clippings[k] = num.concatenate(self.clippings, atimes)
 
     def add_blacklist(self, blacklist):
+        logger.debug('Loading blacklisted stations')
         for x in blacklist:
             if isinstance(x, basestring):
                 x = tuple(x.split('.'))
             self.blacklist.add(x)
 
     def add_whitelist(self, whitelist):
+        logger.debug('Loading whitelisted stations')
         if self.whitelist_nslc is None:
             self.whitelist_nslc = set()
             self.whitelist_nsl = set()
