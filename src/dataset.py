@@ -1,4 +1,5 @@
 
+import copy
 import logging
 from collections import defaultdict
 import numpy as num
@@ -16,11 +17,16 @@ class InvalidObject(Exception):
 
 
 class NotFound(Exception):
-    def __init__(self, *value):
-        self.value = value
+    def __init__(self, reason, codes=None):
+        self.reason = reason
+        self.codes = codes
 
     def __str__(self):
-        return ' '.join([str(v) for v in self.value])
+        s = self.reason
+        if self.codes:
+            s += ' (%s)' % '.'.join(self.codes)
+
+        return s
 
 
 class DatasetError(Exception):
@@ -84,14 +90,18 @@ class Dataset(object):
                 self.stations[station.nsl()] = station
 
         if pyrocko_stations_filename is not None:
-            logger.debug('Loading stations from file %s'
-                % pyrocko_stations_filename)
+            logger.debug(
+                'Loading stations from file %s' %
+                pyrocko_stations_filename)
+
             for station in model.load_stations(pyrocko_stations_filename):
                 self.stations[station.nsl()] = station
 
         if stationxml_filenames is not None and len(stationxml_filenames) > 0:
-            logger.debug('Loading stations from StationXML file %s'
-                % stationxml_filenames)
+            logger.debug(
+                'Loading stations from StationXML file %s' %
+                stationxml_filenames)
+
             for stationxml_filename in stationxml_filenames:
                 sx = fs.load_xml(filename=stationxml_filename)
                 for station in sx.get_pyrocko_stations():
@@ -116,7 +126,7 @@ class Dataset(object):
                              fileformat=fileformat,
                              show_progress=show_progress)
 
-    def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):            
+    def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
         if sacpz_dirname:
             logger.debug('Loading SAC PZ responses from %s' % sacpz_dirname)
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
@@ -124,8 +134,10 @@ class Dataset(object):
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
-                logger.debug('Loading StationXML responses from %s' %
+                logger.debug(
+                    'Loading StationXML responses from %s' %
                     stationxml_filename)
+
                 self.responses_stationxml.append(
                     fs.load_xml(filename=stationxml_filename))
 
@@ -269,7 +281,7 @@ class Dataset(object):
             if k in self.stations:
                 return self.stations[k]
 
-        raise NotFound('station', keys)
+        raise NotFound('no station information', keys)
 
     def get_stations(self):
         return [self.stations[k] for k in sorted(self.stations)
@@ -278,8 +290,9 @@ class Dataset(object):
 
     def get_response(self, obj):
         if (self.responses is None or len(self.responses) == 0) \
-            and (self.responses_stationxml is None \
-            or len(self.responses_stationxml) == 0):
+                and (self.responses_stationxml is None
+                     or len(self.responses_stationxml) == 0):
+
             raise NotFound('no response information available')
 
         if self.is_blacklisted(obj):
@@ -321,9 +334,9 @@ class Dataset(object):
             return candidates[0]
 
         elif len(candidates) == 0:
-            raise NotFound('no response', (net, sta, loc, cha))
+            raise NotFound('no response found', (net, sta, loc, cha))
         else:
-            raise NotFound('multiple responses', (net, sta, loc, cha))
+            raise NotFound('multiple responses found', (net, sta, loc, cha))
 
     def get_waveforms_raw(self, obj, tmin=None, tmax=None, tpad=0.):
         net, sta, loc = self.get_nsl(obj)
@@ -431,7 +444,8 @@ class Dataset(object):
 
         if not projections:
             raise NotFound(
-                'cannot determine projection of data components', nslc)
+                'cannot determine projection of data components',
+                station.nsl())
 
         return projections
 
@@ -563,7 +577,8 @@ class Dataset(object):
                 if tr.channel == channel:
                     return tr
 
-            raise NotFound('waveform', station.nsl() + (channel,))
+            raise NotFound(
+                'waveform not available', station.nsl() + (channel,))
 
         except NotFound, e:
             cache[nslc, tmin, tmax] = e
@@ -586,7 +601,9 @@ class Dataset(object):
                 ev_x = ev
 
         if not ev_x:
-            raise NotFound
+            raise NotFound(
+                'no event information matching criteria (t=%s, magmin=%s)' %
+                (t, magmin))
 
         return ev_x
 
