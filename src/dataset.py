@@ -414,7 +414,8 @@ class Dataset(object):
         return tr.transfer(tfade=tfade, freqlimits=freqlimits,
                            transfer_function=resp, invert=True)
 
-    def get_projections(self, station, source, target, tmin, tmax):
+    def _get_projections(
+            self, station, backazimuth, source, target, tmin, tmax):
 
         # fill in missing channel information (happens when station file
         # does not contain any channel information)
@@ -521,7 +522,8 @@ class Dataset(object):
         else:
             abs_delay_max = 0.0
 
-        projections = self.get_projections(station, source, target, tmin, tmax)
+        projections = self._get_projections(
+            station, backazimuth, source, target, tmin, tmax)
 
         try:
             trs_projected = []
