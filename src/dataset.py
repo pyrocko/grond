@@ -367,7 +367,7 @@ class Dataset(object):
             tmax=tmax+toffset_noise_extract,
             tpad=tpad,
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
-            want_incomplete=True)
+            want_incomplete=False)
 
         if toffset_noise_extract != 0.0:
             for tr in trs:
@@ -400,6 +400,40 @@ class Dataset(object):
         resp = self.get_response(tr)
         return tr.transfer(tfade=tfade, freqlimits=freqlimits,
                            transfer_function=resp, invert=True)
+
+    def get_projections(self, station, source, target, tmin, tmax):
+
+        # fill in missing channel information (happens when station file
+        # does not contain any channel information)
+        if not station.get_channels():
+            station = copy.deepcopy(station)
+
+            nsl = station.nsl()
+            trs = self.pile.all(
+                tmin=tmin, tmax=tmax,
+                trace_selector=lambda tr: tr.nslc_id[:3] == nsl,
+                load_data=False)
+
+            channels = list(set(tr.channel for tr in trs))
+            station.set_channels_by_name(*channels)
+
+        projections = []
+        projections.extend(station.guess_projections_to_enu(
+            out_channels=('E', 'N', 'Z')))
+
+        if source is not None and target is not None:
+            backazimuth = source.azibazi_to(target)[1]
+
+        if backazimuth is not None:
+            projections.extend(station.guess_projections_to_rtu(
+                out_channels=('R', 'T', 'Z'),
+                backazimuth=backazimuth))
+
+        if not projections:
+            raise NotFound(
+                'cannot determine projection of data components', nslc)
+
+        return projections
 
     def get_waveform(
             self,
@@ -473,25 +507,11 @@ class Dataset(object):
         else:
             abs_delay_max = 0.0
 
-        mios = []
-        mios.extend(station.guess_projections_to_enu(
-            out_channels=('E', 'N', 'Z')))
-
-        if source is not None and target is not None:
-            backazimuth = source.azibazi_to(target)[1]
-
-        if backazimuth is not None:
-            mios.extend(station.guess_projections_to_rtu(
-                out_channels=('R', 'T', 'Z'),
-                backazimuth=backazimuth))
-
-        if not mios:
-            raise NotFound(
-                'cannot determine projection of data components', nslc)
+        projections = self.get_projections(station, source, target, tmin, tmax)
 
         try:
             trs_projected = []
-            for matrix, in_channels, out_channels in mios:
+            for matrix, in_channels, out_channels in projections:
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
 
