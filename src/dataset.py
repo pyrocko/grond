@@ -16,7 +16,11 @@ class InvalidObject(Exception):
 
 
 class NotFound(Exception):
-    pass
+    def __init__(self, *value):
+        self.value = value
+
+    def __str__(self):
+        return ' '.join([str(v) for v in self.value])
 
 
 class DatasetError(Exception):
@@ -112,15 +116,16 @@ class Dataset(object):
                              fileformat=fileformat,
                              show_progress=show_progress)
 
-    def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
-        if sacpz_dirname or stationxml_filenames:
-            logger.debug('Loading responses from %s' % paths)
+    def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):            
         if sacpz_dirname:
+            logger.debug('Loading SAC PZ responses from %s' % sacpz_dirname)
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
                 self.responses[x.codes].append(x)
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
+                logger.debug('Loading StationXML responses from %s' %
+                    stationxml_filename)
                 self.responses_stationxml.append(
                     fs.load_xml(filename=stationxml_filename))
 
@@ -272,6 +277,11 @@ class Dataset(object):
                 and self.is_whitelisted(self.stations[k])]
 
     def get_response(self, obj):
+        if (self.responses is None or len(self.responses) == 0) \
+            and (self.responses_stationxml is None \
+            or len(self.responses_stationxml) == 0):
+            raise NotFound('no response information available')
+
         if self.is_blacklisted(obj):
             raise NotFound('response is blacklisted', self.get_nslc(obj))
 
@@ -357,7 +367,7 @@ class Dataset(object):
             tmax=tmax+toffset_noise_extract,
             tpad=tpad,
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
-            want_incomplete=False)
+            want_incomplete=True)
 
         if toffset_noise_extract != 0.0:
             for tr in trs:
@@ -477,7 +487,7 @@ class Dataset(object):
 
         if not mios:
             raise NotFound(
-                'cannot determine projection of data components')
+                'cannot determine projection of data components', nslc)
 
         try:
             trs_projected = []

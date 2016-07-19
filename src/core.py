@@ -1151,6 +1151,7 @@ def analyse(problem, niter=1000, show_progress=False):
 
     weights = 1.0 / mean_ms
     for igroup in xrange(ngroups):
+        print weights[groups == igroup]
         weights[groups == igroup] /= (
             num.nansum(weights[groups == igroup]) /
             num.nansum(num.isfinite(weights[groups == igroup])))
