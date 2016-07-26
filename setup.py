@@ -11,4 +11,5 @@ setup(
     packages=['grond'],
     package_dir={'grond': 'src'},
     scripts=['apps/grond'],
-    package_data={'grond': []})
+    package_data={'grond': []},
+    data_files=[('/etc/bash_completion.d', ['extras/grond'])])
