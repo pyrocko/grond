@@ -3,12 +3,12 @@
 
 _opt_filenames()
 {
-    echo $(compgen -o filenames -A file $cur)
+    echo $(compgen -o filenames -A file -- $cur)
 }
 
 _opt_dirnames()
 {
-    echo $(compgen -o dirnames $cur)
+    echo $(compgen -o plusdirs -f -- $cur)
 }
 
 _grond_options()
@@ -28,7 +28,6 @@ _grond_options()
     arg_sub["map-geometry"]="$(_opt_filenames)"
     arg_sub["plot"]="bootstrap sequence hudson solution jointpar fits contributions all"
     arg_sub["export"]="best mean ensemble stats"
-
 
     _std="--help -h --loglevel"
     declare -A arg_subsub
@@ -54,7 +53,7 @@ _grond_options()
     elif [ $COMP_CWORD = 4 ]; then
     	opts=${arg_subsubsub[${COMP_WORDS[1]}]}
     fi
-    COMPREPLY=( $(compgen -W "${opts}" $cur) )
+    COMPREPLY=( $(compgen -W "${opts}" -- $cur) )
     return 0
 }
-complete -F _grond_options grond
+complete -o nospace -o filenames -F _grond_options grond
