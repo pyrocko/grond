@@ -682,8 +682,6 @@ class SyntheticTest(Object):
         self._config = config
 
     def get_problem(self):
-        raise Exception('TODO: fixme (event_names)')
-
         ds = self._config.get_dataset()
         events = ds.get_events()
         event = events[0]
@@ -742,20 +740,9 @@ class SyntheticTest(Object):
             if result.trace.codes == nslc:
                 tr = result.trace.pyrocko_trace()
                 tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
-                tr2 = tr.copy()
-
-                randomresponse = RandomResponse(scale=10.)
-                randomresponse.set_random_state(self._rstate)
-
                 tr = tr.transfer(tfade=tfade, freqlimits=freqlimits)
-                tr2 = tr2.transfer(
-                    tfade=tfade,
-                    freqlimits=freqlimits,
-                    transfer_function=randomresponse)
-
                 tr.chop(tmin, tmax)
-                tr2.chop(tmin, tmax)
-                return tr2
+                return tr
 
         return None
 
