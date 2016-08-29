@@ -200,7 +200,7 @@ class CMTProblem(core.Problem):
 
         resp = engine.process(source, plain_targets)
         results = []
-        for target, result in zip(self.targets, resp.result_list[0]):
+        for target, result in zip(self.targets, resp.results_list[0]):
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
