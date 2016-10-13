@@ -1510,29 +1510,30 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     ibests_list = []
     ibests = []
-    for ibootstrap in xrange(problem.nbootstrap):
-        bms = problem.bootstrap_misfits(misfits, ibootstrap)
-        isort = num.argsort(bms)
-        ibests_list.append(isort[:nbest])
-        ibests.append(isort[0])
-
     gms = problem.global_misfits(misfits)
     isort = num.argsort(gms)
 
     ibests_list.append(isort[:nbest])
 
-    if weed:
-        mean_gm_best = num.median(gms[ibests])
-        std_gm_best = num.std(gms[ibests])
-        ibad = set()
+    if weed != 3:
+        for ibootstrap in xrange(problem.nbootstrap):
+            bms = problem.bootstrap_misfits(misfits, ibootstrap)
+            isort = num.argsort(bms)
+            ibests_list.append(isort[:nbest])
+            ibests.append(isort[0])
 
-        for ibootstrap, ibest in enumerate(ibests):
-            if gms[ibest] > mean_gm_best + std_gm_best:
-                ibad.add(ibootstrap)
+        if weed:
+            mean_gm_best = num.median(gms[ibests])
+            std_gm_best = num.std(gms[ibests])
+            ibad = set()
 
-        ibests_list = [
-            ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
-            if ibootstrap not in ibad]
+            for ibootstrap, ibest in enumerate(ibests):
+                if gms[ibest] > mean_gm_best + std_gm_best:
+                    ibad.add(ibootstrap)
+
+            ibests_list = [
+                ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
+                if ibootstrap not in ibad]
 
     ibests = num.concatenate(ibests_list)
 
