@@ -1458,8 +1458,9 @@ def plot_result(dirname, plotnames_want,
             if plotname in plotnames_want:
                 config = guts.load(filename=op.join(dirname, 'config.yaml'))
                 config.set_basepath(dirname)
-                problem.set_engine(config.engine_config.get_engine())
-                ds = config.get_dataset()
+                config.setup_modelling_environment(problem)
+                event_name = problem.base_source.name
+                ds = config.get_dataset(event_name)
                 figs = plot_dispatch[plotname](ds, model, plt)
                 if save:
                     fns.extend(

@@ -53,7 +53,7 @@ def dump_station_corrections(station_corrections, filename):
 
 class Dataset(object):
 
-    def __init__(self):
+    def __init__(self, event_name=None):
         self.events = []
         self.pile = pile.Pile()
         self.stations = {}
@@ -72,6 +72,7 @@ class Dataset(object):
         self.synthetic_test = None
         self._picks = None
         self._cache = {}
+        self._event_name = event_name
 
     def empty_cache(self):
         self._cache = {}
@@ -493,15 +494,16 @@ class Dataset(object):
         syn_test = self.synthetic_test
         toffset_noise_extract = 0.0
         if syn_test:
-            if syn_test.ignore_data_availability:
+            if not syn_test.respect_data_availability:
                 if syn_test.add_real_noise:
                     raise DatasetError(
-                        'ignore_data_availability=True and '
+                        'respect_data_availability=False and '
                         'add_real_noise=True cannot be combined.')
 
                 tr = syn_test.get_waveform(
                     nslc, tmin, tmax,
-                    tfade=tfade, freqlimits=freqlimits)
+                    tfade=tfade,
+                    freqlimits=freqlimits)
 
                 if cache is not None:
                     cache[tr.nslc_id, tmin, tmax] = tr
@@ -595,7 +597,7 @@ class Dataset(object):
 
         return evs
 
-    def get_event(self, t, magmin=None):
+    def get_event_by_time(self, t, magmin=None):
         evs = self.get_events(magmin=magmin)
         ev_x = None
         for ev in evs:
@@ -608,6 +610,16 @@ class Dataset(object):
                 (t, magmin))
 
         return ev_x
+
+    def get_event(self):
+        if self._event_name is None:
+            raise NotFound('no main event selected in dataset')
+
+        for ev in self.events:
+            if ev.name == self._event_name:
+                return ev
+
+        raise NotFound('no such event: %s' % self._event_name)
 
     def get_picks(self):
         if self._picks is None:

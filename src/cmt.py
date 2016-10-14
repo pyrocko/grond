@@ -37,7 +37,6 @@ class CMTProblem(core.Problem):
         core.Parameter('rel_moment_iso', label='$M_{0}^{ISO}/M_{0}$'),
         core.Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
-    base_source = gf.Source.T()
     targets = List.T(core.MisfitTarget.T())
 
     ranges = Dict.T(String.T(), gf.Range.T())
@@ -303,7 +302,7 @@ class CMTProblemConfig(core.ProblemConfig):
             event_time=util.time_to_str(event.time))
 
         problem = CMTProblem(
-            name=self.name_template % subs,
+            name=core.substitute_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
             targets=targets,

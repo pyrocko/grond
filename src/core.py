@@ -6,6 +6,7 @@ import time
 import copy
 import shutil
 import os.path as op
+from string import Template
 
 import numpy as num
 
@@ -122,6 +123,7 @@ class Problem(Object):
     parameters = List.T(Parameter.T())
     dependants = List.T(Parameter.T())
     apply_balancing_weights = Bool.T(default=True)
+    base_source = gf.Source.T()
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -666,45 +668,27 @@ class SyntheticWaveformNotAvailable(Exception):
 
 
 class SyntheticTest(Object):
-    random_seed = Int.T(default=0)
     inject_solution = Bool.T(default=False)
-    ignore_data_availability = Bool.T(default=False)
+    respect_data_availability = Bool.T(default=False)
     add_real_noise = Bool.T(default=False)
     toffset_real_noise = Float.T(default=-3600.)
     x = Dict.T(String.T(), Float.T())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
+        self._problem = None
         self._synthetics = None
-        self._rstate = num.random.RandomState(self.random_seed)
 
-    def set_config(self, config):
-        self._config = config
+    def set_problem(self, problem):
+        self._problem = problem
+        self._synthetics = None
 
     def get_problem(self):
-        ds = self._config.get_dataset()
-        events = ds.get_events()
-        event = events[0]
-        return self._config.get_problem(event)
+        if self._problem is None:
+            raise SyntheticWaveformNotAvailable(
+                'SyntheticTest.set_problem() has not been called yet')
 
-    def get_x_random(self):
-        problem = self.get_problem()
-        xbounds = num.array(problem.bounds(), dtype=num.float)
-        npar = xbounds.shape[0]
-
-        x = num.zeros(npar, dtype=num.float)
-        while True:
-            for i in xrange(npar):
-                x[i] = self._rstate.uniform(xbounds[i, 0], xbounds[i, 1])
-
-            try:
-                x = problem.preconstrain(x)
-                break
-
-            except Forbidden:
-                pass
-
-        return x
+        return self._problem
 
     def get_x(self):
         problem = self.get_problem()
@@ -713,22 +697,16 @@ class SyntheticTest(Object):
                 problem.parameter_array(self.x))
 
         else:
-            print problem.base_source
             x = problem.preconstrain(
                 problem.pack(
                     problem.base_source))
 
-            print x
-            print problem.unpack(x)
-
         return x
 
     def get_synthetics(self):
+        problem = self.get_problem()
         if self._synthetics is None:
-            problem = self.get_problem()
-
             x = self.get_x()
-
             results = problem.forward(x)
             self._synthetics = results
 
@@ -775,12 +753,12 @@ class DatasetConfig(HasPaths):
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
-        self._ds = None
+        self._ds = {}
 
-    def get_dataset(self):
-        if self._ds is None:
+    def get_dataset(self, event_name):
+        if event_name not in self._ds:
             fp = self.expand_path
-            ds = dataset.Dataset()
+            ds = dataset.Dataset(event_name)
             ds.add_stations(
                 pyrocko_stations_filename=fp(self.stations_path),
                 stationxml_filenames=fp(self.stations_stationxml_paths))
@@ -813,10 +791,10 @@ class DatasetConfig(HasPaths):
             if self.whitelist:
                 ds.add_whitelist(self.whitelist)
 
-            ds.set_synthetic_test(self.synthetic_test)
-            self._ds = ds
+            ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
+            self._ds[event_name] = ds
 
-        return self._ds
+        return self._ds[event_name]
 
 
 def weed(origin, targets, limit, neighborhood=3):
@@ -961,15 +939,11 @@ class Config(HasPaths):
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
 
-    def get_dataset(self):
-        ds = self.dataset_config.get_dataset()
-        if ds.synthetic_test:
-            ds.synthetic_test.set_config(self)
-
-        return ds
+    def get_dataset(self, event_name):
+        return self.dataset_config.get_dataset(event_name)
 
     def get_targets(self, event):
-        ds = self.get_dataset()
+        ds = self.get_dataset(event.name)
 
         targets = []
         for igroup, target_config in enumerate(self.target_configs):
@@ -978,10 +952,18 @@ class Config(HasPaths):
 
         return targets
 
+    def setup_modelling_environment(self, problem):
+        problem.set_engine(self.engine_config.get_engine())
+        ds = self.get_dataset(problem.base_source.name)
+        synt = ds.synthetic_test
+        if synt:
+            synt.set_problem(problem)
+            problem.base_source = problem.unpack(synt.get_x())
+
     def get_problem(self, event):
         targets = self.get_targets(event)
         problem = self.problem_config.get_problem(event, targets)
-        problem.set_engine(self.engine_config.get_engine())
+        self.setup_modelling_environment(problem)
         return problem
 
 
@@ -1449,7 +1431,7 @@ def forward(rundir_or_config_path, event_names=None):
         ibest = num.argmin(gms)
         xbest = xs[ibest, :]
 
-        ds = config.get_dataset()
+        ds = config.get_dataset(problem.base_source.name)
         problem.set_engine(config.engine_config.get_engine())
 
         for target in problem.targets:
@@ -1459,11 +1441,11 @@ def forward(rundir_or_config_path, event_names=None):
 
     else:
         config = read_config(rundir_or_config_path)
-        ds = config.get_dataset()
-        events = ds.get_events(event_names=event_names)
 
         payload = []
-        for event in events:
+        for event_name in event_names:
+            ds = config.get_dataset(event_name)
+            event = ds.get_event()
             problem = config.get_problem(event)
             xref = problem.preconstrain(
                 problem.pack(problem.base_source))
@@ -1556,17 +1538,12 @@ g_state = {}
 
 
 def check(config, event_names=None):
-    ds = config.get_dataset()
-    events = ds.get_events(event_names=event_names)
-    nevents = len(events)
-
     from matplotlib import pyplot as plt
     from grond.plot import colors
 
-    if nevents == 0:
-        raise GrondError('no events found')
-
-    for ievent, event in enumerate(events):
+    for ievent, event_name in enumerate(event_names):
+        ds = config.get_dataset(event_name)
+        event = ds.get_event()
         try:
             problem = config.get_problem(event)
             check_problem(problem)
@@ -1651,17 +1628,11 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     status = tuple(status)
 
-    ds = config.get_dataset()
-    events = ds.get_events(event_names=event_names)
-
-    nevents = len(events)
-
-    if nevents == 0:
-        raise GrondError('no events found')
-
     g_data = (config, force, status, nparallel, event_names)
 
     g_state[id(g_data)] = g_data
+
+    nevents = len(event_names)
 
     for x in parimap.parimap(
             process_event,
@@ -1672,6 +1643,17 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
         pass
 
 
+def substitute_template(template, d):
+    try:
+        return Template(template).substitute(d)
+    except KeyError as e:
+        raise GrondError(
+            'invalid placeholder "%s" in template: "%s"' % (str(e), template))
+    except ValueError:
+        raise GrondError(
+            'malformed placeholder in template: "%s"' % template)
+
+
 def process_event(ievent, g_data_id):
 
     config, force, status, nparallel, event_names = g_state[g_data_id]
@@ -1679,28 +1661,27 @@ def process_event(ievent, g_data_id):
     if nparallel > 1:
         status = ()
 
-    ds = config.get_dataset()
+    event_name = event_names[ievent]
 
-    events = ds.get_events(event_names=event_names)
-    nevents = len(events)
+    ds = config.get_dataset(event_name)
 
-    event = events[ievent]
-
-    ds.empty_cache()
+    nevents = len(event_names)
 
     tstart = time.time()
 
+    event = ds.get_event()
+
     problem = config.get_problem(event)
 
-    # FIXME
     synt = ds.synthetic_test
-    if synt and synt.inject_solution:
+    if synt:
         problem.base_source = problem.unpack(synt.get_x())
 
     check_problem(problem)
 
-    rundir = config.rundir_template % dict(
-        problem_name=problem.name)
+    rundir = substitute_template(
+        config.rundir_template,
+        dict(problem_name=problem.name))
 
     if op.exists(rundir):
         if force:
