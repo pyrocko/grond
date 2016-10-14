@@ -6,7 +6,7 @@ import os
 import os.path as op
 import numpy as num
 from scipy import signal
-from pyrocko import automap, beachball, guts, trace, util
+from pyrocko import beachball, guts, trace, util
 from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
@@ -82,50 +82,6 @@ def eigh_sorted(mat):
     evals, evecs = num.linalg.eigh(mat)
     iorder = num.argsort(evals)
     return evals[iorder], evecs[:, iorder]
-
-
-def plot(stations, center_lat, center_lon, radius, output_path,
-         width=25., height=25.,
-         show_station_labels=False):
-
-    station_lats = num.array([s.lat for s in stations])
-    station_lons = num.array([s.lon for s in stations])
-
-    map = automap.Map(
-        width=width,
-        height=height,
-        lat=center_lat,
-        lon=center_lon,
-        radius=radius,
-        show_rivers=False,
-        show_topo=False,
-        illuminate_factor_land=0.35,
-        color_dry=(240, 240, 235),
-        topo_cpt_wet='white_sea_land',
-        topo_cpt_dry='white_sea_land')
-
-    map.gmt.psxy(
-        in_columns=(station_lons, station_lats),
-        S='t8p',
-        G='black',
-        *map.jxyr)
-
-    if show_station_labels:
-        for s in stations:
-            map.add_label(s.lat, s.lon, '%s' % s.station)
-
-    map.save(output_path)
-
-
-def map_geometry(config, output_path):
-    stations = config.get_dataset().get_stations()
-
-    lat0, lon0, radius = core.stations_mean_latlondist(stations)
-
-    radius *= 1.5
-
-    plot(stations, lat0, lon0, radius, output_path,
-         show_station_labels=True)
 
 
 class GrondModel(object):

@@ -28,7 +28,6 @@ subcommand_descriptions = {
     'go': 'run Grond optimization',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
-    'map-geometry': 'make station map',
     'plot': 'plot optimization result',
     'export': 'export results',
 }
@@ -39,7 +38,6 @@ subcommand_usages = {
     'go': 'go <configfile> [options]',
     'forward': 'forward <rundir> [options]',
     'harvest': 'harvest <rundir> [options]',
-    'map-geometry': 'map-geometry <configfile> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
 }
@@ -60,7 +58,6 @@ Subcommands:
     go            %(go)s
     forward       %(forward)s
     harvest       %(harvest)s
-    map-geometry  %(map_geometry)s
     plot          %(plot)s
     export        %(export)s
 
@@ -276,19 +273,6 @@ def command_harvest(args):
         force=options.force,
         nbest=options.neach,
         weed=options.weed)
-
-
-def command_map_geometry(args):
-    from grond import plot
-
-    parser, options, args = cl_parse('map-geometry', args)
-    if len(args) != 2:
-        help_and_die(parser, 'two arguments required')
-
-    config_path = args[0]
-    output_path = args[1]
-    config = grond.read_config(config_path)
-    plot.map_geometry(config, output_path)
 
 
 def command_plot(args):
