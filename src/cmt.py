@@ -231,7 +231,6 @@ class CMTProblem(core.Problem):
 
     def inter_group_weights2(self, ns):
         group, ngroups = self.get_group_mask()
-
         ws = num.zeros(ns.shape)
         for igroup in xrange(ngroups):
             mask = group == igroup
@@ -268,7 +267,6 @@ class CMTProblem(core.Problem):
     def global_misfits(self, misfits):
         ws = self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
-
         gms = num.sqrt(num.nansum((ws*misfits[:, :, 0])**2, axis=1) /
                        num.nansum((ws*misfits[:, :, 1])**2, axis=1))
         return gms

@@ -225,7 +225,6 @@ class Problem(Object):
 
             groups[itarget] = ngroups - 1
 
-        ngroups += 1
         return groups, ngroups
 
     def get_group_mask(self):
@@ -1132,7 +1131,6 @@ def analyse(problem, niter=1000, show_progress=False):
 
     weights = 1.0 / mean_ms
     for igroup in xrange(ngroups):
-        print weights[groups == igroup]
         weights[groups == igroup] /= (
             num.nansum(weights[groups == igroup]) /
             num.nansum(num.isfinite(weights[groups == igroup])))
@@ -1565,7 +1563,6 @@ def check(config, event_names=None):
             results_list = []
             for i in xrange(10):
                 x = problem.random_uniform(xbounds)
-                print x
                 ms, ns, results = problem.evaluate(x, result_mode='full')
                 results_list.append(results)
 
