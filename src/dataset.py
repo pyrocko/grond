@@ -99,11 +99,12 @@ class Dataset(object):
                 self.stations[station.nsl()] = station
 
         if stationxml_filenames is not None and len(stationxml_filenames) > 0:
-            logger.debug(
-                'Loading stations from StationXML file %s' %
-                stationxml_filenames)
 
             for stationxml_filename in stationxml_filenames:
+                logger.debug(
+                    'Loading stations from StationXML file %s' %
+                    stationxml_filename)
+
                 sx = fs.load_xml(filename=stationxml_filename)
                 for station in sx.get_pyrocko_stations():
                     self.stations[station.nsl()] = station
