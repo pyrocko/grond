@@ -634,18 +634,24 @@ class HasPaths(Object):
 
         self._basepath = new_basepath
 
-    def expand_path(self, path):
+    def expand_path(self, path, extra=None):
         assert self._basepath is not None
+
+        if extra is None:
+            def extra(path):
+                return path
 
         path_prefix = self.path_prefix or self._parent_path_prefix
 
         if path is None:
             return None
         elif isinstance(path, basestring):
-            return op.normpath(xjoin(self._basepath, xjoin(path_prefix, path)))
+            return extra(
+                op.normpath(xjoin(self._basepath, xjoin(path_prefix, path))))
         else:
             return [
-                op.normpath(xjoin(self._basepath, xjoin(path_prefix, p)))
+                extra(
+                    op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
                 for p in path]
 
 
@@ -757,7 +763,13 @@ class DatasetConfig(HasPaths):
 
     def get_dataset(self, event_name):
         if event_name not in self._ds:
-            fp = self.expand_path
+            def extra(path):
+                return expand_template(path, dict(
+                    event_name=event_name))
+
+            def fp(path):
+                return self.expand_path(path, extra=extra)
+
             ds = dataset.Dataset(event_name)
             ds.add_stations(
                 pyrocko_stations_filename=fp(self.stations_path),
@@ -1643,7 +1655,7 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
         pass
 
 
-def substitute_template(template, d):
+def expand_template(template, d):
     try:
         return Template(template).substitute(d)
     except KeyError as e:
@@ -1679,7 +1691,7 @@ def process_event(ievent, g_data_id):
 
     check_problem(problem)
 
-    rundir = substitute_template(
+    rundir = expand_template(
         config.rundir_template,
         dict(problem_name=problem.name))
 
@@ -1724,6 +1736,9 @@ def process_event(ievent, g_data_id):
     tstop = time.time()
     logger.info(
         'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
+
+    logger.info(
+        'done with problem %s, rundir is %s' % (problem.name, rundir))
 
 
 class ParameterStats(Object):

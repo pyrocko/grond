@@ -302,7 +302,7 @@ class CMTProblemConfig(core.ProblemConfig):
             event_time=util.time_to_str(event.time))
 
         problem = CMTProblem(
-            name=core.substitute_template(self.name_template, subs),
+            name=core.expand_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
             targets=targets,
