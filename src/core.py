@@ -5,6 +5,7 @@ import logging
 import time
 import copy
 import shutil
+import glob
 import os.path as op
 from string import Template
 
@@ -760,6 +761,21 @@ class DatasetConfig(HasPaths):
         HasPaths.__init__(self, *args, **kwargs)
         self._ds = {}
 
+    def get_event_names(self):
+        def extra(path):
+            return expand_template(path, dict(
+                event_name='*'))
+
+        def fp(path):
+            return self.expand_path(path, extra=extra)
+
+        events = []
+        for fn in glob.glob(fp(self.events_path)):
+            events.extend(model.load_events(filename=fn))
+
+        event_names = [ev.name for ev in events]
+        return event_names
+
     def get_dataset(self, event_name):
         if event_name not in self._ds:
             def extra(path):
@@ -959,6 +975,9 @@ class Config(HasPaths):
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
+
+    def get_event_names(self):
+        return self.dataset_config.get_event_names()
 
     def get_dataset(self, event_name):
         return self.dataset_config.get_dataset(event_name)
@@ -1549,6 +1568,10 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         problem.dump_problem_data(dumpdir, x, ms, ns)
 
 
+def get_event_names(config):
+    return config.get_event_names()
+
+
 def check_problem(problem):
     if len(problem.targets) == 0:
         raise GrondError('no targets available')
@@ -1944,6 +1967,7 @@ __all__ = '''
     forward
     harvest
     go
+    get_event_names
     check
     export
 '''.split()
