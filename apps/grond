@@ -199,6 +199,10 @@ def command_check(args):
                  'comma-separated list of target IDs. Target IDs have the '
                  'form SUPERGROUP.GROUP.NETWORK.STATION.LOCATION.CHANNEL.')
 
+        parser.add_option(
+            '--plot', dest='show_plot', action='store_true',
+            help='plot sample synthetics and data')
+
     parser, options, args = cl_parse('check', args, setup)
     if len(args) < 2:
         help_and_die(parser, 'missing arguments')
@@ -215,7 +219,8 @@ def command_check(args):
     grond.check(
         config,
         event_names=event_names,
-        target_string_ids=target_string_ids)
+        target_string_ids=target_string_ids,
+        show_plot=options.show_plot)
 
 
 def command_go(args):

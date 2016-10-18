@@ -1576,10 +1576,9 @@ def check_problem(problem):
     if len(problem.targets) == 0:
         raise GrondError('no targets available')
 
-g_state = {}
 
 
-def check(config, event_names=None, target_string_ids=None):
+def check(config, event_names=None, target_string_ids=None, show_plot=False):
     from matplotlib import pyplot as plt
     from grond.plot import colors
 
@@ -1589,12 +1588,20 @@ def check(config, event_names=None, target_string_ids=None):
         try:
             problem = config.get_problem(event)
 
+
+            _, ngroups = problem.get_group_mask()
+            logger.info('number of target supergroups: %i' % ngroups)
+            logger.info('number of targets (total): %i' % len(problem.targets))
+
             if target_string_ids:
                 problem.targets = [
                     target for target in problem.targets
-                    if target.string_id() in target_string_ids]
+                    if util.match_nslc(target_string_ids, target.string_id())]
+
+            logger.info('number of targets (selected): %i' % len(problem.targets))
 
             check_problem(problem)
+
 
             xbounds = num.array(problem.bounds(), dtype=num.float)
 
@@ -1604,73 +1611,96 @@ def check(config, event_names=None, target_string_ids=None):
                 ms, ns, results = problem.evaluate(x, result_mode='full')
                 results_list.append(results)
 
-            for itarget, target in enumerate(problem.targets):
-                yabsmaxs = []
-                for results in results_list:
-                    result = results[itarget]
-                    if not isinstance(result, gf.SeismosizerError):
-                        yabsmaxs.append(
-                            num.max(num.abs(result.filtered_obs.get_ydata())))
+            if show_plot:
+                for itarget, target in enumerate(problem.targets):
+                    yabsmaxs = []
+                    for results in results_list:
+                        result = results[itarget]
+                        if not isinstance(result, gf.SeismosizerError):
+                            yabsmaxs.append(
+                                num.max(num.abs(
+                                    result.filtered_obs.get_ydata())))
 
-                if yabsmaxs:
-                    yabsmax = max(yabsmaxs) or 1.0
-                else:
-                    yabsmax = None
-
-                fig = None
-                ii = 0
-                for results in results_list:
-                    result = results[itarget]
-                    if not isinstance(result, gf.SeismosizerError):
-                        if fig is None:
-                            fig = plt.figure()
-                            axes = fig.add_subplot(1, 1, 1)
-                            axes.set_ylim(0., 4.)
-                            axes.set_title('%s' % target.string_id())
-
-                        xdata = result.filtered_obs.get_xdata()
-                        ydata = result.filtered_obs.get_ydata() / yabsmax
-                        axes.plot(xdata, ydata*0.5 + 3.5, color='black')
-
-                        color = colors[ii % len(colors)]
-
-                        xdata = result.filtered_syn.get_xdata()
-                        ydata = result.filtered_syn.get_ydata()
-                        ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
-
-                        axes.plot(xdata, ydata*0.5 + 2.5, color=color)
-
-                        xdata = result.processed_syn.get_xdata()
-                        ydata = result.processed_syn.get_ydata()
-                        ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
-
-                        axes.plot(xdata, ydata*0.5 + 1.5, color=color)
-                        if result.tsyn_pick:
-                            axes.axvline(
-                                result.tsyn_pick,
-                                color=(0.7, 0.7, 0.7),
-                                zorder=2)
-
-                        t = result.processed_syn.get_xdata()
-                        taper = result.taper
-
-                        y = num.ones(t.size) * 0.9
-                        taper(y, t[0], t[1] - t[0])
-                        y2 = num.concatenate((y, -y[::-1]))
-                        t2 = num.concatenate((t, t[::-1]))
-                        axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
-                        ii += 1
+                    if yabsmaxs:
+                        yabsmax = max(yabsmaxs) or 1.0
                     else:
-                        logger.info(str(result))
+                        yabsmax = None
 
-                if fig:
-                    plt.show()
+                    fig = None
+                    ii = 0
+                    for results in results_list:
+                        result = results[itarget]
+                        if not isinstance(result, gf.SeismosizerError):
+                            if fig is None:
+                                fig = plt.figure()
+                                axes = fig.add_subplot(1, 1, 1)
+                                axes.set_ylim(0., 4.)
+                                axes.set_title('%s' % target.string_id())
+
+                            xdata = result.filtered_obs.get_xdata()
+                            ydata = result.filtered_obs.get_ydata() / yabsmax
+                            axes.plot(xdata, ydata*0.5 + 3.5, color='black')
+
+                            color = colors[ii % len(colors)]
+
+                            xdata = result.filtered_syn.get_xdata()
+                            ydata = result.filtered_syn.get_ydata()
+                            ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+
+                            axes.plot(xdata, ydata*0.5 + 2.5, color=color)
+
+                            xdata = result.processed_syn.get_xdata()
+                            ydata = result.processed_syn.get_ydata()
+                            ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+
+                            axes.plot(xdata, ydata*0.5 + 1.5, color=color)
+                            if result.tsyn_pick:
+                                axes.axvline(
+                                    result.tsyn_pick,
+                                    color=(0.7, 0.7, 0.7),
+                                    zorder=2)
+
+                            t = result.processed_syn.get_xdata()
+                            taper = result.taper
+
+                            y = num.ones(t.size) * 0.9
+                            taper(y, t[0], t[1] - t[0])
+                            y2 = num.concatenate((y, -y[::-1]))
+                            t2 = num.concatenate((t, t[::-1]))
+                            axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
+                            ii += 1
+                        else:
+                            logger.info(str(result))
+
+                    if fig:
+                        plt.show()
+
+            else:
+                for itarget, target in enumerate(problem.targets):
+
+                    nok = 0
+                    for results in results_list:
+                        result = results[itarget]
+                        if not isinstance(result, gf.SeismosizerError):
+                            nok += 1
+
+                    if nok == 0:
+                        sok = 'not used'
+                    elif nok == len(results_list):
+                        sok = 'ok'
+                    else:
+                        sok = 'not used (%i/%i ok)' % (nok, len(results_list))
+
+                    logger.info('%-40s %s' % (
+                        (target.string_id() + ':', sok)))
 
         except GrondError, e:
             logger.error('event %i, %s: %s' % (
                 ievent,
                 event.name or util.time_to_str(event.time),
                 str(e)))
+
+g_state = {}
 
 
 def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
