@@ -409,7 +409,7 @@ class Dataset(object):
             toffset_noise_extract=toffset_noise_extract)
 
         if deltat is not None:
-            tr.downsample_to(deltat, snap=True)
+            tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
             tr.deltat = deltat
 
         resp = self.get_response(tr)
