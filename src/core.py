@@ -664,7 +664,7 @@ class RandomResponse(trace.FrequencyResponse):
 
     def evaluate(self, freqs):
         n = freqs.size
-        return 1.0 + freqs*(
+        return 1.0 + (
             self._rstate.normal(scale=self.scale, size=n) +
             0.0J * self._rstate.normal(scale=self.scale, size=n))
 
@@ -677,6 +677,8 @@ class SyntheticTest(Object):
     inject_solution = Bool.T(default=False)
     respect_data_availability = Bool.T(default=False)
     add_real_noise = Bool.T(default=False)
+    random_seed = Int.T(optional=True)
+    random_response_scale = Float.T(default=0.0)
     toffset_real_noise = Float.T(default=-3600.)
     x = Dict.T(String.T(), Float.T())
 
@@ -714,21 +716,41 @@ class SyntheticTest(Object):
         if self._synthetics is None:
             x = self.get_x()
             results = problem.forward(x)
-            self._synthetics = results
+            synthetics = {}
+            for iresult, result in enumerate(results):
+                tr = result.trace.pyrocko_trace()
+                tfade = tr.tmax - tr.tmin
+                tr.extend(tr.tmin - tfade, tr.tmax + tfade)
+
+                if self.random_response_scale != 0:
+                    tf = RandomResponse(scale=self.random_response_scale)
+                    rstate = num.random.RandomState(iresult)
+                    tf.set_random_state(rstate)
+                    tr = tr.transfer(
+                        tfade=tfade,
+                        transfer_function=tf)
+
+                synthetics[result.trace.codes] = tr
+
+            self._synthetics = synthetics
 
         return self._synthetics
 
     def get_waveform(self, nslc, tmin, tmax, tfade=0., freqlimits=None):
         synthetics = self.get_synthetics()
-        for result in synthetics:
-            if result.trace.codes == nslc:
-                tr = result.trace.pyrocko_trace()
-                tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
-                tr = tr.transfer(tfade=tfade, freqlimits=freqlimits)
-                tr.chop(tmin, tmax)
-                return tr
 
-        return None
+        if nslc not in synthetics:
+            return None
+
+        tr = synthetics[nslc]
+        tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
+
+        tr = tr.transfer(
+            tfade=tfade,
+            freqlimits=freqlimits)
+
+        tr.chop(tmin, tmax)
+        return tr
 
 
 class DatasetConfig(HasPaths):
@@ -1577,7 +1599,6 @@ def check_problem(problem):
         raise GrondError('no targets available')
 
 
-
 def check(config, event_names=None, target_string_ids=None, show_plot=False):
     from matplotlib import pyplot as plt
     from grond.plot import colors
@@ -1588,7 +1609,6 @@ def check(config, event_names=None, target_string_ids=None, show_plot=False):
         try:
             problem = config.get_problem(event)
 
-
             _, ngroups = problem.get_group_mask()
             logger.info('number of target supergroups: %i' % ngroups)
             logger.info('number of targets (total): %i' % len(problem.targets))
@@ -1598,10 +1618,10 @@ def check(config, event_names=None, target_string_ids=None, show_plot=False):
                     target for target in problem.targets
                     if util.match_nslc(target_string_ids, target.string_id())]
 
-            logger.info('number of targets (selected): %i' % len(problem.targets))
+            logger.info(
+                'number of targets (selected): %i' % len(problem.targets))
 
             check_problem(problem)
-
 
             xbounds = num.array(problem.bounds(), dtype=num.float)
 
