@@ -834,6 +834,8 @@ class TargetConfig(Object):
     group = gf.StringID.T(optional=True)
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
+    depth_min = Float.T(optional=True)
+    depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
     channels = List.T(String.T())
     inner_misfit_config = InnerMisfitConfig.T()
@@ -867,6 +869,14 @@ class TargetConfig(Object):
 
                 if self.distance_max is not None and \
                         target.distance_to(origin) > self.distance_max:
+                    continue
+
+                if self.depth_min is not None and \
+                        target.depth < self.depth_min:
+                    continue
+
+                if self.depth_max is not None and \
+                        target.depth > self.depth_max:
                     continue
 
                 azi, _ = target.azibazi_to(origin)
