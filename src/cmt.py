@@ -175,13 +175,12 @@ class CMTProblem(core.Problem):
         data = []
         results = []
         for target, result in zip(self.targets, resp.results_list[0]):
-
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
 
                 data.append((None, None))
-                results.append(None)
+                results.append(result)
             else:
                 data.append((result.misfit_value, result.misfit_norm))
                 results.append(result)

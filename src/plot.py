@@ -6,7 +6,7 @@ import os
 import os.path as op
 import numpy as num
 from scipy import signal
-from pyrocko import beachball, guts, trace, util
+from pyrocko import beachball, guts, trace, util, gf
 from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
@@ -906,7 +906,7 @@ def draw_fits_figures(ds, model, plt):
 
     dtraces = []
     for target, result in zip(problem.targets, results):
-        if result is None:
+        if isinstance(result, gf.SeismosizerError):
             dtraces.append(None)
             continue
 

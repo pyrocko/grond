@@ -175,7 +175,11 @@ def command_init(args):
 
 def command_check(args):
     def setup(parser):
-        pass
+        parser.add_option(
+            '--target-ids', dest='target_string_ids', metavar='TARGET_IDS',
+            help='process only selected targets. TARGET_IDS is a '
+                 'comma-separated list of target IDs. Target IDs have the '
+                 'form SUPERGROUP.GROUP.NETWORK.STATION.LOCATION.CHANNEL.')
 
     parser, options, args = cl_parse('check', args, setup)
     if len(args) < 2:
@@ -186,9 +190,14 @@ def command_check(args):
 
     config = grond.read_config(config_path)
 
+    target_string_ids = None
+    if options.target_string_ids:
+        target_string_ids = options.target_string_ids.split(',')
+
     grond.check(
         config,
-        event_names=event_names)
+        event_names=event_names,
+        target_string_ids=target_string_ids)
 
 
 def command_go(args):

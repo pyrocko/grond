@@ -1481,7 +1481,7 @@ def forward(rundir_or_config_path, event_names=None):
         events.append(event)
 
         for result in results:
-            if result:
+            if not isinstance(result, gf.SeismosizerError):
                 result.filtered_obs.set_codes(location='ob')
                 result.filtered_syn.set_codes(location='sy')
                 all_trs.append(result.filtered_obs)
@@ -1553,11 +1553,10 @@ def check_problem(problem):
     if len(problem.targets) == 0:
         raise GrondError('no targets available')
 
-
 g_state = {}
 
 
-def check(config, event_names=None):
+def check(config, event_names=None, target_string_ids=None):
     from matplotlib import pyplot as plt
     from grond.plot import colors
 
@@ -1566,6 +1565,12 @@ def check(config, event_names=None):
         event = ds.get_event()
         try:
             problem = config.get_problem(event)
+
+            if target_string_ids:
+                problem.targets = [
+                    target for target in problem.targets
+                    if target.string_id() in target_string_ids]
+
             check_problem(problem)
 
             xbounds = num.array(problem.bounds(), dtype=num.float)
@@ -1580,7 +1585,7 @@ def check(config, event_names=None):
                 yabsmaxs = []
                 for results in results_list:
                     result = results[itarget]
-                    if result:
+                    if not isinstance(result, gf.SeismosizerError):
                         yabsmaxs.append(
                             num.max(num.abs(result.filtered_obs.get_ydata())))
 
@@ -1593,7 +1598,7 @@ def check(config, event_names=None):
                 ii = 0
                 for results in results_list:
                     result = results[itarget]
-                    if result:
+                    if not isinstance(result, gf.SeismosizerError):
                         if fig is None:
                             fig = plt.figure()
                             axes = fig.add_subplot(1, 1, 1)
@@ -1632,6 +1637,8 @@ def check(config, event_names=None):
                         t2 = num.concatenate((t, t[::-1]))
                         axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
                         ii += 1
+                    else:
+                        logger.info(str(result))
 
                 if fig:
                     plt.show()
