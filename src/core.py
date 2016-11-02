@@ -267,6 +267,7 @@ class InnerMisfitConfig(Object):
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T()
     tmax = gf.Timing.T()
+    tfade = Float.T(optional=True)
     pick_synthetic_traveltime = gf.Timing.T(optional=True)
     pick_phasename = String.T(optional=True)
     domain = DomainChoice.T(default='time_domain')
@@ -349,7 +350,12 @@ class MisfitTarget(gf.Target):
         tmin_fit = source.time + store.t(config.tmin, source, self)
         tmax_fit = source.time + store.t(config.tmax, source, self)
         tfade = 1.0/config.fmin
-        return tmin_fit, tmax_fit, tfade
+        if config.tfade is None:
+            tfade_taper = tfade
+        else:
+            tfade_taper = config.tfade
+
+        return tmin_fit, tmax_fit, tfade, tfade_taper
 
     def post_process(self, engine, source, tr_syn):
 
@@ -358,7 +364,8 @@ class MisfitTarget(gf.Target):
 
         config = self.misfit_config
 
-        tmin_fit, tmax_fit, tfade = self.get_taper_params(engine, source)
+        tmin_fit, tmax_fit, tfade, tfade_taper = \
+            self.get_taper_params(engine, source)
 
         ds = self.get_dataset()
 
@@ -426,10 +433,10 @@ class MisfitTarget(gf.Target):
             mr = misfit(
                 tr_obs, tr_syn,
                 taper=trace.CosTaper(
-                    tmin_fit - tfade,
+                    tmin_fit - tfade_taper,
                     tmin_fit,
                     tmax_fit,
-                    tmax_fit + tfade),
+                    tmax_fit + tfade_taper),
                 domain=config.domain,
                 exponent=2,
                 flip=self.flip_norm,
