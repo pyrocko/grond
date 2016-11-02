@@ -1599,7 +1599,13 @@ def check_problem(problem):
         raise GrondError('no targets available')
 
 
-def check(config, event_names=None, target_string_ids=None, show_plot=False):
+def check(
+        config,
+        event_names=None,
+        target_string_ids=None,
+        show_plot=False,
+        n_random_synthetics=10):
+
     from matplotlib import pyplot as plt
     from grond.plot import colors
 
@@ -1626,10 +1632,18 @@ def check(config, event_names=None, target_string_ids=None, show_plot=False):
             xbounds = num.array(problem.bounds(), dtype=num.float)
 
             results_list = []
-            for i in xrange(10):
-                x = problem.random_uniform(xbounds)
+
+            if n_random_synthetics == 0:
+                x = problem.pack(problem.base_source)
                 ms, ns, results = problem.evaluate(x, result_mode='full')
                 results_list.append(results)
+
+            else:
+                for i in xrange(n_random_synthetics):
+                    x = problem.random_uniform(xbounds)
+                    ms, ns, results = problem.evaluate(x, result_mode='full')
+                    results_list.append(results)
+
 
             if show_plot:
                 for itarget, target in enumerate(problem.targets):
