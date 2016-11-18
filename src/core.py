@@ -846,11 +846,11 @@ class DatasetConfig(HasPaths):
                     filename=fp(picks_path))
 
             ds.add_blacklist(self.blacklist)
-            ds.add_blacklist(filenames=self.blacklist_paths)
+            ds.add_blacklist(filenames=fp(self.blacklist_paths))
             if self.whitelist:
                 ds.add_whitelist(self.whitelist)
             if self.whitelist_paths:
-                ds.add_whitelist(filenames=self.whitelist_paths)
+                ds.add_whitelist(filenames=fp(self.whitelist_paths))
 
             ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
             self._ds[event_name] = ds
