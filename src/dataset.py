@@ -165,15 +165,27 @@ class Dataset(object):
             else:
                 self.clippings[k] = num.concatenate(self.clippings, atimes)
 
-    def add_blacklist(self, blacklist):
+    def add_blacklist(self, blacklist=[], filenames=None):
         logger.debug('Loading blacklisted stations')
+        if filenames:
+            blacklist = list(blacklist)
+            for filename in filenames:
+                with open(filename, 'r') as f:
+                    blacklist.extend(s.strip() for s in f.splitlines())
+
         for x in blacklist:
             if isinstance(x, basestring):
                 x = tuple(x.split('.'))
             self.blacklist.add(x)
 
-    def add_whitelist(self, whitelist):
+    def add_whitelist(self, whitelist=[], filenames=None):
         logger.debug('Loading whitelisted stations')
+        if filenames:
+            whitelist = list(whitelist)
+            for filename in filenames:
+                with open(filename, 'r') as f:
+                    whitelist.extend(s.strip() for s in f.splitlines())
+
         if self.whitelist_nslc is None:
             self.whitelist_nslc = set()
             self.whitelist_nsl = set()

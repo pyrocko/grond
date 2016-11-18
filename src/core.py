@@ -773,10 +773,12 @@ class DatasetConfig(HasPaths):
     apply_correction_factors = Bool.T(default=True)
     apply_correction_delays = Bool.T(default=True)
     picks_paths = List.T(Path.T())
+    blacklist_paths = List.T(Path.T())
     blacklist = List.T(
         String.T(),
         help='stations/components to be excluded according to their STA, '
              'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
+    whitelist_paths = List.T(Path.T())
     whitelist = List.T(
         String.T(),
         optional=True,
@@ -844,8 +846,11 @@ class DatasetConfig(HasPaths):
                     filename=fp(picks_path))
 
             ds.add_blacklist(self.blacklist)
+            ds.add_blacklist(filenames=self.blacklist_paths)
             if self.whitelist:
                 ds.add_whitelist(self.whitelist)
+            if self.whitelist_paths:
+                ds.add_whitelist(filenames=self.whitelist_paths)
 
             ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
             self._ds[event_name] = ds
@@ -1650,7 +1655,6 @@ def check(
                     x = problem.random_uniform(xbounds)
                     ms, ns, results = problem.evaluate(x, result_mode='full')
                     results_list.append(results)
-
 
             if show_plot:
                 for itarget, target in enumerate(problem.targets):
