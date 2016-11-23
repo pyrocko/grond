@@ -199,8 +199,6 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
         if (impl - 1) % nfx != nfx - 1:
             axes.get_yaxis().tick_left()
 
-        print iplot, nplots
-
         if (impl - 1) >= (nfx * (nfy-1)) or iplot >= nplots - nfx:
             axes.set_xlabel('Iteration')
             if not (impl - 1) / nfx == 0:

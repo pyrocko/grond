@@ -900,6 +900,9 @@ class TargetConfig(Object):
         targets = []
         for st in ds.get_stations():
             for cha in self.channels:
+                if ds.is_blacklisted((st.nsl() + (cha,))):
+                    continue
+
                 target = MisfitTarget(
                     quantity='displacement',
                     codes=st.nsl() + (cha,),
