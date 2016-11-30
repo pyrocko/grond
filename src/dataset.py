@@ -178,7 +178,7 @@ class Dataset(object):
             blacklist = list(blacklist)
             for filename in filenames:
                 with open(filename, 'r') as f:
-                    blacklist.extend(s.strip() for s in f.splitlines())
+                    blacklist.extend(s.strip() for s in f.read().splitlines())
 
         for x in blacklist:
             if isinstance(x, basestring):
@@ -191,7 +191,7 @@ class Dataset(object):
             whitelist = list(whitelist)
             for filename in filenames:
                 with open(filename, 'r') as f:
-                    whitelist.extend(s.strip() for s in f.splitlines())
+                    whitelist.extend(s.strip() for s in f.read().splitlines())
 
         if self.whitelist_nslc is None:
             self.whitelist_nslc = set()
