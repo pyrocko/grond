@@ -3,7 +3,7 @@ import copy
 import logging
 from collections import defaultdict
 import numpy as num
-from pyrocko import util, pile, model, config, trace, snuffling, \
+from pyrocko import util, pile, model, config, trace, \
     marker as pmarker
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import Object, Tuple, String, Float, dump_all, load_all
