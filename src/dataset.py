@@ -145,7 +145,7 @@ class Dataset(object):
                     fs.load_xml(filename=stationxml_filename))
 
     def add_clippings(self, markers_filename):
-        markers = snuffling.load_markers(markers_filename)
+        markers = pmarker.load_markers(markers_filename)
         clippings = {}
         for marker in markers:
             nslc = marker.one_nslc()
