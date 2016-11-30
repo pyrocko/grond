@@ -18,14 +18,20 @@ class InvalidObject(Exception):
 
 
 class NotFound(Exception):
-    def __init__(self, reason, codes=None):
+    def __init__(self, reason, codes=None, time_range=None):
         self.reason = reason
+        self.time_range = time_range
         self.codes = codes
 
     def __str__(self):
         s = self.reason
         if self.codes:
             s += ' (%s)' % '.'.join(self.codes)
+
+        if self.time_range:
+            s += ' (%s - %s)' % (
+                util.time_to_str(self.time_range[0]),
+                util.time_to_str(self.time_range[1]))
 
         return s
 
@@ -365,8 +371,8 @@ class Dataset(object):
 
     def get_waveform_raw(
             self, obj,
-            tmin=None,
-            tmax=None,
+            tmin,
+            tmax,
             tpad=0.,
             toffset_noise_extract=0.):
 
@@ -406,7 +412,11 @@ class Dataset(object):
 
         else:
             raise NotFound(
-                'waveform missing or incomplete', (net, sta, loc, cha))
+                'waveform missing or incomplete',
+                codes=(net, sta, loc, cha),
+                time_range=(
+                    tmin + toffset_noise_extract - tpad,
+                    tmax + toffset_noise_extract + tpad))
 
     def get_waveform_restituted(
             self,
