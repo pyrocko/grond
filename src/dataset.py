@@ -3,7 +3,8 @@ import copy
 import logging
 from collections import defaultdict
 import numpy as num
-from pyrocko import util, pile, model, config, trace, snuffling, gui_util
+from pyrocko import util, pile, model, config, trace, snuffling, \
+    marker as pmarker
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import Object, Tuple, String, Float, dump_all, load_all
 
@@ -207,7 +208,7 @@ class Dataset(object):
 
     def add_picks(self, filename):
         self.pick_markers.extend(
-            gui_util.load_markers(filename))
+            pmarker.load_markers(filename))
 
         self._picks = None
 
@@ -639,7 +640,7 @@ class Dataset(object):
             hash_to_name = {}
             names = set()
             for marker in self.pick_markers:
-                if isinstance(marker, gui_util.EventMarker):
+                if isinstance(marker, pmarker.EventMarker):
                     name = marker.get_event().name
                     if name in names:
                         raise DatasetError(
@@ -650,7 +651,7 @@ class Dataset(object):
 
             picks = {}
             for marker in self.pick_markers:
-                if isinstance(marker, gui_util.PhaseMarker):
+                if isinstance(marker, pmarker.PhaseMarker):
                     ehash = marker.get_event_hash()
 
                     nsl = marker.one_nslc()[:3]

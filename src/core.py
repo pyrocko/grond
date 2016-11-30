@@ -14,7 +14,7 @@ import numpy as num
 from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
     StringChoice, Dict, Timestamp
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
-from pyrocko import parimap, model, gui_util
+from pyrocko import parimap, model, marker as pmarker
 from pyrocko.guts_array import Array
 
 from grond import dataset
@@ -1545,7 +1545,7 @@ def forward(rundir_or_config_path, event_names=None):
 
     markers = []
     for ev in events:
-        markers.append(gui_util.EventMarker(ev))
+        markers.append(pmarker.EventMarker(ev))
 
     trace.snuffle(all_trs, markers=markers, stations=ds.get_stations())
 
