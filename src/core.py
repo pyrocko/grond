@@ -1621,8 +1621,9 @@ def check(
         show_plot=False,
         n_random_synthetics=10):
 
-    from matplotlib import pyplot as plt
-    from grond.plot import colors
+    if show_plot:
+        from matplotlib import pyplot as plt
+        from grond.plot import colors
 
     for ievent, event_name in enumerate(event_names):
         ds = config.get_dataset(event_name)
