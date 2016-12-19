@@ -684,6 +684,8 @@ class SyntheticTest(Object):
     inject_solution = Bool.T(default=False)
     respect_data_availability = Bool.T(default=False)
     add_real_noise = Bool.T(default=False)
+    add_white_noise = Bool.T(default=False)
+    amplitude_white_noise = Float.T(default=1.0e-6)
     random_seed = Int.T(optional=True)
     random_response_scale = Float.T(default=0.0)
     toffset_real_noise = Float.T(default=-3600.)
@@ -736,6 +738,13 @@ class SyntheticTest(Object):
                     tr = tr.transfer(
                         tfade=tfade,
                         transfer_function=tf)
+
+                if self.add_white_noise:
+                    u = num.random.normal(
+                        scale=self.amplitude_white_noise,
+                        size=tr.data_len())
+
+                    tr.ydata += u
 
                 synthetics[result.trace.codes] = tr
 
