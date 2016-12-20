@@ -683,12 +683,11 @@ class SyntheticWaveformNotAvailable(Exception):
 class SyntheticTest(Object):
     inject_solution = Bool.T(default=False)
     respect_data_availability = Bool.T(default=False)
-    add_real_noise = Bool.T(default=False)
-    add_white_noise = Bool.T(default=False)
-    amplitude_white_noise = Float.T(default=1.0e-6)
-    random_seed = Int.T(optional=True)
+    real_noise_scale = Float.T(default=0.0)
+    white_noise_scale = Float.T(default=0.0)
     random_response_scale = Float.T(default=0.0)
-    toffset_real_noise = Float.T(default=-3600.)
+    real_noise_toffset = Float.T(default=-3600.)
+    random_seed = Int.T(optional=True)
     x = Dict.T(String.T(), Float.T())
 
     def __init__(self, **kwargs):
@@ -733,15 +732,18 @@ class SyntheticTest(Object):
 
                 if self.random_response_scale != 0:
                     tf = RandomResponse(scale=self.random_response_scale)
-                    rstate = num.random.RandomState(iresult)
+                    rstate = num.random.RandomState(
+                        (self.random_seed or 0) + iresult)
                     tf.set_random_state(rstate)
                     tr = tr.transfer(
                         tfade=tfade,
                         transfer_function=tf)
 
-                if self.add_white_noise:
-                    u = num.random.normal(
-                        scale=self.amplitude_white_noise,
+                if self.white_noise_scale != 0.0:
+                    rstate = num.random.RandomState(
+                        (self.random_seed or 0) + iresult)
+                    u = rstate.normal(
+                        scale=self.white_noise_scale,
                         size=tr.data_len())
 
                     tr.ydata += u

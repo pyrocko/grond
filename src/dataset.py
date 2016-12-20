@@ -519,10 +519,10 @@ class Dataset(object):
         toffset_noise_extract = 0.0
         if syn_test:
             if not syn_test.respect_data_availability:
-                if syn_test.add_real_noise:
+                if syn_test.real_noise_scale != 0.0:
                     raise DatasetError(
                         'respect_data_availability=False and '
-                        'add_real_noise=True cannot be combined.')
+                        'addition of real noise cannot be combined.')
 
                 tr = syn_test.get_waveform(
                     nslc, tmin, tmax,
@@ -534,7 +534,7 @@ class Dataset(object):
 
                 return tr
 
-            if syn_test.add_real_noise:
+            if syn_test.real_noise_scale != 0.0:
                 toffset_noise_extract = syn_test.toffset_real_noise
 
         abs_delays = []
@@ -589,9 +589,14 @@ class Dataset(object):
                         tfade=tfade, freqlimits=freqlimits)
 
                     if tr_syn:
-                        if syn_test.add_real_noise:
+                        if syn_test.real_noise_scale != 0.0:
                             tr_syn = tr_syn.copy()
-                            tr_syn.add(tr)
+                            tr_noise = tr.copy()
+                            tr_noise.set_ydata(
+                                tr_noise.get_ydata()
+                                * syn_test.real_noise_scale)
+
+                            tr_syn.add(tr_noise)
 
                         trs_projected_synthetic.append(tr_syn)
 
