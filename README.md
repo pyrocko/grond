@@ -25,14 +25,18 @@ sudo python setup.py install
 ```
 
 
-## Usage
+## Basic usage
 
 Grond can be run as a command line tool or by calling Grond's library functions
 from a Python script. To get a brief description on available options of
 Grond's command line tool, run `grond --help` or `grond <subcommand> --help`.
 Once dataset and configuration are ready, the command
 `grond go <configfile> <eventname>` starts the optimization algorithm for a
-selected event. During the optimization, results are aggregated in a directory,
+selected event. Before running the optimization, to debug problems with the
+dataset and configuration, use `grond check <configfile> <eventname>`. To get
+a list of event names available in a configured setup, run 
+`grond events <configfile>`.
+During the optimization, results are aggregated in a directory,
 referred to in the configuration as `<rundir>`. To visualize the results run
 `grond plot <plotnames> <rundir>`. The results can be exported in various way
 by running the subcommand `grond export <what> <rundir>`.
