@@ -512,7 +512,7 @@ def draw_jointpar_figures(
             ref_color_light = 'none'
             axes.plot(
                 xpar.scaled(fx), ypar.scaled(fy), 's',
-                mew=1.5, ms=5, color=ref_color_light, mec=ref_color)
+                mew=1.5, ms=5, mfc=ref_color_light, mec=ref_color)
 
     figs_flat = []
     for figs_row in figs:
@@ -1397,7 +1397,7 @@ def draw_hudson_figure(model, plt):
         markersize=markersize,
         mew=1,
         mec='black',
-        color='none',
+        mfc='none',
         zorder=-2)
 
     mt = problem.base_source.pyrocko_moment_tensor()
