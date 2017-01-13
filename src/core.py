@@ -1207,6 +1207,7 @@ def analyse(problem, niter=1000, show_progress=False):
     if show_progress:
         pbar = util.progressbar('analysing problem', niter)
 
+    isbad_mask = None
     for iiter in xrange(niter):
         while True:
             x = []
@@ -1221,8 +1222,15 @@ def analyse(problem, niter=1000, show_progress=False):
             except Forbidden:
                 pass
 
-        _, ms = wproblem.evaluate(x)
+        if isbad_mask is not None and num.any(isbad_mask):
+            isok_mask = num.logical_not(isbad_mask)
+        else:
+            isok_mask = None
+
+        _, ms = wproblem.evaluate(x, mask=isok_mask)
         mss[iiter, :] = ms
+
+        isbad_mask = num.isnan(ms)
 
         if show_progress:
             pbar.update(iiter)
@@ -1391,7 +1399,12 @@ def solve(problem,
                 except Forbidden:
                     pass
 
-        ms, ns = problem.evaluate(x)
+        if isbad_mask is not None and num.any(isbad_mask):
+            isok_mask = num.logical_not(isbad_mask)
+        else:
+            isok_mask = None
+
+        ms, ns = problem.evaluate(x, mask=isok_mask)
 
         isbad_mask_new = num.isnan(ms)
         if isbad_mask is not None and num.any(isbad_mask != isbad_mask_new):

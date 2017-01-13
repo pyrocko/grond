@@ -163,27 +163,45 @@ class CMTProblem(core.Problem):
 
         return out
 
-    def evaluate(self, x, result_mode='sparse'):
+    def evaluate(self, x, result_mode='sparse', mask=None):
         source = self.unpack(x)
         engine = self.get_engine()
 
         for target in self.targets:
             target.set_result_mode(result_mode)
 
-        resp = engine.process(source, self.targets)
+        if mask is not None:
+            assert len(mask) == len(self.targets)
+            targets_ok = [
+                target for (target, ok) in zip(self.targets, mask) if ok]
+        else:
+            targets_ok = self.targets
+
+        resp = engine.process(source, targets_ok)
+
+        if mask is not None:
+            ires_ok = 0
+            results = []
+            for target, ok in zip(self.targets, mask):
+                if ok:
+                    results.append(resp.results_list[0][ires_ok])
+                    ires_ok += 1
+                else:
+                    results.append(
+                        gf.SeismosizerError(
+                            'skipped because of previous failure'))
+        else:
+            results = list(resp.results_list[0])
 
         data = []
-        results = []
-        for target, result in zip(self.targets, resp.results_list[0]):
+        for target, result in zip(self.targets, results):
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
 
                 data.append((None, None))
-                results.append(result)
             else:
                 data.append((result.misfit_value, result.misfit_norm))
-                results.append(result)
 
         ms, ns = num.array(data, dtype=num.float).T
         if result_mode == 'full':
