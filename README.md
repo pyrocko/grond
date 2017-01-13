@@ -16,6 +16,15 @@ sudo python setup.py install
 ```
 
 
+## Updating an existing installation
+
+```bash
+cd grond  # change to the directory where you cloned grond to initially
+git pull origin master
+sudo python setup.py install
+```
+
+
 ## Usage
 
 Grond can be run as a command line tool or by calling Grond's library functions
