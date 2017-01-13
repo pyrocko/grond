@@ -2016,7 +2016,7 @@ def process_event(ievent, g_data_id):
           xs_inject=xs_inject,
           **config.solver_config.get_solver_kwargs())
 
-    harvest(rundir, problem)
+    harvest(rundir, problem, force=True)
 
     tstop = time.time()
     logger.info(
