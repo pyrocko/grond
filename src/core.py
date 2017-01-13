@@ -921,6 +921,8 @@ class TargetConfig(Object):
     group = gf.StringID.T(optional=True)
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
+    distance_3d_min = Float.T(optional=True)
+    distance_3d_max = Float.T(optional=True)
     depth_min = Float.T(optional=True)
     depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
@@ -959,6 +961,14 @@ class TargetConfig(Object):
 
                 if self.distance_max is not None and \
                         target.distance_to(origin) > self.distance_max:
+                    continue
+
+                if self.distance_3d_min is not None and \
+                        target.distance_3d_to(origin) < self.distance_3d_min:
+                    continue
+
+                if self.distance_3d_max is not None and \
+                        target.distance_3d_to(origin) > self.distance_3d_max:
                     continue
 
                 if self.depth_min is not None and \
