@@ -323,6 +323,7 @@ def draw_jointpar_figures(
     # cmap = cm.YlOrRd
     # cmap = cm.jet
     cmap = cm.coolwarm
+    msize = 1.5
 
     problem = model.problem
     if not problem:
@@ -490,7 +491,7 @@ def draw_jointpar_figures(
                 xpar.scaled(fx),
                 ypar.scaled(fy),
                 c=color,
-                s=3, alpha=0.5, cmap=cmap, edgecolors='none')
+                s=msize, alpha=0.5, cmap=cmap, edgecolors='none')
 
             cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
             evals, evecs = eigh_sorted(cov)
@@ -1139,7 +1140,6 @@ def draw_fits_figures(ds, model, plt):
                 i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
 
                 axes2 = fig.add_subplot(ny_this, nx_this, i_this)
-
 
                 space = 0.5
                 space_factor = 1.0 + space
