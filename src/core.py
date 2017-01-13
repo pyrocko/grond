@@ -1552,7 +1552,10 @@ def bootstrap_outliers(problem, misfits, std_factor=1.0):
     return num.where(gms > m+s)[0]
 
 
-def forward(rundir_or_config_path, event_names=None):
+def forward(rundir_or_config_path, event_names):
+
+    if not event_names:
+        return
 
     if os.path.isdir(rundir_or_config_path):
         rundir = rundir_or_config_path
@@ -1993,7 +1996,7 @@ def process_event(ievent, g_data_id):
     analyse(
         problem,
         niter=config.analyser_config.niter,
-        show_progress=nparallel == 1)
+        show_progress=nparallel == 1 and status)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)

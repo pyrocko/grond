@@ -81,9 +81,9 @@ def add_common_options(parser):
         type='choice',
         choices=('critical', 'error', 'warning', 'info', 'debug'),
         default='info',
-        help ='set logger level to '
-              '"critical", "error", "warning", "info", or "debug". '
-              'Default is "%default".')
+        help='set logger level to '
+             '"critical", "error", "warning", "info", or "debug". '
+             'Default is "%default".')
 
 
 def process_common_options(options):
@@ -278,6 +278,9 @@ def command_forward(args):
         help_and_die(parser, 'missing arguments')
 
     event_names = args[1:]
+
+    if not event_names:
+        help_and_die(parser, 'no event names given')
 
     run_path = args[0]
     grond.forward(
