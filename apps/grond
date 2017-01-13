@@ -325,8 +325,8 @@ def command_plot(args):
             help='comma-separated list of ouptut formats (default: pdf)')
 
         parser.add_option(
-            '--dpi', '--dpi', dest='dpi', type=float, default=72.,
-            help='DPI setting for raster formats (default=72)')
+            '--dpi', '--dpi', dest='dpi', type=float, default=120.,
+            help='DPI setting for raster formats (default=120)')
 
     plotnames_avail = plot.available_plotnames()
 
