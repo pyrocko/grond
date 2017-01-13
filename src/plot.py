@@ -1019,7 +1019,8 @@ def draw_fits_figures(ds, model, plt):
         logger.warn('no traces to show')
         return []
 
-    skey = lambda tr: (tr.meta['super_group'], tr.meta['group'])
+    def skey(tr):
+        return tr.meta['super_group'], tr.meta['group']
 
     trace_minmaxs = trace.minmax(all_syn_trs, skey)
 
