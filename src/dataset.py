@@ -359,22 +359,13 @@ class Dataset(object):
         else:
             raise NotFound('multiple responses found', (net, sta, loc, cha))
 
-    def get_waveforms_raw(self, obj, tmin=None, tmax=None, tpad=0.):
-        net, sta, loc = self.get_nsl(obj)
-
-        trs = self.pile.all(
-            tmin=tmin, tmax=tmax, tpad=tpad,
-            trace_selector=lambda tr: tr.nslc_id[:3] == (net, sta, loc),
-            want_incomplete=False)
-
-        return trs
-
     def get_waveform_raw(
             self, obj,
             tmin,
             tmax,
             tpad=0.,
-            toffset_noise_extract=0.):
+            toffset_noise_extract=0.,
+            want_incomplete=False):
 
         net, sta, loc, cha = self.get_nslc(obj)
 
@@ -401,16 +392,13 @@ class Dataset(object):
             tmax=tmax+toffset_noise_extract,
             tpad=tpad,
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
-            want_incomplete=False)
+            want_incomplete=want_incomplete)
 
         if toffset_noise_extract != 0.0:
             for tr in trs:
                 tr.shift(-toffset_noise_extract)
 
-        if len(trs) == 1:
-            return trs[0]
-
-        else:
+        if not want_incomplete and len(trs) != 1:
             raise NotFound(
                 'waveform missing or incomplete',
                 codes=(net, sta, loc, cha),
@@ -418,26 +406,36 @@ class Dataset(object):
                     tmin + toffset_noise_extract - tpad,
                     tmax + toffset_noise_extract + tpad))
 
+        return trs
+
     def get_waveform_restituted(
             self,
             obj, quantity='displacement',
             tmin=None, tmax=None, tpad=0.,
             tfade=0., freqlimits=None, deltat=None,
-            toffset_noise_extract=0.):
+            toffset_noise_extract=0.,
+            want_incomplete=False):
 
         assert quantity == 'displacement'  # others not yet implemented
 
-        tr = self.get_waveform_raw(
+        trs_raw = self.get_waveform_raw(
             obj, tmin=tmin, tmax=tmax, tpad=tpad+tfade,
-            toffset_noise_extract=toffset_noise_extract)
+            toffset_noise_extract=toffset_noise_extract,
+            want_incomplete=want_incomplete)
 
-        if deltat is not None:
-            tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
-            tr.deltat = deltat
+        trs_restituted = []
+        for tr in trs_raw:
+            if deltat is not None:
+                tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
+                tr.deltat = deltat
 
-        resp = self.get_response(tr)
-        return tr.transfer(tfade=tfade, freqlimits=freqlimits,
-                           transfer_function=resp, invert=True)
+            resp = self.get_response(tr)
+            trs_restituted.append(
+                tr.transfer(
+                    tfade=tfade, freqlimits=freqlimits,
+                    transfer_function=resp, invert=True))
+
+        return trs_restituted, trs_raw
 
     def _get_projections(
             self, station, backazimuth, source, target, tmin, tmax):
@@ -482,8 +480,10 @@ class Dataset(object):
             tfade=0., freqlimits=None, deltat=None, cache=None,
             backazimuth=None,
             source=None,
-            target=None):
+            target=None,
+            debug=False):
 
+        assert not debug or (debug and cache is None)
         assert quantity == 'displacement'  # others not yet implemented
 
         if cache is True:
@@ -532,7 +532,10 @@ class Dataset(object):
                 if cache is not None:
                     cache[tr.nslc_id, tmin, tmax] = tr
 
-                return tr
+                if debug:
+                    return [], [], []
+                else:
+                    return tr
 
             if syn_test.real_noise_scale != 0.0:
                 toffset_noise_extract = syn_test.toffset_real_noise
@@ -553,21 +556,36 @@ class Dataset(object):
 
         try:
             trs_projected = []
+            trs_restituted = []
+            trs_raw = []
             for matrix, in_channels, out_channels in projections:
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
 
-                trs = []
+                trs_restituted_group = []
+                trs_raw_group = []
                 if channel in deps:
                     for cha in deps[channel]:
-                        trs.append(self.get_waveform_restituted(
-                            station.nsl() + (cha,),
-                            tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
-                            toffset_noise_extract=toffset_noise_extract,
-                            tfade=tfade, freqlimits=freqlimits, deltat=deltat))
+                        trs_restituted_this, trs_raw_this = \
+                            self.get_waveform_restituted(
+                                station.nsl() + (cha,),
+                                tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
+                                toffset_noise_extract=toffset_noise_extract,
+                                tfade=tfade,
+                                freqlimits=freqlimits,
+                                deltat=deltat,
+                                want_incomplete=debug)
+
+                        trs_restituted_group.extend(trs_restituted_this)
+                        trs_raw_group.extend(trs_raw_this)
 
                     trs_projected.extend(
-                        trace.project(trs, matrix, in_channels, out_channels))
+                        trace.project(
+                            trs_restituted_group, matrix,
+                            in_channels, out_channels))
+
+                    trs_restituted.extend(trs_restituted_group)
+                    trs_raw.extend(trs_raw_group)
 
             for tr in trs_projected:
                 sc = self.station_corrections.get(tr.nslc_id, None)
@@ -606,6 +624,9 @@ class Dataset(object):
                 for tr in trs_projected:
                     cache[tr.nslc_id, tmin, tmax] = tr
 
+            if debug:
+                return trs_projected, trs_restituted, trs_raw
+
             for tr in trs_projected:
                 if tr.channel == channel:
                     return tr
@@ -614,7 +635,8 @@ class Dataset(object):
                 'waveform not available', station.nsl() + (channel,))
 
         except NotFound, e:
-            cache[nslc, tmin, tmax] = e
+            if cache is not None:
+                cache[nslc, tmin, tmax] = e
             raise
 
     def get_events(self, magmin=None, event_names=None):
