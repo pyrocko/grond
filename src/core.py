@@ -357,20 +357,31 @@ class MisfitTarget(gf.Target):
 
         return tmin_fit, tmax_fit, tfade, tfade_taper
 
-    def post_process(self, engine, source, tr_syn):
-
-        tr_syn = tr_syn.pyrocko_trace()
+    def get_backazimuth_for_waveform(self):
         nslc = self.codes
+        if nslc[-1] == 'R':
+            backazimuth = self.azimuth + 180.
+        elif nslc[-1] == 'T':
+            backazimuth = self.azimuth + 90.
+        else:
+            backazimuth = None
 
+        return backazimuth
+
+    def get_freqlimits(self):
         config = self.misfit_config
 
-        tmin_fit, tmax_fit, tfade, tfade_taper = \
-            self.get_taper_params(engine, source)
+        return (
+            config.fmin/config.ffactor,
+            config.fmin, config.fmax,
+            config.fmax*config.ffactor)
 
+    def get_pick_shift(self, engine, source):
+        config = self.misfit_config
+        tobs = None
+        tsyn = None
         ds = self.get_dataset()
 
-        tobs_shift = 0.0
-        tsyn = None
         if config.pick_synthetic_traveltime and config.pick_phasename:
             store = engine.get_store(self.store_id)
             tsyn = source.time + store.t(
@@ -383,19 +394,43 @@ class MisfitTarget(gf.Target):
 
             if marker:
                 tobs = marker.tmin
-                tobs_shift = tobs - tsyn
 
-        freqlimits = (
-            config.fmin/config.ffactor,
-            config.fmin, config.fmax,
-            config.fmax*config.ffactor)
+        return tobs, tsyn
 
-        tinc_obs = 1.0/config.fmin
+    def get_cutout_timespan(self, tmin, tmax, tfade):
+        tinc_obs = 1.0 / self.misfit_config.fmin
+
+        tmin_obs = (math.floor(
+            (tmin - tfade) / tinc_obs) - 1.0) * tinc_obs
+        tmax_obs = (math.ceil(
+            (tmax + tfade) / tinc_obs) + 1.0) * tinc_obs
+
+        return tmin_obs, tmax_obs
+
+    def post_process(self, engine, source, tr_syn):
+
+        tr_syn = tr_syn.pyrocko_trace()
+        nslc = self.codes
+
+        config = self.misfit_config
+
+        tmin_fit, tmax_fit, tfade, tfade_taper = \
+            self.get_taper_params(engine, source)
+
+        ds = self.get_dataset()
+
+        tobs, tsyn = self.get_pick_shift(engine, source)
+        if None not in (tobs, tsyn):
+            tobs_shift = tobs - tsyn
+        else:
+            tobs_shift = 0.0
 
         tr_syn.extend(
             tmin_fit - tfade * 2.0,
             tmax_fit + tfade * 2.0,
             fillmethod='repeat')
+
+        freqlimits = self.get_freqlimits()
 
         tr_syn = tr_syn.transfer(
             freqlimits=freqlimits,
@@ -403,19 +438,10 @@ class MisfitTarget(gf.Target):
 
         tr_syn.chop(tmin_fit - 2*tfade, tmax_fit + 2*tfade)
 
-        tmin_obs = (math.floor(
-            (tmin_fit - tfade + tobs_shift) / tinc_obs) - 1.0) * tinc_obs
-        tmax_obs = (math.ceil(
-            (tmax_fit + tfade + tobs_shift) / tinc_obs) + 1.0) * tinc_obs
+        tmin_obs, tmax_obs = self.get_cutout_timespan(
+            tmin_fit+tobs_shift, tmax_fit+tobs_shift, tfade)
 
         try:
-            if nslc[-1] == 'R':
-                backazimuth = self.azimuth + 180.
-            elif nslc[-1] == 'T':
-                backazimuth = self.azimuth + 90.
-            else:
-                backazimuth = None
-
             tr_obs = ds.get_waveform(
                 nslc,
                 tmin=tmin_obs,
@@ -424,7 +450,7 @@ class MisfitTarget(gf.Target):
                 freqlimits=freqlimits,
                 deltat=tr_syn.deltat,
                 cache=True,
-                backazimuth=backazimuth)
+                backazimuth=self.get_backazimuth_for_waveform())
 
             if tobs_shift != 0.0:
                 tr_obs = tr_obs.copy()
@@ -1630,15 +1656,18 @@ def check(
         event_names=None,
         target_string_ids=None,
         show_plot=False,
+        show_waveforms=False,
         n_random_synthetics=10):
 
     if show_plot:
         from matplotlib import pyplot as plt
         from grond.plot import colors
 
+    markers = []
     for ievent, event_name in enumerate(event_names):
         ds = config.get_dataset(event_name)
         event = ds.get_event()
+        trs_all = []
         try:
             problem = config.get_problem(event)
 
@@ -1660,16 +1689,115 @@ def check(
 
             results_list = []
 
+            sources = []
             if n_random_synthetics == 0:
                 x = problem.pack(problem.base_source)
+                sources.append(problem.base_source)
                 ms, ns, results = problem.evaluate(x, result_mode='full')
                 results_list.append(results)
 
             else:
                 for i in xrange(n_random_synthetics):
                     x = problem.random_uniform(xbounds)
+                    sources.append(problem.unpack(x))
                     ms, ns, results = problem.evaluate(x, result_mode='full')
                     results_list.append(results)
+
+            if show_waveforms:
+                engine = config.engine_config.get_engine()
+                times = []
+                tdata = []
+                for target in problem.targets:
+                    tobs_shift_group = []
+                    tcuts = []
+                    for source in sources:
+                        tmin_fit, tmax_fit, tfade, tfade_taper = \
+                            target.get_taper_params(engine, source)
+
+                        times.extend((tmin_fit-tfade*2., tmax_fit+tfade*2.))
+
+                        tobs, tsyn = target.get_pick_shift(engine, source)
+                        if None not in (tobs, tsyn):
+                            tobs_shift = tobs - tsyn
+                        else:
+                            tobs_shift = 0.0
+
+                        tcuts.append(target.get_cutout_timespan(
+                            tmin_fit+tobs_shift, tmax_fit+tobs_shift, tfade))
+
+                        tobs_shift_group.append(tobs_shift)
+
+                    tcuts = num.array(tcuts, dtype=num.float)
+
+                    tdata.append((
+                        tfade,
+                        num.mean(tobs_shift_group),
+                        (num.min(tcuts[:, 0]), num.max(tcuts[:, 1]))))
+
+                tmin = min(times)
+                tmax = max(times)
+
+                tmax += (tmax-tmin)*2
+
+                for (tfade, tobs_shift, tcut), target in zip(
+                        tdata, problem.targets):
+
+                    store = engine.get_store(target.store_id)
+
+                    deltat = store.config.deltat
+
+                    freqlimits = list(target.get_freqlimits())
+                    freqlimits[2] = 0.45/deltat
+                    freqlimits[3] = 0.5/deltat
+                    freqlimits = tuple(freqlimits)
+
+                    trs_projected, trs_restituted, trs_raw = \
+                        ds.get_waveform(
+                            target.codes,
+                            tmin=tmin+tobs_shift,
+                            tmax=tmax+tobs_shift,
+                            tfade=tfade,
+                            freqlimits=freqlimits,
+                            deltat=deltat,
+                            backazimuth=target.get_backazimuth_for_waveform(),
+                            debug=True)
+
+                    trs_projected = copy.deepcopy(trs_projected)
+                    trs_restituted = copy.deepcopy(trs_restituted)
+                    trs_raw = copy.deepcopy(trs_raw)
+
+                    for trx in trs_projected + trs_restituted + trs_raw:
+                        trx.shift(-tobs_shift)
+                        trx.set_codes(
+                            network='',
+                            station=target.string_id(),
+                            location='')
+
+                    for trx in trs_projected:
+                        trx.set_codes(location=trx.location + '2_proj')
+
+                    for trx in trs_restituted:
+                        trx.set_codes(location=trx.location + '1_rest')
+
+                    for trx in trs_raw:
+                        trx.set_codes(location=trx.location + '0_raw')
+
+                    trs_all.extend(trs_projected)
+                    trs_all.extend(trs_restituted)
+                    trs_all.extend(trs_raw)
+
+                    for source in sources:
+                        tmin_fit, tmax_fit, tfade, tfade_taper = \
+                            target.get_taper_params(engine, source)
+
+                        markers.append(pmarker.Marker(
+                            nslc_ids=[('', target.string_id(), '*', '*')],
+                            tmin=tmin_fit, tmax=tmax_fit))
+
+                    markers.append(pmarker.Marker(
+                        nslc_ids=[('', target.string_id(), '*', '*')],
+                        tmin=tcut[0]-tobs_shift, tmax=tcut[1]-tobs_shift,
+                        kind=1))
 
             if show_plot:
                 for itarget, target in enumerate(problem.targets):
@@ -1759,6 +1887,10 @@ def check(
                 ievent,
                 event.name or util.time_to_str(event.time),
                 str(e)))
+
+    if show_waveforms:
+        trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
+
 
 g_state = {}
 

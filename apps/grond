@@ -204,6 +204,10 @@ def command_check(args):
             help='plot sample synthetics and data.')
 
         parser.add_option(
+            '--waveforms', dest='show_waveforms', action='store_true',
+            help='show raw, restituted, projected, and processed waveforms')
+
+        parser.add_option(
             '--nrandom', dest='n_random_synthetics', metavar='N', type='int',
             default=10,
             help='set number of random synthetics to forward model (default: '
@@ -228,6 +232,7 @@ def command_check(args):
         event_names=event_names,
         target_string_ids=target_string_ids,
         show_plot=options.show_plot,
+        show_waveforms=options.show_waveforms,
         n_random_synthetics=options.n_random_synthetics)
 
 
