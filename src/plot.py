@@ -6,13 +6,15 @@ import os
 import os.path as op
 import numpy as num
 from scipy import signal
-from pyrocko import automap, beachball, guts, trace, util
+from pyrocko import beachball, guts, trace, util, gf
 from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
 from matplotlib import cm, patches
-from pyrocko.cake_plot import mpl_init, labelspace, colors, \
+from pyrocko.cake_plot import colors, \
     str_to_mpl_color as scolor, light
+
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins
 
 logger = logging.getLogger('grond.plot')
 
@@ -82,50 +84,6 @@ def eigh_sorted(mat):
     evals, evecs = num.linalg.eigh(mat)
     iorder = num.argsort(evals)
     return evals[iorder], evecs[:, iorder]
-
-
-def plot(stations, center_lat, center_lon, radius, output_path,
-         width=25., height=25.,
-         show_station_labels=False):
-
-    station_lats = num.array([s.lat for s in stations])
-    station_lons = num.array([s.lon for s in stations])
-
-    map = automap.Map(
-        width=width,
-        height=height,
-        lat=center_lat,
-        lon=center_lon,
-        radius=radius,
-        show_rivers=False,
-        show_topo=False,
-        illuminate_factor_land=0.35,
-        color_dry=(240, 240, 235),
-        topo_cpt_wet='white_sea_land',
-        topo_cpt_dry='white_sea_land')
-
-    map.gmt.psxy(
-        in_columns=(station_lons, station_lats),
-        S='t8p',
-        G='black',
-        *map.jxyr)
-
-    if show_station_labels:
-        for s in stations:
-            map.add_label(s.lat, s.lon, '%s' % s.station)
-
-    map.save(output_path)
-
-
-def map_geometry(config, output_path):
-    stations = config.get_dataset().get_stations()
-
-    lat0, lon0, radius = core.stations_mean_latlondist(stations)
-
-    radius *= 1.5
-
-    plot(stations, lat0, lon0, radius, output_path,
-         show_station_labels=True)
 
 
 class GrondModel(object):
@@ -237,11 +195,28 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
     else:
         ibest = gms < misfit_cutoff
 
+    def config_axes(axes, nfx, nfy, impl, iplot, nplots):
+        if (impl - 1) % nfx != nfx - 1:
+            axes.get_yaxis().tick_left()
+
+        if (impl - 1) >= (nfx * (nfy-1)) or iplot >= nplots - nfx:
+            axes.set_xlabel('Iteration')
+            if not (impl - 1) / nfx == 0:
+                axes.get_xaxis().tick_bottom()
+        elif (impl - 1) / nfx == 0:
+            axes.get_xaxis().tick_top()
+            axes.set_xticklabels([])
+        else:
+            axes.get_xaxis().set_visible(False)
+
+    fontsize = 10.0
+
     nfx = 2
-    nfy = 4
+    nfy = 3
     # nfz = (npar + ndep + 1 - 1) / (nfx*nfy) + 1
     cmap = cm.YlOrRd
     cmap = cm.jet
+    msize = 1.5
     axes = None
     figs = []
     fig = None
@@ -250,71 +225,83 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
         impl = ipar % (nfx*nfy) + 1
 
         if impl == 1:
-            fig = plt.figure()
+            fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+            labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
+                                   hspace=2., units=fontsize)
             figs.append(fig)
 
         par = problem.parameters[ipar]
 
-        axes = fig.add_subplot(nfy, nfx, impl, sharex=axes)
+        axes = fig.add_subplot(nfy, nfx, impl)
+        labelpos(axes, 2.5, 2.0)
+
         axes.set_ylabel(par.get_label())
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
-        if impl < (nfx*nfy-1):
-            axes.get_xaxis().set_visible(False)
-        else:
-            axes.set_xlabel('Iteration')
+
+        config_axes(axes, nfx, nfy, impl, ipar, npar+ndep+1)
 
         axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
         axes.set_xlim(0, model.nmodels)
-        axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 
         axes.scatter(
-            imodels[ibest], par.scaled(xs[ibest, ipar]), s=3, c=iorder[ibest],
-            lw=0, cmap=cmap, alpha=alpha)
+            imodels[ibest], par.scaled(xs[ibest, ipar]), s=msize,
+            c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha)
+
+        axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 
     for idep in xrange(ndep):
         # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
         impl = (npar+idep) % (nfx*nfy) + 1
 
         if impl == 1:
-            fig = plt.figure()
+            fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+            labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
+                                   hspace=2., units=fontsize)
             figs.append(fig)
 
         par = problem.dependants[idep]
 
-        axes = fig.add_subplot(nfy, nfx, impl, sharex=axes)
+        axes = fig.add_subplot(nfy, nfx, impl)
+        labelpos(axes, 2.5, 2.0)
+
         axes.set_ylabel(par.get_label())
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
-        if impl < (nfx*nfy-1):
-            axes.get_xaxis().set_visible(False)
-        else:
-            axes.set_xlabel('Iteration')
+
+        config_axes(axes, nfx, nfy, impl, npar+idep, npar+ndep+1)
+
         axes.set_ylim(*fixlim(*par.scaled(bounds[npar+idep])))
         axes.set_xlim(0, model.nmodels)
+
+        ys = problem.make_dependant(xs[ibest, :], par.name)
+        axes.scatter(
+            imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
+            edgecolors='none', cmap=cmap, alpha=alpha)
 
         y = problem.make_dependant(xref, par.name)
         axes.axhline(par.scaled(y), color='black', alpha=0.3)
 
-        ys = problem.make_dependant(xs[ibest, :], par.name)
-        axes.scatter(
-            imodels[ibest], par.scaled(ys), s=3, c=iorder[ibest],
-            lw=0, cmap=cmap, alpha=alpha)
-
     impl = (npar+ndep) % (nfx*nfy) + 1
     if impl == 1:
-        fig = plt.figure()
+        fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+        labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
+                               hspace=2., units=fontsize)
         figs.append(fig)
 
-    axes = fig.add_subplot(nfy, nfx, impl, sharex=axes)
+    axes = fig.add_subplot(nfy, nfx, impl)
+    labelpos(axes, 2.5, 2.0)
+
+    config_axes(axes, nfx, nfy, impl, npar+ndep, npar+ndep+1)
 
     axes.set_ylim(0., 1.5)
-    axes.axhspan(1.0, 1.5, color=(0.8, 0.8, 0.8), alpha=0.2)
-    axes.axhline(1.0, color=(0.5, 0.5, 0.5), zorder=2)
     axes.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4])
     axes.set_yticklabels(['0.0', '0.2', '0.4', '0.6', '0.8', '1', '10', '100'])
 
     axes.scatter(
         imodels[ibest], gms_softclip[ibest], c=iorder[ibest],
-        s=3, lw=0, cmap=cmap, alpha=alpha)
+        s=msize, edgecolors='none', cmap=cmap, alpha=alpha)
+
+    axes.axhspan(1.0, 1.5, color=(0.8, 0.8, 0.8), alpha=0.2)
+    axes.axhline(1.0, color=(0.5, 0.5, 0.5), zorder=2)
 
     axes.set_xlim(0, model.nmodels)
     axes.set_xlabel('Iteration')
@@ -336,6 +323,7 @@ def draw_jointpar_figures(
     # cmap = cm.YlOrRd
     # cmap = cm.jet
     cmap = cm.coolwarm
+    msize = 1.5
 
     problem = model.problem
     if not problem:
@@ -503,7 +491,7 @@ def draw_jointpar_figures(
                 xpar.scaled(fx),
                 ypar.scaled(fy),
                 c=color,
-                s=3, alpha=0.5, cmap=cmap, edgecolors='none')
+                s=msize, alpha=0.5, cmap=cmap, edgecolors='none')
 
             cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
             evals, evecs = eigh_sorted(cov)
@@ -524,7 +512,7 @@ def draw_jointpar_figures(
             ref_color_light = 'none'
             axes.plot(
                 xpar.scaled(fx), ypar.scaled(fy), 's',
-                mew=1.5, ms=5, color=ref_color_light, mec=ref_color)
+                mew=1.5, ms=5, mfc=ref_color_light, mec=ref_color)
 
     figs_flat = []
     for figs_row in figs:
@@ -668,7 +656,11 @@ def draw_solution_figure(
 
 def draw_contributions_figure(model, plt):
 
-    fig = plt.figure()
+    fontsize = 10.
+
+    fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+    labelpos = mpl_margins(fig, nw=2, nh=2, w=7., h=5., wspace=2.,
+                           hspace=5., units=fontsize)
 
     problem = model.problem
     if not problem:
@@ -700,12 +692,14 @@ def draw_contributions_figure(model, plt):
     # nrows = ((problem.ntargets + 1) - 1) / ncols + 1
 
     axes = fig.add_subplot(2, 2, 1)
-    labelspace(axes)
+    labelpos(axes, 2.5, 2.0)
+
     axes.set_ylabel('Relative contribution (smoothed)')
     axes.set_ylim(0.0, 1.0)
 
     axes2 = fig.add_subplot(2, 2, 3, sharex=axes)
-    labelspace(axes2)
+    labelpos(axes2, 2.5, 2.0)
+
     axes2.set_xlabel('Tested model, sorted descending by global misfit value')
 
     axes2.set_ylabel('Square of misfit')
@@ -726,7 +720,6 @@ def draw_contributions_figure(model, plt):
     b /= num.sum(b)
     a = [1]
     ii = 0
-
     for itarget in jsort:
         target = problem.targets[itarget]
         ms = gcms[:, itarget]
@@ -744,11 +737,16 @@ def draw_contributions_figure(model, plt):
             [rel_ms_smooth_sum[::-1], rel_ms_smooth_sum + rel_ms_smooth])
         poly_x = num.concatenate([imodels[::-1], imodels])
 
+        add_args = {}
+        if ii < 20:
+            add_args['label'] = '%s (%.2g)' % (
+                target.string_id(), num.mean(rel_ms[-1]))
+
         axes.fill(
             poly_x, rel_poly_y,
             alpha=0.5,
             color=colors[ii % len(colors)],
-            label='%s (%.2g)' % (target.string_id(), num.mean(rel_ms[-1])))
+            **add_args)
 
         poly_y = num.concatenate(
             [ms_smooth_sum[::-1], ms_smooth_sum + ms_smooth])
@@ -764,14 +762,13 @@ def draw_contributions_figure(model, plt):
         ii += 1
 
     axes.legend(
-        title='Contributions (large to small at minimal global misfit)',
+        title='Contributions (top twenty)',
         bbox_to_anchor=(1.05, 0.0, 1.0, 1.0),
         loc='upper left',
-        ncol=2, borderaxespad=0., prop={'size': 12})
+        ncol=1, borderaxespad=0., prop={'size': 9})
 
     axes2.plot(imodels, gms_softclip, color='black')
     axes2.axhline(1.0, color=(0.5, 0.5, 0.5))
-    fig.tight_layout()
 
     return [fig]
 
@@ -917,7 +914,8 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
 
 
 def draw_fits_figures(ds, model, plt):
-    fontsize = 10
+    fontsize = 8
+    fontsize_title = 10
 
     problem = model.problem
 
@@ -950,7 +948,7 @@ def draw_fits_figures(ds, model, plt):
 
     dtraces = []
     for target, result in zip(problem.targets, results):
-        if result is None:
+        if isinstance(result, gf.SeismosizerError):
             dtraces.append(None)
             continue
 
@@ -1021,7 +1019,8 @@ def draw_fits_figures(ds, model, plt):
         logger.warn('no traces to show')
         return []
 
-    skey = lambda tr: (tr.meta['super_group'], tr.meta['group'])
+    def skey(tr):
+        return tr.meta['super_group'], tr.meta['group']
 
     trace_minmaxs = trace.minmax(all_syn_trs, skey)
 
@@ -1117,7 +1116,17 @@ def draw_fits_figures(ds, model, plt):
                 ixx = ix/nxmax
                 iyy = iy/nymax
                 if (iyy, ixx) not in figures:
-                    figures[iyy, ixx] = plt.figure(figsize=(16, 9))
+                    figures[iyy, ixx] = plt.figure(
+                        figsize=mpl_papersize('a4', 'landscape'))
+
+                    figures[iyy, ixx].subplots_adjust(
+                        left=0.03,
+                        right=1.0 - 0.03,
+                        bottom=0.03,
+                        top=1.0 - 0.06,
+                        wspace=0.2,
+                        hspace=0.2)
+
                     figs.append(figures[iyy, ixx])
 
                 fig = figures[iyy, ixx]
@@ -1127,8 +1136,8 @@ def draw_fits_figures(ds, model, plt):
                 amin, amax = trace_minmaxs[target.super_group, target.group]
                 absmax = max(abs(amin), abs(amax))
 
-                ny_this = min(ny, nymax)
-                nx_this = min(nx, nxmax)
+                ny_this = nymax  # min(ny, nymax)
+                nx_this = nxmax  # min(nx, nxmax)
                 i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
 
                 axes2 = fig.add_subplot(ny_this, nx_this, i_this)
@@ -1196,8 +1205,8 @@ def draw_fits_figures(ds, model, plt):
                         space, 0., asmax,
                         syn_color=syn_color,
                         obs_color=obs_color,
-                        syn_lw=1.5,
-                        obs_lw=1.0,
+                        syn_lw=1.0,
+                        obs_lw=0.75,
                         color_vline=tap_color_annot,
                         fontsize=fontsize)
 
@@ -1209,19 +1218,22 @@ def draw_fits_figures(ds, model, plt):
 
                 plot_trace(
                     axes, result.filtered_syn,
-                    color=syn_color_light, lw=1.5)
+                    color=syn_color_light, lw=1.0)
 
                 plot_trace(
                     axes, result.filtered_obs,
-                    color=obs_color_light)
+                    color=obs_color_light, lw=0.75)
 
                 plot_trace(
                     axes, result.processed_syn,
-                    color=syn_color, lw=1.5)
+                    color=syn_color, lw=1.0)
 
                 plot_trace(
                     axes, result.processed_obs,
-                    color=obs_color)
+                    color=obs_color, lw=0.75)
+
+                xdata = result.filtered_obs.get_xdata()
+                axes.set_xlim(xdata[0], xdata[-1])
 
                 tmarks = [
                     result.processed_obs.tmin,
@@ -1303,7 +1315,7 @@ def draw_fits_figures(ds, model, plt):
             if len(figures) > 1:
                 title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
 
-            fig.suptitle(title, fontsize=fontsize)
+            fig.suptitle(title, fontsize=fontsize_title)
 
     return figs
 
@@ -1311,7 +1323,7 @@ def draw_fits_figures(ds, model, plt):
 def draw_hudson_figure(model, plt):
 
     color = 'black'
-    fontsize = 12.
+    fontsize = 10.
     markersize = fontsize * 1.5
     markersize_small = markersize * 0.2
     beachballsize = markersize
@@ -1385,7 +1397,7 @@ def draw_hudson_figure(model, plt):
         markersize=markersize,
         mew=1,
         mec='black',
-        color='none',
+        mfc='none',
         zorder=-2)
 
     mt = problem.base_source.pyrocko_moment_tensor()
@@ -1472,7 +1484,9 @@ def plot_result(dirname, plotnames_want,
         raise core.GrondError(
             'unavailable plotname: %s' % ', '.join(unavailable))
 
-    mpl_init()
+    fontsize = 10.0
+
+    mpl_init(fontsize=fontsize)
     fns = []
 
     if 3 != len({'bootstrap', 'sequence', 'contributions'} - plotnames_want):
@@ -1502,8 +1516,9 @@ def plot_result(dirname, plotnames_want,
             if plotname in plotnames_want:
                 config = guts.load(filename=op.join(dirname, 'config.yaml'))
                 config.set_basepath(dirname)
-                problem.set_engine(config.engine_config.get_engine())
-                ds = config.get_dataset()
+                config.setup_modelling_environment(problem)
+                event_name = problem.base_source.name
+                ds = config.get_dataset(event_name)
                 figs = plot_dispatch[plotname](ds, model, plt)
                 if save:
                     fns.extend(

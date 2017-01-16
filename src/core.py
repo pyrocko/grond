@@ -5,14 +5,16 @@ import logging
 import time
 import copy
 import shutil
+import glob
 import os.path as op
+from string import Template
 
 import numpy as num
 
 from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
     StringChoice, Dict, Timestamp
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
-from pyrocko import parimap, model, gui_util
+from pyrocko import parimap, model, marker as pmarker
 from pyrocko.guts_array import Array
 
 from grond import dataset
@@ -122,6 +124,7 @@ class Problem(Object):
     parameters = List.T(Parameter.T())
     dependants = List.T(Parameter.T())
     apply_balancing_weights = Bool.T(default=True)
+    base_source = gf.Source.T()
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -223,7 +226,6 @@ class Problem(Object):
 
             groups[itarget] = ngroups - 1
 
-        ngroups += 1
         return groups, ngroups
 
     def get_group_mask(self):
@@ -265,6 +267,7 @@ class InnerMisfitConfig(Object):
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T()
     tmax = gf.Timing.T()
+    tfade = Float.T(optional=True)
     pick_synthetic_traveltime = gf.Timing.T(optional=True)
     pick_phasename = String.T(optional=True)
     domain = DomainChoice.T(default='time_domain')
@@ -347,21 +350,38 @@ class MisfitTarget(gf.Target):
         tmin_fit = source.time + store.t(config.tmin, source, self)
         tmax_fit = source.time + store.t(config.tmax, source, self)
         tfade = 1.0/config.fmin
-        return tmin_fit, tmax_fit, tfade
+        if config.tfade is None:
+            tfade_taper = tfade
+        else:
+            tfade_taper = config.tfade
 
-    def post_process(self, engine, source, tr_syn):
+        return tmin_fit, tmax_fit, tfade, tfade_taper
 
-        tr_syn = tr_syn.pyrocko_trace()
+    def get_backazimuth_for_waveform(self):
         nslc = self.codes
+        if nslc[-1] == 'R':
+            backazimuth = self.azimuth + 180.
+        elif nslc[-1] == 'T':
+            backazimuth = self.azimuth + 90.
+        else:
+            backazimuth = None
 
+        return backazimuth
+
+    def get_freqlimits(self):
         config = self.misfit_config
 
-        tmin_fit, tmax_fit, tfade = self.get_taper_params(engine, source)
+        return (
+            config.fmin/config.ffactor,
+            config.fmin, config.fmax,
+            config.fmax*config.ffactor)
 
+    def get_pick_shift(self, engine, source):
+        config = self.misfit_config
+        tobs = None
+        tsyn = None
         ds = self.get_dataset()
 
-        tobs_shift = 0.0
-        tsyn = None
         if config.pick_synthetic_traveltime and config.pick_phasename:
             store = engine.get_store(self.store_id)
             tsyn = source.time + store.t(
@@ -374,19 +394,43 @@ class MisfitTarget(gf.Target):
 
             if marker:
                 tobs = marker.tmin
-                tobs_shift = tobs - tsyn
 
-        freqlimits = (
-            config.fmin/config.ffactor,
-            config.fmin, config.fmax,
-            config.fmax*config.ffactor)
+        return tobs, tsyn
 
-        tinc_obs = 1.0/config.fmin
+    def get_cutout_timespan(self, tmin, tmax, tfade):
+        tinc_obs = 1.0 / self.misfit_config.fmin
+
+        tmin_obs = (math.floor(
+            (tmin - tfade) / tinc_obs) - 1.0) * tinc_obs
+        tmax_obs = (math.ceil(
+            (tmax + tfade) / tinc_obs) + 1.0) * tinc_obs
+
+        return tmin_obs, tmax_obs
+
+    def post_process(self, engine, source, tr_syn):
+
+        tr_syn = tr_syn.pyrocko_trace()
+        nslc = self.codes
+
+        config = self.misfit_config
+
+        tmin_fit, tmax_fit, tfade, tfade_taper = \
+            self.get_taper_params(engine, source)
+
+        ds = self.get_dataset()
+
+        tobs, tsyn = self.get_pick_shift(engine, source)
+        if None not in (tobs, tsyn):
+            tobs_shift = tobs - tsyn
+        else:
+            tobs_shift = 0.0
 
         tr_syn.extend(
             tmin_fit - tfade * 2.0,
             tmax_fit + tfade * 2.0,
             fillmethod='repeat')
+
+        freqlimits = self.get_freqlimits()
 
         tr_syn = tr_syn.transfer(
             freqlimits=freqlimits,
@@ -394,19 +438,10 @@ class MisfitTarget(gf.Target):
 
         tr_syn.chop(tmin_fit - 2*tfade, tmax_fit + 2*tfade)
 
-        tmin_obs = (math.floor(
-            (tmin_fit - tfade + tobs_shift) / tinc_obs) - 1.0) * tinc_obs
-        tmax_obs = (math.ceil(
-            (tmax_fit + tfade + tobs_shift) / tinc_obs) + 1.0) * tinc_obs
+        tmin_obs, tmax_obs = self.get_cutout_timespan(
+            tmin_fit+tobs_shift, tmax_fit+tobs_shift, tfade)
 
         try:
-            if nslc[-1] == 'R':
-                backazimuth = self.azimuth + 180.
-            elif nslc[-1] == 'T':
-                backazimuth = self.azimuth + 90.
-            else:
-                backazimuth = None
-
             tr_obs = ds.get_waveform(
                 nslc,
                 tmin=tmin_obs,
@@ -415,7 +450,7 @@ class MisfitTarget(gf.Target):
                 freqlimits=freqlimits,
                 deltat=tr_syn.deltat,
                 cache=True,
-                backazimuth=backazimuth)
+                backazimuth=self.get_backazimuth_for_waveform())
 
             if tobs_shift != 0.0:
                 tr_obs = tr_obs.copy()
@@ -424,10 +459,10 @@ class MisfitTarget(gf.Target):
             mr = misfit(
                 tr_obs, tr_syn,
                 taper=trace.CosTaper(
-                    tmin_fit - tfade,
+                    tmin_fit - tfade_taper,
                     tmin_fit,
                     tmax_fit,
-                    tmax_fit + tfade),
+                    tmax_fit + tfade_taper),
                 domain=config.domain,
                 exponent=2,
                 flip=self.flip_norm,
@@ -632,18 +667,24 @@ class HasPaths(Object):
 
         self._basepath = new_basepath
 
-    def expand_path(self, path):
+    def expand_path(self, path, extra=None):
         assert self._basepath is not None
+
+        if extra is None:
+            def extra(path):
+                return path
 
         path_prefix = self.path_prefix or self._parent_path_prefix
 
         if path is None:
             return None
         elif isinstance(path, basestring):
-            return op.normpath(xjoin(self._basepath, xjoin(path_prefix, path)))
+            return extra(
+                op.normpath(xjoin(self._basepath, xjoin(path_prefix, path))))
         else:
             return [
-                op.normpath(xjoin(self._basepath, xjoin(path_prefix, p)))
+                extra(
+                    op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
                 for p in path]
 
 
@@ -656,7 +697,7 @@ class RandomResponse(trace.FrequencyResponse):
 
     def evaluate(self, freqs):
         n = freqs.size
-        return 1.0 + freqs*(
+        return 1.0 + (
             self._rstate.normal(scale=self.scale, size=n) +
             0.0J * self._rstate.normal(scale=self.scale, size=n))
 
@@ -666,47 +707,30 @@ class SyntheticWaveformNotAvailable(Exception):
 
 
 class SyntheticTest(Object):
-    random_seed = Int.T(default=0)
     inject_solution = Bool.T(default=False)
-    ignore_data_availability = Bool.T(default=False)
-    add_real_noise = Bool.T(default=False)
-    toffset_real_noise = Float.T(default=-3600.)
+    respect_data_availability = Bool.T(default=False)
+    real_noise_scale = Float.T(default=0.0)
+    white_noise_scale = Float.T(default=0.0)
+    random_response_scale = Float.T(default=0.0)
+    real_noise_toffset = Float.T(default=-3600.)
+    random_seed = Int.T(optional=True)
     x = Dict.T(String.T(), Float.T())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
+        self._problem = None
         self._synthetics = None
-        self._rstate = num.random.RandomState(self.random_seed)
 
-    def set_config(self, config):
-        self._config = config
+    def set_problem(self, problem):
+        self._problem = problem
+        self._synthetics = None
 
     def get_problem(self):
-        raise Exception('TODO: fixme (event_names)')
+        if self._problem is None:
+            raise SyntheticWaveformNotAvailable(
+                'SyntheticTest.set_problem() has not been called yet')
 
-        ds = self._config.get_dataset()
-        events = ds.get_events()
-        event = events[0]
-        return self._config.get_problem(event)
-
-    def get_x_random(self):
-        problem = self.get_problem()
-        xbounds = num.array(problem.bounds(), dtype=num.float)
-        npar = xbounds.shape[0]
-
-        x = num.zeros(npar, dtype=num.float)
-        while True:
-            for i in xrange(npar):
-                x[i] = self._rstate.uniform(xbounds[i, 0], xbounds[i, 1])
-
-            try:
-                x = problem.preconstrain(x)
-                break
-
-            except Forbidden:
-                pass
-
-        return x
+        return self._problem
 
     def get_x(self):
         problem = self.get_problem()
@@ -715,49 +739,62 @@ class SyntheticTest(Object):
                 problem.parameter_array(self.x))
 
         else:
-            print problem.base_source
             x = problem.preconstrain(
                 problem.pack(
                     problem.base_source))
 
-            print x
-            print problem.unpack(x)
-
         return x
 
     def get_synthetics(self):
+        problem = self.get_problem()
         if self._synthetics is None:
-            problem = self.get_problem()
-
             x = self.get_x()
-
             results = problem.forward(x)
-            self._synthetics = results
+            synthetics = {}
+            for iresult, result in enumerate(results):
+                tr = result.trace.pyrocko_trace()
+                tfade = tr.tmax - tr.tmin
+                tr.extend(tr.tmin - tfade, tr.tmax + tfade)
+
+                if self.random_response_scale != 0:
+                    tf = RandomResponse(scale=self.random_response_scale)
+                    rstate = num.random.RandomState(
+                        (self.random_seed or 0) + iresult)
+                    tf.set_random_state(rstate)
+                    tr = tr.transfer(
+                        tfade=tfade,
+                        transfer_function=tf)
+
+                if self.white_noise_scale != 0.0:
+                    rstate = num.random.RandomState(
+                        (self.random_seed or 0) + iresult)
+                    u = rstate.normal(
+                        scale=self.white_noise_scale,
+                        size=tr.data_len())
+
+                    tr.ydata += u
+
+                synthetics[result.trace.codes] = tr
+
+            self._synthetics = synthetics
 
         return self._synthetics
 
     def get_waveform(self, nslc, tmin, tmax, tfade=0., freqlimits=None):
         synthetics = self.get_synthetics()
-        for result in synthetics:
-            if result.trace.codes == nslc:
-                tr = result.trace.pyrocko_trace()
-                tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
-                tr2 = tr.copy()
 
-                randomresponse = RandomResponse(scale=10.)
-                randomresponse.set_random_state(self._rstate)
+        if nslc not in synthetics:
+            return None
 
-                tr = tr.transfer(tfade=tfade, freqlimits=freqlimits)
-                tr2 = tr2.transfer(
-                    tfade=tfade,
-                    freqlimits=freqlimits,
-                    transfer_function=randomresponse)
+        tr = synthetics[nslc]
+        tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
 
-                tr.chop(tmin, tmax)
-                tr2.chop(tmin, tmax)
-                return tr2
+        tr = tr.transfer(
+            tfade=tfade,
+            freqlimits=freqlimits)
 
-        return None
+        tr.chop(tmin, tmax)
+        return tr
 
 
 class DatasetConfig(HasPaths):
@@ -773,10 +810,12 @@ class DatasetConfig(HasPaths):
     apply_correction_factors = Bool.T(default=True)
     apply_correction_delays = Bool.T(default=True)
     picks_paths = List.T(Path.T())
+    blacklist_paths = List.T(Path.T())
     blacklist = List.T(
         String.T(),
         help='stations/components to be excluded according to their STA, '
              'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
+    whitelist_paths = List.T(Path.T())
     whitelist = List.T(
         String.T(),
         optional=True,
@@ -788,12 +827,33 @@ class DatasetConfig(HasPaths):
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
-        self._ds = None
+        self._ds = {}
 
-    def get_dataset(self):
-        if self._ds is None:
-            fp = self.expand_path
-            ds = dataset.Dataset()
+    def get_event_names(self):
+        def extra(path):
+            return expand_template(path, dict(
+                event_name='*'))
+
+        def fp(path):
+            return self.expand_path(path, extra=extra)
+
+        events = []
+        for fn in glob.glob(fp(self.events_path)):
+            events.extend(model.load_events(filename=fn))
+
+        event_names = [ev.name for ev in events]
+        return event_names
+
+    def get_dataset(self, event_name):
+        if event_name not in self._ds:
+            def extra(path):
+                return expand_template(path, dict(
+                    event_name=event_name))
+
+            def fp(path):
+                return self.expand_path(path, extra=extra)
+
+            ds = dataset.Dataset(event_name)
             ds.add_stations(
                 pyrocko_stations_filename=fp(self.stations_path),
                 stationxml_filenames=fp(self.stations_stationxml_paths))
@@ -823,13 +883,16 @@ class DatasetConfig(HasPaths):
                     filename=fp(picks_path))
 
             ds.add_blacklist(self.blacklist)
+            ds.add_blacklist(filenames=fp(self.blacklist_paths))
             if self.whitelist:
                 ds.add_whitelist(self.whitelist)
+            if self.whitelist_paths:
+                ds.add_whitelist(filenames=fp(self.whitelist_paths))
 
-            ds.set_synthetic_test(self.synthetic_test)
-            self._ds = ds
+            ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
+            self._ds[event_name] = ds
 
-        return self._ds
+        return self._ds[event_name]
 
 
 def weed(origin, targets, limit, neighborhood=3):
@@ -858,6 +921,10 @@ class TargetConfig(Object):
     group = gf.StringID.T(optional=True)
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
+    distance_3d_min = Float.T(optional=True)
+    distance_3d_max = Float.T(optional=True)
+    depth_min = Float.T(optional=True)
+    depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
     channels = List.T(String.T())
     inner_misfit_config = InnerMisfitConfig.T()
@@ -872,6 +939,9 @@ class TargetConfig(Object):
         targets = []
         for st in ds.get_stations():
             for cha in self.channels:
+                if ds.is_blacklisted((st.nsl() + (cha,))):
+                    continue
+
                 target = MisfitTarget(
                     quantity='displacement',
                     codes=st.nsl() + (cha,),
@@ -891,6 +961,22 @@ class TargetConfig(Object):
 
                 if self.distance_max is not None and \
                         target.distance_to(origin) > self.distance_max:
+                    continue
+
+                if self.distance_3d_min is not None and \
+                        target.distance_3d_to(origin) < self.distance_3d_min:
+                    continue
+
+                if self.distance_3d_max is not None and \
+                        target.distance_3d_to(origin) > self.distance_3d_max:
+                    continue
+
+                if self.depth_min is not None and \
+                        target.depth < self.depth_min:
+                    continue
+
+                if self.depth_max is not None and \
+                        target.depth > self.depth_max:
                     continue
 
                 azi, _ = target.azibazi_to(origin)
@@ -974,15 +1060,14 @@ class Config(HasPaths):
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
 
-    def get_dataset(self):
-        ds = self.dataset_config.get_dataset()
-        if ds.synthetic_test:
-            ds.synthetic_test.set_config(self)
+    def get_event_names(self):
+        return self.dataset_config.get_event_names()
 
-        return ds
+    def get_dataset(self, event_name):
+        return self.dataset_config.get_dataset(event_name)
 
     def get_targets(self, event):
-        ds = self.get_dataset()
+        ds = self.get_dataset(event.name)
 
         targets = []
         for igroup, target_config in enumerate(self.target_configs):
@@ -991,10 +1076,18 @@ class Config(HasPaths):
 
         return targets
 
+    def setup_modelling_environment(self, problem):
+        problem.set_engine(self.engine_config.get_engine())
+        ds = self.get_dataset(problem.base_source.name)
+        synt = ds.synthetic_test
+        if synt:
+            synt.set_problem(problem)
+            problem.base_source = problem.unpack(synt.get_x())
+
     def get_problem(self, event):
         targets = self.get_targets(event)
         problem = self.problem_config.get_problem(event, targets)
-        problem.set_engine(self.engine_config.get_engine())
+        self.setup_modelling_environment(problem)
         return problem
 
 
@@ -1124,6 +1217,7 @@ def analyse(problem, niter=1000, show_progress=False):
     if show_progress:
         pbar = util.progressbar('analysing problem', niter)
 
+    isbad_mask = None
     for iiter in xrange(niter):
         while True:
             x = []
@@ -1138,8 +1232,15 @@ def analyse(problem, niter=1000, show_progress=False):
             except Forbidden:
                 pass
 
-        _, ms = wproblem.evaluate(x)
+        if isbad_mask is not None and num.any(isbad_mask):
+            isok_mask = num.logical_not(isbad_mask)
+        else:
+            isok_mask = None
+
+        _, ms = wproblem.evaluate(x, mask=isok_mask)
         mss[iiter, :] = ms
+
+        isbad_mask = num.isnan(ms)
 
         if show_progress:
             pbar.update(iiter)
@@ -1151,7 +1252,6 @@ def analyse(problem, niter=1000, show_progress=False):
 
     weights = 1.0 / mean_ms
     for igroup in xrange(ngroups):
-        print weights[groups == igroup]
         weights[groups == igroup] /= (
             num.nansum(weights[groups == igroup]) /
             num.nansum(num.isfinite(weights[groups == igroup])))
@@ -1309,7 +1409,12 @@ def solve(problem,
                 except Forbidden:
                     pass
 
-        ms, ns = problem.evaluate(x)
+        if isbad_mask is not None and num.any(isbad_mask):
+            isok_mask = num.logical_not(isbad_mask)
+        else:
+            isok_mask = None
+
+        ms, ns = problem.evaluate(x, mask=isok_mask)
 
         isbad_mask_new = num.isnan(ms)
         if isbad_mask is not None and num.any(isbad_mask != isbad_mask_new):
@@ -1447,7 +1552,10 @@ def bootstrap_outliers(problem, misfits, std_factor=1.0):
     return num.where(gms > m+s)[0]
 
 
-def forward(rundir_or_config_path, event_names=None):
+def forward(rundir_or_config_path, event_names):
+
+    if not event_names:
+        return
 
     if os.path.isdir(rundir_or_config_path):
         rundir = rundir_or_config_path
@@ -1462,7 +1570,7 @@ def forward(rundir_or_config_path, event_names=None):
         ibest = num.argmin(gms)
         xbest = xs[ibest, :]
 
-        ds = config.get_dataset()
+        ds = config.get_dataset(problem.base_source.name)
         problem.set_engine(config.engine_config.get_engine())
 
         for target in problem.targets:
@@ -1472,11 +1580,11 @@ def forward(rundir_or_config_path, event_names=None):
 
     else:
         config = read_config(rundir_or_config_path)
-        ds = config.get_dataset()
-        events = ds.get_events(event_names=event_names)
 
         payload = []
-        for event in events:
+        for event_name in event_names:
+            ds = config.get_dataset(event_name)
+            event = ds.get_event()
             problem = config.get_problem(event)
             xref = problem.preconstrain(
                 problem.pack(problem.base_source))
@@ -1492,7 +1600,7 @@ def forward(rundir_or_config_path, event_names=None):
         events.append(event)
 
         for result in results:
-            if result:
+            if not isinstance(result, gf.SeismosizerError):
                 result.filtered_obs.set_codes(location='ob')
                 result.filtered_syn.set_codes(location='sy')
                 all_trs.append(result.filtered_obs)
@@ -1500,7 +1608,7 @@ def forward(rundir_or_config_path, event_names=None):
 
     markers = []
     for ev in events:
-        markers.append(gui_util.EventMarker(ev))
+        markers.append(pmarker.EventMarker(ev))
 
     trace.snuffle(all_trs, markers=markers, stations=ds.get_stations())
 
@@ -1523,29 +1631,30 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     ibests_list = []
     ibests = []
-    for ibootstrap in xrange(problem.nbootstrap):
-        bms = problem.bootstrap_misfits(misfits, ibootstrap)
-        isort = num.argsort(bms)
-        ibests_list.append(isort[:nbest])
-        ibests.append(isort[0])
-
     gms = problem.global_misfits(misfits)
     isort = num.argsort(gms)
 
     ibests_list.append(isort[:nbest])
 
-    if weed:
-        mean_gm_best = num.median(gms[ibests])
-        std_gm_best = num.std(gms[ibests])
-        ibad = set()
+    if weed != 3:
+        for ibootstrap in xrange(problem.nbootstrap):
+            bms = problem.bootstrap_misfits(misfits, ibootstrap)
+            isort = num.argsort(bms)
+            ibests_list.append(isort[:nbest])
+            ibests.append(isort[0])
 
-        for ibootstrap, ibest in enumerate(ibests):
-            if gms[ibest] > mean_gm_best + std_gm_best:
-                ibad.add(ibootstrap)
+        if weed:
+            mean_gm_best = num.median(gms[ibests])
+            std_gm_best = num.std(gms[ibests])
+            ibad = set()
 
-        ibests_list = [
-            ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
-            if ibootstrap not in ibad]
+            for ibootstrap, ibest in enumerate(ibests):
+                if gms[ibest] > mean_gm_best + std_gm_best:
+                    ibad.add(ibootstrap)
+
+            ibests_list = [
+                ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
+                if ibootstrap not in ibad]
 
     ibests = num.concatenate(ibests_list)
 
@@ -1559,98 +1668,245 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         problem.dump_problem_data(dumpdir, x, ms, ns)
 
 
+def get_event_names(config):
+    return config.get_event_names()
+
+
 def check_problem(problem):
     if len(problem.targets) == 0:
         raise GrondError('no targets available')
 
 
-g_state = {}
+def check(
+        config,
+        event_names=None,
+        target_string_ids=None,
+        show_plot=False,
+        show_waveforms=False,
+        n_random_synthetics=10):
 
+    if show_plot:
+        from matplotlib import pyplot as plt
+        from grond.plot import colors
 
-def check(config, event_names=None):
-    ds = config.get_dataset()
-    events = ds.get_events(event_names=event_names)
-    nevents = len(events)
-
-    from matplotlib import pyplot as plt
-    from grond.plot import colors
-
-    if nevents == 0:
-        raise GrondError('no events found')
-
-    for ievent, event in enumerate(events):
+    markers = []
+    for ievent, event_name in enumerate(event_names):
+        ds = config.get_dataset(event_name)
+        event = ds.get_event()
+        trs_all = []
         try:
             problem = config.get_problem(event)
+
+            _, ngroups = problem.get_group_mask()
+            logger.info('number of target supergroups: %i' % ngroups)
+            logger.info('number of targets (total): %i' % len(problem.targets))
+
+            if target_string_ids:
+                problem.targets = [
+                    target for target in problem.targets
+                    if util.match_nslc(target_string_ids, target.string_id())]
+
+            logger.info(
+                'number of targets (selected): %i' % len(problem.targets))
+
             check_problem(problem)
 
             xbounds = num.array(problem.bounds(), dtype=num.float)
 
             results_list = []
-            for i in xrange(10):
-                x = problem.random_uniform(xbounds)
-                print x
+
+            sources = []
+            if n_random_synthetics == 0:
+                x = problem.pack(problem.base_source)
+                sources.append(problem.base_source)
                 ms, ns, results = problem.evaluate(x, result_mode='full')
                 results_list.append(results)
 
-            for itarget, target in enumerate(problem.targets):
-                yabsmaxs = []
-                for results in results_list:
-                    result = results[itarget]
-                    if result:
-                        yabsmaxs.append(
-                            num.max(num.abs(result.filtered_obs.get_ydata())))
+            else:
+                for i in xrange(n_random_synthetics):
+                    x = problem.random_uniform(xbounds)
+                    sources.append(problem.unpack(x))
+                    ms, ns, results = problem.evaluate(x, result_mode='full')
+                    results_list.append(results)
 
-                if yabsmaxs:
-                    yabsmax = max(yabsmaxs) or 1.0
-                else:
-                    yabsmax = None
+            if show_waveforms:
+                engine = config.engine_config.get_engine()
+                times = []
+                tdata = []
+                for target in problem.targets:
+                    tobs_shift_group = []
+                    tcuts = []
+                    for source in sources:
+                        tmin_fit, tmax_fit, tfade, tfade_taper = \
+                            target.get_taper_params(engine, source)
 
-                fig = None
-                ii = 0
-                for results in results_list:
-                    result = results[itarget]
-                    if result:
-                        if fig is None:
-                            fig = plt.figure()
-                            axes = fig.add_subplot(1, 1, 1)
-                            axes.set_ylim(0., 4.)
-                            axes.set_title('%s' % target.string_id())
+                        times.extend((tmin_fit-tfade*2., tmax_fit+tfade*2.))
 
-                        xdata = result.filtered_obs.get_xdata()
-                        ydata = result.filtered_obs.get_ydata() / yabsmax
-                        axes.plot(xdata, ydata*0.5 + 3.5, color='black')
+                        tobs, tsyn = target.get_pick_shift(engine, source)
+                        if None not in (tobs, tsyn):
+                            tobs_shift = tobs - tsyn
+                        else:
+                            tobs_shift = 0.0
 
-                        color = colors[ii % len(colors)]
+                        tcuts.append(target.get_cutout_timespan(
+                            tmin_fit+tobs_shift, tmax_fit+tobs_shift, tfade))
 
-                        xdata = result.filtered_syn.get_xdata()
-                        ydata = result.filtered_syn.get_ydata()
-                        ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+                        tobs_shift_group.append(tobs_shift)
 
-                        axes.plot(xdata, ydata*0.5 + 2.5, color=color)
+                    tcuts = num.array(tcuts, dtype=num.float)
 
-                        xdata = result.processed_syn.get_xdata()
-                        ydata = result.processed_syn.get_ydata()
-                        ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+                    tdata.append((
+                        tfade,
+                        num.mean(tobs_shift_group),
+                        (num.min(tcuts[:, 0]), num.max(tcuts[:, 1]))))
 
-                        axes.plot(xdata, ydata*0.5 + 1.5, color=color)
-                        if result.tsyn_pick:
-                            axes.axvline(
-                                result.tsyn_pick,
-                                color=(0.7, 0.7, 0.7),
-                                zorder=2)
+                tmin = min(times)
+                tmax = max(times)
 
-                        t = result.processed_syn.get_xdata()
-                        taper = result.taper
+                tmax += (tmax-tmin)*2
 
-                        y = num.ones(t.size) * 0.9
-                        taper(y, t[0], t[1] - t[0])
-                        y2 = num.concatenate((y, -y[::-1]))
-                        t2 = num.concatenate((t, t[::-1]))
-                        axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
-                        ii += 1
+                for (tfade, tobs_shift, tcut), target in zip(
+                        tdata, problem.targets):
 
-                if fig:
-                    plt.show()
+                    store = engine.get_store(target.store_id)
+
+                    deltat = store.config.deltat
+
+                    freqlimits = list(target.get_freqlimits())
+                    freqlimits[2] = 0.45/deltat
+                    freqlimits[3] = 0.5/deltat
+                    freqlimits = tuple(freqlimits)
+
+                    trs_projected, trs_restituted, trs_raw = \
+                        ds.get_waveform(
+                            target.codes,
+                            tmin=tmin+tobs_shift,
+                            tmax=tmax+tobs_shift,
+                            tfade=tfade,
+                            freqlimits=freqlimits,
+                            deltat=deltat,
+                            backazimuth=target.get_backazimuth_for_waveform(),
+                            debug=True)
+
+                    trs_projected = copy.deepcopy(trs_projected)
+                    trs_restituted = copy.deepcopy(trs_restituted)
+                    trs_raw = copy.deepcopy(trs_raw)
+
+                    for trx in trs_projected + trs_restituted + trs_raw:
+                        trx.shift(-tobs_shift)
+                        trx.set_codes(
+                            network='',
+                            station=target.string_id(),
+                            location='')
+
+                    for trx in trs_projected:
+                        trx.set_codes(location=trx.location + '2_proj')
+
+                    for trx in trs_restituted:
+                        trx.set_codes(location=trx.location + '1_rest')
+
+                    for trx in trs_raw:
+                        trx.set_codes(location=trx.location + '0_raw')
+
+                    trs_all.extend(trs_projected)
+                    trs_all.extend(trs_restituted)
+                    trs_all.extend(trs_raw)
+
+                    for source in sources:
+                        tmin_fit, tmax_fit, tfade, tfade_taper = \
+                            target.get_taper_params(engine, source)
+
+                        markers.append(pmarker.Marker(
+                            nslc_ids=[('', target.string_id(), '*', '*')],
+                            tmin=tmin_fit, tmax=tmax_fit))
+
+                    markers.append(pmarker.Marker(
+                        nslc_ids=[('', target.string_id(), '*', '*')],
+                        tmin=tcut[0]-tobs_shift, tmax=tcut[1]-tobs_shift,
+                        kind=1))
+
+            if show_plot:
+                for itarget, target in enumerate(problem.targets):
+                    yabsmaxs = []
+                    for results in results_list:
+                        result = results[itarget]
+                        if not isinstance(result, gf.SeismosizerError):
+                            yabsmaxs.append(
+                                num.max(num.abs(
+                                    result.filtered_obs.get_ydata())))
+
+                    if yabsmaxs:
+                        yabsmax = max(yabsmaxs) or 1.0
+                    else:
+                        yabsmax = None
+
+                    fig = None
+                    ii = 0
+                    for results in results_list:
+                        result = results[itarget]
+                        if not isinstance(result, gf.SeismosizerError):
+                            if fig is None:
+                                fig = plt.figure()
+                                axes = fig.add_subplot(1, 1, 1)
+                                axes.set_ylim(0., 4.)
+                                axes.set_title('%s' % target.string_id())
+
+                            xdata = result.filtered_obs.get_xdata()
+                            ydata = result.filtered_obs.get_ydata() / yabsmax
+                            axes.plot(xdata, ydata*0.5 + 3.5, color='black')
+
+                            color = colors[ii % len(colors)]
+
+                            xdata = result.filtered_syn.get_xdata()
+                            ydata = result.filtered_syn.get_ydata()
+                            ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+
+                            axes.plot(xdata, ydata*0.5 + 2.5, color=color)
+
+                            xdata = result.processed_syn.get_xdata()
+                            ydata = result.processed_syn.get_ydata()
+                            ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
+
+                            axes.plot(xdata, ydata*0.5 + 1.5, color=color)
+                            if result.tsyn_pick:
+                                axes.axvline(
+                                    result.tsyn_pick,
+                                    color=(0.7, 0.7, 0.7),
+                                    zorder=2)
+
+                            t = result.processed_syn.get_xdata()
+                            taper = result.taper
+
+                            y = num.ones(t.size) * 0.9
+                            taper(y, t[0], t[1] - t[0])
+                            y2 = num.concatenate((y, -y[::-1]))
+                            t2 = num.concatenate((t, t[::-1]))
+                            axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
+                            ii += 1
+                        else:
+                            logger.info(str(result))
+
+                    if fig:
+                        plt.show()
+
+            else:
+                for itarget, target in enumerate(problem.targets):
+
+                    nok = 0
+                    for results in results_list:
+                        result = results[itarget]
+                        if not isinstance(result, gf.SeismosizerError):
+                            nok += 1
+
+                    if nok == 0:
+                        sok = 'not used'
+                    elif nok == len(results_list):
+                        sok = 'ok'
+                    else:
+                        sok = 'not used (%i/%i ok)' % (nok, len(results_list))
+
+                    logger.info('%-40s %s' % (
+                        (target.string_id() + ':', sok)))
 
         except GrondError, e:
             logger.error('event %i, %s: %s' % (
@@ -1658,22 +1914,22 @@ def check(config, event_names=None):
                 event.name or util.time_to_str(event.time),
                 str(e)))
 
+    if show_waveforms:
+        trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
+
+
+g_state = {}
+
 
 def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     status = tuple(status)
 
-    ds = config.get_dataset()
-    events = ds.get_events(event_names=event_names)
-
-    nevents = len(events)
-
-    if nevents == 0:
-        raise GrondError('no events found')
-
     g_data = (config, force, status, nparallel, event_names)
 
     g_state[id(g_data)] = g_data
+
+    nevents = len(event_names)
 
     for x in parimap.parimap(
             process_event,
@@ -1684,6 +1940,17 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
         pass
 
 
+def expand_template(template, d):
+    try:
+        return Template(template).substitute(d)
+    except KeyError as e:
+        raise GrondError(
+            'invalid placeholder "%s" in template: "%s"' % (str(e), template))
+    except ValueError:
+        raise GrondError(
+            'malformed placeholder in template: "%s"' % template)
+
+
 def process_event(ievent, g_data_id):
 
     config, force, status, nparallel, event_names = g_state[g_data_id]
@@ -1691,28 +1958,27 @@ def process_event(ievent, g_data_id):
     if nparallel > 1:
         status = ()
 
-    ds = config.get_dataset()
+    event_name = event_names[ievent]
 
-    events = ds.get_events(event_names=event_names)
-    nevents = len(events)
+    ds = config.get_dataset(event_name)
 
-    event = events[ievent]
-
-    ds.empty_cache()
+    nevents = len(event_names)
 
     tstart = time.time()
 
+    event = ds.get_event()
+
     problem = config.get_problem(event)
 
-    # FIXME
     synt = ds.synthetic_test
-    if synt and synt.inject_solution:
+    if synt:
         problem.base_source = problem.unpack(synt.get_x())
 
     check_problem(problem)
 
-    rundir = config.rundir_template % dict(
-        problem_name=problem.name)
+    rundir = expand_template(
+        config.rundir_template,
+        dict(problem_name=problem.name))
 
     if op.exists(rundir):
         if force:
@@ -1730,7 +1996,7 @@ def process_event(ievent, g_data_id):
     analyse(
         problem,
         niter=config.analyser_config.niter,
-        show_progress=nparallel == 1)
+        show_progress=nparallel == 1 and status)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -1750,11 +2016,14 @@ def process_event(ievent, g_data_id):
           xs_inject=xs_inject,
           **config.solver_config.get_solver_kwargs())
 
-    harvest(rundir, problem)
+    harvest(rundir, problem, force=True)
 
     tstop = time.time()
     logger.info(
         'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
+
+    logger.info(
+        'done with problem %s, rundir is %s' % (problem.name, rundir))
 
 
 class ParameterStats(Object):
@@ -1946,6 +2215,7 @@ __all__ = '''
     forward
     harvest
     go
+    get_event_names
     check
     export
 '''.split()

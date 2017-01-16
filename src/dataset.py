@@ -1,8 +1,10 @@
 
+import copy
 import logging
 from collections import defaultdict
 import numpy as num
-from pyrocko import util, pile, model, config, trace, snuffling, gui_util
+from pyrocko import util, pile, model, config, trace, \
+    marker as pmarker
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import Object, Tuple, String, Float, dump_all, load_all
 
@@ -16,11 +18,22 @@ class InvalidObject(Exception):
 
 
 class NotFound(Exception):
-    def __init__(self, *value):
-        self.value = value
+    def __init__(self, reason, codes=None, time_range=None):
+        self.reason = reason
+        self.time_range = time_range
+        self.codes = codes
 
     def __str__(self):
-        return ' '.join([str(v) for v in self.value])
+        s = self.reason
+        if self.codes:
+            s += ' (%s)' % '.'.join(self.codes)
+
+        if self.time_range:
+            s += ' (%s - %s)' % (
+                util.time_to_str(self.time_range[0]),
+                util.time_to_str(self.time_range[1]))
+
+        return s
 
 
 class DatasetError(Exception):
@@ -47,7 +60,7 @@ def dump_station_corrections(station_corrections, filename):
 
 class Dataset(object):
 
-    def __init__(self):
+    def __init__(self, event_name=None):
         self.events = []
         self.pile = pile.Pile()
         self.stations = {}
@@ -66,6 +79,7 @@ class Dataset(object):
         self.synthetic_test = None
         self._picks = None
         self._cache = {}
+        self._event_name = event_name
 
     def empty_cache(self):
         self._cache = {}
@@ -84,15 +98,20 @@ class Dataset(object):
                 self.stations[station.nsl()] = station
 
         if pyrocko_stations_filename is not None:
-            logger.debug('Loading stations from file %s'
-                % pyrocko_stations_filename)
+            logger.debug(
+                'Loading stations from file %s' %
+                pyrocko_stations_filename)
+
             for station in model.load_stations(pyrocko_stations_filename):
                 self.stations[station.nsl()] = station
 
         if stationxml_filenames is not None and len(stationxml_filenames) > 0:
-            logger.debug('Loading stations from StationXML file %s'
-                % stationxml_filenames)
+
             for stationxml_filename in stationxml_filenames:
+                logger.debug(
+                    'Loading stations from StationXML file %s' %
+                    stationxml_filename)
+
                 sx = fs.load_xml(filename=stationxml_filename)
                 for station in sx.get_pyrocko_stations():
                     self.stations[station.nsl()] = station
@@ -116,7 +135,7 @@ class Dataset(object):
                              fileformat=fileformat,
                              show_progress=show_progress)
 
-    def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):            
+    def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
         if sacpz_dirname:
             logger.debug('Loading SAC PZ responses from %s' % sacpz_dirname)
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
@@ -124,13 +143,15 @@ class Dataset(object):
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
-                logger.debug('Loading StationXML responses from %s' %
+                logger.debug(
+                    'Loading StationXML responses from %s' %
                     stationxml_filename)
+
                 self.responses_stationxml.append(
                     fs.load_xml(filename=stationxml_filename))
 
     def add_clippings(self, markers_filename):
-        markers = snuffling.load_markers(markers_filename)
+        markers = pmarker.load_markers(markers_filename)
         clippings = {}
         for marker in markers:
             nslc = marker.one_nslc()
@@ -151,15 +172,27 @@ class Dataset(object):
             else:
                 self.clippings[k] = num.concatenate(self.clippings, atimes)
 
-    def add_blacklist(self, blacklist):
+    def add_blacklist(self, blacklist=[], filenames=None):
         logger.debug('Loading blacklisted stations')
+        if filenames:
+            blacklist = list(blacklist)
+            for filename in filenames:
+                with open(filename, 'r') as f:
+                    blacklist.extend(s.strip() for s in f.read().splitlines())
+
         for x in blacklist:
             if isinstance(x, basestring):
                 x = tuple(x.split('.'))
             self.blacklist.add(x)
 
-    def add_whitelist(self, whitelist):
+    def add_whitelist(self, whitelist=[], filenames=None):
         logger.debug('Loading whitelisted stations')
+        if filenames:
+            whitelist = list(whitelist)
+            for filename in filenames:
+                with open(filename, 'r') as f:
+                    whitelist.extend(s.strip() for s in f.read().splitlines())
+
         if self.whitelist_nslc is None:
             self.whitelist_nslc = set()
             self.whitelist_nsl = set()
@@ -181,7 +214,7 @@ class Dataset(object):
 
     def add_picks(self, filename):
         self.pick_markers.extend(
-            gui_util.load_markers(filename))
+            pmarker.load_markers(filename))
 
         self._picks = None
 
@@ -269,7 +302,7 @@ class Dataset(object):
             if k in self.stations:
                 return self.stations[k]
 
-        raise NotFound('station', keys)
+        raise NotFound('no station information', keys)
 
     def get_stations(self):
         return [self.stations[k] for k in sorted(self.stations)
@@ -278,8 +311,9 @@ class Dataset(object):
 
     def get_response(self, obj):
         if (self.responses is None or len(self.responses) == 0) \
-            and (self.responses_stationxml is None \
-            or len(self.responses_stationxml) == 0):
+                and (self.responses_stationxml is None
+                     or len(self.responses_stationxml) == 0):
+
             raise NotFound('no response information available')
 
         if self.is_blacklisted(obj):
@@ -321,26 +355,17 @@ class Dataset(object):
             return candidates[0]
 
         elif len(candidates) == 0:
-            raise NotFound('no response', (net, sta, loc, cha))
+            raise NotFound('no response found', (net, sta, loc, cha))
         else:
-            raise NotFound('multiple responses', (net, sta, loc, cha))
-
-    def get_waveforms_raw(self, obj, tmin=None, tmax=None, tpad=0.):
-        net, sta, loc = self.get_nsl(obj)
-
-        trs = self.pile.all(
-            tmin=tmin, tmax=tmax, tpad=tpad,
-            trace_selector=lambda tr: tr.nslc_id[:3] == (net, sta, loc),
-            want_incomplete=False)
-
-        return trs
+            raise NotFound('multiple responses found', (net, sta, loc, cha))
 
     def get_waveform_raw(
             self, obj,
-            tmin=None,
-            tmax=None,
+            tmin,
+            tmax,
             tpad=0.,
-            toffset_noise_extract=0.):
+            toffset_noise_extract=0.,
+            want_incomplete=False):
 
         net, sta, loc, cha = self.get_nslc(obj)
 
@@ -367,39 +392,86 @@ class Dataset(object):
             tmax=tmax+toffset_noise_extract,
             tpad=tpad,
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
-            want_incomplete=True)
+            want_incomplete=want_incomplete)
 
         if toffset_noise_extract != 0.0:
             for tr in trs:
                 tr.shift(-toffset_noise_extract)
 
-        if len(trs) == 1:
-            return trs[0]
-
-        else:
+        if not want_incomplete and len(trs) != 1:
             raise NotFound(
-                'waveform missing or incomplete', (net, sta, loc, cha))
+                'waveform missing or incomplete',
+                codes=(net, sta, loc, cha),
+                time_range=(
+                    tmin + toffset_noise_extract - tpad,
+                    tmax + toffset_noise_extract + tpad))
+
+        return trs
 
     def get_waveform_restituted(
             self,
             obj, quantity='displacement',
             tmin=None, tmax=None, tpad=0.,
             tfade=0., freqlimits=None, deltat=None,
-            toffset_noise_extract=0.):
+            toffset_noise_extract=0.,
+            want_incomplete=False):
 
         assert quantity == 'displacement'  # others not yet implemented
 
-        tr = self.get_waveform_raw(
+        trs_raw = self.get_waveform_raw(
             obj, tmin=tmin, tmax=tmax, tpad=tpad+tfade,
-            toffset_noise_extract=toffset_noise_extract)
+            toffset_noise_extract=toffset_noise_extract,
+            want_incomplete=want_incomplete)
 
-        if deltat is not None:
-            tr.downsample_to(deltat, snap=True)
-            tr.deltat = deltat
+        trs_restituted = []
+        for tr in trs_raw:
+            if deltat is not None:
+                tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
+                tr.deltat = deltat
 
-        resp = self.get_response(tr)
-        return tr.transfer(tfade=tfade, freqlimits=freqlimits,
-                           transfer_function=resp, invert=True)
+            resp = self.get_response(tr)
+            trs_restituted.append(
+                tr.transfer(
+                    tfade=tfade, freqlimits=freqlimits,
+                    transfer_function=resp, invert=True))
+
+        return trs_restituted, trs_raw
+
+    def _get_projections(
+            self, station, backazimuth, source, target, tmin, tmax):
+
+        # fill in missing channel information (happens when station file
+        # does not contain any channel information)
+        if not station.get_channels():
+            station = copy.deepcopy(station)
+
+            nsl = station.nsl()
+            trs = self.pile.all(
+                tmin=tmin, tmax=tmax,
+                trace_selector=lambda tr: tr.nslc_id[:3] == nsl,
+                load_data=False)
+
+            channels = list(set(tr.channel for tr in trs))
+            station.set_channels_by_name(*channels)
+
+        projections = []
+        projections.extend(station.guess_projections_to_enu(
+            out_channels=('E', 'N', 'Z')))
+
+        if source is not None and target is not None:
+            backazimuth = source.azibazi_to(target)[1]
+
+        if backazimuth is not None:
+            projections.extend(station.guess_projections_to_rtu(
+                out_channels=('R', 'T', 'Z'),
+                backazimuth=backazimuth))
+
+        if not projections:
+            raise NotFound(
+                'cannot determine projection of data components',
+                station.nsl())
+
+        return projections
 
     def get_waveform(
             self,
@@ -408,8 +480,10 @@ class Dataset(object):
             tfade=0., freqlimits=None, deltat=None, cache=None,
             backazimuth=None,
             source=None,
-            target=None):
+            target=None,
+            debug=False):
 
+        assert not debug or (debug and cache is None)
         assert quantity == 'displacement'  # others not yet implemented
 
         if cache is True:
@@ -444,22 +518,26 @@ class Dataset(object):
         syn_test = self.synthetic_test
         toffset_noise_extract = 0.0
         if syn_test:
-            if syn_test.ignore_data_availability:
-                if syn_test.add_real_noise:
+            if not syn_test.respect_data_availability:
+                if syn_test.real_noise_scale != 0.0:
                     raise DatasetError(
-                        'ignore_data_availability=True and '
-                        'add_real_noise=True cannot be combined.')
+                        'respect_data_availability=False and '
+                        'addition of real noise cannot be combined.')
 
                 tr = syn_test.get_waveform(
                     nslc, tmin, tmax,
-                    tfade=tfade, freqlimits=freqlimits)
+                    tfade=tfade,
+                    freqlimits=freqlimits)
 
                 if cache is not None:
                     cache[tr.nslc_id, tmin, tmax] = tr
 
-                return tr
+                if debug:
+                    return [], [], []
+                else:
+                    return tr
 
-            if syn_test.add_real_noise:
+            if syn_test.real_noise_scale != 0.0:
                 toffset_noise_extract = syn_test.toffset_real_noise
 
         abs_delays = []
@@ -473,39 +551,41 @@ class Dataset(object):
         else:
             abs_delay_max = 0.0
 
-        mios = []
-        mios.extend(station.guess_projections_to_enu(
-            out_channels=('E', 'N', 'Z')))
-
-        if source is not None and target is not None:
-            backazimuth = source.azibazi_to(target)[1]
-
-        if backazimuth is not None:
-            mios.extend(station.guess_projections_to_rtu(
-                out_channels=('R', 'T', 'Z'),
-                backazimuth=backazimuth))
-
-        if not mios:
-            raise NotFound(
-                'cannot determine projection of data components', nslc)
+        projections = self._get_projections(
+            station, backazimuth, source, target, tmin, tmax)
 
         try:
             trs_projected = []
-            for matrix, in_channels, out_channels in mios:
+            trs_restituted = []
+            trs_raw = []
+            for matrix, in_channels, out_channels in projections:
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
 
-                trs = []
+                trs_restituted_group = []
+                trs_raw_group = []
                 if channel in deps:
                     for cha in deps[channel]:
-                        trs.append(self.get_waveform_restituted(
-                            station.nsl() + (cha,),
-                            tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
-                            toffset_noise_extract=toffset_noise_extract,
-                            tfade=tfade, freqlimits=freqlimits, deltat=deltat))
+                        trs_restituted_this, trs_raw_this = \
+                            self.get_waveform_restituted(
+                                station.nsl() + (cha,),
+                                tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
+                                toffset_noise_extract=toffset_noise_extract,
+                                tfade=tfade,
+                                freqlimits=freqlimits,
+                                deltat=deltat,
+                                want_incomplete=debug)
+
+                        trs_restituted_group.extend(trs_restituted_this)
+                        trs_raw_group.extend(trs_raw_this)
 
                     trs_projected.extend(
-                        trace.project(trs, matrix, in_channels, out_channels))
+                        trace.project(
+                            trs_restituted_group, matrix,
+                            in_channels, out_channels))
+
+                    trs_restituted.extend(trs_restituted_group)
+                    trs_raw.extend(trs_raw_group)
 
             for tr in trs_projected:
                 sc = self.station_corrections.get(tr.nslc_id, None)
@@ -527,9 +607,14 @@ class Dataset(object):
                         tfade=tfade, freqlimits=freqlimits)
 
                     if tr_syn:
-                        if syn_test.add_real_noise:
+                        if syn_test.real_noise_scale != 0.0:
                             tr_syn = tr_syn.copy()
-                            tr_syn.add(tr)
+                            tr_noise = tr.copy()
+                            tr_noise.set_ydata(
+                                tr_noise.get_ydata()
+                                * syn_test.real_noise_scale)
+
+                            tr_syn.add(tr_noise)
 
                         trs_projected_synthetic.append(tr_syn)
 
@@ -539,14 +624,19 @@ class Dataset(object):
                 for tr in trs_projected:
                     cache[tr.nslc_id, tmin, tmax] = tr
 
+            if debug:
+                return trs_projected, trs_restituted, trs_raw
+
             for tr in trs_projected:
                 if tr.channel == channel:
                     return tr
 
-            raise NotFound('waveform', station.nsl() + (channel,))
+            raise NotFound(
+                'waveform not available', station.nsl() + (channel,))
 
         except NotFound, e:
-            cache[nslc, tmin, tmax] = e
+            if cache is not None:
+                cache[nslc, tmin, tmax] = e
             raise
 
     def get_events(self, magmin=None, event_names=None):
@@ -558,7 +648,7 @@ class Dataset(object):
 
         return evs
 
-    def get_event(self, t, magmin=None):
+    def get_event_by_time(self, t, magmin=None):
         evs = self.get_events(magmin=magmin)
         ev_x = None
         for ev in evs:
@@ -566,16 +656,28 @@ class Dataset(object):
                 ev_x = ev
 
         if not ev_x:
-            raise NotFound
+            raise NotFound(
+                'no event information matching criteria (t=%s, magmin=%s)' %
+                (t, magmin))
 
         return ev_x
+
+    def get_event(self):
+        if self._event_name is None:
+            raise NotFound('no main event selected in dataset')
+
+        for ev in self.events:
+            if ev.name == self._event_name:
+                return ev
+
+        raise NotFound('no such event: %s' % self._event_name)
 
     def get_picks(self):
         if self._picks is None:
             hash_to_name = {}
             names = set()
             for marker in self.pick_markers:
-                if isinstance(marker, gui_util.EventMarker):
+                if isinstance(marker, pmarker.EventMarker):
                     name = marker.get_event().name
                     if name in names:
                         raise DatasetError(
@@ -586,7 +688,7 @@ class Dataset(object):
 
             picks = {}
             for marker in self.pick_markers:
-                if isinstance(marker, gui_util.PhaseMarker):
+                if isinstance(marker, pmarker.PhaseMarker):
                     ehash = marker.get_event_hash()
 
                     nsl = marker.one_nslc()[:3]

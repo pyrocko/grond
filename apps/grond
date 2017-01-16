@@ -24,22 +24,24 @@ def d2u(d):
 
 subcommand_descriptions = {
     'init': 'print example configuration',
+    'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimization',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
-    'map-geometry': 'make station map',
     'plot': 'plot optimization result',
     'export': 'export results',
 }
 
 subcommand_usages = {
     'init': 'init [options]',
-    'check': 'check <configfile> [options]',
-    'go': 'go <configfile> [options]',
-    'forward': 'forward <rundir> [options]',
+    'events': 'events <configfile>',
+    'check': 'check <configfile> <eventnames> ... [options]',
+    'go': 'go <configfile> <eventnames> ... [options]',
+    'forward': (
+        'forward <rundir> [options]',
+        'forward <configfile> <eventnames> ... [options]'),
     'harvest': 'harvest <rundir> [options]',
-    'map-geometry': 'map-geometry <configfile> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
 }
@@ -56,11 +58,11 @@ usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
 Subcommands:
 
     init          %(init)s
+    events        %(events)s
     check         %(check)s
     go            %(go)s
     forward       %(forward)s
     harvest       %(harvest)s
-    map-geometry  %(map_geometry)s
     plot          %(plot)s
     export        %(export)s
 
@@ -79,9 +81,9 @@ def add_common_options(parser):
         type='choice',
         choices=('critical', 'error', 'warning', 'info', 'debug'),
         default='info',
-        help ='set logger level to '
-              '"critical", "error", "warning", "info", or "debug". '
-              'Default is "%default".')
+        help='set logger level to '
+             '"critical", "error", "warning", "info", or "debug". '
+             'Default is "%default".')
 
 
 def process_common_options(options):
@@ -174,33 +176,68 @@ def command_init(args):
     print config
 
 
-def command_check(args):
+def command_events(args):
     def setup(parser):
-        parser.add_option(
-            '--event', dest='event_name', metavar='EVENTNAME',
-            help='process only event EVENTNAME')
+        pass
 
-    parser, options, args = cl_parse('check', args, setup)
+    parser, options, args = cl_parse('events', args, setup)
     if len(args) != 1:
-        help_and_die(parser, 'no config file given')
-
-    event_names = None
-    if options.event_name:
-        event_names = [options.event_name]
+        help_and_die(parser, 'missing arguments')
 
     config_path = args[0]
     config = grond.read_config(config_path)
 
+    for event_name in grond.get_event_names(config):
+        print event_name
+
+
+def command_check(args):
+    def setup(parser):
+        parser.add_option(
+            '--target-ids', dest='target_string_ids', metavar='TARGET_IDS',
+            help='process only selected targets. TARGET_IDS is a '
+                 'comma-separated list of target IDs. Target IDs have the '
+                 'form SUPERGROUP.GROUP.NETWORK.STATION.LOCATION.CHANNEL.')
+
+        parser.add_option(
+            '--plot', dest='show_plot', action='store_true',
+            help='plot sample synthetics and data.')
+
+        parser.add_option(
+            '--waveforms', dest='show_waveforms', action='store_true',
+            help='show raw, restituted, projected, and processed waveforms')
+
+        parser.add_option(
+            '--nrandom', dest='n_random_synthetics', metavar='N', type='int',
+            default=10,
+            help='set number of random synthetics to forward model (default: '
+                 '10). If set to zero, create synthetics for the reference '
+                 'solution.')
+
+    parser, options, args = cl_parse('check', args, setup)
+    if len(args) < 2:
+        help_and_die(parser, 'missing arguments')
+
+    config_path = args[0]
+    event_names = args[1:]
+
+    config = grond.read_config(config_path)
+
+    target_string_ids = None
+    if options.target_string_ids:
+        target_string_ids = options.target_string_ids.split(',')
+
     grond.check(
         config,
-        event_names=event_names)
+        event_names=event_names,
+        target_string_ids=target_string_ids,
+        show_plot=options.show_plot,
+        show_waveforms=options.show_waveforms,
+        n_random_synthetics=options.n_random_synthetics)
 
 
 def command_go(args):
     def setup(parser):
-        parser.add_option(
-            '--event', dest='event_name', metavar='EVENTNAME',
-            help='process only event EVENTNAME')
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing run directory')
@@ -212,19 +249,17 @@ def command_go(args):
             help='set number of events to process in parallel')
 
     parser, options, args = cl_parse('go', args, setup)
-    if len(args) != 1:
-        help_and_die(parser, 'no config file given')
+    if len(args) < 2:
+        help_and_die(parser, 'missing arguments')
 
     config_path = args[0]
+    event_names = args[1:]
+
     config = grond.read_config(config_path)
     if options.status == 'quiet':
         status = ()
     else:
         status = tuple(options.status.split(','))
-
-    event_names = None
-    if options.event_name:
-        event_names = [options.event_name]
 
     grond.go(
         config,
@@ -236,19 +271,18 @@ def command_go(args):
 
 def command_forward(args):
     def setup(parser):
-        parser.add_option(
-            '--event', dest='event_name', metavar='EVENTNAME',
-            help='process only event EVENTNAME')
+        pass
 
     parser, options, args = cl_parse('forward', args, setup)
-    if len(args) != 1:
-        help_and_die(parser, 'incorrect number of arguments')
+    if len(args) < 1:
+        help_and_die(parser, 'missing arguments')
 
-    event_names = None
-    if options.event_name:
-        event_names = [options.event_name]
+    event_names = args[1:]
 
-    run_path, = args
+    if not event_names:
+        help_and_die(parser, 'no event names given')
+
+    run_path = args[0]
     grond.forward(
         run_path,
         event_names=event_names)
@@ -278,19 +312,6 @@ def command_harvest(args):
         weed=options.weed)
 
 
-def command_map_geometry(args):
-    from grond import plot
-
-    parser, options, args = cl_parse('map-geometry', args)
-    if len(args) != 2:
-        help_and_die(parser, 'two arguments required')
-
-    config_path = args[0]
-    output_path = args[1]
-    config = grond.read_config(config_path)
-    plot.map_geometry(config, output_path)
-
-
 def command_plot(args):
     from grond import plot
 
@@ -304,8 +325,8 @@ def command_plot(args):
             help='comma-separated list of ouptut formats (default: pdf)')
 
         parser.add_option(
-            '--dpi', '--dpi', dest='dpi', type=float, default=72.,
-            help='DPI setting for raster formats (default=72)')
+            '--dpi', '--dpi', dest='dpi', type=float, default=120.,
+            help='DPI setting for raster formats (default=120)')
 
     plotnames_avail = plot.available_plotnames()
 
