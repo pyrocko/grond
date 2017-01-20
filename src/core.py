@@ -885,6 +885,7 @@ class DatasetConfig(HasPaths):
              'Note: ''when whitelisting on channel level, both, the raw and '
              'the processed channel codes have to be listed.')
     synthetic_test = SyntheticTest.T(optional=True)
+    kite_displacement_paths = List.T(Path.T, optional=True)
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
@@ -921,6 +922,11 @@ class DatasetConfig(HasPaths):
 
             ds.add_events(filename=fp(self.events_path))
             ds.add_waveforms(paths=fp(self.waveform_paths))
+
+            if self.kite_displacement_paths:
+                ds.add_kite_displacement(
+                    filenames=fp(self.kite_displacement_paths))
+
             if self.clippings_path:
                 ds.add_clippings(markers_filename=fp(self.clippings_path))
 

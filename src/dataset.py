@@ -76,6 +76,7 @@ class Dataset(object):
         self.apply_correction_delays = True
         self.apply_correction_factors = True
         self.clip_handling = 'by_nsl'
+        self.static_scenes = []
         self.synthetic_test = None
         self._picks = None
         self._cache = {}
@@ -217,6 +218,15 @@ class Dataset(object):
             pmarker.load_markers(filename))
 
         self._picks = None
+
+    def add_kite_displacement(self, filenames):
+        try:
+            from kite import read
+        except ImportError:
+            raise ImportError('Module kite could not be imported, '
+                              'please install from http://pyrocko.org')
+        for file in filenames:
+            self.static_scenes.append(read(file))
 
     def is_blacklisted(self, obj):
         try:
@@ -638,6 +648,9 @@ class Dataset(object):
             if cache is not None:
                 cache[nslc, tmin, tmax] = e
             raise
+
+    def get_displacement(self):
+        return
 
     def get_events(self, magmin=None, event_names=None):
         evs = []
