@@ -265,12 +265,37 @@ class InnerMisfitConfig(Object):
     fmin = Float.T()
     fmax = Float.T()
     ffactor = Float.T(default=1.5)
-    tmin = gf.Timing.T()
-    tmax = gf.Timing.T()
-    tfade = Float.T(optional=True)
-    pick_synthetic_traveltime = gf.Timing.T(optional=True)
-    pick_phasename = String.T(optional=True)
-    domain = DomainChoice.T(default='time_domain')
+    tmin = gf.Timing.T(
+        help='Start of main time window used for waveform fitting.')
+    tmax = gf.Timing.T(
+        help='End of main time window used for waveform fitting.')
+    tfade = Float.T(
+        optional=True,
+        help='Decay time of taper prepended and appended to main time window '
+             'used for waveform fitting [s].')
+    pick_synthetic_traveltime = gf.Timing.T(
+        optional=True,
+        help='Synthetic phase arrival definition for alignment of observed '
+             'and synthetic traces.')
+    pick_phasename = String.T(
+        optional=True,
+        help='Name of picked phase for alignment of observed and synthetic '
+             'traces.')
+    domain = DomainChoice.T(
+        default='time_domain',
+        help='Type of data characteristic to be fitted.\n\nAvailable choices '
+             'are: %s' % ', '.join("``'%s'``" % s
+                                   for s in DomainChoice.choices))
+    tautoshift_max = Float.T(
+        default=0.0,
+        help='If non-zero, allow synthetic and observed traces to be shifted '
+             'against each other by up to +/- the given value [s].')
+    autoshift_penalty_max = Float.T(
+        default=0.0,
+        help='If non-zero, a penalty misfit is added for non-zero shift '
+             'values.\n\nThe penalty value is computed as '
+             '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
+             '/ tautoshift_max**2``')
 
     def get_full_frequency_range(self):
         return self.fmin / self.ffactor, self.fmax * self.ffactor
@@ -466,7 +491,9 @@ class MisfitTarget(gf.Target):
                 domain=config.domain,
                 exponent=2,
                 flip=self.flip_norm,
-                result_mode=self._result_mode)
+                result_mode=self._result_mode,
+                tautoshift_max=config.tautoshift_max,
+                autoshift_penalty_max=config.autoshift_penalty_max)
 
             mr.tobs_shift = float(tobs_shift)
             mr.tsyn_pick = float_or_none(tsyn)
@@ -479,7 +506,8 @@ class MisfitTarget(gf.Target):
 
 
 def misfit(
-        tr_obs, tr_syn, taper, domain, exponent, flip, result_mode='sparse'):
+        tr_obs, tr_syn, taper, domain, exponent, tautoshift_max,
+        autoshift_penalty_max, flip, result_mode='sparse'):
 
     '''
     Calculate misfit between observed and synthetic trace.
@@ -490,6 +518,12 @@ def misfit(
         :py:class:`pyrocko.trace.Taper`
     :param domain: how to calculate difference, see :py:class:`DomainChoice`
     :param exponent: exponent of Lx type norms
+    :param tautoshift_max: if non-zero, return lowest misfit when traces are
+        allowed to shift against each other by up to +/- ``tautoshift_max``
+    :param autoshift_penalty_max: if non-zero, a penalty misfit is added for
+        for non-zero shift values. The penalty value is
+        ``autoshift_penalty_max * normalization_factor * \
+tautoshift**2 / tautoshift_max**2``
     :param flip: ``bool``, if set to ``True``, normalization factor is
         computed against *tr_syn* rather than *tr_obs*
     :param result_mode: ``'full'``, include traces and spectra or ``'sparse'``,
@@ -506,12 +540,39 @@ def misfit(
 
     cc_shift = None
     ctr = None
+    deltat = tr_proc_obs.deltat
     if domain in ('time_domain', 'envelope', 'absolute'):
         a, b = tr_proc_syn.ydata, tr_proc_obs.ydata
         if flip:
             b, a = a, b
 
-        m, n = trace.Lx_norm(a, b, norm=exponent)
+        nshift_max = max(0, min(a.size-1,
+                                int(math.floor(tautoshift_max / deltat))))
+
+        if nshift_max == 0:
+            m, n = trace.Lx_norm(a, b, norm=exponent)
+        else:
+            mns = []
+            for ishift in xrange(-nshift_max, nshift_max+1):
+                if ishift < 0:
+                    a_cut = a[-ishift:]
+                    b_cut = b[:ishift]
+                elif ishift == 0:
+                    a_cut = a
+                    b_cut = b
+                elif ishift > 0:
+                    a_cut = a[:-ishift]
+                    b_cut = b[ishift:]
+
+                mns.append(trace.Lx_norm(a_cut, b_cut, norm=exponent))
+
+            ms, ns = num.array(mns).T
+
+            iarg = num.argmin(ms)
+            tshift = (iarg-nshift_max)*deltat
+
+            m, n = ms[iarg], ns[iarg]
+            m += autoshift_penalty_max * n * tshift**2 / tautoshift_max**2
 
     elif domain == 'cc_max_norm':
 
