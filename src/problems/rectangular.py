@@ -33,10 +33,9 @@ class RectangularProblem(core.Problem):
     dependants = []
 
     targets = List.T(gf.Target.T())
-
     ranges = Dict.T(String.T(), gf.Range.T())
-    distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=10)
+    
+    nbootstrap = 0
 
     def pack(self, source):
         return self.parameter_array(source)
@@ -219,22 +218,17 @@ class RectangularProblem(core.Problem):
 class RectangularProblemConfig(core.ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
-    name = String.T()
-    distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=0)
     apply_balancing_weights = False
 
     def get_problem(self, rect_source, targets):
         base_source = gf.RecangularSource.load(rect_source)
 
         problem = RectangularProblem(
-            name=core.expand_template(self.name_template, self.name),
+            name=core.expand_template(self.name_template),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
             targets=targets,
             ranges=self.ranges,
-            distance_min=self.distance_min,
-            nbootstrap=self.nbootstrap,
             mt_type=self.mt_type)
 
         return problem

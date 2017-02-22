@@ -3,6 +3,7 @@
 import math
 import sys
 import logging
+import os.path as op
 from optparse import OptionParser
 
 from pyrocko import util
@@ -132,43 +133,81 @@ def help_and_die(parser, message):
 
 def command_init(args):
 
-    dataset_config = grond.DatasetConfig(
-        stations_path='stations.txt',
-        events_path='events.txt',
-        waveform_paths=['data'])
+    def setup(parser):
+        parser.add_option(
+            '--waveform', dest='waveform', action='store_true', default=True,
+            help='Create an example configuration for waveform inversion.')
+        parser.add_option(
+            '--static', dest='static', action='store_true',
+            help='Create an example configuration for static displacement'
+                 ' targets using kite scene containers.')
 
-    target_configs = [grond.TargetConfig(
-        distance_min=10*km,
-        distance_max=1000*km,
-        channels=['Z', 'R', 'T'],
-        interpolation='multilinear',
-        store_id='global_2s',
-        inner_misfit_config=grond.InnerMisfitConfig(
-            fmin=0.01,
-            fmax=0.1))]
+    parser, options, args = cl_parse('init', args, setup)
 
-    s2 = math.sqrt(2.0)
+    if options.waveform and not options.static:
+        dataset_config = grond.DatasetConfig(
+            stations_path='stations.txt',
+            events_path='events.txt',
+            waveform_paths=['data'])
 
-    problem_config = grond.CMTProblemConfig(
-        name_template='cmt_%(event_name)s',
-        distance_min=2.*km,
-        nbootstrap=100,
-        mt_type='deviatoric',
-        ranges=dict(
-            time=Range(0, 10.0, relative='add'),
-            north_shift=Range(-16*km, 16*km),
-            east_shift=Range(-16*km, 16*km),
-            depth=Range(1*km, 11*km),
-            magnitude=Range(4.0, 6.0),
-            rmnn=Range(-s2, s2),
-            rmee=Range(-s2, s2),
-            rmdd=Range(-s2, s2),
-            rmne=Range(-1.0, 1.0),
-            rmnd=Range(-1.0, 1.0),
-            rmed=Range(-1.0, 1.0),
-            duration=Range(1.0, 15.0)))
+        target_configs = [grond.TargetConfig(
+            distance_min=10*km,
+            distance_max=1000*km,
+            channels=['Z', 'R', 'T'],
+            interpolation='multilinear',
+            store_id='global_2s',
+            inner_misfit_config=grond.InnerMisfitConfig(
+                fmin=0.01,
+                fmax=0.1))]
+
+        s2 = math.sqrt(2.0)
+        problem_config = grond.CMTProblemConfig(
+            name_template='cmt_%(event_name)s',
+            distance_min=2.*km,
+            nbootstrap=100,
+            mt_type='deviatoric',
+            ranges=dict(
+                time=Range(0, 10.0, relative='add'),
+                north_shift=Range(-16*km, 16*km),
+                east_shift=Range(-16*km, 16*km),
+                depth=Range(1*km, 11*km),
+                magnitude=Range(4.0, 6.0),
+                rmnn=Range(-s2, s2),
+                rmee=Range(-s2, s2),
+                rmdd=Range(-s2, s2),
+                rmne=Range(-1.0, 1.0),
+                rmnd=Range(-1.0, 1.0),
+                rmed=Range(-1.0, 1.0),
+                duration=Range(1.0, 15.0))
+            )
+
+    elif options.static:
+        dataset_config = grond.DatasetConfig(
+            kite_scene_paths=['scenes']
+            )
+
+        target_configs = [grond.TargetConfig(
+            interpolation='multilinear',
+            store_id='global_2s',
+            inner_satellite_misfit_config=grond.InnerSatelliteMisfitConfig(
+                use_kite_covariance=True))]
+
+        problem_config = grond.RectangularProblemConfig(
+            name_template='rect_source',
+            ranges=dict(
+                north_shift=Range(-20*km, 20*km),
+                east_shift=Range(-20*km, 20*km),
+                depth=Range(0*km, 10*km),
+                length=Range(20*km, 40*km),
+                width=Range(5*km, 12*km),
+                dip=Range(20, 70),
+                strike=Range(0, 180),
+                rake=Range(0, 90),
+                slip=Range(1, 3))
+            )
 
     config = grond.Config(
+        rundir_template=op.abspath(op.curdir),
         dataset_config=dataset_config,
         target_configs=target_configs,
         problem_config=problem_config)

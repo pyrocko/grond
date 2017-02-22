@@ -8,7 +8,7 @@ setup(
     version='0.1',
     author='Sebastian Heimann',
     author_email='sebastian.heimann@gfz-potsdam.de',
-    packages=['grond'],
+    packages=['grond', 'grond.problems'],
     package_dir={'grond': 'src'},
     scripts=['apps/grond'],
     package_data={'grond': []},

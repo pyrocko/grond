@@ -266,8 +266,10 @@ class InnerMisfitConfig(Object):
     fmax = Float.T()
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T(
+        optional=True,
         help='Start of main time window used for waveform fitting.')
     tmax = gf.Timing.T(
+        optional=True,
         help='End of main time window used for waveform fitting.')
     tfade = Float.T(
         optional=True,
@@ -299,6 +301,10 @@ class InnerMisfitConfig(Object):
 
     def get_full_frequency_range(self):
         return self.fmin / self.ffactor, self.fmax * self.ffactor
+
+
+class InnerSatelliteMisfitConfig(Object):
+    use_kite_covariance = Bool.T(default=True)
 
 
 class TargetAnalysisResult(Object):
@@ -620,6 +626,7 @@ tautoshift**2 / tautoshift_max**2``
 class MisfitSatelliteTarget(gf.SatelliteTarget):
     scene_id = guts.String.T()
     super_group = gf.StringID.T()
+    inner_misfit_config = InnerSatelliteMisfitConfig.T()
     group = gf.StringID.T()
 
     def __init__(self, *args, **kwargs):
@@ -898,15 +905,17 @@ class SyntheticTest(Object):
 class DatasetConfig(HasPaths):
 
     stations_path = Path.T(optional=True)
-    stations_stationxml_paths = List.T(Path.T())
-    events_path = Path.T()
-    waveform_paths = List.T(Path.T())
+    stations_stationxml_paths = List.T(Path.T(), optional=True)
+    events_path = Path.T(optional=True)
+    waveform_paths = List.T(Path.T(), optional=True)
     clippings_path = Path.T(optional=True)
     responses_sacpz_path = Path.T(optional=True)
-    responses_stationxml_paths = List.T(Path.T())
+    responses_stationxml_paths = List.T(Path.T(), optional=True)
     station_corrections_path = Path.T(optional=True)
-    apply_correction_factors = Bool.T(default=True)
-    apply_correction_delays = Bool.T(default=True)
+    apply_correction_factors = Bool.T(optional=True,
+                                      default=True)
+    apply_correction_delays = Bool.T(optional=True,
+                                     default=True)
     picks_paths = List.T(Path.T())
     blacklist_paths = List.T(Path.T())
     blacklist = List.T(
@@ -922,7 +931,7 @@ class DatasetConfig(HasPaths):
              'Note: ''when whitelisting on channel level, both, the raw and '
              'the processed channel codes have to be listed.')
     synthetic_test = SyntheticTest.T(optional=True)
-    kite_displacement_paths = List.T(Path.T, optional=True)
+    kite_scene_paths = List.T(Path.T(), optional=True)
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
@@ -960,9 +969,9 @@ class DatasetConfig(HasPaths):
             ds.add_events(filename=fp(self.events_path))
             ds.add_waveforms(paths=fp(self.waveform_paths))
 
-            if self.kite_displacement_paths:
+            if self.kite_scene_paths:
                 ds.add_kite_displacement(
-                    filenames=fp(self.kite_displacement_paths))
+                    filenames=fp(self.kite_scene_paths))
 
             if self.clippings_path:
                 ds.add_clippings(markers_filename=fp(self.clippings_path))
@@ -1030,8 +1039,10 @@ class TargetConfig(Object):
     depth_min = Float.T(optional=True)
     depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
-    channels = List.T(String.T())
-    inner_misfit_config = InnerMisfitConfig.T()
+    channels = List.T(String.T(), optional=True)
+    inner_misfit_config = InnerMisfitConfig.T(optional=True)
+    inner_satellite_misfit_config = InnerSatelliteMisfitConfig.T(
+        optional=True)
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T()
     weight = Float.T(default=1.0)
@@ -1066,7 +1077,8 @@ class TargetConfig(Object):
                 interpolation=self.interpolation,
                 store_id=self.store_id,
                 super_group=self.super_group,
-                group=self.group or default_group)
+                group=self.group or default_group,
+                inner_misfit_config=self.inner_satellite_misfit_config)
 
         for st in ds.get_stations():
             for cha in self.channels:
@@ -1128,16 +1140,6 @@ class TargetConfig(Object):
             return weed(origin, targets, self.limit)[0]
         else:
             return targets
-
-
-class SatelliteTargetConfig(Object):
-    super_group = gf.StringID.T(default='', optional=True)
-    group = gf.StringID.T(optional=True)
-    limit = Int.T(optional=True)
-    inner_misfit_config = InnerMisfitConfig.T()
-    interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T()
-    weight = Float.T(default=1.0)
 
 
 class AnalyserConfig(Object):
@@ -2340,9 +2342,11 @@ __all__ = '''
     Problem
     ProblemConfig
     MisfitTarget
+    MisfitSatelliteTarget
     MisfitResult
     Forbidden
     InnerMisfitConfig
+    InnerSatelliteMisfitConfig
     DatasetConfig
     TargetConfig
     SamplerDistributionChoice
