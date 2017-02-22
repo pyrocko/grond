@@ -76,7 +76,7 @@ class Dataset(object):
         self.apply_correction_delays = True
         self.apply_correction_factors = True
         self.clip_handling = 'by_nsl'
-        self.static_scenes = []
+        self.kite_scenes = []
         self.synthetic_test = None
         self._picks = None
         self._cache = {}
@@ -226,7 +226,7 @@ class Dataset(object):
             raise ImportError('Module kite could not be imported, '
                               'please install from http://pyrocko.org')
         for file in filenames:
-            self.static_scenes.append(read(file))
+            self.kite_scenes.append(read(file))
 
     def is_blacklisted(self, obj):
         try:
@@ -318,6 +318,17 @@ class Dataset(object):
         return [self.stations[k] for k in sorted(self.stations)
                 if not self.is_blacklisted(self.stations[k])
                 and self.is_whitelisted(self.stations[k])]
+
+    def get_kite_displacement(self, scene_id=None):
+        if scene_id is None:
+            if len(self.kite_scene) == 0:
+                raise AttributeError('No kite displacements defined')
+            return self.kite_scenes[0]
+        else:
+            for scene in self.kite_scenes:
+                if scene.meta.scene_id is scene_id:
+                    return scene
+        raise AttributeError('No kite scene with id %s defined' % scene_id)
 
     def get_response(self, obj):
         if (self.responses is None or len(self.responses) == 0) \
@@ -648,9 +659,6 @@ class Dataset(object):
             if cache is not None:
                 cache[nslc, tmin, tmax] = e
             raise
-
-    def get_displacement(self):
-        return
 
     def get_events(self, magmin=None, event_names=None):
         evs = []

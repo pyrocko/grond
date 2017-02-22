@@ -617,6 +617,43 @@ tautoshift**2 / tautoshift_max**2``
     return result
 
 
+class MisfitSatelliteTarget(gf.SatelliteTarget):
+    scene_id = guts.String.T()
+    super_group = gf.StringID.T()
+    group = gf.StringID.T()
+
+    def __init__(self, *args, **kwargs):
+        gf.SatelliteTarget.__init__(self, *args, **kwargs)
+        self._ds = None
+
+    def set_dataset(self, ds):
+        self._ds = ds
+
+    def get_dataset(self):
+        return self._ds
+
+    def post_process(self, engine, source, statics):
+        scene = self._ds.get_kite_scene(self.scene_id)
+        stat_obs = scene.quadtree.leaf_medians
+        stat_syn = statics['displacement.los']
+
+        mf = misfit_static(
+           stat_obs,
+           stat_syn,
+           exponent=2)
+
+        wf = mf * scene.covariance.weight_matrix_focal
+        return wf
+
+
+def misfit_static(stat_obs, stat_syn, exponent):
+    mv = num.abs(stat_obs - stat_syn)**exponent
+    result = MisfitResult(
+        misfit_value=mv,
+        misfit_norm=exponent)
+    return result
+
+
 def _process(tr, tmin, tmax, taper, domain):
     tr_proc = _extend_extract(tr, tmin, tmax)
     tr_proc.taper(taper)
@@ -1004,6 +1041,33 @@ class TargetConfig(Object):
         origin = event
 
         targets = []
+
+        for scene in ds.get_kite_scenes():
+            qt = scene.quadtree
+
+            lats = num.empty(qt.nleafs)
+            lons = num.empty(qt.nleafs)
+            lats.fill(qt.frame.llLat)
+            lons.fill(qt.frame.llLon)
+
+            east_shifts = qt.leaf_focal_points()[:, 0]
+            north_shifts = qt.leaf_focal_points()[:, 1]
+
+            tsnapshot = scene.meta.time_slave - scene.meta.time_master
+
+            target = MisfitSatelliteTarget(
+                quantity='displacement',
+                scene_id=scene.meta.scene_id,
+                lats=lats,
+                lons=lons,
+                east_shifts=east_shifts,
+                north_shifts=north_shifts,
+                tsnapshot=tsnapshot,
+                interpolation=self.interpolation,
+                store_id=self.store_id,
+                super_group=self.super_group,
+                group=self.group or default_group)
+
         for st in ds.get_stations():
             for cha in self.channels:
                 if ds.is_blacklisted((st.nsl() + (cha,))):
@@ -1064,6 +1128,16 @@ class TargetConfig(Object):
             return weed(origin, targets, self.limit)[0]
         else:
             return targets
+
+
+class SatelliteTargetConfig(Object):
+    super_group = gf.StringID.T(default='', optional=True)
+    group = gf.StringID.T(optional=True)
+    limit = Int.T(optional=True)
+    inner_misfit_config = InnerMisfitConfig.T()
+    interpolation = gf.InterpolationMethod.T()
+    store_id = gf.StringID.T()
+    weight = Float.T(default=1.0)
 
 
 class AnalyserConfig(Object):
