@@ -1,3 +1,4 @@
-from core import *  # noqa
-from dataset import *  # noqa
+from .core import *  # noqa
+from .dataset import *  # noqa
 from .problems import *  # noqa
+from .targets import *  # noqa

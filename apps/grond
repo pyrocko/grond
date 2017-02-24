@@ -3,6 +3,7 @@
 import math
 import sys
 import logging
+import os
 import os.path as op
 from optparse import OptionParser
 
@@ -12,8 +13,7 @@ from pyrocko.gf import Range
 import grond
 
 logger = logging.getLogger('main')
-
-km = 1000.
+km = 1e3
 
 
 def d2u(d):
@@ -136,26 +136,32 @@ def command_init(args):
     def setup(parser):
         parser.add_option(
             '--waveform', dest='waveform', action='store_true', default=True,
-            help='Create an example configuration for waveform inversion.')
+            help='Create an example configuration for waveform inversion. '
+                 '(default)')
         parser.add_option(
             '--static', dest='static', action='store_true',
-            help='Create an example configuration for static displacement'
-                 ' targets using kite scene containers.')
+            help='Create an example configuration for static displacements'
+                 ' using kite scene containers.')
 
     parser, options, args = cl_parse('init', args, setup)
 
+    dir_struct = ['gf_store']
+
     if options.waveform and not options.static:
+        dir_struct += ['data']
         dataset_config = grond.DatasetConfig(
             stations_path='stations.txt',
             events_path='events.txt',
             waveform_paths=['data'])
 
         target_configs = [grond.TargetConfig(
+            super_group='time_domain',
+            group='all',
             distance_min=10*km,
             distance_max=1000*km,
             channels=['Z', 'R', 'T'],
             interpolation='multilinear',
-            store_id='global_2s',
+            store_id='gf_store',
             inner_misfit_config=grond.InnerMisfitConfig(
                 fmin=0.01,
                 fmax=0.1))]
@@ -182,15 +188,19 @@ def command_init(args):
             )
 
     elif options.static:
+        dir_struct += ['scenes']
         dataset_config = grond.DatasetConfig(
-            kite_scene_paths=['scenes']
+            events_path='events.txt',
+            kite_scene_paths=['scenes'],
             )
 
         target_configs = [grond.TargetConfig(
+            super_group='insar_target',
+            group='all',
             interpolation='multilinear',
-            store_id='global_2s',
+            store_id='gf_store',
             inner_satellite_misfit_config=grond.InnerSatelliteMisfitConfig(
-                use_kite_covariance=True))]
+                use_weight_focal=False))]
 
         problem_config = grond.RectangularProblemConfig(
             name_template='rect_source',
@@ -206,11 +216,40 @@ def command_init(args):
                 slip=Range(1, 3))
             )
 
+    engine_config = grond.EngineConfig(
+        gf_store_superdirs=['.'])
+
     config = grond.Config(
-        rundir_template=op.abspath(op.curdir),
+        rundir_template=op.join(op.abspath(op.curdir), 'rundir'),
         dataset_config=dataset_config,
         target_configs=target_configs,
-        problem_config=problem_config)
+        problem_config=problem_config,
+        engine_config=engine_config)
+
+    events = '''name = 2011-myanmar
+time = 2011-03-24 13:55:12.010
+latitude = 20.687
+longitude = 99.822
+magnitude = 6.9
+moment = 1.9228e+19
+depth = 8000
+region = Myanmar
+--------------------------------------------'''
+
+    def create_struct(dirname):
+
+        def p(fn):
+            op.abspath(op.join(dirname, fn))
+
+        os.mkdir(op.abspath(dirname))
+
+        with open(p('config.yml'), 'w') as cf:
+            cf.write(str(config))
+        with open(p('events.txt'), 'w') as ef:
+            ef.write(events)
+        open('stations.txt', 'a').close()
+        for d in dir_struct:
+            os.mkdir(p(d))
 
     print config
 

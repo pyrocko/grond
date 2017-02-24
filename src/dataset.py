@@ -1,15 +1,20 @@
 
+import glob
 import copy
 import logging
-from collections import defaultdict
 import numpy as num
+
+from collections import defaultdict
 from pyrocko import util, pile, model, config, trace, \
     marker as pmarker
 from pyrocko.fdsn import enhanced_sacpz, station as fs
-from pyrocko.guts import Object, Tuple, String, Float, dump_all, load_all
+from pyrocko.guts import (Object, Tuple, String, Float, List, Bool, dump_all,
+                          load_all)
+
+from .meta import Path, HasPaths, expand_template, xjoin
+from .synthetic_tests import SyntheticTest
 
 guts_prefix = 'grond'
-
 logger = logging.getLogger('grond.dataset')
 
 
@@ -219,14 +224,19 @@ class Dataset(object):
 
         self._picks = None
 
-    def add_kite_displacement(self, filenames):
+    def add_kite_scene(self, filename):
         try:
-            from kite import read
+            from kite import Scene
         except ImportError:
             raise ImportError('Module kite could not be imported, '
                               'please install from http://pyrocko.org')
-        for file in filenames:
-            self.kite_scenes.append(read(file))
+        logger.debug('Loading kite scene from %s' % filename)
+
+        scene = Scene()
+        scene._log.setLevel(logger.level)
+        scene.load(filename)
+
+        self.kite_scenes.append(scene)
 
     def is_blacklisted(self, obj):
         try:
@@ -319,9 +329,12 @@ class Dataset(object):
                 if not self.is_blacklisted(self.stations[k])
                 and self.is_whitelisted(self.stations[k])]
 
-    def get_kite_displacement(self, scene_id=None):
+    def get_kite_scenes(self):
+        return self.kite_scenes
+
+    def get_kite_scene(self, scene_id=None):
         if scene_id is None:
-            if len(self.kite_scene) == 0:
+            if len(self.kite_scenes) == 0:
                 raise AttributeError('No kite displacements defined')
             return self.kite_scenes[0]
         else:
@@ -738,12 +751,122 @@ class Dataset(object):
         return self.get_picks().get((nsl, phasename, eventname), None)
 
 
+class DatasetConfig(HasPaths):
+
+    stations_path = Path.T(optional=True)
+    stations_stationxml_paths = List.T(Path.T(), optional=True)
+    events_path = Path.T(optional=True)
+    waveform_paths = List.T(Path.T(), optional=True)
+    clippings_path = Path.T(optional=True)
+    responses_sacpz_path = Path.T(optional=True)
+    responses_stationxml_paths = List.T(Path.T(), optional=True)
+    station_corrections_path = Path.T(optional=True)
+    apply_correction_factors = Bool.T(optional=True,
+                                      default=True)
+    apply_correction_delays = Bool.T(optional=True,
+                                     default=True)
+    picks_paths = List.T(Path.T())
+    blacklist_paths = List.T(Path.T())
+    blacklist = List.T(
+        String.T(),
+        help='stations/components to be excluded according to their STA, '
+             'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
+    whitelist_paths = List.T(Path.T())
+    whitelist = List.T(
+        String.T(),
+        optional=True,
+        help='if not None, list of stations/components to included according '
+             'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
+             'Note: ''when whitelisting on channel level, both, the raw and '
+             'the processed channel codes have to be listed.')
+    synthetic_test = SyntheticTest.T(optional=True)
+    kite_scene_paths = List.T(Path.T(), optional=True)
+
+    def __init__(self, *args, **kwargs):
+        HasPaths.__init__(self, *args, **kwargs)
+        self._ds = {}
+
+    def get_event_names(self):
+        def extra(path):
+            return expand_template(path, dict(
+                event_name='*'))
+
+        def fp(path):
+            return self.expand_path(path, extra=extra)
+
+        events = []
+        for fn in glob.glob(fp(self.events_path)):
+            events.extend(model.load_events(filename=fn))
+
+        event_names = [ev.name for ev in events]
+        return event_names
+
+    def get_dataset(self, event_name):
+        if event_name not in self._ds:
+            def extra(path):
+                return expand_template(path, dict(
+                    event_name=event_name))
+
+            def fp(path):
+                return self.expand_path(path, extra=extra)
+
+            ds = Dataset(event_name)
+            ds.add_stations(
+                pyrocko_stations_filename=fp(self.stations_path),
+                stationxml_filenames=fp(self.stations_stationxml_paths))
+
+            ds.add_events(filename=fp(self.events_path))
+
+            if self.waveform_paths:
+                ds.add_waveforms(paths=fp(self.waveform_paths))
+
+            if self.kite_scene_paths:
+                for path in self.kite_scene_paths:
+                    for fn in glob.glob(xjoin(fp(path), '*.npz')):
+                        ds.add_kite_scene(filename=fn)
+
+            if self.clippings_path:
+                ds.add_clippings(markers_filename=fp(self.clippings_path))
+
+            if self.responses_sacpz_path:
+                ds.add_responses(
+                    sacpz_dirname=fp(self.responses_sacpz_path))
+
+            if self.responses_stationxml_paths:
+                ds.add_responses(
+                    stationxml_filenames=fp(self.responses_stationxml_paths))
+
+            if self.station_corrections_path:
+                ds.add_station_corrections(
+                    filename=fp(self.station_corrections_path))
+
+            ds.apply_correction_factors = self.apply_correction_factors
+            ds.apply_correction_delays = self.apply_correction_delays
+
+            for picks_path in self.picks_paths:
+                ds.add_picks(
+                    filename=fp(picks_path))
+
+            ds.add_blacklist(self.blacklist)
+            ds.add_blacklist(filenames=fp(self.blacklist_paths))
+            if self.whitelist:
+                ds.add_whitelist(self.whitelist)
+            if self.whitelist_paths:
+                ds.add_whitelist(filenames=fp(self.whitelist_paths))
+
+            ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
+            self._ds[event_name] = ds
+
+        return self._ds[event_name]
+
+
 __all__ = '''
+    Dataset
+    DatasetConfig
     DatasetError
     InvalidObject
     NotFound
     StationCorrection
-    Dataset
     load_station_corrections
     dump_station_corrections
 '''.split()
