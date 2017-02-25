@@ -236,7 +236,12 @@ class Dataset(object):
         scene._log.setLevel(logger.level)
         scene.load(filename)
 
-        self.kite_scenes.append(scene)
+        try:
+            self.get_kite_scene(scene.meta.scene_id)
+        except NotFound:
+            self.kite_scenes.append(scene)
+        else:
+            raise AttributeError('scene_id not unique for %s' % filename)
 
     def is_blacklisted(self, obj):
         try:
@@ -341,7 +346,7 @@ class Dataset(object):
             for scene in self.kite_scenes:
                 if scene.meta.scene_id is scene_id:
                     return scene
-        raise AttributeError('No kite scene with id %s defined' % scene_id)
+        raise NotFound('No kite scene with id %s defined' % scene_id)
 
     def get_response(self, obj):
         if (self.responses is None or len(self.responses) == 0) \
