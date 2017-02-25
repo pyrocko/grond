@@ -9,7 +9,7 @@ from pyrocko import gf, util, guts, moment_tensor as mtm
 from pyrocko.guts import (Object, String, Bool, List, Float, Dict, Int,
                           StringChoice)
 
-from .targets import MisfitTarget
+from .targets import GrondTarget
 
 
 guts_prefix = 'grond'
@@ -87,9 +87,12 @@ class ProblemConfig(Object):
 class Problem(Object):
     name = String.T()
     parameters = List.T(Parameter.T())
+    ranges = Dict.T(String.T(), gf.Range.T())
     dependants = List.T(Parameter.T())
     apply_balancing_weights = Bool.T(default=True)
     base_source = gf.Source.T()
+
+    targets = List.T()
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -303,9 +306,6 @@ class CMTProblem(Problem):
         Parameter('rel_moment_iso', label='$M_{0}^{ISO}/M_{0}$'),
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
-    targets = List.T(MisfitTarget.T())
-
-    ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nbootstrap = Int.T(default=10)
     mt_type = StringChoice.T(default='full', choices=['full', 'deviatoric'])
@@ -538,11 +538,8 @@ class DoubleDCProblem(Problem):
         Parameter('mix', label='Mix'),
         Parameter('duration1', 's', label='Duration 1'),
         Parameter('duration2', 's', label='Duration 2')]
+
     dependants = []
-
-    targets = List.T(MisfitTarget.T())
-
-    ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nbootstrap = Int.T(default=100)
 
@@ -616,7 +613,6 @@ class DoubleDCProblem(Problem):
 
     def dependant_bounds(self):
         out = []
-
         return out
 
     def evaluate(self, x, result_mode='sparse'):
@@ -710,9 +706,6 @@ class RectangularProblem(Problem):
         ]
 
     dependants = []
-
-    targets = List.T(gf.Target.T())
-    ranges = Dict.T(String.T(), gf.Range.T())
 
     nbootstrap = 0
 
@@ -814,41 +807,11 @@ class RectangularProblem(Problem):
 
         return results
 
-    def bootstrap_misfits(self, misfits, ibootstrap):
-        w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
-            self.get_target_weights()[num.newaxis, :] * \
-            self.inter_group_weights2(misfits[:, :, 1])
-
-        bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1) /
-                       num.nansum((w*misfits[:, :, 1])**2, axis=1))
-        return bms
-
-    def global_misfit(self, ms, ns):
-        ws = self.get_target_weights() * self.inter_group_weights(ns)
-        m = num.sqrt(num.nansum((ws*ms)**2) / num.nansum((ws*ns)**2))
-        return m
-
-    def global_misfits(self, misfits):
-        ws = self.get_target_weights()[num.newaxis, :] * \
-            self.inter_group_weights2(misfits[:, :, 1])
-        gms = num.sqrt(num.nansum((ws*misfits[:, :, 0])**2, axis=1) /
-                       num.nansum((ws*misfits[:, :, 1])**2, axis=1))
-        return gms
-
-    def global_contributions(self, misfits):
-        ws = self.get_target_weights()[num.newaxis, :] * \
-            self.inter_group_weights2(misfits[:, :, 1])
-
-        gcms = (ws*misfits[:, :, 0])**2 / \
-            num.nansum((ws*misfits[:, :, 1])**2, axis=1)[:, num.newaxis]
-
-        return gcms
-
 
 class RectangularProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
-    apply_balancing_weights = False
+    apply_balancing_weights = Bool.T(default=False)
 
     def get_problem(self, event, targets):
         base_source = gf.RectangularSource(

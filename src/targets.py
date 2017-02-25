@@ -463,7 +463,7 @@ def _process(tr, tmin, tmax, taper, domain):
 
 
 class InnerSatelliteMisfitConfig(Object):
-    use_weight_focal = Bool.T(default=True)
+    use_weight_focal = Bool.T(default=False)
 
 
 class MisfitSatelliteTarget(gf.SatelliteTarget):
@@ -504,6 +504,11 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
 
     def get_combined_weight(self, apply_balancing_weights=False):
         return 1.
+
+
+class GrondTarget(MisfitSatelliteTarget, MisfitTarget):
+    def __init__(self, args):
+        super(MisfitSatelliteTarget, self).__init__()
 
 
 class TargetConfig(Object):
