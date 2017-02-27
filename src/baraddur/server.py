@@ -6,7 +6,7 @@ import numpy as num
 
 from collections import OrderedDict
 
-from pyrocko.guts import Object, Bool, String  # noqa
+from pyrocko.guts import Object, Bool, String, Int
 
 from tornado.web import RequestHandler, StaticFileHandler
 from tornado import gen
@@ -185,6 +185,9 @@ class BaraddurConfig(Object):
     debug = Bool.T(
         default=True,
         optional=True)
+    port = Int.T(
+        default=8080,
+        optional=True)
 
     @property
     def problem(self):
@@ -200,7 +203,7 @@ class Baraddur(BokehServer):
             self.get_bokeh_apps(),
             io_loop=tornado.ioloop.IOLoop.current(),
             extra_patterns=self.get_tornado_handlers(),
-            hosts='0.0.0.0')
+            hosts='*.*.*.*')
 
         tornado_app = self._tornado
         tornado_app.listen(8080)
