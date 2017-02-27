@@ -45,10 +45,10 @@ class Status(RequestHandler):
     class MisfitsPlot(BokehHandler):
 
         def modify_document(self, doc):
+            self.nmodels = 0
             self.source = ColumnDataSource(
                 data={'n': [],
-                      'gm': [],
-                      'bm': []})
+                      'gm': []})
             self.update_misfits()
 
             plot = figure(webgl=True,
@@ -62,13 +62,16 @@ class Status(RequestHandler):
 
         @gen.coroutine
         def update_misfits(self):
-            mx, misfits = grond.core.load_problem_data(rundir, problem)
+            mx, misfits = grond.core.load_problem_data(
+                rundir, problem, skip_models=self.nmodels)
+            new_nmodels = mx.shape[0]
+
             fits = num.mean(misfits, axis=1)
-            fits1 = fits[:, 0]
-            fits2 = fits[:, 1]
-            self.source.data = dict(gm=fits1,
-                                    bm=fits2,
-                                    n=num.arange(fits1.size) + 1)
+            self.source.stream(dict(gm=fits[:, 0],
+                                    n=num.arange(new_nmodels,
+                                                 dtype=num.int) +
+                                    self.nmodels + 1))
+            self.nmodels += new_nmodels
 
     bokeh_handlers = {'misfit_plot': MisfitsPlot}
 
@@ -87,9 +90,10 @@ class Parameters(RequestHandler):
         ncols = 4
 
         def modify_document(self, doc):
-            self.source = ColumnDataSource(
-                data=dict.fromkeys(
-                    ['n', 'color'] + [p.name for p in problem.parameters], []))
+            self.nmodels = 0
+            self.source = ColumnDataSource()
+            for p in ['n'] + [p.name for p in problem.parameters]:
+                self.source.add([], p)
             self.update_parameters()
 
             plots = []
@@ -98,8 +102,7 @@ class Parameters(RequestHandler):
                              x_axis_label='Iteration #',
                              y_axis_label='%s [%s]' % (par.label, par.unit))
                 fig.scatter('n', par.name,
-                            source=self.source, alpha=.4,
-                            color='color')
+                            source=self.source, alpha=.4)
                 plots.append(fig)
             plots += ([None] * (self.ncols - (len(plots) % self.ncols)))
 
@@ -109,20 +112,22 @@ class Parameters(RequestHandler):
                 ncols=self.ncols)
 
             doc.add_root(grid)
-            doc.add_periodic_callback(self.update_parameters, 15*1e3)
+            doc.add_periodic_callback(self.update_parameters, 2.5*1e3)
 
         @gen.coroutine
         def update_parameters(self):
-            mx, misfits = grond.core.load_problem_data(rundir, problem)
-            data = {}
+            mx, misfits = grond.core.load_problem_data(
+                rundir, problem, skip_models=self.nmodels)
+            new_nmodels = mx.shape[0]
+
+            new_data = {}
             for ip, par in enumerate(problem.parameters):
-                data[par.name] = mx[:, ip]
-            data['n'] = num.arange(mx.shape[0]) + 1
+                new_data[par.name] = mx[:, ip]
+            new_data['n'] = num.arange(new_nmodels, dtype=num.int) +\
+                self.nmodels + 1
 
-            mf = num.mean(misfits, axis=1)[:, 0]
-            data['color'] = makeColorGradient(mf)
-
-            self.source.data = data
+            self.source.stream(new_data)
+            self.nmodels += new_nmodels
 
     bokeh_handlers = {'parameter_plot': ParameterPlots}
 

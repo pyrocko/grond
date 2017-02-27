@@ -141,21 +141,26 @@ def load_problem_info(dirname):
     return guts.load(filename=fn)
 
 
-def load_problem_data(dirname, problem):
+def load_problem_data(dirname, problem, skip_models=0):
     fn = op.join(dirname, 'x')
     with open(fn, 'r') as f:
         nmodels = os.fstat(f.fileno()).st_size / (problem.nparameters * 8)
+        nmodels -= skip_models
+        f.seek(skip_models * problem.nparameters * 8)
         data = num.fromfile(
             f, dtype='<f8',
-            count=nmodels*problem.nparameters).astype(num.float)
+            count=nmodels * problem.nparameters)\
+            .astype(num.float)
 
-    nmodels = data.size/problem.nparameters
+    nmodels = data.size/problem.nparameters - skip_models
     xs = data.reshape((nmodels, problem.nparameters))
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
+        f.seek(skip_models * problem.ntargets * 2 * 8)
         data = num.fromfile(
-            f, dtype='<f8', count=nmodels*problem.ntargets*2).astype(num.float)
+            f, dtype='<f8', count=nmodels*problem.ntargets*2)\
+            .astype(num.float)
 
     data = data.reshape((nmodels, problem.ntargets*2))
 
