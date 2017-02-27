@@ -203,6 +203,7 @@ class Baraddur(BokehServer):
             hosts='0.0.0.0')
 
         tornado_app = self._tornado
+        tornado_app.listen(8080)
         tornado_app.settings['template_path'] = self.config.template_path
 
         if self.config.debug:
@@ -237,7 +238,8 @@ class Baraddur(BokehServer):
         return bokeh_apps
 
     def get_tornado_handlers(self):
-        return [(r'/', pages.values()[0])] +\
+        return [(r'/', pages.values()[0],
+                 {'config': self.config})] +\
                [(r'/%s' % title, handler,
                  {'config': self.config})
                 for title, handler in pages.iteritems()] +\
