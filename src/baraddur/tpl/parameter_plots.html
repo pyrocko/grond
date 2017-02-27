@@ -1,0 +1,15 @@
+{% extends "index.html" %}
+
+{% block extra_head %}
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+{% end %}
+
+{% block content %}
+<header>
+    <h1 class="content-subhead">Parameters <i>{{ problem.name }}</i></h1>
+    <p><span style="font-family: monospace;">{{ problem.__class__.__name__ }}</span> | <span style="font-family: monospace;">{{ problem.base_source.__class__.__name__ }}</span></p>
+</header>
+    <h2 class="content-subhead">Parameter Plots</h3>
+    {% raw parameter_plot %}
+{% end %}

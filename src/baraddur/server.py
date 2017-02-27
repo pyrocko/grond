@@ -1,42 +1,153 @@
 import tornado.ioloop
 import grond
 import os.path as op
-import numpy as np
+import logging
+import numpy as num  # noqa
 
 from collections import OrderedDict
 
-from tornado.web import RequestHandler, Application
+from tornado.web import RequestHandler, StaticFileHandler
 from tornado import gen
 
-from bokeh.application import Application as BokehApplication
 from bokeh.embed import autoload_server
-from bokeh.server.server import Server
+from bokeh.application import Application
+from bokeh.server.server import Server as BokehServer
+from bokeh.application.handlers import Handler as BokehHandler
 
-from bokeh.layouts import column
-from bokeh.models import ColumnDataSource, Slider
-from bokeh.application.handlers import FunctionHandler
+from bokeh.models import ColumnDataSource
+from bokeh import layouts
 from bokeh.plotting import figure
 
-problem = grond.core.load_problem_info('.')
+
+console = logging.StreamHandler()
+console.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+console.setFormatter(formatter)
+rootLogger = logging.getLogger('')
+rootLogger.addHandler(console)
+rootLogger.setLevel(logging.DEBUG)
+
+rundir = '/home/marius/Development/testing/grond/rundir'
+problem = grond.core.load_problem_info(rundir)
 
 
-class Summary(RequestHandler):
-    from bokeh.models import map_plots
+def makeColorGradient(misfits, fr=1., fg=.5, fb=1.,
+                      pr=0, pg=2.5, pb=4):
+    misfits /= misfits.max()
+    r = num.sin(fr * misfits + pr) * 127 + 128
+    g = num.sin(fg * misfits + pg) * 127 + 128
+    b = num.sin(fb * misfits + pb) * 127 + 128
+    return ['#%02x%02x%02x' % (r[i], g[i], b[i]) for i in xrange(misfits.size)]
+
+
+class Status(RequestHandler):
+
+    class MisfitsPlot(BokehHandler):
+
+        def modify_document(self, doc):
+            self.source = ColumnDataSource(
+                data={'n': [],
+                      'gm': [],
+                      'bm': []})
+            self.update_misfits()
+
+            plot = figure(webgl=True,
+                          x_axis_label='Iteration #',
+                          y_axis_label='Misfit')
+            plot.scatter('n', 'gm',
+                         source=self.source, alpha=.4)
+
+            doc.add_root(plot)
+            doc.add_periodic_callback(self.update_misfits, 1e3)
+
+        @gen.coroutine
+        def update_misfits(self):
+            mx, misfits = grond.core.load_problem_data(rundir, problem)
+            fits = num.mean(misfits, axis=1)
+            fits1 = fits[:, 0]
+            fits2 = fits[:, 1]
+            self.source.data = dict(gm=fits1,
+                                    bm=fits2,
+                                    n=num.arange(fits1.size) + 1)
+
+    bokeh_handlers = {'misfit_plot': MisfitsPlot}
 
     @gen.coroutine
     def get(self):
-        p = figure(plot_width=400, plot_height=400)
-        p.circle([1, 2, 3, 4, 5], [6, 7, 2, 4, 5], size=20, color="navy",
-                 alpha=0.5)
+        self.render('status.html',
+                    pages=pages,
+                    misfit_plot=autoload_server(None, url='/misfit_plot'),
+                    problem=problem)
 
-        script = autoload_server(p, url='http://localhost:5001')
+
+class Parameters(RequestHandler):
+
+    class ParameterPlots(BokehHandler):
+
+        ncols = 4
+
+        def modify_document(self, doc):
+            self.source = ColumnDataSource(
+                data=dict.fromkeys(
+                    ['n', 'color'] + [p.name for p in problem.parameters], []))
+            self.update_parameters()
+
+            plots = []
+            for par in problem.parameters:
+                fig = figure(webgl=True,
+                             x_axis_label='Iteration #',
+                             y_axis_label='%s [%s]' % (par.label, par.unit))
+                fig.scatter('n', par.name,
+                            source=self.source, alpha=.4,
+                            color='color')
+                plots.append(fig)
+            plots += ([None] * (self.ncols - (len(plots) % self.ncols)))
+
+            grid = layouts.gridplot(
+                plots,
+                responsive=True,
+                ncols=self.ncols)
+
+            doc.add_root(grid)
+            doc.add_periodic_callback(self.update_parameters, 15*1e3)
+
+        @gen.coroutine
+        def update_parameters(self):
+            mx, misfits = grond.core.load_problem_data(rundir, problem)
+            data = {}
+            for ip, par in enumerate(problem.parameters):
+                data[par.name] = mx[:, ip]
+            data['n'] = num.arange(mx.shape[0]) + 1
+
+            mf = num.mean(misfits, axis=1)[:, 0]
+            data['color'] = makeColorGradient(mf)
+
+            self.source.data = data
+
+    bokeh_handlers = {'parameter_plot': ParameterPlots}
+
+    @gen.coroutine
+    def get(self):
+
+        self.render('parameter_plots.html',
+                    pages=pages,
+                    parameter_plot=autoload_server(
+                        None,
+                        url='/parameter_plot'),
+                    problem=problem)
+
+
+class Summary(RequestHandler):
+
+    @gen.coroutine
+    def get(self):
         self.render('summary.html',
                     pages=pages,
-                    problem=problem,
-                    script=script)
+                    problem=problem)
 
 
 class MainHandler(RequestHandler):
+
     @gen.coroutine
     def get(self):
         self.render('index.html',
@@ -44,26 +155,45 @@ class MainHandler(RequestHandler):
 
 
 pages = OrderedDict([
+    ('Status', Status),
+    ('Parameters', Parameters),
     ('Summary', Summary),
     ('Sequences', MainHandler),
-    ('Tradeoffs', MainHandler),
 ])
 
+bokeh_apps = {}
+for cat, tornado_handler in pages.iteritems():
+    handler_docs = getattr(tornado_handler, 'bokeh_handlers', None)
+    if handler_docs is None:
+        continue
+    for url, bokeh_handler in handler_docs.iteritems():
+        bokeh_apps['/%s' % url] =\
+            Application(bokeh_handler())
+
 if __name__ == '__main__':
-    bokeh_app = BokehApplication()
-    bokeh_server = Server({'/bokeh': bokeh_app},
-                          ioloop=tornado.ioloop.IOLoop.instance(),
-                          num_procs=1)
 
-    tornado_app = Application(
-        [(r'/', Summary)] +
-        [(r'/%s' % title, handler) for title, handler in pages.iteritems()],
-        debug=False,
-        autoreload=False,
-        compiled_template_cache=False,
-        static_path=op.join(op.dirname(__file__), 'static'),
-        template_path=op.join(op.dirname(__file__), 'tpl'),
-        )
-    tornado_app.listen(8888)
+    handlers = [(r'/', pages.values()[0])] +\
+               [(r'/%s' % title, handler)
+                for title, handler in pages.iteritems()] +\
+               [(r'/css/(.*)', StaticFileHandler,
+                {'path': op.join(op.dirname(__file__), 'css')})]
 
+    server = BokehServer(
+        bokeh_apps,
+        io_loop=tornado.ioloop.IOLoop.current(),
+        extra_patterns=handlers,
+        hosts='0.0.0.0')
+
+    tornado_app = server._tornado
+    tornado_app.settings['template_path'] = 'tpl'
+    tornado_app.settings.setdefault('autoreload', True)
+    tornado_app.settings.setdefault('compiled_template_cache', False)
+    tornado_app.settings.setdefault('static_hash_cache', False)
+    tornado_app.settings.setdefault('serve_traceback', True)
+
+    # Automatically reload modified modules
+    from tornado import autoreload
+    autoreload.start()
+
+    server.start()
     tornado.ioloop.IOLoop.current().start()
