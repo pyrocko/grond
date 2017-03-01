@@ -1,0 +1,24 @@
+        <table class="pure-table pure-table-horizontal">
+            <thead>
+                <tr>
+                    <td></td>
+                    <td>id</td>
+                    <td>Manual weight</td>
+                    <td>Super group</td>
+                    <td>Group</td>
+                    <td>Type</td>
+                </tr>
+            </thead>
+            <tbody>
+                {% for it, target in enumerate(problem.targets) %}
+                    <tr{% if it % 2 == 1 %} class="pure-table-odd"{% end %}>
+                        <td>{{ it+1 }}</td>
+                        <td>{{ target.id }}</td>
+                        <td>{{ target.manual_weight }} </td>
+                        <td>{{ target.super_group }}</td>
+                        <td>{{ target.group }} </td>
+                        <td style="font-family: monospace;">{{ target.__class__.__name__ }}</td>
+                    </tr>
+                {% end %}
+            </tbody>
+        </table>
