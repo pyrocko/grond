@@ -126,7 +126,7 @@ class Problem(Object):
         guts.dump(self, filename=fn)
 
     def dump_problem_data(self, dirname, x, ms, ns):
-        fn = op.join(dirname, 'x')
+        fn = op.join(dirname, 'models')
         if not isinstance(x, num.ndarray):
             x = num.array(x)
         with open(fn, 'ab') as f:

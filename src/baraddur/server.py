@@ -1,5 +1,6 @@
 import tornado.ioloop
 import grond
+import os
 import os.path as op
 import logging
 import numpy as num
@@ -45,6 +46,67 @@ class BaraddurBokehHandler(BokehHandler):
         self.config = config
 
 
+class GrondBokehModel(object):
+    def __init__(self, config):
+        self.config = config
+        self.set_rundir(self.config.rundir)
+
+    def set_rundir(self, rundir):
+        logger.debug('Loading problem from %s' % rundir)
+        self.rundir = rundir
+        self.problem = grond.core.load_problem_info(self.rundir)
+        self.parameters = self.problem.parameters
+        self.nparameters = self.problem.nparameters
+        self.ntargets = self.problem.ntargets
+
+    def get_models(self, skip_nmodels=0):
+        fn = op.join(self.rundir, 'models')
+        with open(fn, 'r') as f:
+            nmodels = os.fstat(f.fileno()).st_size / (self.nparameters * 8)
+            nmodels -= skip_nmodels
+            f.seek(skip_nmodels * self.nparameters * 8)
+            data = num.fromfile(
+                f, dtype='<f8', count=nmodels * self.nparameters)\
+                .astype(num.float)
+
+        nmodels = data.size/self.nparameters - skip_nmodels
+        models = data.reshape((nmodels, self.nparameters))
+
+        mods_dict = {}
+        for ip, par in enumerate(self.parameters):
+            mods_dict[par.name] = models[:, ip]
+        mods_dict['niter'] = num.arange(nmodels, dtype=num.int) + (nmodels+1)
+        return nmodels, mods_dict
+
+    def get_misfits(self, skip_nmodels=0):
+        fn = op.join(self.rundir, 'misfits')
+
+        with open(fn, 'r') as f:
+            nmodels = os.fstat(f.fileno()).st_size / (self.nparameters * 8)
+            nmodels -= skip_nmodels
+            f.seek(skip_nmodels * self.ntargets * 2 * 8)
+            data = num.fromfile(
+                f, dtype='<f8', count=nmodels*self.ntargets*2)\
+                .astype(num.float)
+
+        data = data.reshape((nmodels, self.ntargets*2))
+
+        combi = num.empty_like(data)
+        combi[:, 0::2] = data[:, :self.ntargets]
+        combi[:, 1::2] = data[:, self.ntargets:]
+
+        assert(data.size/self.nparameters - skip_nmodels == nmodels)
+        misfits = combi.reshape((nmodels, self.ntargets, 2))
+
+        mf_dict = {}
+        for it in xrange(self.ntargets):
+            mf_dict['target_%03d' % it] = misfits[:, it, 0]
+        mf_dict['target_mean'] = num.mean(misfits[:, :, 0])
+
+        mf_dict['niter'] = num.arange(nmodels, dtype=num.int) + (nmodels+1)
+        return nmodels, misfits
+
+
 class Status(BaraddurRequestHandler):
 
     class MisfitsPlot(BaraddurBokehHandler):
@@ -52,8 +114,8 @@ class Status(BaraddurRequestHandler):
         def modify_document(self, doc):
             self.nmodels = 0
             self.source = ColumnDataSource(
-                data={'n': [],
-                      'gm': []})
+                data={'n': num.ndarray(0),
+                      'gm': num.ndarray(0)})
             self.update_misfits()
 
             plot = figure(webgl=True,
@@ -101,7 +163,7 @@ class Parameters(BaraddurRequestHandler):
 
             self.source = ColumnDataSource()
             for p in ['n'] + [p.name for p in problem.parameters]:
-                self.source.add([], p)
+                self.source.add(num.ndarray(0), p)
             self.update_parameters()
 
             plots = []
@@ -231,7 +293,7 @@ class BaraddurConfig(Object):
         String.T(),
         default=['*'],
         optional=True,
-        help='List of allowed hosts.')
+        help='List of allowed hosts, default is all \'*\'.')
     port = Int.T(
         default=8080,
         optional=True,

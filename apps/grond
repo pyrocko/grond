@@ -24,7 +24,7 @@ def d2u(d):
 
 
 subcommand_descriptions = {
-    'init': 'print example configuration',
+    'init': 'create project structure or print example configuration',
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimization',
@@ -35,7 +35,7 @@ subcommand_descriptions = {
 }
 
 subcommand_usages = {
-    'init': 'init [options]',
+    'init': 'init [options] <project_dir>',
     'events': 'events <configfile>',
     'check': 'check <configfile> <eventnames> ... [options]',
     'go': 'go <configfile> <eventnames> ... [options]',
@@ -145,10 +145,20 @@ def command_init(args):
 
     parser, options, args = cl_parse('init', args, setup)
 
-    dir_struct = ['gf_store']
+    project_dir = None
+    if len(args) == 1:
+        project_dir = op.join(op.curdir, args[0])
+        if op.exists(project_dir):
+            raise EnvironmentError('Directory %s already exists' % args[0])
+
+    sub_dirs = ['gf_store']
+    empty_files = []
 
     if options.waveform and not options.static:
-        dir_struct += ['data']
+        config_type = 'waveform'
+
+        sub_dirs += ['data']
+        empty_files += ['stations.xml']
         dataset_config = grond.DatasetConfig(
             stations_path='stations.txt',
             events_path='events.txt',
@@ -188,7 +198,9 @@ def command_init(args):
             )
 
     elif options.static:
-        dir_struct += ['scenes']
+        config_type = 'static'
+
+        sub_dirs += ['scenes']
         dataset_config = grond.DatasetConfig(
             events_path='events.txt',
             kite_scene_paths=['scenes'],
@@ -236,22 +248,26 @@ depth = 8000
 region = Myanmar
 --------------------------------------------'''
 
-    def create_struct(dirname):
+    if project_dir is not None:
+        logger.info('Creating empty %s project in folder %s'
+                    % (config_type, args[0]))
 
         def p(fn):
-            op.abspath(op.join(dirname, fn))
+            return op.join(project_dir, fn)
 
-        os.mkdir(op.abspath(dirname))
+        os.mkdir(op.abspath(project_dir))
+        for d in sub_dirs:
+            os.mkdir(p(d))
 
         with open(p('config.yml'), 'w') as cf:
             cf.write(str(config))
         with open(p('events.txt'), 'w') as ef:
             ef.write(events)
-        open('stations.txt', 'a').close()
-        for d in dir_struct:
-            os.mkdir(p(d))
 
-    print config
+        for fn in empty_files:
+            open(p(fn), 'w').close()
+    else:
+        print config
 
 
 def command_events(args):
