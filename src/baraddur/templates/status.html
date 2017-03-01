@@ -1,4 +1,4 @@
-{% extends "index.html" %}
+{% extends "base.html" %}
 
 {% block extra_head %}
  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
@@ -10,7 +10,7 @@
     <h1 class="content-subhead">Status <i>{{ problem.name }}</i></h1>
     <p><span style="font-family: monospace;">{{ problem.__class__.__name__ }}</span> | <span style="font-family: monospace;">{{ problem.base_source.__class__.__name__ }}</span></p>
 </header>
-    <h2 class="content-subhead">Plot misfit</h3>
-    <p>Global misfit evolution.</p>
+    <h2 class="content-subhead">Global misfit</h3>
+    <p>Evolution of global misfit.</p>
         {% raw misfit_plot %}
 {% end %}

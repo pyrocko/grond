@@ -132,6 +132,10 @@ class MisfitTarget(gf.Target):
         return '.'.join(x for x in (
             self.super_group, self.group) + self.codes if x)
 
+    @property
+    def id(self):
+        return self.codes
+
     def get_plain_target(self):
         d = dict(
             (k, getattr(self, k)) for k in gf.Target.T.propnames)
@@ -470,6 +474,7 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
     scene_id = String.T()
     super_group = gf.StringID.T()
     inner_misfit_config = InnerSatelliteMisfitConfig.T()
+    manual_weight = Float.T(default=1.0)
     group = gf.StringID.T()
 
     def __init__(self, *args, **kwargs):
@@ -478,6 +483,10 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
 
     def set_dataset(self, ds):
         self._ds = ds
+
+    @property
+    def id(self):
+        return self.scene_id
 
     def get_dataset(self):
         return self._ds

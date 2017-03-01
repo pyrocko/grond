@@ -1,4 +1,4 @@
-{% extends "index.html" %}
+{% extends "base.html" %}
 
 {% block extra_head %}
  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
@@ -14,24 +14,7 @@
     <div class="pure-u-1 pure-u-md-1 pure-u-lg-1-1">
         <h2 class="content-subhead">Targets</h3>
         <p>Targets to optimize.</p>
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <td></td>
-                    <td>id</td>
-                    <td>Type</td>
-                </tr>
-            </thead>
-            <tbody>
-                {% for it, target in enumerate(problem.targets) %}
-                    <tr{% if it % 2 == 1 %} class="pure-table-odd"{% end %}>
-                        <td>{{ it+1 }}</td>
-                        <td>{{ target.scene_id }}</td>
-                        <td style="font-family: monospace;">{{ target.__class__.__name__ }}</td>
-                    </tr>
-                {% end %}
-            </tbody>
-        </table>
+        {% include "table_targets.html" %}
     </div>
     <div class="pure-u-1 pure-u-md-1 pure-u-lg-1-2">
         <h2 class="content-subhead">Initial model</h3>
@@ -78,7 +61,7 @@
         </table>
     </div>
     <div class="pure-u-1">
-        <h2 class="content-subhead">Map of initial model position</h2>
+        <h2 class="content-subhead">Geographical position of initial model</h2>
         <div id="initial_model_map" class="pure-u-1" style="min-height: 250px;">
             <script>
                 var map = L.map('initial_model_map').setView(

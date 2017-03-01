@@ -9,8 +9,6 @@ from pyrocko import gf, util, guts, moment_tensor as mtm
 from pyrocko.guts import (Object, String, Bool, List, Float, Dict, Int,
                           StringChoice)
 
-from .targets import GrondTarget
-
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond')
@@ -818,7 +816,8 @@ class RectangularProblemConfig(ProblemConfig):
             lat=event.lat,
             lon=event.lon,
             time=event.time,
-            depth=event.depth
+            depth=event.depth,
+            anchor='top',
             )
 
         problem = RectangularProblem(

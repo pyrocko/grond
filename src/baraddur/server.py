@@ -3,10 +3,11 @@ import grond
 import os.path as op
 import logging
 import numpy as num
+import socket
 
 from collections import OrderedDict
 
-from pyrocko.guts import Object, Bool, String, Int
+from pyrocko.guts import Object, Bool, String, Int, List
 
 from tornado.web import RequestHandler, StaticFileHandler
 from tornado import gen
@@ -19,6 +20,9 @@ from bokeh.application.handlers import Handler as BokehHandler
 from bokeh.models import ColumnDataSource
 from bokeh import layouts
 from bokeh.plotting import figure
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('grond.baraddur')
 
 
 def makeColorGradient(misfits, fr=1., fg=.5, fb=1.,
@@ -108,7 +112,8 @@ class Parameters(BaraddurRequestHandler):
                 fig.scatter('n', par.name,
                             source=self.source, alpha=.4)
                 plots.append(fig)
-            plots += ([None] * (self.ncols - (len(plots) % self.ncols)))
+            plots += [None] * (self.ncols - (len(plots) % self.ncols))
+            print plots
 
             grid = layouts.gridplot(
                 plots,
@@ -161,33 +166,76 @@ class Summary(BaraddurRequestHandler):
                     problem=self.config.problem)
 
 
-class MainHandler(BaraddurRequestHandler):
+class Targets(BaraddurRequestHandler):
+
+    class TargetContributionPlot(BaraddurBokehHandler):
+
+        def modify_document(self, doc):
+            self.nmodels = 0
+            self.source = ColumnDataSource()
+            self.update_contributions()
+
+            plot = figure(webgl=True,
+                          x_axis_label='Iteration #',
+                          y_axis_label='Misfit')
+
+            doc.add_root(plot)
+            doc.add_periodic_callback(self.update_contributions, 1e3)
+
+        @gen.coroutine
+        def update_contributions(self):
+            mx, misfits = grond.core.load_problem_data(
+                self.config.rundir, self.config.problem,
+                skip_models=self.nmodels)
+
+            print misfits
+            new_nmodels = mx.shape[0]
+
+            # self.source.stream(dict(m=misfits[:, :, 0],
+            #                         n=num.arange(new_nmodels,
+            #                                      dtype=num.int) +
+            #                         self.nmodels + 1))
+            self.nmodels += new_nmodels
+
+    bokeh_handlers = {'contribution_plot': TargetContributionPlot}
 
     @gen.coroutine
     def get(self):
-        self.render('index.html',
-                    pages=pages)
+        self.render('targets.html',
+                    contribution_plot=autoload_server(
+                        None,
+                        url='/contribution_plot'),
+                    pages=pages,
+                    problem=self.config.problem)
 
 
 pages = OrderedDict([
+    ('Summary', Summary),
     ('Status', Status),
     ('Parameters', Parameters),
-    ('Summary', Summary),
-    ('Sequences', MainHandler),
+    ('Targets', Targets),
 ])
 
 
 class BaraddurConfig(Object):
-    rundir = String.T()
+    rundir = String.T(
+        help='Grond rundir.')
     template_path = String.T(
-        default='tpl',
-        optional=True)
+        default='templates',
+        optional=True,
+        help='Baraddur templates.')
     debug = Bool.T(
         default=True,
         optional=True)
+    hosts = List.T(
+        String.T(),
+        default=['*'],
+        optional=True,
+        help='List of allowed hosts.')
     port = Int.T(
         default=8080,
-        optional=True)
+        optional=True,
+        help='Port to listen on.')
 
     @property
     def problem(self):
@@ -197,16 +245,30 @@ class BaraddurConfig(Object):
 class Baraddur(BokehServer):
     def __init__(self, rundir=None, *args, **kwargs):
         self.config = BaraddurConfig(rundir=rundir)
+        port_offset = 0
 
-        BokehServer.__init__(
-            self,
-            self.get_bokeh_apps(),
-            io_loop=tornado.ioloop.IOLoop.current(),
-            extra_patterns=self.get_tornado_handlers(),
-            hosts='*.*.*.*')
+        while True:
+            try:
+                BokehServer.__init__(
+                    self,
+                    self.get_bokeh_apps(),
+                    io_loop=tornado.ioloop.IOLoop.current(),
+                    extra_patterns=self.get_tornado_handlers(),
+                    port=self.config.port + port_offset,
+                    host=self.config.hosts)
+                break
+            except socket.error as se:
+                if se.errno == 98 and port_offset < 50:  # Port in use
+                    port_offset += 1
+                    logger.info('Port %d in use, bailing to %d'
+                                % (self.config.port + port_offset - 1,
+                                   self.config.port + port_offset))
+                else:
+                    raise se
+        logger.info('Created Baraddur server on http://localhost:%d'
+                    % (self.port))
 
         tornado_app = self._tornado
-        tornado_app.listen(8080)
         tornado_app.settings['template_path'] = self.config.template_path
 
         if self.config.debug:
@@ -218,14 +280,7 @@ class Baraddur(BokehServer):
             from tornado import autoreload
             autoreload.start()
 
-            console = logging.StreamHandler()
-            console.setLevel(logging.DEBUG)
-            formatter = logging.Formatter(
-                '%(name)-12s: %(levelname)-8s %(message)s')
-            console.setFormatter(formatter)
-            rootLogger = logging.getLogger('')
-            rootLogger.addHandler(console)
-            rootLogger.setLevel(logging.DEBUG)
+            logging.getLogger('').setLevel(logging.DEBUG)
 
     def get_bokeh_apps(self):
         bokeh_apps = {}
