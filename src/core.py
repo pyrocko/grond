@@ -142,7 +142,7 @@ def load_problem_info(dirname):
 
 
 def load_problem_data(dirname, problem, skip_models=0):
-    fn = op.join(dirname, 'x')
+    fn = op.join(dirname, 'models')
     with open(fn, 'r') as f:
         nmodels = os.fstat(f.fileno()).st_size / (problem.nparameters * 8)
         nmodels -= skip_models
@@ -965,12 +965,15 @@ g_state = {}
 def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     status = tuple(status)
-
     g_data = (config, force, status, nparallel, event_names)
-
     g_state[id(g_data)] = g_data
 
     nevents = len(event_names)
+
+    from .baraddur import BaraddurProcess
+    baraddur = BaraddurProcess(rundir=expand_template(config.rundir_template,
+                                                      event_names[0]))
+    baraddur.start()
 
     for x in parimap.parimap(
             process_event,
@@ -979,6 +982,9 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
             nprocs=nparallel):
 
         pass
+    logger.info('Grond finished processing %d events. '
+                'Ctrl+C to kill Barad-dur')
+    baraddur.join()
 
 
 def process_event(ievent, g_data_id):

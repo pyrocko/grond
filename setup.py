@@ -8,8 +8,11 @@ setup(
     version='0.1',
     author='Sebastian Heimann',
     author_email='sebastian.heimann@gfz-potsdam.de',
-    packages=['grond'],
-    package_dir={'grond': 'src'},
+    packages=['grond', 'grond.baraddur'],
     scripts=['apps/grond'],
-    package_data={'grond': []},
-    data_files=[('/etc/bash_completion.d', ['extras/grond'])])
+    package_dir={'grond': 'src'},
+    package_data={'grond': [],
+                  'grond': ['baraddur/templates/*.html',
+                            'baraddur/css/*']},
+    data_files=[('/etc/bash_completion.d', ['extras/grond'])],
+    )

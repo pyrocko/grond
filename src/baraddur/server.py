@@ -282,12 +282,8 @@ pages = OrderedDict([
 class BaraddurConfig(Object):
     rundir = String.T(
         help='Grond rundir.')
-    template_path = String.T(
-        default='templates',
-        optional=True,
-        help='Baraddur templates.')
     debug = Bool.T(
-        default=True,
+        default=False,
         optional=True)
     hosts = List.T(
         String.T(),
@@ -307,6 +303,8 @@ class BaraddurConfig(Object):
 class Baraddur(BokehServer):
     def __init__(self, rundir=None, *args, **kwargs):
         self.config = BaraddurConfig(rundir=rundir)
+        print self.config
+        self.ioloop = tornado.ioloop.IOLoop.current()
         port_offset = 0
 
         while True:
@@ -314,7 +312,7 @@ class Baraddur(BokehServer):
                 BokehServer.__init__(
                     self,
                     self.get_bokeh_apps(),
-                    io_loop=tornado.ioloop.IOLoop.current(),
+                    io_loop=self.ioloop,
                     extra_patterns=self.get_tornado_handlers(),
                     port=self.config.port + port_offset,
                     host=self.config.hosts)
@@ -327,11 +325,9 @@ class Baraddur(BokehServer):
                                    self.config.port + port_offset))
                 else:
                     raise se
-        logger.info('Created Baraddur server on http://localhost:%d'
-                    % (self.port))
-
         tornado_app = self._tornado
-        tornado_app.settings['template_path'] = self.config.template_path
+        tornado_app.settings['template_path'] = op.join(
+            op.dirname(op.abspath(__file__)), 'templates')
 
         if self.config.debug:
             tornado_app.settings.setdefault('autoreload', True)
@@ -366,12 +362,28 @@ class Baraddur(BokehServer):
                [(r'/css/(.*)', StaticFileHandler,
                 {'path': op.join(op.dirname(__file__), 'css')})]
 
-    def start(self):
+    def start(self, signal=None):
+        logger.info('Starting Baraddur server on http://localhost:%d'
+                    % (self.port))
+
+        if signal is not None:
+            def shutdown():
+                if not signal.empty():
+                    self.stop()
+            tornado.ioloop.PeriodicCallback(shutdown, 2000).start()
+
         BokehServer.start(self)
-        tornado.ioloop.IOLoop.current().start()
+        self.ioloop.start()
+
+    def stop(self, *args, **kwargs):
+        print args, kwargs
+        logger.info('Stopping Baraddur server...')
+        BokehServer.stop(self)
+        self.ioloop.stop()
 
 
-if __name__ == '__main__':
+if __name__ == '_123_main__':
     baraddur = Baraddur(
         rundir='/home/marius/Development/testing/grond/rundir')
     baraddur.start()
+    print 'here!'
