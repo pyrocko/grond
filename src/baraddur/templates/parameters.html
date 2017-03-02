@@ -11,5 +11,7 @@
     <p><span style="font-family: monospace;">{{ problem.__class__.__name__ }}</span> | <span style="font-family: monospace;">{{ problem.base_source.__class__.__name__ }}</span></p>
 </header>
     <h2 class="content-subhead">Parameter Plots</h3>
-    {% raw parameter_plot %}
+    <div class="pure-u-1">
+        {% raw parameter_plot %}
+    </div>
 {% end %}

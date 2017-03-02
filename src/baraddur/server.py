@@ -183,7 +183,7 @@ class Rundirs(BaraddurRequestHandler):
         self.get()
 
 
-class Misfit(BaraddurRequestHandler):
+class Summary(BaraddurRequestHandler):
 
     @gen.coroutine
     def get(self):
@@ -192,7 +192,7 @@ class Misfit(BaraddurRequestHandler):
                     problem=self.config.problem)
 
 
-class Status(BaraddurRequestHandler):
+class Misfit(BaraddurRequestHandler):
 
     class MisfitsPlot(BaraddurBokehHandler):
 
@@ -206,6 +206,8 @@ class Status(BaraddurRequestHandler):
             self.update_misfits()
 
             plot = figure(webgl=True,
+                          responsive=True,
+                          plot_height=300,
                           x_axis_label='Iteration #',
                           y_axis_label='Misfit')
             plot.scatter('niter', 'target_mean',
@@ -226,7 +228,7 @@ class Status(BaraddurRequestHandler):
 
     @gen.coroutine
     def get(self):
-        self.render('status.html',
+        self.render('misfit.html',
                     pages=pages,
                     misfit_plot=autoload_server(
                         None,
@@ -254,6 +256,7 @@ class Parameters(BaraddurRequestHandler):
             plots = []
             for par in problem.parameters:
                 fig = figure(webgl=True,
+                             responsive=True,
                              x_axis_label='Iteration #',
                              y_axis_label='%s [%s]' % (par.label, par.unit))
                 fig.scatter('niter', par.name,
@@ -332,7 +335,7 @@ class Targets(BaraddurRequestHandler):
 pages = OrderedDict([
     ('Rundirs', Rundirs),
     ('Summary', Misfit),
-    ('Misfit', Status),
+    ('Misfit', Misfit),
     ('Parameters', Parameters),
     # ('Targets', Targets),
 ])
