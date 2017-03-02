@@ -1536,7 +1536,7 @@ def solve(problem,
 
         lines = []
         if 'state' in status:
-            lines.append('%i' % iiter)
+            lines.append('%s, %i' % (problem.name, iiter))
             lines.append(''.join('-X'[int(acc)] for acc in accept))
 
         xhist[iiter, :] = x
