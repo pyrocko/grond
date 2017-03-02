@@ -164,7 +164,7 @@ class GrondModel(object):
             listener()
 
 
-def draw_sequence_figures(model, plt, misfit_cutoff=None):
+def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='iteration'):
     problem = model.problem
 
     imodels = num.arange(model.nmodels)
@@ -182,7 +182,13 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
     isort = num.argsort(gms)[::-1]
 
-    imodels = imodels[isort]
+    if sort_by == 'iteration':
+        imodels = imodels[isort]
+    elif sort_by == 'misfit':
+        imodels = num.arange(imodels.size)
+    else:
+        assert False
+
     gms = gms[isort]
     gms_softclip = gms_softclip[isort]
     xs = xs[isort, :]
