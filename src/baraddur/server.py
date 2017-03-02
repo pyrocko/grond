@@ -10,7 +10,7 @@ import socket
 from collections import OrderedDict
 from datetime import datetime
 
-from pyrocko.guts import Object, Bool, String, Int, List
+from pyrocko.guts import Object, Bool, String, Int, List, Float
 
 from tornado.web import RequestHandler, StaticFileHandler
 from tornado import gen
@@ -65,7 +65,8 @@ class BaraddurModel(object):
 
     @property
     def start_time(self):
-        return datetime.fromtimestamp(os.stat(self.rundir).st_mtime)
+        return datetime.fromtimestamp(
+                os.stat(self._jp('problem.yaml')).st_mtime)
 
     @property
     def duration(self):
@@ -214,7 +215,8 @@ class Misfit(BaraddurRequestHandler):
                          source=self.source, alpha=.4)
 
             doc.add_root(plot)
-            doc.add_periodic_callback(self.update_misfits, 1e3)
+            doc.add_periodic_callback(self.update_misfits,
+                                      self.config.plot_update_small)
 
         @gen.coroutine
         def update_misfits(self):
@@ -270,7 +272,8 @@ class Parameters(BaraddurRequestHandler):
                 ncols=self.ncols)
 
             doc.add_root(grid)
-            doc.add_periodic_callback(self.update_parameters, 2.5*1e3)
+            doc.add_periodic_callback(self.update_parameters,
+                                      self.config.plot_update_small)
 
         @gen.coroutine
         def update_parameters(self):
@@ -358,6 +361,14 @@ class BaraddurConfig(Object):
         default=8080,
         optional=True,
         help='Port to listen on.')
+    plot_update_small = Float.T(
+        default=1e3,
+        optional=True,
+        help='Update rate for small, performant plots. E.g. misfits')
+    plot_update_big = Float.T(
+        default=2.5e3,
+        optional=True,
+        help='Update rate for big, heavy plots. E.g. parameters.')
 
     def __init__(self, *args, **kwargs):
         Object.__init__(self, *args, **kwargs)
