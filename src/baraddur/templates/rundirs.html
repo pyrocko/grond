@@ -17,21 +17,23 @@
                 <td>Directory</td>
                 <td>Start time</td>
                 <td>Iterations</td>
-                <td colspan=2>Best misfit</td>
+                <td>Best misfit</td>
+                <td colspan=2>Duration</td>
             </tr>
         </thead>
         <tbody>
             {% for im, model in enumerate(models) %}
                 <tr{% if im % 2 == 1 %} class="pure-table-odd"{% end %}>
                     <td style="font-family: monospace;">{{ model.name }}</td>
-                    <td>{{ model.start_time }}</td>
+                    <td>{{ model.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ model.niterations }}</td>
                     <td>{{ model.best_misfit }}</td>
+                    <td>{{ model.duration }}</td>
                     <td align="center">
                     {% if model.rundir == active_rundir %}
-                    <button class="pure-button pure-button-disabled button-selected"')">Selected</button>
+                    <button class="pure-button button-selected"')">Selected</button>
                     {% else %}
-                    <button class="pure-button pure-button-primary" onclick="changeRundir('{{ model.rundir }}');">Change</button>
+                    <button class="pure-button pure-button-primary" onclick="changeRundir('{{ model.rundir }}');">Select</button>
                     {% end %}
                     </td>
                 </tr>

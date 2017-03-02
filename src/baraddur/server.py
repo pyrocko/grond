@@ -8,7 +8,7 @@ import numpy as num
 import socket
 
 from collections import OrderedDict
-from datetime import date
+from datetime import datetime
 
 from pyrocko.guts import Object, Bool, String, Int, List
 
@@ -48,7 +48,7 @@ class BaraddurBokehHandler(BokehHandler):
         self.config = config
 
 
-class GrondBokehModel(object):
+class BaraddurModel(object):
     def __init__(self, rundir):
         self.set_rundir(rundir)
 
@@ -65,12 +65,12 @@ class GrondBokehModel(object):
 
     @property
     def start_time(self):
-        stat = os.stat(self._jp('problem.yaml'))
-        try:
-            t = stat.st_birthtime
-        except AttributeError:
-            t = stat.st_mtime
-        return date.fromtimestamp(t).strftime('%Y-%m-%d %H:%M')
+        return datetime.fromtimestamp(os.stat(self.rundir).st_mtime)
+
+    @property
+    def duration(self):
+        return datetime.fromtimestamp(
+            os.stat(self._jp('models')).st_ctime) - self.start_time
 
     @property
     def name(self):
@@ -84,6 +84,10 @@ class GrondBokehModel(object):
     @property
     def niterations(self):
         return op.getsize(self._jp('models')) / (self.nparameters * 8)
+
+    @property
+    def iter_per_second(self):
+        return self.niterations / self.duration.seconds
 
     @staticmethod
     def validate_rundir(rundir):
@@ -110,32 +114,34 @@ class GrondBokehModel(object):
                 f, dtype='<f8', count=nmodels * self.nparameters)\
                 .astype(num.float32)
 
-        nmodels = data.size/self.nparameters - skip_nmodels
+        nmodels = data.size/self.nparameters
         models = data.reshape((nmodels, self.nparameters))
 
-        mods_dict = {}
+        models_dict = {}
         for ip, par in enumerate(self.parameters):
-            mods_dict[par.name] = models[:, ip]
-        mods_dict['niter'] = num.arange(nmodels, dtype=num.int)\
+            models_dict[par.name] = models[:, ip]
+        models_dict['niter'] = num.arange(nmodels, dtype=num.int)\
             + skip_nmodels + 1
 
         if keys is not None:
-            for k in mods_dict.keys():
+            for k in models_dict.keys():
                 if k not in keys:
-                    mods_dict.pop(k)
+                    models_dict.pop(k)
 
-        return nmodels, mods_dict
+        return nmodels, models_dict
 
     def get_misfits(self, skip_nmodels=0, keys=None):
         fn = self._jp('misfits')
 
         with open(fn, 'r') as f:
-            nmodels = os.fstat(f.fileno()).st_size / (self.nparameters * 8)
+            nmodels = os.fstat(f.fileno()).st_size / (self.ntargets * 2 * 8)
             nmodels -= skip_nmodels
             f.seek(skip_nmodels * self.ntargets * 2 * 8)
             data = num.fromfile(
                 f, dtype='<f8', count=nmodels*self.ntargets*2)\
                 .astype(num.float32)
+
+        nmodels = data.size/(self.ntargets * 2)
 
         data = data.reshape((nmodels, self.ntargets*2))
         combi = num.empty_like(data)
@@ -162,7 +168,7 @@ class GrondBokehModel(object):
 class Rundirs(BaraddurRequestHandler):
 
     def get(self):
-        models = [GrondBokehModel(rundir=rd)
+        models = [BaraddurModel(rundir=rd)
                   for rd in self.config.available_rundirs]
         self.render('rundirs.html',
                     pages=pages,
@@ -177,7 +183,7 @@ class Rundirs(BaraddurRequestHandler):
         self.get()
 
 
-class Summary(BaraddurRequestHandler):
+class Misfit(BaraddurRequestHandler):
 
     @gen.coroutine
     def get(self):
@@ -242,7 +248,7 @@ class Parameters(BaraddurRequestHandler):
             self.source = ColumnDataSource()
             for p in ['niter'] + [p.name for p in problem.parameters]:
                 self.source.add(num.ndarray(0, dtype=num.float32), p)
-            self.model = GrondBokehModel(self.config.rundir)
+            self.model = BaraddurModel(self.config.rundir)
             self.update_parameters()
 
             plots = []
@@ -325,8 +331,8 @@ class Targets(BaraddurRequestHandler):
 
 pages = OrderedDict([
     ('Rundirs', Rundirs),
-    ('Summary', Summary),
-    ('Status', Status),
+    ('Summary', Misfit),
+    ('Misfit', Status),
     ('Parameters', Parameters),
     # ('Targets', Targets),
 ])
@@ -373,12 +379,12 @@ class BaraddurConfig(Object):
     @rundir.setter
     def rundir(self, value):
         self._rundir = value
-        self._model = GrondBokehModel(rundir=self._rundir)
+        self._model = BaraddurModel(rundir=self._rundir)
 
     @property
     def model(self):
         if self._model is None:
-            self._model = GrondBokehModel(rundir=self.rundir)
+            self._model = BaraddurModel(rundir=self.rundir)
         return self._model
 
     @property
@@ -386,7 +392,7 @@ class BaraddurConfig(Object):
         rundirs = []
         for d in [d for d in glob.glob(op.join(self.project_dir, '*'))
                   if op.isdir(d)]:
-            if GrondBokehModel.validate_rundir(d):
+            if BaraddurModel.validate_rundir(d):
                 rundirs.append(d)
         return rundirs
 

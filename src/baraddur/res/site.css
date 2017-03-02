@@ -272,5 +272,7 @@ Hides the menu at `48em`, but modify this based on your app's needs.
 
 
 .button-selected {
-            background: rgb(28, 184, 65); /* this is a green */
-        }
+    background: rgb(28, 184, 65); /* this is a green */
+    color: #fff;
+    opacity: .6;
+}
