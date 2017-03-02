@@ -971,8 +971,7 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
     nevents = len(event_names)
 
     from .baraddur import BaraddurProcess
-    baraddur = BaraddurProcess(rundir=expand_template(config.rundir_template,
-                                                      event_names[0]))
+    baraddur = BaraddurProcess(project_dir=op.abspath(op.curdir))
     baraddur.start()
 
     for x in parimap.parimap(

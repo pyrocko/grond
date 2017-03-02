@@ -1,12 +1,14 @@
 import tornado.ioloop
 import grond
 import os
+import glob
 import os.path as op
 import logging
 import numpy as num
 import socket
 
 from collections import OrderedDict
+from datetime import date
 
 from pyrocko.guts import Object, Bool, String, Int, List
 
@@ -47,27 +49,66 @@ class BaraddurBokehHandler(BokehHandler):
 
 
 class GrondBokehModel(object):
-    def __init__(self, config):
-        self.config = config
-        self.set_rundir(self.config.rundir)
+    def __init__(self, rundir):
+        self.set_rundir(rundir)
 
     def set_rundir(self, rundir):
         logger.debug('Loading problem from %s' % rundir)
-        self.rundir = rundir
+        self.rundir = op.abspath(rundir)
         self.problem = grond.core.load_problem_info(self.rundir)
         self.parameters = self.problem.parameters
         self.nparameters = self.problem.nparameters
         self.ntargets = self.problem.ntargets
 
-    def get_models(self, skip_nmodels=0):
-        fn = op.join(self.rundir, 'models')
+    def _jp(self, file):
+        return op.join(self.rundir, file)
+
+    @property
+    def start_time(self):
+        stat = os.stat(self._jp('problem.yaml'))
+        try:
+            t = stat.st_birthtime
+        except AttributeError:
+            t = stat.st_mtime
+        return date.fromtimestamp(t).strftime('%Y-%m-%d %H:%M')
+
+    @property
+    def name(self):
+        return op.split(self.rundir)[-1]
+
+    @property
+    def best_misfit(self):
+        _, data = self.get_misfits(keys='target_mean')
+        return data['target_mean'].min()
+
+    @property
+    def niterations(self):
+        return op.getsize(self._jp('models')) / (self.nparameters * 8)
+
+    @staticmethod
+    def validate_rundir(rundir):
+
+        def jp(fn):
+            return op.join(rundir, fn)
+
+        for fn in ['models', 'misfits', 'problem.yaml']:
+            if op.lexists(jp(fn)):
+                if op.getsize(jp(fn)) == 0:
+                    return False
+            else:
+                return False
+        return True
+
+    def get_models(self, skip_nmodels=0, keys=None):
+        fn = self._jp('models')
+
         with open(fn, 'r') as f:
             nmodels = os.fstat(f.fileno()).st_size / (self.nparameters * 8)
             nmodels -= skip_nmodels
             f.seek(skip_nmodels * self.nparameters * 8)
             data = num.fromfile(
                 f, dtype='<f8', count=nmodels * self.nparameters)\
-                .astype(num.float)
+                .astype(num.float32)
 
         nmodels = data.size/self.nparameters - skip_nmodels
         models = data.reshape((nmodels, self.nparameters))
@@ -75,11 +116,18 @@ class GrondBokehModel(object):
         mods_dict = {}
         for ip, par in enumerate(self.parameters):
             mods_dict[par.name] = models[:, ip]
-        mods_dict['niter'] = num.arange(nmodels, dtype=num.int) + (nmodels+1)
+        mods_dict['niter'] = num.arange(nmodels, dtype=num.int)\
+            + skip_nmodels + 1
+
+        if keys is not None:
+            for k in mods_dict.keys():
+                if k not in keys:
+                    mods_dict.pop(k)
+
         return nmodels, mods_dict
 
-    def get_misfits(self, skip_nmodels=0):
-        fn = op.join(self.rundir, 'misfits')
+    def get_misfits(self, skip_nmodels=0, keys=None):
+        fn = self._jp('misfits')
 
         with open(fn, 'r') as f:
             nmodels = os.fstat(f.fileno()).st_size / (self.nparameters * 8)
@@ -87,24 +135,55 @@ class GrondBokehModel(object):
             f.seek(skip_nmodels * self.ntargets * 2 * 8)
             data = num.fromfile(
                 f, dtype='<f8', count=nmodels*self.ntargets*2)\
-                .astype(num.float)
+                .astype(num.float32)
 
         data = data.reshape((nmodels, self.ntargets*2))
-
         combi = num.empty_like(data)
         combi[:, 0::2] = data[:, :self.ntargets]
         combi[:, 1::2] = data[:, self.ntargets:]
-
-        assert(data.size/self.nparameters - skip_nmodels == nmodels)
         misfits = combi.reshape((nmodels, self.ntargets, 2))
 
         mf_dict = {}
         for it in xrange(self.ntargets):
             mf_dict['target_%03d' % it] = misfits[:, it, 0]
-        mf_dict['target_mean'] = num.mean(misfits[:, :, 0])
+        mf_dict['target_mean'] = num.mean(misfits, axis=1)[:, 0]
 
-        mf_dict['niter'] = num.arange(nmodels, dtype=num.int) + (nmodels+1)
-        return nmodels, misfits
+        mf_dict['niter'] = num.arange(nmodels, dtype=num.int)\
+            + skip_nmodels + 1
+
+        if keys is not None:
+            for k in mf_dict.keys():
+                if k not in keys:
+                    mf_dict.pop(k)
+
+        return nmodels, mf_dict
+
+
+class Rundirs(BaraddurRequestHandler):
+
+    def get(self):
+        models = [GrondBokehModel(rundir=rd)
+                  for rd in self.config.available_rundirs]
+        self.render('rundirs.html',
+                    pages=pages,
+                    project_dir=self.config.project_dir,
+                    models=models,
+                    active_rundir=self.config.rundir)
+
+    def post(self):
+        rundir = self.get_argument('rundir', None)
+        if rundir is not None:
+            self.config.rundir = rundir
+        self.get()
+
+
+class Summary(BaraddurRequestHandler):
+
+    @gen.coroutine
+    def get(self):
+        self.render('summary.html',
+                    pages=pages,
+                    problem=self.config.problem)
 
 
 class Status(BaraddurRequestHandler):
@@ -113,15 +192,17 @@ class Status(BaraddurRequestHandler):
 
         def modify_document(self, doc):
             self.nmodels = 0
-            self.source = ColumnDataSource(
-                data={'n': num.ndarray(0),
-                      'gm': num.ndarray(0)})
+            self.source = ColumnDataSource()
+            self.source.add(num.ndarray(0, dtype=num.float32),
+                            'target_mean')
+            self.source.add(num.ndarray(0, dtype=num.float32),
+                            'niter')
             self.update_misfits()
 
             plot = figure(webgl=True,
                           x_axis_label='Iteration #',
                           y_axis_label='Misfit')
-            plot.scatter('n', 'gm',
+            plot.scatter('niter', 'target_mean',
                          source=self.source, alpha=.4)
 
             doc.add_root(plot)
@@ -129,25 +210,22 @@ class Status(BaraddurRequestHandler):
 
         @gen.coroutine
         def update_misfits(self):
-            mx, misfits = grond.core.load_problem_data(
-                self.config.rundir, self.config.problem,
-                skip_models=self.nmodels)
-            new_nmodels = mx.shape[0]
-
-            fits = num.mean(misfits, axis=1)
-            self.source.stream(dict(gm=fits[:, 0],
-                                    n=num.arange(new_nmodels,
-                                                 dtype=num.int) +
-                                    self.nmodels + 1))
+            new_nmodels, new_data = self.config.model.get_misfits(
+                skip_nmodels=self.nmodels,
+                keys=self.source.data.keys())
+            self.source.stream(new_data)
             self.nmodels += new_nmodels
 
-    bokeh_handlers = {'misfit_plot': MisfitsPlot}
+    bokeh_handlers = {'misfit': MisfitsPlot}
 
     @gen.coroutine
     def get(self):
         self.render('status.html',
                     pages=pages,
-                    misfit_plot=autoload_server(None, url='/misfit_plot'),
+                    misfit_plot=autoload_server(
+                        None,
+                        app_path='/misfit',
+                        url='plots'),
                     problem=self.config.problem)
 
 
@@ -162,8 +240,9 @@ class Parameters(BaraddurRequestHandler):
             problem = self.config.problem
 
             self.source = ColumnDataSource()
-            for p in ['n'] + [p.name for p in problem.parameters]:
-                self.source.add(num.ndarray(0), p)
+            for p in ['niter'] + [p.name for p in problem.parameters]:
+                self.source.add(num.ndarray(0, dtype=num.float32), p)
+            self.model = GrondBokehModel(self.config.rundir)
             self.update_parameters()
 
             plots = []
@@ -171,11 +250,10 @@ class Parameters(BaraddurRequestHandler):
                 fig = figure(webgl=True,
                              x_axis_label='Iteration #',
                              y_axis_label='%s [%s]' % (par.label, par.unit))
-                fig.scatter('n', par.name,
+                fig.scatter('niter', par.name,
                             source=self.source, alpha=.4)
                 plots.append(fig)
             plots += [None] * (self.ncols - (len(plots) % self.ncols))
-            print plots
 
             grid = layouts.gridplot(
                 plots,
@@ -187,44 +265,23 @@ class Parameters(BaraddurRequestHandler):
 
         @gen.coroutine
         def update_parameters(self):
-            problem = self.config.problem
-
-            try:
-                mx, misfits = grond.core.load_problem_data(
-                    self.config.rundir, problem, skip_models=self.nmodels)
-            except IOError:
-                return
-
-            new_nmodels = mx.shape[0]
-
-            new_data = {}
-            for ip, par in enumerate(problem.parameters):
-                new_data[par.name] = mx[:, ip]
-            new_data['n'] = num.arange(new_nmodels, dtype=num.int) +\
-                self.nmodels + 1
-
+            new_nmodels, new_data = self.config.model.get_models(
+                skip_nmodels=self.nmodels,
+                keys=self.source.data.keys())
             self.source.stream(new_data)
             self.nmodels += new_nmodels
 
-    bokeh_handlers = {'parameter_plot': ParameterPlots}
+    bokeh_handlers = {'parameters': ParameterPlots}
 
     @gen.coroutine
     def get(self):
 
-        self.render('parameter_plots.html',
+        self.render('parameters.html',
                     pages=pages,
                     parameter_plot=autoload_server(
                         None,
-                        url='/parameter_plot'),
-                    problem=self.config.problem)
-
-
-class Summary(BaraddurRequestHandler):
-
-    @gen.coroutine
-    def get(self):
-        self.render('summary.html',
-                    pages=pages,
+                        app_path='/parameters',
+                        url='plots'),
                     problem=self.config.problem)
 
 
@@ -250,38 +307,36 @@ class Targets(BaraddurRequestHandler):
                 self.config.rundir, self.config.problem,
                 skip_models=self.nmodels)
 
-            print misfits
             new_nmodels = mx.shape[0]
-
-            # self.source.stream(dict(m=misfits[:, :, 0],
-            #                         n=num.arange(new_nmodels,
-            #                                      dtype=num.int) +
-            #                         self.nmodels + 1))
             self.nmodels += new_nmodels
 
-    bokeh_handlers = {'contribution_plot': TargetContributionPlot}
+    bokeh_handlers = {'contributions': TargetContributionPlot}
 
     @gen.coroutine
     def get(self):
         self.render('targets.html',
                     contribution_plot=autoload_server(
                         None,
-                        url='/contribution_plot'),
+                        app_path='/contributions',
+                        url='plots'),
                     pages=pages,
                     problem=self.config.problem)
 
 
 pages = OrderedDict([
+    ('Rundirs', Rundirs),
     ('Summary', Summary),
     ('Status', Status),
     ('Parameters', Parameters),
-    ('Targets', Targets),
+    # ('Targets', Targets),
 ])
 
 
 class BaraddurConfig(Object):
-    rundir = String.T(
-        help='Grond rundir.')
+    rundir = String.T()
+    project_dir = String.T(
+        help='Grond project dir.',
+        optional=True)
     debug = Bool.T(
         default=False,
         optional=True)
@@ -295,15 +350,56 @@ class BaraddurConfig(Object):
         optional=True,
         help='Port to listen on.')
 
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
+        self._rundir = None
+        self._model = None
+
     @property
     def problem(self):
         return grond.core.load_problem_info(self.rundir)
 
+    @property
+    def rundir(self):
+        return self._rundir
+
+    @rundir.getter
+    def rundir(self):
+        if self._rundir is None:
+            if len(self.available_rundirs) > 0:
+                self.rundir = self.available_rundirs[0]
+        return self._rundir
+
+    @rundir.setter
+    def rundir(self, value):
+        self._rundir = value
+        self._model = GrondBokehModel(rundir=self._rundir)
+
+    @property
+    def model(self):
+        if self._model is None:
+            self._model = GrondBokehModel(rundir=self.rundir)
+        return self._model
+
+    @property
+    def available_rundirs(self):
+        rundirs = []
+        for d in [d for d in glob.glob(op.join(self.project_dir, '*'))
+                  if op.isdir(d)]:
+            if GrondBokehModel.validate_rundir(d):
+                rundirs.append(d)
+        return rundirs
+
 
 class Baraddur(BokehServer):
-    def __init__(self, rundir=None, *args, **kwargs):
-        self.config = BaraddurConfig(rundir=rundir)
-        print self.config
+
+    def __init__(self, config=None, project_dir=None, *args, **kwargs):
+        if config is not None:
+            self.config = config
+        elif project_dir is not None:
+            self.config = BaraddurConfig(project_dir=project_dir)
+        else:
+            raise AttributeError('No project dir set!')
         self.ioloop = tornado.ioloop.IOLoop.current()
         port_offset = 0
 
@@ -320,9 +416,9 @@ class Baraddur(BokehServer):
             except socket.error as se:
                 if se.errno == 98 and port_offset < 50:  # Port in use
                     port_offset += 1
-                    logger.info('Port %d in use, bailing to %d'
-                                % (self.config.port + port_offset - 1,
-                                   self.config.port + port_offset))
+                    logger.warning('Port %d in use, bailing to %d'
+                                   % (self.config.port + port_offset - 1,
+                                      self.config.port + port_offset))
                 else:
                     raise se
         tornado_app = self._tornado
@@ -349,7 +445,7 @@ class Baraddur(BokehServer):
                 continue
 
             for url, bokeh_handler in handler_docs.iteritems():
-                bokeh_apps['/%s' % url] = Application(bokeh_handler(
+                bokeh_apps['/plots/%s' % url] = Application(bokeh_handler(
                     self.config))
         return bokeh_apps
 
@@ -359,12 +455,12 @@ class Baraddur(BokehServer):
                [(r'/%s' % title, handler,
                  {'config': self.config})
                 for title, handler in pages.iteritems()] +\
-               [(r'/css/(.*)', StaticFileHandler,
-                {'path': op.join(op.dirname(__file__), 'css')})]
+               [(r'/res/(.*)', StaticFileHandler,
+                {'path': op.join(op.dirname(__file__), 'res')})]
 
     def start(self, signal=None):
-        logger.info('Starting Baraddur server on http://localhost:%d'
-                    % (self.port))
+        logger.info('Starting Baraddur server on http://%s:%d'
+                    % ('localhost', self.port))
 
         if signal is not None:
             def shutdown():
@@ -376,14 +472,12 @@ class Baraddur(BokehServer):
         self.ioloop.start()
 
     def stop(self, *args, **kwargs):
-        print args, kwargs
         logger.info('Stopping Baraddur server...')
         BokehServer.stop(self)
         self.ioloop.stop()
 
 
-if __name__ == '_123_main__':
+if __name__ == '__main__':
     baraddur = Baraddur(
         rundir='/home/marius/Development/testing/grond/rundir')
     baraddur.start()
-    print 'here!'

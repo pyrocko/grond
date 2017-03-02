@@ -1,7 +1,7 @@
 import multiprocessing as _mp
 import signal as _signal
 
-from .server import Baraddur  # noqa
+from .server import Baraddur, BaraddurConfig  # noqa
 
 
 class BaraddurProcess(_mp.Process):
@@ -9,9 +9,9 @@ class BaraddurProcess(_mp.Process):
         self.server = Baraddur(*args, **kwargs)
         self.shutdown_signal = _mp.Queue(1)
         _mp.Process.__init__(self)
-        _signal.signal(_signal.SIGINT, self.server.stop)
 
     def run(self):
+        _signal.signal(_signal.SIGINT, self.server.stop)
         self.server.start(signal=self.shutdown_signal)
 
     def stop(self):

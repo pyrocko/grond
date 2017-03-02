@@ -13,6 +13,6 @@ setup(
     package_dir={'grond': 'src'},
     package_data={'grond': [],
                   'grond': ['baraddur/templates/*.html',
-                            'baraddur/css/*']},
+                            'baraddur/res/*']},
     data_files=[('/etc/bash_completion.d', ['extras/grond'])],
     )

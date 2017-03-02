@@ -31,6 +31,7 @@ subcommand_descriptions = {
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
     'plot': 'plot optimization result',
+    'baraddur': 'start Barad-dur plotting, watching this directory',
     'export': 'export results',
 }
 
@@ -44,6 +45,7 @@ subcommand_usages = {
         'forward <configfile> <eventnames> ... [options]'),
     'harvest': 'harvest <rundir> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
+    'baraddur': 'plot-server',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
 }
 
@@ -65,6 +67,7 @@ Subcommands:
     forward       %(forward)s
     harvest       %(harvest)s
     plot          %(plot)s
+    baraddur      %(baraddur)s
     export        %(export)s
 
 To get further help and a list of available options for any subcommand run:
@@ -458,6 +461,31 @@ selected by specifying a comma-separated list.''' % (
 
     except grond.GrondError, e:
         die(str(e))
+
+
+def command_baraddur(args):
+    from grond.baraddur import Baraddur, BaraddurConfig
+    import signal
+
+    def setup(parser):
+        parser.add_option(
+            '--address', dest='address', default='*',
+            help='Address listening on, default all \'*\'')
+        parser.add_option(
+            '--port', dest='port', type='int', default=8080,
+            help='Port to listen on, default 8080')
+
+    parser, options, args = cl_parse('baraddur', args, setup)
+
+    config = BaraddurConfig(
+        project_dir=op.abspath(op.curdir),
+        hosts=options.address,
+        port=options.port)
+
+    baraddur = Baraddur(config=config)
+    signal.signal(signal.SIGINT, baraddur.stop)
+
+    baraddur.start()
 
 
 def command_export(args):

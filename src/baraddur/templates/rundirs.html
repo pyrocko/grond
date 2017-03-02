@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<script src="/res/changeRundir.js"></script>
+{% end %}
+
+{% block content %}
+<header>
+    <h1 class="content-subhead">Projects overview</h1>
+    <p>Project directory <span style="font-family: monospace;">{{ project_dir }}</span></p>
+</header>
+<div class="pure-u-1">
+    <h2 class="content-subhead">Available Rundirs</h3>
+    <table class="pure-table pure-table-horizontal">
+        <thead>
+            <tr>
+                <td>Directory</td>
+                <td>Start time</td>
+                <td>Iterations</td>
+                <td colspan=2>Best misfit</td>
+            </tr>
+        </thead>
+        <tbody>
+            {% for im, model in enumerate(models) %}
+                <tr{% if im % 2 == 1 %} class="pure-table-odd"{% end %}>
+                    <td style="font-family: monospace;">{{ model.name }}</td>
+                    <td>{{ model.start_time }}</td>
+                    <td>{{ model.niterations }}</td>
+                    <td>{{ model.best_misfit }}</td>
+                    <td align="center">
+                    {% if model.rundir == active_rundir %}
+                    <button class="pure-button pure-button-disabled button-selected"')">Selected</button>
+                    {% else %}
+                    <button class="pure-button pure-button-primary" onclick="changeRundir('{{ model.rundir }}');">Change</button>
+                    {% end %}
+                    </td>
+                </tr>
+            {% end %}
+            {% if len(models) == 0 %}
+                <tr>
+                    <td colspan=4 style="text-align: center;"><i>No rundirs found</i></td>
+                </tr>
+            {% end %}
+        </tbody>
+    </table>
+</div>
+{% end %}
