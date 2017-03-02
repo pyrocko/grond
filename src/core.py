@@ -1253,6 +1253,14 @@ def read_config(path):
     return config
 
 
+def write_config(config, path):
+    basepath = config.get_basepath()
+    dirname = op.dirname(path) or '.'
+    config.change_basepath(dirname)
+    guts.dump(config, filename=path)
+    config.change_basepath(basepath)
+
+
 def analyse(problem, niter=1000, show_progress=False):
     if niter == 0:
         return
@@ -2273,6 +2281,7 @@ __all__ = '''
     TargetAnalysisResult
     load_problem_info_and_data
     read_config
+    write_config
     forward
     harvest
     go
