@@ -70,7 +70,7 @@ class BaraddurModel(object):
     @property
     def duration(self):
         return datetime.fromtimestamp(
-            os.stat(self._jp('models')).st_ctime) - self.start_time
+            os.stat(self._jp('models')).st_mtime) - self.start_time
 
     @property
     def name(self):
