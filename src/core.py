@@ -1526,7 +1526,6 @@ def solve(problem,
 
                                 xcandidates[icandidate, ipar] = v
 
-                            
                         x = select_most_excentric(
                             xcandidates,
                             xhist[chains_i[jchoice, :], :],
@@ -1908,16 +1907,20 @@ def check(
                     freqlimits[3] = 0.5/deltat
                     freqlimits = tuple(freqlimits)
 
-                    trs_projected, trs_restituted, trs_raw = \
-                        ds.get_waveform(
-                            target.codes,
-                            tmin=tmin+tobs_shift,
-                            tmax=tmax+tobs_shift,
-                            tfade=tfade,
-                            freqlimits=freqlimits,
-                            deltat=deltat,
-                            backazimuth=target.get_backazimuth_for_waveform(),
-                            debug=True)
+                    try:
+                        trs_projected, trs_restituted, trs_raw = \
+                            ds.get_waveform(
+                                target.codes,
+                                tmin=tmin+tobs_shift,
+                                tmax=tmax+tobs_shift,
+                                tfade=tfade,
+                                freqlimits=freqlimits,
+                                deltat=deltat,
+                                backazimuth=target.get_backazimuth_for_waveform(),
+                                debug=True)
+                    except dataset.NotFound, e:
+                        logger.warn(str(e))
+                        continue
 
                     trs_projected = copy.deepcopy(trs_projected)
                     trs_restituted = copy.deepcopy(trs_restituted)
@@ -2045,8 +2048,8 @@ def check(
                 event.name or util.time_to_str(event.time),
                 str(e)))
 
-    if show_waveforms:
-        trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
+        if show_waveforms:
+            trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
 
 
 g_state = {}
