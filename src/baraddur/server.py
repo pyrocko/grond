@@ -7,6 +7,8 @@ import logging
 import numpy as num
 import socket
 
+from scipy import ndimage
+
 from collections import OrderedDict
 from datetime import datetime
 
@@ -35,37 +37,6 @@ def makeColorGradient(misfits, fr=1., fg=.5, fb=1.,
     g = num.sin(fg * misfits + pg) * 127 + 128
     b = num.sin(fb * misfits + pb) * 127 + 128
     return ['#%02x%02x%02x' % (r[i], g[i], b[i]) for i in xrange(misfits.size)]
-
-
-class BaraddurRequestHandler(RequestHandler):
-    def initialize(self, config):
-        self.config = config
-        self.model = config.model
-
-
-class BaraddurBokehHandler(BokehHandler):
-    def __init__(self, config, *args, **kwargs):
-        BokehHandler.__init__(self, *args, **kwargs)
-        self.config = config
-        self.model = config.model
-        self.nmodels = 0
-
-        self.source = ColumnDataSource()
-
-    def update_source(self, func):
-        new_nmodels, new_data = func(
-            skip_nmodels=self.nmodels,
-            keys=self.source.data.keys())
-        self.source.stream(new_data)
-        self.nmodels += new_nmodels
-
-    @gen.coroutine
-    def update_models(self):
-        return self.update_source(self.model.get_models)
-
-    @gen.coroutine
-    def update_misfits(self):
-        return self.update_source(self.model.get_misfits)
 
 
 class BaraddurModel(object):
@@ -182,6 +153,73 @@ class BaraddurModel(object):
                     mf_dict.pop(k)
 
         return nmodels, mf_dict
+
+
+class SmoothColumnDataSource(ColumnDataSource):
+    '''Gauss smoothed ColumnDataSource '''
+    def __init__(self, *args, **kwargs):
+        self._gaussian_kw = {
+            'sigma': 3,
+        }
+        for kw in ['sigma', 'order', 'output', 'mode', 'cval', 'truncate']:
+            if kw in kwargs.keys():
+                self._gaussian_kw[kw] = kwargs.pop(kw)
+        ColumnDataSource.__init__(self, *args, **kwargs)
+
+    def stream(self, data, **kwargs):
+        sigma = self._gaussian_kw['sigma']
+        if data.keys() == self.data.keys():
+            raise AttributeError('streaming data must represent'
+                                 ' existing column')
+        for key, arr in data.iteritems():
+            if arr.ndim > 1 or not isinstance(arr, num.ndarray):
+                raise AttributeError('data is not numpy.ndarray of 1d')
+
+            nvalues = arr.size
+            if nvalues < sigma:
+                self.data[key][-(sigma-nvalues):]
+                d = num.empty(sigma)
+                d[:(sigma-nvalues)] = self.data[key][-(sigma-nvalues):]
+                d[(sigma-nvalues):] = arr[:]
+                arr = ndimage.gaussian_filter1d(d, **self._gaussian_kw)
+                arr = arr[-nvalues:]
+            else:
+                arr = ndimage.gaussian_filter1d(arr, **self._gaussian_kw)
+            data[key] = arr
+        print data
+
+        ColumnDataSource.stream(self, data, **kwargs)
+
+
+class BaraddurRequestHandler(RequestHandler):
+    def initialize(self, config):
+        self.config = config
+        self.model = config.model
+
+
+class BaraddurBokehHandler(BokehHandler):
+    def __init__(self, config, *args, **kwargs):
+        BokehHandler.__init__(self, *args, **kwargs)
+        self.config = config
+        self.model = config.model
+        self.nmodels = 0
+
+        self.source = ColumnDataSource()
+
+    def update_source(self, func):
+        new_nmodels, new_data = func(
+            skip_nmodels=self.nmodels,
+            keys=self.source.data.keys())
+        self.source.stream(new_data)
+        self.nmodels += new_nmodels
+
+    @gen.coroutine
+    def update_models(self):
+        return self.update_source(self.model.get_models)
+
+    @gen.coroutine
+    def update_misfits(self):
+        return self.update_source(self.model.get_misfits)
 
 
 class Rundirs(BaraddurRequestHandler):
@@ -301,6 +339,10 @@ class Parameters(BaraddurRequestHandler):
 class Targets(BaraddurRequestHandler):
 
     class TargetContributionPlot(BaraddurBokehHandler):
+
+        def __init__(self, *args, **kwargs):
+            BaraddurBokehHandler.__init__(self, *args, **kwargs)
+            self.source = SmoothColumnDataSource(sigma=20)
 
         def modify_document(self, doc):
             plot = figure(webgl=True,
