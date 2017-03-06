@@ -344,6 +344,10 @@ def command_go(args):
         parser.add_option(
             '--parallel', dest='nparallel', type='int', default=1,
             help='set number of events to process in parallel')
+        parser.add_option(
+            '--baraddur', dest='baraddur', default=False,
+            action='store_true',
+            help='start the Barad-dur plotting server')
 
     parser, options, args = cl_parse('go', args, setup)
     if len(args) < 2:
@@ -358,12 +362,22 @@ def command_go(args):
     else:
         status = tuple(options.status.split(','))
 
+    if options.baraddur:
+        from grond.baraddur import BaraddurProcess
+        baraddur = BaraddurProcess(project_dir=op.abspath(op.curdir))
+        baraddur.start()
+
     grond.go(
         config,
         event_names=event_names,
         force=options.force,
         status=status,
         nparallel=options.nparallel)
+
+    if options.baraddur:
+        logger.info('Grond finished processing %d events. '
+                    'Ctrl+C to kill Barad-dur')
+        baraddur.join()
 
 
 def command_forward(args):

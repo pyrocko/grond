@@ -9,6 +9,8 @@ from pyrocko import gf, util, guts, moment_tensor as mtm
 from pyrocko.guts import (Object, String, Bool, List, Float, Dict, Int,
                           StringChoice)
 
+from .targets import MisfitTarget, MisfitSatelliteTarget
+
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond')
@@ -28,6 +30,7 @@ class Parameter(Object):
             kwargs['name'] = args[0]
         if len(args) >= 2:
             kwargs['unit'] = args[1]
+        self.target = kwargs.pop('target', None)
 
         Object.__init__(self, **kwargs)
 
@@ -93,12 +96,14 @@ class Problem(Object):
     targets = List.T()
 
     def __init__(self, **kwargs):
+
         Object.__init__(self, **kwargs)
+        self.init_satellite_target_leveling()
+
         self._bootstrap_weights = None
         self._target_weights = None
         self._engine = None
         self._group_mask = None
-
         logger.name = self.__class__.__name__
 
     def get_engine(self):
@@ -110,8 +115,12 @@ class Problem(Object):
         o._target_weights = None
         return o
 
-    def parameter_dict(self, x):
-        return ADict((p.name, v) for (p, v) in zip(self.parameters, x))
+    def parameter_dict(self, x, target=None):
+        params = []
+        for ip, p in enumerate(self.parameters):
+            if p.target is target:
+                params.append((p.name, x[ip]))
+        return ADict(params)
 
     def parameter_array(self, d):
         return num.array([d[p.name] for p in self.parameters], dtype=num.float)
@@ -161,8 +170,63 @@ class Problem(Object):
     def combined(self):
         return self.parameters + self.dependants
 
+    @property
+    def satellite_targets(self):
+        return [t for t in self.targets
+                if isinstance(t, MisfitSatelliteTarget)]
+
+    @property
+    def waveform_targets(self):
+        return [t for t in self.targets
+                if isinstance(t, MisfitTarget)]
+
+    @property
+    def has_statics(self):
+        if self.satellite_targets:
+            return True
+        return False
+
+    @property
+    def has_waveforms(self):
+        if self.waveform_targets:
+            return True
+        return False
+
     def set_engine(self, engine):
         self._engine = engine
+
+    def init_satellite_target_leveling(self):
+        for t in self.satellite_targets:
+            add = True
+            add_parameters = [
+                Parameter('%s:waterlevel' % t.scene_id.lower(), 'm',
+                          label='Waterlevel (%s)' % t.scene_id,
+                          target=t),
+                Parameter('%s:ramp_north' % t.scene_id.lower(), 'm/m',
+                          label='Ramp North (%s)' % t.scene_id,
+                          target=t),
+                Parameter('%s:ramp_east' % t.scene_id.lower(), 'm/m',
+                          label='Ramp East (%s)' % t.scene_id,
+                          target=t),
+                ]
+            add_ranges = t.inner_misfit_config.leveling_ranges.copy()
+            for k in add_ranges.keys():
+                new_k = '%s:%s' % (t.scene_id.lower(), k)
+                if new_k in self.parameter_names:
+                    add = False
+                add_ranges[new_k] = add_ranges.pop(k)
+            if add:
+                logger.info('Adding waterlevel parameters for %s' % t.scene_id)
+                self.parameters += add_parameters
+                self.ranges.update(add_ranges)
+
+    def set_satellite_scene_levels(self, x):
+        for target in self.satellite_targets:
+            levels = self.parameter_dict(x, target=target)
+            for k in levels.keys():
+                new_k = k.split(':')[-1]
+                levels[new_k] = levels.pop(k)
+            target.set_scene_levels(**levels)
 
     def make_bootstrap_weights(self, nbootstrap):
         ntargets = len(self.targets)
@@ -283,6 +347,9 @@ class Problem(Object):
 
         return self._group_mask
 
+    def evaluate(self, x, dump_data=False):
+        raise NotImplementedError()
+
 
 class CMTProblem(Problem):
 
@@ -308,7 +375,7 @@ class CMTProblem(Problem):
     nbootstrap = Int.T(default=10)
     mt_type = StringChoice.T(default='full', choices=['full', 'deviatoric'])
 
-    def unpack(self, x):
+    def get_source(self, x):
         d = self.parameter_dict(x)
         rm6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
                         dtype=num.float)
@@ -334,7 +401,7 @@ class CMTProblem(Problem):
         if pname in ('rel_moment_iso', 'rel_moment_clvd'):
             y = num.zeros(xs.shape[0])
             for i, x in enumerate(xs):
-                source = self.unpack(x)
+                source = self.get_source(x)
                 mt = source.pyrocko_moment_tensor()
                 res = mt.standard_decomposition()
 
@@ -405,7 +472,7 @@ class CMTProblem(Problem):
         d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed = m6
         x = self.parameter_array(d)
 
-        source = self.unpack(x)
+        source = self.get_source(x)
         if any(self.distance_min > source.distance_to(t)
                for t in self.targets):
             raise Forbidden()
@@ -420,7 +487,7 @@ class CMTProblem(Problem):
         return out
 
     def evaluate(self, x, result_mode='sparse', mask=None):
-        source = self.unpack(x)
+        source = self.get_source(x)
         engine = self.get_engine()
 
         for target in self.targets:
@@ -466,7 +533,7 @@ class CMTProblem(Problem):
             return ms, ns
 
     def forward(self, x):
-        source = self.unpack(x)
+        source = self.get_source(x)
         engine = self.get_engine()
         plain_targets = [target.get_plain_target() for target in self.targets]
 
@@ -541,7 +608,7 @@ class DoubleDCProblem(Problem):
     distance_min = Float.T(default=0.0)
     nbootstrap = Int.T(default=100)
 
-    def unpack(self, x):
+    def get_source(self, x):
         d = self.parameter_dict(x)
         p = {}
         for k in self.base_source.keys():
@@ -602,7 +669,7 @@ class DoubleDCProblem(Problem):
         return x.tolist()
 
     def preconstrain(self, x):
-        source = self.unpack(x)
+        source = self.get_source(x)
         if any(self.distance_min > source.distance_to(t)
                for t in self.targets):
             raise Forbidden()
@@ -614,7 +681,7 @@ class DoubleDCProblem(Problem):
         return out
 
     def evaluate(self, x, result_mode='sparse'):
-        source = self.unpack(x)
+        source = self.get_source(x)
         engine = self.get_engine()
 
         for target in self.targets:
@@ -642,7 +709,7 @@ class DoubleDCProblem(Problem):
             return ms, ns
 
     def forward(self, x):
-        source = self.unpack(x)
+        source = self.get_source(x)
         engine = self.get_engine()
         plain_targets = [target.get_plain_target() for target in self.targets]
 
@@ -710,7 +777,7 @@ class RectangularProblem(Problem):
     def pack(self, source):
         return self.parameter_array(source)
 
-    def unpack(self, x):
+    def get_source(self, x):
         source = self.base_source.clone(**self.parameter_dict(x))
         return source
 
@@ -728,7 +795,7 @@ class RectangularProblem(Problem):
         return x.tolist()
 
     def preconstrain(self, x):
-        # source = self.unpack(x)
+        # source = self.get_source(x)
         # if any(self.distance_min > source.distance_to(t)
         #        for t in self.targets):
             # raise Forbidden()
@@ -742,11 +809,13 @@ class RectangularProblem(Problem):
         return out
 
     def evaluate(self, x, result_mode='sparse', mask=None, nprocs=0):
-        source = self.unpack(x)
+        source = self.get_source(x)
         engine = self.get_engine()
 
         for target in self.targets:
             target.set_result_mode(result_mode)
+
+        self.set_satellite_scene_levels(x)
 
         if mask is not None:
             assert len(mask) == len(self.targets)
@@ -788,7 +857,7 @@ class RectangularProblem(Problem):
             return ms, ns
 
     def forward(self, x):
-        source = self.unpack(x)
+        source = self.get_source(x)
         engine = self.get_engine()
         plain_targets = [target.get_plain_target() for target in self.targets]
 

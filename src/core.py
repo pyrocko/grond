@@ -117,7 +117,7 @@ class Config(HasPaths):
         synt = ds.synthetic_test
         if synt:
             synt.set_problem(problem)
-            problem.base_source = problem.unpack(synt.get_x())
+            problem.base_source = problem.get_source(synt.get_x())
 
     def get_problem(self, event):
         targets = self.get_targets(event)
@@ -196,13 +196,13 @@ def get_best_x_and_gm(problem, xs, misfits):
 
 def get_mean_source(problem, xs):
     x_mean = get_mean_x(xs)
-    source = problem.unpack(x_mean)
+    source = problem.get_source(x_mean)
     return source
 
 
 def get_best_source(problem, xs, misfits):
     x_best = get_best_x(problem, xs, misfits)
-    source = problem.unpack(x_best)
+    source = problem.get_source(x_best)
     return source
 
 
@@ -517,6 +517,11 @@ def solve(problem,
         gxs = xhist[chains_i[0, :nlinks], :]
         gms = chains_m[0, :nlinks]
 
+        col_width = 15
+        col_param_width = max([len(p) for p in problem.parameter_names])+2
+        console_output = '{:<{col_param_width}s}'
+        console_output += ''.join(['{:>{col_width}{type}}'] * 5)
+
         if nlinks > (nlinks_cap-1)/2:
             # mean and std of all bootstrap ensembles together
             mbx = num.mean(bxs, axis=0)
@@ -541,26 +546,41 @@ def solve(problem,
 
             if 'state' in status:
                 lines.append(
-                    '%-15s %15s %15s %15s %15s %15s' %
-                    ('parameter', 'B mean', 'B std', 'G mean', 'G std',
-                     'G best'))
+                    console_output.format(
+                        'parameter', 'B mean', 'B std', 'G mean', 'G std',
+                        'G best',
+                        col_param_width=col_param_width,
+                        col_width=col_width,
+                        type='s'))
 
                 for (pname, mbv, sbv, mgv, sgv, bgv) in zip(
                         pnames, mbx, sbx, mgx, sgx, bgx):
 
                     lines.append(
-                        '%-15s %15.4g %15.4g %15.4g %15.4g %15.4g' %
-                        (pname, mbv, sbv, mgv, sgv, bgv))
+                        console_output.format(
+                            pname, mbv, sbv, mgv, sgv, bgv,
+                            col_param_width=col_param_width,
+                            col_width=col_width,
+                            type='.4g'))
 
-                lines.append('%-15s %15s %15s %15.4g %15.4g %15.4g' % (
-                    'misfit', '', '',
-                    num.mean(gms), num.std(gms), num.min(gms)))
+                lines.append(
+                    console_output.format(
+                        'misfit', '', '',
+                        '%.4g' % num.mean(gms),
+                        '%.4g' % num.std(gms),
+                        '%.4g' % num.min(gms),
+                        col_param_width=col_param_width,
+                        col_width=col_width,
+                        type='s'))
 
         if 'state' in status:
             lines.append(
-                '%-15s %15i %-15s %15i %15i' % (
+                console_output.format(
                     'iteration', iiter+1, '(%s, %g)' % (phase, factor),
-                    ntries_sample, ntries_preconstrain))
+                    ntries_sample, ntries_preconstrain, '',
+                    col_param_width=col_param_width,
+                    col_width=col_width,
+                    type=''))
 
         if 'matrix' in status:
             matrix = (chains_i[:, :30] % 94 + 32).T
@@ -637,7 +657,7 @@ def forward(rundir_or_config_path, event_names):
         ds.empty_cache()
         ms, ns, results = problem.evaluate(x, result_mode='full')
 
-        event = problem.unpack(x).pyrocko_event()
+        event = problem.get_source(x).pyrocko_event()
         events.append(event)
 
         for result in results:
@@ -766,7 +786,7 @@ def check(
             else:
                 for i in xrange(n_random_synthetics):
                     x = problem.random_uniform(xbounds)
-                    sources.append(problem.unpack(x))
+                    sources.append(problem.get_source(x))
                     ms, ns, results = problem.evaluate(x, result_mode='full')
                     results_list.append(results)
 
@@ -970,10 +990,6 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     nevents = len(event_names)
 
-    from .baraddur import BaraddurProcess
-    baraddur = BaraddurProcess(project_dir=op.abspath(op.curdir))
-    baraddur.start()
-
     for x in parimap.parimap(
             process_event,
             xrange(nevents),
@@ -981,9 +997,6 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
             nprocs=nparallel):
 
         pass
-    logger.info('Grond finished processing %d events. '
-                'Ctrl+C to kill Barad-dur')
-    baraddur.join()
 
 
 def process_event(ievent, g_data_id):
@@ -1007,7 +1020,7 @@ def process_event(ievent, g_data_id):
 
     synt = ds.synthetic_test
     if synt:
-        problem.base_source = problem.unpack(synt.get_x())
+        problem.base_source = problem.get_source(synt.get_x())
 
     check_problem(problem)
 
@@ -1161,11 +1174,11 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
                 '%16.7g' % gm
 
         elif type == 'source':
-            source = problem.unpack(x)
+            source = problem.get_source(x)
             guts.dump(source, stream=out)
 
         elif type == 'event':
-            ev = problem.unpack(x).pyrocko_event()
+            ev = problem.get_source(x).pyrocko_event()
             model.dump_events([ev], stream=out)
 
         else:

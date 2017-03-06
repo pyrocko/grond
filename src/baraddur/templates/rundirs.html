@@ -40,7 +40,10 @@
             {% end %}
             {% if len(models) == 0 %}
                 <tr>
-                    <td colspan=4 style="text-align: center;"><i>No rundirs found</i></td>
+                    <td colspan="6" style="text-align: center;">
+                    <p style="font-style: italic;">No rundirs found</p>
+                    <p style="font-style: italic; font-size: 90%; color: #999;">Refresh this page to reload available rundirs.</p>
+                    </td>
                 </tr>
             {% end %}
         </tbody>

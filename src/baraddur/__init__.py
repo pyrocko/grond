@@ -19,5 +19,5 @@ class BaraddurProcess(_mp.Process):
 
 
 if __name__ == '__main__':
-    p = BaraddurProcess('/home/marius/Development/testing/grond/rundir')
+    p = BaraddurProcess(project_dir='/home/marius/Development/testing/grond')
     p.start()

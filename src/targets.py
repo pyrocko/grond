@@ -3,7 +3,7 @@ import math
 import numpy as num
 
 from pyrocko import gf, trace, weeding
-from pyrocko.guts import (Object, String, Float, Bool, Int, List,
+from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
                           StringChoice, Timestamp)
 from pyrocko.guts_array import Array
 
@@ -468,6 +468,10 @@ def _process(tr, tmin, tmax, taper, domain):
 
 class InnerSatelliteMisfitConfig(Object):
     use_weight_focal = Bool.T(default=False)
+    leveling_ranges = Dict.T(String.T(), gf.Range.T(),
+                             default={'waterlevel': '-0.5 .. 0.5',
+                                      'ramp_north': '-1e-4 .. 1e-4',
+                                      'ramp_east': '-1e-4 .. 1e-4'})
 
 
 class MisfitSatelliteTarget(gf.SatelliteTarget):
@@ -479,7 +483,11 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
+        self.waterlevel = 0.
+        self.ramp_north = 0.
+        self.ramp_east = 0.
         self._ds = None
+        self._distance_cache = None
 
     def set_dataset(self, ds):
         self._ds = ds
@@ -497,12 +505,25 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
     def string_id(self):
         return '.'.join([self.super_group, self.group, self.scene_id])
 
+    def set_scene_levels(self, waterlevel, ramp_north, ramp_east):
+        self.waterlevel = waterlevel
+        self.ramp_north = ramp_north
+        self.ramp_east = ramp_east
+
     def post_process(self, engine, source, statics):
         scene = self._ds.get_kite_scene(self.scene_id)
+        quadtree = scene.quadtree
+
         stat_obs = scene.quadtree.leaf_medians
         stat_syn = statics['displacement.los']
 
-        res = num.abs(stat_obs - stat_syn)
+        stat_level = num.zeros_like(stat_obs)
+        stat_level.fill(self.waterlevel)
+        stat_level += (quadtree.leaf_center_distance[:, 0] * self.ramp_east)
+        stat_level += (quadtree.leaf_center_distance[:, 1] * self.ramp_north)
+
+        res = num.abs(stat_obs - (stat_syn + stat_level))
+
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
 

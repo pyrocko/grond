@@ -40,24 +40,42 @@ def makeColorGradient(misfits, fr=1., fg=.5, fb=1.,
 class BaraddurRequestHandler(RequestHandler):
     def initialize(self, config):
         self.config = config
+        self.model = config.model
 
 
 class BaraddurBokehHandler(BokehHandler):
     def __init__(self, config, *args, **kwargs):
         BokehHandler.__init__(self, *args, **kwargs)
         self.config = config
+        self.model = config.model
+        self.nmodels = 0
+
+        self.source = ColumnDataSource()
+
+    def update_source(self, func):
+        new_nmodels, new_data = func(
+            skip_nmodels=self.nmodels,
+            keys=self.source.data.keys())
+        self.source.stream(new_data)
+        self.nmodels += new_nmodels
+
+    @gen.coroutine
+    def update_models(self):
+        return self.update_source(self.model.get_models)
+
+    @gen.coroutine
+    def update_misfits(self):
+        return self.update_source(self.model.get_misfits)
 
 
 class BaraddurModel(object):
     def __init__(self, rundir):
-        self.set_rundir(rundir)
-
-    def set_rundir(self, rundir):
         logger.debug('Loading problem from %s' % rundir)
         self.rundir = op.abspath(rundir)
         self.problem = grond.core.load_problem_info(self.rundir)
         self.parameters = self.problem.parameters
         self.nparameters = self.problem.nparameters
+        self.targets = self.problem.targets
         self.ntargets = self.problem.ntargets
 
     def _jp(self, file):
@@ -79,8 +97,8 @@ class BaraddurModel(object):
 
     @property
     def best_misfit(self):
-        _, data = self.get_misfits(keys='target_mean')
-        return data['target_mean'].min()
+        _, data = self.get_misfits(keys='misfit_mean')
+        return data['misfit_mean'].min()
 
     @property
     def niterations(self):
@@ -151,9 +169,9 @@ class BaraddurModel(object):
         misfits = combi.reshape((nmodels, self.ntargets, 2))
 
         mf_dict = {}
-        for it in xrange(self.ntargets):
-            mf_dict['target_%03d' % it] = misfits[:, it, 0]
-        mf_dict['target_mean'] = num.mean(misfits, axis=1)[:, 0]
+        for it, target in enumerate(self.targets):
+            mf_dict[target.id] = misfits[:, it, 0]
+        mf_dict['misfit_mean'] = num.mean(misfits, axis=1)[:, 0]
 
         mf_dict['niter'] = num.arange(nmodels, dtype=num.int)\
             + skip_nmodels + 1
@@ -190,7 +208,7 @@ class Summary(BaraddurRequestHandler):
     def get(self):
         self.render('summary.html',
                     pages=pages,
-                    problem=self.config.problem)
+                    problem=self.model.problem)
 
 
 class Misfit(BaraddurRequestHandler):
@@ -198,10 +216,8 @@ class Misfit(BaraddurRequestHandler):
     class MisfitsPlot(BaraddurBokehHandler):
 
         def modify_document(self, doc):
-            self.nmodels = 0
-            self.source = ColumnDataSource()
             self.source.add(num.ndarray(0, dtype=num.float32),
-                            'target_mean')
+                            'misfit_mean')
             self.source.add(num.ndarray(0, dtype=num.float32),
                             'niter')
             self.update_misfits()
@@ -211,20 +227,12 @@ class Misfit(BaraddurRequestHandler):
                           plot_height=300,
                           x_axis_label='Iteration #',
                           y_axis_label='Misfit')
-            plot.scatter('niter', 'target_mean',
+            plot.scatter('niter', 'misfit_mean',
                          source=self.source, alpha=.4)
 
             doc.add_root(plot)
             doc.add_periodic_callback(self.update_misfits,
                                       self.config.plot_update_small)
-
-        @gen.coroutine
-        def update_misfits(self):
-            new_nmodels, new_data = self.config.model.get_misfits(
-                skip_nmodels=self.nmodels,
-                keys=self.source.data.keys())
-            self.source.stream(new_data)
-            self.nmodels += new_nmodels
 
     bokeh_handlers = {'misfit': MisfitsPlot}
 
@@ -236,7 +244,7 @@ class Misfit(BaraddurRequestHandler):
                         None,
                         app_path='/misfit',
                         url='plots'),
-                    problem=self.config.problem)
+                    problem=self.model.problem)
 
 
 class Parameters(BaraddurRequestHandler):
@@ -246,14 +254,14 @@ class Parameters(BaraddurRequestHandler):
         ncols = 4
 
         def modify_document(self, doc):
-            self.nmodels = 0
-            problem = self.config.problem
+            problem = self.model.problem
 
-            self.source = ColumnDataSource()
-            for p in ['niter'] + [p.name for p in problem.parameters]:
-                self.source.add(num.ndarray(0, dtype=num.float32), p)
+            for param in ['niter'] + [p.name for p in problem.parameters]:
+                self.source.add(
+                    num.ndarray(0, dtype=num.float32),
+                    param)
             self.model = BaraddurModel(self.config.rundir)
-            self.update_parameters()
+            self.update_models()
 
             plots = []
             for par in problem.parameters:
@@ -264,7 +272,8 @@ class Parameters(BaraddurRequestHandler):
                 fig.scatter('niter', par.name,
                             source=self.source, alpha=.4)
                 plots.append(fig)
-            plots += [None] * (self.ncols - (len(plots) % self.ncols))
+            if (len(plots) % self.ncols) != 0:
+                plots += [None] * (self.ncols - (len(plots) % self.ncols))
 
             grid = layouts.gridplot(
                 plots,
@@ -272,16 +281,8 @@ class Parameters(BaraddurRequestHandler):
                 ncols=self.ncols)
 
             doc.add_root(grid)
-            doc.add_periodic_callback(self.update_parameters,
+            doc.add_periodic_callback(self.update_models,
                                       self.config.plot_update_small)
-
-        @gen.coroutine
-        def update_parameters(self):
-            new_nmodels, new_data = self.config.model.get_models(
-                skip_nmodels=self.nmodels,
-                keys=self.source.data.keys())
-            self.source.stream(new_data)
-            self.nmodels += new_nmodels
 
     bokeh_handlers = {'parameters': ParameterPlots}
 
@@ -294,7 +295,7 @@ class Parameters(BaraddurRequestHandler):
                         None,
                         app_path='/parameters',
                         url='plots'),
-                    problem=self.config.problem)
+                    problem=self.model.problem)
 
 
 class Targets(BaraddurRequestHandler):
@@ -302,45 +303,52 @@ class Targets(BaraddurRequestHandler):
     class TargetContributionPlot(BaraddurBokehHandler):
 
         def modify_document(self, doc):
-            self.nmodels = 0
-            self.source = ColumnDataSource()
-            self.update_contributions()
-
             plot = figure(webgl=True,
+                          responsive=True,
+                          plot_height=300,
                           x_axis_label='Iteration #',
                           y_axis_label='Misfit')
 
+            target_ids = [t.id for t in self.model.targets]
+            for param in ['niter'] + target_ids:
+                self.source.add(
+                    num.ndarray(0, dtype=num.float32),
+                    param)
+            self.update_misfits()
+            colors = ['blue', 'red']
+            for it, target in enumerate(self.model.targets):
+                plot.scatter('niter', target.id,
+                             source=self.source,
+                             color=colors[it])
+
+            # plot.patches(
+            #     ['niter'] * self.model.ntargets,
+            #     target_ids,
+            #     source=self.source)
+
             doc.add_root(plot)
-            doc.add_periodic_callback(self.update_contributions, 1e3)
+            doc.add_periodic_callback(self.update_misfits,
+                                      self.config.plot_update_small)
 
-        @gen.coroutine
-        def update_contributions(self):
-            mx, misfits = grond.core.load_problem_data(
-                self.config.rundir, self.config.problem,
-                skip_models=self.nmodels)
-
-            new_nmodels = mx.shape[0]
-            self.nmodels += new_nmodels
-
-    bokeh_handlers = {'contributions': TargetContributionPlot}
+    bokeh_handlers = {'targets': TargetContributionPlot}
 
     @gen.coroutine
     def get(self):
         self.render('targets.html',
-                    contribution_plot=autoload_server(
+                    target_misfit_plot=autoload_server(
                         None,
-                        app_path='/contributions',
+                        app_path='/targets',
                         url='plots'),
                     pages=pages,
-                    problem=self.config.problem)
+                    problem=self.model.problem)
 
 
 pages = OrderedDict([
     ('Rundirs', Rundirs),
-    ('Summary', Misfit),
+    ('Summary', Summary),
     ('Misfit', Misfit),
     ('Parameters', Parameters),
-    # ('Targets', Targets),
+    ('Targets', Targets),
 ])
 
 
@@ -374,10 +382,6 @@ class BaraddurConfig(Object):
         Object.__init__(self, *args, **kwargs)
         self._rundir = None
         self._model = None
-
-    @property
-    def problem(self):
-        return grond.core.load_problem_info(self.rundir)
 
     @property
     def rundir(self):
