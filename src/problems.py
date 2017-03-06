@@ -4,7 +4,7 @@ import logging
 import os.path as op
 import math
 
-from meta import Forbidden, expand_template
+from meta import Forbidden, expand_template, ADict, Parameter
 from pyrocko import gf, util, guts, moment_tensor as mtm
 from pyrocko.guts import (Object, String, Bool, List, Float, Dict, Int,
                           StringChoice)
@@ -18,73 +18,9 @@ km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
 
-class Parameter(Object):
-    name = String.T()
-    unit = String.T(optional=True)
-    scale_factor = Float.T(default=1., optional=True)
-    scale_unit = String.T(optional=True)
-    label = String.T(optional=True)
-
-    def __init__(self, *args, **kwargs):
-        if len(args) >= 1:
-            kwargs['name'] = args[0]
-        if len(args) >= 2:
-            kwargs['unit'] = args[1]
-
-        self.target = kwargs.pop('target', None)
-
-        Object.__init__(self, **kwargs)
-
-    def get_label(self, with_unit=True):
-        l = [self.label or self.name]
-        if with_unit:
-            unit = self.get_unit_label()
-            if unit:
-                l.append('[%s]' % unit)
-
-        return ' '.join(l)
-
-    def get_value_label(self, value, format='%(value)g%(unit)s'):
-        value = self.scaled(value)
-        unit = self.get_unit_suffix()
-        return format % dict(value=value, unit=unit)
-
-    def get_unit_label(self):
-        if self.scale_unit is not None:
-            return self.scale_unit
-        elif self.unit:
-            return self.unit
-        else:
-            return None
-
-    def get_unit_suffix(self):
-        unit = self.get_unit_label()
-        if not unit:
-            return ''
-        else:
-            return ' %s' % unit
-
-    def scaled(self, x):
-        if isinstance(x, tuple):
-            return tuple(v/self.scale_factor for v in x)
-        if isinstance(x, list):
-            return list(v/self.scale_factor for v in x)
-        else:
-            return x/self.scale_factor
-
-
-class ADict(dict):
-    def __getattr__(self, k):
-        return self[k]
-
-    def __setattr__(self, k, v):
-        self[k] = v
-
-
 class ProblemConfig(Object):
     name_template = String.T()
     apply_balancing_weights = Bool.T(default=True)
-
 
 
 class Problem(Object):
@@ -132,7 +68,7 @@ class Problem(Object):
             i += n
 
     def get_parameter_dict(self, x):
-        return ADict((p.name, v) for for p, v in zip(self.parameters, x))
+        return ADict((p.name, v) for p, v in zip(self.parameters, x))
 
     def get_parameter_array(self, d):
         return num.array([d[p.name] for p in self.parameters], dtype=num.float)
