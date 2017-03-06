@@ -186,7 +186,6 @@ class SmoothColumnDataSource(ColumnDataSource):
             else:
                 arr = ndimage.gaussian_filter1d(arr, **self._gaussian_kw)
             data[key] = arr
-        print data
 
         ColumnDataSource.stream(self, data, **kwargs)
 
