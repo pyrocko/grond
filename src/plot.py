@@ -164,7 +164,7 @@ class GrondModel(object):
             listener()
 
 
-def draw_sequence_figures(model, plt, misfit_cutoff=None):
+def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='iteration'):
     problem = model.problem
 
     imodels = num.arange(model.nmodels)
@@ -182,7 +182,13 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
     isort = num.argsort(gms)[::-1]
 
-    imodels = imodels[isort]
+    if sort_by == 'iteration':
+        imodels = imodels[isort]
+    elif sort_by == 'misfit':
+        imodels = num.arange(imodels.size)
+    else:
+        assert False
+
     gms = gms[isort]
     gms_softclip = gms_softclip[isort]
     xs = xs[isort, :]
@@ -313,7 +319,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None):
 
 def draw_jointpar_figures(
         model, plt, misfit_cutoff=None, ibootstrap=None, color=None,
-        exclude=None, include=None):
+        exclude=None, include=None, draw_ellipses=False):
 
     color = 'misfit'
     # exclude = ['duration']
@@ -493,17 +499,18 @@ def draw_jointpar_figures(
                 c=color,
                 s=msize, alpha=0.5, cmap=cmap, edgecolors='none')
 
-            cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
-            evals, evecs = eigh_sorted(cov)
-            evals = num.sqrt(evals)
-            ell = patches.Ellipse(
-                xy=(num.mean(xpar.scaled(fx)), num.mean(ypar.scaled(fy))),
-                width=evals[0]*2,
-                height=evals[1]*2,
-                angle=num.rad2deg(num.arctan2(evecs[1][0], evecs[0][0])))
+            if draw_ellipses:
+                cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
+                evals, evecs = eigh_sorted(cov)
+                evals = num.sqrt(evals)
+                ell = patches.Ellipse(
+                    xy=(num.mean(xpar.scaled(fx)), num.mean(ypar.scaled(fy))),
+                    width=evals[0]*2,
+                    height=evals[1]*2,
+                    angle=num.rad2deg(num.arctan2(evecs[1][0], evecs[0][0])))
 
-            ell.set_facecolor('none')
-            axes.add_artist(ell)
+                ell.set_facecolor('none')
+                axes.add_artist(ell)
 
             fx = problem.extract(xref, jpar)
             fy = problem.extract(xref, ipar)

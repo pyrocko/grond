@@ -4,6 +4,9 @@ from pyrocko import trace
 from pyrocko.guts import (Object, Dict, String, Float, Bool, Int)
 
 
+guts_prefix = 'grond'
+
+
 class SyntheticWaveformNotAvailable(Exception):
     pass
 
@@ -13,6 +16,7 @@ class SyntheticTest(Object):
     respect_data_availability = Bool.T(default=False)
     real_noise_scale = Float.T(default=0.0)
     white_noise_scale = Float.T(default=0.0)
+    relative_white_noise_scale = Float.T(default=0.0)
     random_response_scale = Float.T(default=0.0)
     real_noise_toffset = Float.T(default=-3600.)
     random_seed = Int.T(optional=True)
@@ -56,22 +60,29 @@ class SyntheticTest(Object):
             for iresult, result in enumerate(results):
                 tr = result.trace.pyrocko_trace()
                 tfade = tr.tmax - tr.tmin
+                tr_orig = tr.copy()
                 tr.extend(tr.tmin - tfade, tr.tmax + tfade)
+                rstate = num.random.RandomState(
+                    (self.random_seed or 0) + iresult)
 
                 if self.random_response_scale != 0:
                     tf = RandomResponse(scale=self.random_response_scale)
-                    rstate = num.random.RandomState(
-                        (self.random_seed or 0) + iresult)
                     tf.set_random_state(rstate)
                     tr = tr.transfer(
                         tfade=tfade,
                         transfer_function=tf)
 
                 if self.white_noise_scale != 0.0:
-                    rstate = num.random.RandomState(
-                        (self.random_seed or 0) + iresult)
                     u = rstate.normal(
                         scale=self.white_noise_scale,
+                        size=tr.data_len())
+
+                    tr.ydata += u
+
+                if self.relative_white_noise_scale != 0.0:
+                    u = rstate.normal(
+                        scale=self.relative_white_noise_scale * num.std(
+                            tr_orig.ydata),
                         size=tr.data_len())
 
                     tr.ydata += u
@@ -111,3 +122,9 @@ class RandomResponse(trace.FrequencyResponse):
         return 1.0 + (
             self._rstate.normal(scale=self.scale, size=n) +
             0.0J * self._rstate.normal(scale=self.scale, size=n))
+
+__all__ = '''
+SyntheticTest
+SyntheticWaveformNotAvailable
+'''.split()
+

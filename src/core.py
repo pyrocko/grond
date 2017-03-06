@@ -51,6 +51,8 @@ class SolverConfig(Object):
         default='multivariate_normal')
     scatter_scale_transition = Float.T(default=2.0)
     scatter_scale = Float.T(default=1.0)
+    chain_length_factor = Float.T(default=8.0)
+    compensate_excentricity = Bool.T(default=True)
 
     def get_solver_kwargs(self):
         return dict(
@@ -60,7 +62,9 @@ class SolverConfig(Object):
             niter_non_explorative=self.niter_non_explorative,
             sampler_distribution=self.sampler_distribution,
             scatter_scale_transition=self.scatter_scale_transition,
-            scatter_scale=self.scatter_scale)
+            scatter_scale=self.scatter_scale,
+            chain_length_factor=self.chain_length_factor,
+            compensate_excentricity=self.compensate_excentricity)
 
 
 class EngineConfig(HasPaths):
@@ -232,6 +236,14 @@ def read_config(path):
     return config
 
 
+def write_config(config, path):
+    basepath = config.get_basepath()
+    dirname = op.dirname(path) or '.'
+    config.change_basepath(dirname)
+    guts.dump(config, filename=path)
+    config.change_basepath(basepath)
+
+
 def analyse(problem, niter=1000, show_progress=False):
     if niter == 0:
         return
@@ -259,11 +271,10 @@ def analyse(problem, niter=1000, show_progress=False):
 
     isbad_mask = None
     for iiter in xrange(niter):
-        break
         while True:
             x = []
-            for i in xrange(npar):
-                v = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
+            for ipar in xrange(npar):
+                v = rstate.uniform(xbounds[ipar, 0], xbounds[ipar, 1])
                 x.append(v)
 
             try:
@@ -302,6 +313,37 @@ def analyse(problem, niter=1000, show_progress=False):
             balancing_weight=float(weight))
 
 
+def excentricity_compensated_choice(xs, sbx, factor):
+    inonflat = num.where(sbx != 0.0)[0]
+    scale = num.zeros_like(sbx)
+    scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
+    #distances_all = math.sqrt(num.sum(
+    #    ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
+    #     scale[num.newaxis, num.newaxis, :])**2, axis=2))
+    distances_sqr_all = num.sum(
+        ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
+         scale[num.newaxis, num.newaxis, :])**2, axis=2)
+    probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
+    print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
+    probabilities /= num.sum(probabilities)
+    r = num.random.random()
+    ichoice = num.searchsorted(num.cumsum(probabilities), r)
+    ichoice = min(ichoice, xs.shape[0]-1)
+    return xs[ichoice]
+
+
+def select_most_excentric(xcandidates, xs, sbx, factor):
+    inonflat = num.where(sbx != 0.0)[0]
+    scale = num.zeros_like(sbx)
+    scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
+    distances_sqr_all = num.sum(
+        ((xcandidates[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
+         scale[num.newaxis, num.newaxis, :])**2, axis=2)
+    #print num.sort(num.sum(distances_sqr_all < 1.0, axis=0))
+    ichoice = num.argmin(num.sum(distances_sqr_all < 1.0, axis=0))
+    return xcandidates[ichoice]
+
+
 def solve(problem,
           rundir=None,
           niter_uniform=1000,
@@ -310,14 +352,16 @@ def solve(problem,
           niter_non_explorative=0,
           scatter_scale_transition=2.0,
           scatter_scale=1.0,
+          chain_length_factor=8.0,
           xs_inject=None,
           sampler_distribution='multivariate_normal',
+          compensate_excentricity=True,
           status=()):
 
     xbounds = num.array(problem.bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
-    nlinks_cap = 8 * npar + 1
+    nlinks_cap = int(round(chain_length_factor * npar + 1))
     chains_m = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.float)
     chains_i = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.int)
     nlinks = 0
@@ -384,10 +428,16 @@ def solve(problem,
                     jchoice = num.argmin(accept_sum)
 
                     if phase in ('transition', 'explorative'):
-                        ichoice = num.random.randint(0, nlinks)
-                        xb = xhist[chains_i[jchoice, ichoice]]
+
+                        if compensate_excentricity:
+                            xchoice = excentricity_compensated_choice(
+                                xhist[chains_i[jchoice, :], :], sbx, 3.)
+
+                        else:
+                            ichoice = num.random.randint(0, nlinks)
+                            xchoice = xhist[chains_i[jchoice, ichoice]]
                     else:
-                        xb = mxs[jchoice]
+                        xchoice = mxs[jchoice]
 
                     if sampler_distribution == 'multivariate_normal':
                         ntries_sample = 0
@@ -397,7 +447,7 @@ def solve(problem,
                         while True:
                             ntries_sample += 1
                             vs = num.random.multivariate_normal(
-                                xb, factor**2 * covs[jchoice])
+                                xchoice, factor**2 * covs[jchoice])
 
                             ok_mask = num.logical_and(
                                 xbounds[:, 0] <= vs, vs <= xbounds[:, 1])
@@ -420,28 +470,38 @@ def solve(problem,
                         x = vs.tolist()
 
                     if sampler_distribution == 'normal':
-                        x = []
-                        for i in xrange(npar):
-                            ntry = 0
-                            while True:
-                                if sbx[i] > 0.:
-                                    v = num.random.normal(
-                                        xb[i], factor*sbx[i])
-                                else:
-                                    v = xb[i]
+                        ncandidates = 1
+                        xcandidates = num.zeros((ncandidates, npar))
+                        for icandidate in xrange(ncandidates):
+                            for ipar in xrange(npar):
+                                ntry = 0
+                                while True:
+                                    if sbx[ipar] > 0.:
+                                        v = num.random.normal(
+                                            xchoice[ipar], factor*sbx[ipar])
+                                    else:
+                                        v = xchoice[ipar]
 
-                                if xbounds[i, 0] <= v and v <= xbounds[i, 1]:
-                                    break
+                                    if xbounds[ipar, 0] <= v and \
+                                            v <= xbounds[ipar, 1]:
 
-                                if ntry > 1000:
-                                    raise GrondError(
-                                        'failed to produce a suitable '
-                                        'candidate sample from normal '
-                                        'distribution')
+                                        break
 
-                                ntry += 1
+                                    if ntry > 1000:
+                                        raise GrondError(
+                                            'failed to produce a suitable '
+                                            'candidate sample from normal '
+                                            'distribution')
 
-                            x.append(v)
+                                    ntry += 1
+
+                                xcandidates[icandidate, ipar] = v
+
+                        x = select_most_excentric(
+                            xcandidates,
+                            xhist[chains_i[jchoice, :], :],
+                            sbx,
+                            factor)
 
                 try:
                     x = problem.preconstrain(x)
@@ -508,7 +568,7 @@ def solve(problem,
 
         lines = []
         if 'state' in status:
-            lines.append('%i' % iiter)
+            lines.append('%s, %i' % (problem.name, iiter))
             lines.append(''.join('-X'[int(acc)] for acc in accept))
 
         xhist[iiter, :] = x
@@ -838,16 +898,20 @@ def check(
                     freqlimits[3] = 0.5/deltat
                     freqlimits = tuple(freqlimits)
 
-                    trs_projected, trs_restituted, trs_raw = \
-                        ds.get_waveform(
-                            target.codes,
-                            tmin=tmin+tobs_shift,
-                            tmax=tmax+tobs_shift,
-                            tfade=tfade,
-                            freqlimits=freqlimits,
-                            deltat=deltat,
-                            backazimuth=target.get_backazimuth_for_waveform(),
-                            debug=True)
+                    try:
+                        trs_projected, trs_restituted, trs_raw = \
+                            ds.get_waveform(
+                                target.codes,
+                                tmin=tmin+tobs_shift,
+                                tmax=tmax+tobs_shift,
+                                tfade=tfade,
+                                freqlimits=freqlimits,
+                                deltat=deltat,
+                                backazimuth=target.get_backazimuth_for_waveform(),
+                                debug=True)
+                    except dataset.NotFound, e:
+                        logger.warn(str(e))
+                        continue
 
                     trs_projected = copy.deepcopy(trs_projected)
                     trs_restituted = copy.deepcopy(trs_restituted)
@@ -975,8 +1039,8 @@ def check(
                 event.name or util.time_to_str(event.time),
                 str(e)))
 
-    if show_waveforms:
-        trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
+        if show_waveforms:
+            trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
 
 
 g_state = {}
@@ -1246,6 +1310,7 @@ __all__ = '''
     Config
     load_problem_info_and_data
     read_config
+    write_config
     forward
     harvest
     go
