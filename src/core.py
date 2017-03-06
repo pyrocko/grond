@@ -124,7 +124,7 @@ class Problem(Object):
     parameters = List.T(Parameter.T())
     dependants = List.T(Parameter.T())
     apply_balancing_weights = Bool.T(default=True)
-    base_source = gf.Source.T()
+    base_source = gf.Source.T(optional=True)
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -192,7 +192,7 @@ class Problem(Object):
         return self.parameters + self.dependants
 
     def make_bootstrap_weights(self, nbootstrap):
-        ntargets = len(self.targets)
+        ntargets = self.ntargets
         ws = num.zeros((nbootstrap, ntargets))
         rstate = num.random.RandomState(23)
         for ibootstrap in xrange(nbootstrap):
@@ -233,6 +233,9 @@ class Problem(Object):
             self._group_mask = self.make_group_mask()
 
         return self._group_mask
+
+    def xref(self):
+        return self.pack(self.base_source)
 
 
 class ProblemConfig(Object):
@@ -1334,7 +1337,7 @@ def analyse(problem, niter=1000, show_progress=False):
             balancing_weight=float(weight))
 
 
-def excentricity_compensated_choice(xs, sbx, factor):
+def excentricity_compensated_probabilities(xs, sbx, factor):
     inonflat = num.where(sbx != 0.0)[0]
     scale = num.zeros_like(sbx)
     scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
@@ -1345,12 +1348,18 @@ def excentricity_compensated_choice(xs, sbx, factor):
         ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
     probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
-    print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
+    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
     probabilities /= num.sum(probabilities)
+    return probabilities
+
+
+def excentricity_compensated_choice(xs, sbx, factor):
+    probabilities = excentricity_compensated_probabilities(
+        xs, sbx, factor)
     r = num.random.random()
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
     ichoice = min(ichoice, xs.shape[0]-1)
-    return xs[ichoice]
+    return ichoice
 
 
 def select_most_excentric(xcandidates, xs, sbx, factor):
@@ -1377,7 +1386,8 @@ def solve(problem,
           xs_inject=None,
           sampler_distribution='multivariate_normal',
           compensate_excentricity=True,
-          status=()):
+          status=(),
+          plot=False):
 
     xbounds = num.array(problem.bounds(), dtype=num.float)
     npar = xbounds.shape[0]
@@ -1406,7 +1416,16 @@ def solve(problem,
     accept_hist = num.zeros(niter, dtype=num.int)
     pnames = [p.name for p in problem.parameters]
 
+    if plot:
+        from matplotlib import pyplot as plt
+        from grond import plot as gplot
+        plt.ion()
+        plt.show()
+        solver_plot = gplot.SolverPlot(problem, plt)
+
     while iiter < niter:
+        jchoice = None
+        ichoice = None
 
         if iiter < niter_inject:
             phase = 'inject'
@@ -1451,8 +1470,10 @@ def solve(problem,
                     if phase in ('transition', 'explorative'):
 
                         if compensate_excentricity:
-                            xchoice = excentricity_compensated_choice(
+                            ichoice = excentricity_compensated_choice(
                                 xhist[chains_i[jchoice, :], :], sbx, 3.)
+
+                            xchoice = xhist[chains_i[jchoice, ichoice], :]
 
                         else:
                             ichoice = num.random.randint(0, nlinks)
@@ -1531,6 +1552,10 @@ def solve(problem,
 
                 except Forbidden:
                     pass
+
+        ibase = None
+        if ichoice is not None and jchoice is not None:
+            ibase = chains_i[jchoice, ichoice]
 
         if isbad_mask is not None and num.any(isbad_mask):
             isok_mask = num.logical_not(isbad_mask)
@@ -1654,7 +1679,20 @@ def solve(problem,
             lines.append('')
             print '\n'.join(lines)
 
+        if plot and iiter % 10 == 0:
+            solver_plot.update(
+                xhist[:iiter+1, :],
+                chains_i[:, :nlinks],
+                ibase,
+                jchoice,
+                sbx,
+                factor)
+
+
         iiter += 1
+
+    if plot:
+        plt.ioff()
 
 
 def bootstrap_outliers(problem, misfits, std_factor=1.0):
@@ -2342,4 +2380,5 @@ __all__ = '''
     get_event_names
     check
     export
+    solve
 '''.split()

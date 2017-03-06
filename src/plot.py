@@ -170,7 +170,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='iteration'):
     imodels = num.arange(model.nmodels)
     bounds = problem.bounds() + problem.dependant_bounds()
 
-    xref = problem.pack(problem.base_source)
+    xref = problem.xref()
 
     xs = model.xs
 
@@ -347,7 +347,7 @@ def draw_jointpar_figures(
 
             exclude.append(par.name)
 
-    xref = problem.pack(problem.base_source)
+    xref = problem.xref()
 
     if ibootstrap is not None:
         gms = problem.bootstrap_misfits(model.misfits, ibootstrap)
@@ -1540,3 +1540,162 @@ def plot_result(dirname, plotnames_want,
 
     if not save:
         plt.show()
+
+
+class SolverPlot(object):
+
+    def __init__(self, problem, plt, xpar_name='east', ypar_name='depth'):
+
+        fontsize = 8.
+
+        nfx = 1
+        nfy = 1
+
+        ixpar = problem.name_to_index(xpar_name)
+        iypar = problem.name_to_index(ypar_name)
+
+        fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+        labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
+                               hspace=2., units=fontsize)
+
+        xpar = problem.parameters[ixpar]
+        ypar = problem.parameters[iypar]
+
+        if xpar.unit == ypar.unit:
+            axes = fig.add_subplot(nfy, nfx, 1, aspect=1.0)
+        else:
+            axes = fig.add_subplot(nfy, nfx, 1)
+
+        labelpos(axes, 2.5, 2.0)
+
+        axes.set_xlabel(xpar.get_label())
+        axes.set_ylabel(ypar.get_label())
+
+        axes.get_xaxis().set_major_locator(plt.MaxNLocator(4))
+        axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+        xref = problem.xref()
+        axes.axhline(xpar.scaled(xref[ixpar]), color='black', alpha=0.3)
+        axes.axvline(ypar.scaled(xref[iypar]), color='black', alpha=0.3)
+
+        self.fig = fig
+        self.problem = problem
+        self.xpar = xpar
+        self.ypar = ypar
+        self.axes = axes
+        self.ixpar = ixpar
+        self.iypar = iypar
+        self.plt = plt
+        from matplotlib import colors
+        n = problem.nbootstrap + 1
+        hsv = num.vstack((
+            num.random.uniform(0., 1., n),
+            num.random.uniform(0.5, 0.9, n),
+            num.repeat(0.7, n))).T
+
+        self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
+
+        bounds = self.problem.bounds() + self.problem.dependant_bounds()
+
+        self.xlim = fixlim(*xpar.scaled(bounds[ixpar]))
+        self.ylim = fixlim(*ypar.scaled(bounds[iypar]))
+
+        self.set_limits()
+
+        from matplotlib.colors import LinearSegmentedColormap
+
+        self.cmap = LinearSegmentedColormap.from_list('probability', [
+            (1.0, 1.0, 1.0),
+            (0.5, 0.9, 0.6)])
+            
+
+    def set_limits(self):
+        self.axes.set_xlim(*self.xlim)
+        self.axes.set_ylim(*self.ylim)
+
+    def update(self, xhist, chains_i, ibase, jchoice, sbx, factor):
+    
+        msize = 15.
+
+        self.axes.cla()
+
+
+        if jchoice is not None and sbx is not None:
+            
+            nx = 100
+            ny = 100
+
+            sx = sbx[self.ixpar] * factor
+            sy = sbx[self.iypar] * factor
+
+            p = num.zeros((ny, nx))
+
+            for j in xrange(self.problem.nbootstrap+1):
+                ps = core.excentricity_compensated_probabilities(
+                        xhist[chains_i[j, :], :], sbx, 3.)
+
+                bounds = self.problem.bounds() + self.problem.dependant_bounds()
+                x = num.linspace(bounds[self.ixpar][0], bounds[self.ixpar][1], nx)
+                y = num.linspace(bounds[self.iypar][0], bounds[self.iypar][1], ny)
+
+                for ichoice in xrange(chains_i.shape[1]):
+                    iiter = chains_i[j, ichoice]
+                    vx = xhist[iiter, self.ixpar]
+                    vy = xhist[iiter, self.iypar]
+                    pdfx = 1.0 / math.sqrt(2.0 * sx**2 * math.pi) * num.exp(-(x - vx)**2 / (2.0*sx**2))
+
+                    pdfy = 1.0 / math.sqrt(2.0 * sy**2 * math.pi) * num.exp(-(y - vy)**2 / (2.0*sy**2))
+                    p += ps[ichoice] * pdfx[num.newaxis, :] * pdfy[:, num.newaxis]
+
+            self.axes.pcolormesh(x, y, p, cmap=self.cmap)
+
+        fx = self.problem.extract(xhist, self.ixpar)
+        fy = self.problem.extract(xhist, self.iypar)
+
+        self.axes.scatter(
+            self.xpar.scaled(fx),
+            self.ypar.scaled(fy),
+            color='black',
+            s=msize*0.15, alpha=0.2, edgecolors='none')
+
+        for ibootstrap in xrange(self.problem.nbootstrap+1):
+
+            iiters = chains_i[ibootstrap, :]
+            fx = self.problem.extract(xhist[iiters, :], self.ixpar)
+            fy = self.problem.extract(xhist[iiters, :], self.iypar)
+
+            nfade = 20
+            factors = 1.0 + 5.0 * (num.maximum(
+                    0.0, iiters - (xhist.shape[0]-nfade)) / nfade)**2
+
+            msizes = msize * factors
+
+            self.axes.scatter(
+                self.xpar.scaled(fx),
+                self.ypar.scaled(fy),
+                color=self.bcolors[ibootstrap],
+                s=msizes, alpha=0.5, edgecolors='none')
+
+        if ibase is not None:
+            fx = self.problem.extract(
+                xhist[(ibase, -1), :], self.ixpar)
+            fy = self.problem.extract(
+                xhist[(ibase, -1), :], self.iypar)
+
+        #    self.axes.plot(
+        #        self.xpar.scaled(fx),
+        #        self.ypar.scaled(fy),
+        #        color='black')
+
+        fx = self.problem.extract(xhist[-1:, :], self.ixpar)
+        fy = self.problem.extract(xhist[-1:, :], self.iypar)
+
+        self.axes.scatter(
+            self.xpar.scaled(fx),
+            self.ypar.scaled(fy),
+            s=msize * 5.0,
+            color='none',
+            edgecolors='black')
+
+        self.set_limits()
+        self.plt.draw()
