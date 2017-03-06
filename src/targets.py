@@ -468,10 +468,11 @@ def _process(tr, tmin, tmax, taper, domain):
 
 class InnerSatelliteMisfitConfig(Object):
     use_weight_focal = Bool.T(default=False)
-    leveling_ranges = Dict.T(String.T(), gf.Range.T(),
+    ranges = Dict.T(String.T(), gf.Range.T(),
                              default={'waterlevel': '-0.5 .. 0.5',
                                       'ramp_north': '-1e-4 .. 1e-4',
                                       'ramp_east': '-1e-4 .. 1e-4'})
+
 
 
 class MisfitSatelliteTarget(gf.SatelliteTarget):
@@ -480,6 +481,11 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
     inner_misfit_config = InnerSatelliteMisfitConfig.T()
     manual_weight = Float.T(default=1.0)
     group = gf.StringID.T()
+
+    target_parameters = [
+        ...]
+
+    ranges = Dict.T(String.T(), gf.Range.T())
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)

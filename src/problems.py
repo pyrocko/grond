@@ -30,6 +30,7 @@ class Parameter(Object):
             kwargs['name'] = args[0]
         if len(args) >= 2:
             kwargs['unit'] = args[1]
+
         self.target = kwargs.pop('target', None)
 
         Object.__init__(self, **kwargs)
@@ -85,9 +86,9 @@ class ProblemConfig(Object):
     apply_balancing_weights = Bool.T(default=True)
 
 
+
 class Problem(Object):
     name = String.T()
-    parameters = List.T(Parameter.T())
     ranges = Dict.T(String.T(), gf.Range.T())
     dependants = List.T(Parameter.T())
     apply_balancing_weights = Bool.T(default=True)
@@ -115,14 +116,25 @@ class Problem(Object):
         o._target_weights = None
         return o
 
-    def parameter_dict(self, x, target=None):
-        params = []
-        for ip, p in enumerate(self.parameters):
-            if p.target is target:
-                params.append((p.name, x[ip]))
-        return ADict(params)
+    @property
+    def parameters(self):
+        ps = self.problem_parameters
+        for target in self.targets:
+            ps.extend(target.target_parameters)
 
-    def parameter_array(self, d):
+        return ps
+
+    def set_target_parameter_values(self, x):
+        i = len(self.problem_parameters)
+        for target in self.targets:
+            n = len(target.target_parameters)
+            target.set_parameter_values(x[i:i+n])
+            i += n
+
+    def get_parameter_dict(self, x):
+        return ADict((p.name, v) for for p, v in zip(self.parameters, x))
+
+    def get_parameter_array(self, d):
         return num.array([d[p.name] for p in self.parameters], dtype=num.float)
 
     @property
@@ -195,39 +207,6 @@ class Problem(Object):
     def set_engine(self, engine):
         self._engine = engine
 
-    def init_satellite_target_leveling(self):
-        for t in self.satellite_targets:
-            add = True
-            add_parameters = [
-                Parameter('%s:waterlevel' % t.scene_id.lower(), 'm',
-                          label='Waterlevel (%s)' % t.scene_id,
-                          target=t),
-                Parameter('%s:ramp_north' % t.scene_id.lower(), 'm/m',
-                          label='Ramp North (%s)' % t.scene_id,
-                          target=t),
-                Parameter('%s:ramp_east' % t.scene_id.lower(), 'm/m',
-                          label='Ramp East (%s)' % t.scene_id,
-                          target=t),
-                ]
-            add_ranges = t.inner_misfit_config.leveling_ranges.copy()
-            for k in add_ranges.keys():
-                new_k = '%s:%s' % (t.scene_id.lower(), k)
-                if new_k in self.parameter_names:
-                    add = False
-                add_ranges[new_k] = add_ranges.pop(k)
-            if add:
-                logger.info('Adding waterlevel parameters for %s' % t.scene_id)
-                self.parameters += add_parameters
-                self.ranges.update(add_ranges)
-
-    def set_satellite_scene_levels(self, x):
-        for target in self.satellite_targets:
-            levels = self.parameter_dict(x, target=target)
-            for k in levels.keys():
-                new_k = k.split(':')[-1]
-                levels[new_k] = levels.pop(k)
-            target.set_scene_levels(**levels)
-
     def make_bootstrap_weights(self, nbootstrap):
         ntargets = len(self.targets)
         ws = num.zeros((nbootstrap, ntargets))
@@ -269,7 +248,6 @@ class Problem(Object):
         return ws
 
     def inter_group_weights2(self, ns):
-        ''' Deprecated? '''
         group, ngroups = self.get_group_mask()
         ws = num.zeros(ns.shape)
         for igroup in xrange(ngroups):
@@ -279,13 +257,24 @@ class Problem(Object):
 
         return ws
 
-    def bounds(self):
+    def get_xref(self):
+        return self.pack(self.base_source)
+
+    def get_parameter_bounds(self):
         out = []
-        for p in self.parameters:
+        for p in self.problem_parameters:
             r = self.ranges[p.name]
             out.append((r.start, r.stop))
 
+        for target in self.targets:
+            for p in target.target_parameters:
+                r = target.ranges[p.name]
+                out.append((r.start, r.stop))
+
         return out
+
+    def get_dependant_bounds(self):
+        return []
 
     def bootstrap_misfit(self, ms, ns, ibootstrap=None):
         w = self.get_bootstrap_weights(ibootstrap) * \
@@ -376,7 +365,7 @@ class CMTProblem(Problem):
     mt_type = StringChoice.T(default='full', choices=['full', 'deviatoric'])
 
     def get_source(self, x):
-        d = self.parameter_dict(x)
+        d = self.get_parameter_dict(x)
         rm6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
                         dtype=num.float)
 
@@ -455,7 +444,7 @@ class CMTProblem(Problem):
 
     def preconstrain(self, x):
 
-        d = self.parameter_dict(x)
+        d = self.get_parameter_dict(x)
         m6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
                        dtype=num.float)
 
@@ -470,7 +459,7 @@ class CMTProblem(Problem):
         m9 /= m0_unscaled
         m6 = mtm.to6(m9)
         d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed = m6
-        x = self.parameter_array(d)
+        x = self.get_parameter_array(d)
 
         source = self.get_source(x)
         if any(self.distance_min > source.distance_to(t)
@@ -479,7 +468,7 @@ class CMTProblem(Problem):
 
         return x
 
-    def dependant_bounds(self):
+    def get_dependant_bounds(self):
         out = [
             (-1., 1.),
             (-1., 1.)]
@@ -584,7 +573,7 @@ class CMTProblemConfig(ProblemConfig):
 
 class DoubleDCProblem(Problem):
 
-    parameters = [
+    problem_parameters = [
         Parameter('time', 's', label='Time'),
         Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('east_shift', 'm', label='Easting', **as_km),
@@ -609,7 +598,7 @@ class DoubleDCProblem(Problem):
     nbootstrap = Int.T(default=100)
 
     def get_source(self, x):
-        d = self.parameter_dict(x)
+        d = self.get_parameter_dict(x)
         p = {}
         for k in self.base_source.keys():
             if k in d:
@@ -675,10 +664,6 @@ class DoubleDCProblem(Problem):
             raise Forbidden()
 
         return num.array(x, dtype=num.float)
-
-    def dependant_bounds(self):
-        out = []
-        return out
 
     def evaluate(self, x, result_mode='sparse'):
         source = self.get_source(x)
@@ -758,7 +743,7 @@ class DoubleDCProblemConfig(ProblemConfig):
 
 class RectangularProblem(Problem):
 
-    parameters = [
+    problem_parameters = [
         Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('east_shift', 'm', label='Easting', **as_km),
         Parameter('depth', 'm', label='Depth', **as_km),
@@ -775,10 +760,10 @@ class RectangularProblem(Problem):
     nbootstrap = 0
 
     def pack(self, source):
-        return self.parameter_array(source)
+        return self.get_parameter_array(source)
 
     def get_source(self, x):
-        source = self.base_source.clone(**self.parameter_dict(x))
+        source = self.base_source.clone(**self.get_parameter_dict(x))
         return source
 
     def extract(self, xs, i):
@@ -800,13 +785,6 @@ class RectangularProblem(Problem):
         #        for t in self.targets):
             # raise Forbidden()
         return x
-
-    def dependant_bounds(self):
-        print('dependent_bounds')
-        out = [
-            (-1., 1.),
-            (-1., 1.)]
-        return out
 
     def evaluate(self, x, result_mode='sparse', mask=None, nprocs=0):
         source = self.get_source(x)

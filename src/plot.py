@@ -168,7 +168,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='iteration'):
     problem = model.problem
 
     imodels = num.arange(model.nmodels)
-    bounds = problem.bounds() + problem.dependant_bounds()
+    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
 
     xref = problem.pack(problem.base_source)
 
@@ -337,7 +337,7 @@ def draw_jointpar_figures(
 
     xs = model.xs
 
-    bounds = problem.bounds() + problem.dependant_bounds()
+    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
     for ipar in xrange(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
@@ -347,7 +347,7 @@ def draw_jointpar_figures(
 
             exclude.append(par.name)
 
-    xref = problem.pack(problem.base_source)
+    xref = problem.get_xref()
 
     if ibootstrap is not None:
         gms = problem.bootstrap_misfits(model.misfits, ibootstrap)

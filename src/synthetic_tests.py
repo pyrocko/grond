@@ -42,7 +42,7 @@ class SyntheticTest(Object):
         problem = self.get_problem()
         if self.x:
             x = problem.preconstrain(
-                problem.parameter_array(self.x))
+                problem.get_parameter_array(self.x))
 
         else:
             x = problem.preconstrain(

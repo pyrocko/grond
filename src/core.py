@@ -260,7 +260,7 @@ def analyse(problem, niter=1000, show_progress=False):
     wproblem = problem.copy()
     wproblem.targets = wtargets
 
-    xbounds = num.array(wproblem.bounds(), dtype=num.float)
+    xbounds = num.array(wproblem.get_parameter_bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
     mss = num.zeros((niter, wproblem.ntargets))
@@ -358,7 +358,7 @@ def solve(problem,
           compensate_excentricity=True,
           status=()):
 
-    xbounds = num.array(problem.bounds(), dtype=num.float)
+    xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
@@ -832,7 +832,7 @@ def check(
 
             check_problem(problem)
 
-            xbounds = num.array(problem.bounds(), dtype=num.float)
+            xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
 
             results_list = []
 
