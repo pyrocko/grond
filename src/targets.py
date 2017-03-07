@@ -78,7 +78,7 @@ class GrondTarget(object):
     @property
     def target_parameters(self):
         if self._target_parameters is None:
-            self._target_parameters = copy.copy(self.parameters)
+            self._target_parameters = copy.deepcopy(self.parameters)
             for p in self._target_parameters:
                 p.set_groups([self.id])
         return self._target_parameters
