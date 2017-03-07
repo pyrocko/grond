@@ -1607,7 +1607,14 @@ class SolverPlot(object):
         self.cmap = LinearSegmentedColormap.from_list('probability', [
             (1.0, 1.0, 1.0),
             (0.5, 0.9, 0.6)])
-            
+
+        from matplotlib.animation import FFMpegWriter
+
+        metadata = dict(title='Movie Test', artist='Matplotlib',
+                                comment='Movie support!')
+        self.writer = FFMpegWriter(fps=15, metadata=metadata)
+        self.writer.setup(self.fig, 'test.mp4', dpi=100)
+             
 
     def set_limits(self):
         self.axes.set_xlim(*self.xlim)
@@ -1698,4 +1705,9 @@ class SolverPlot(object):
             edgecolors='black')
 
         self.set_limits()
-        self.plt.draw()
+        #self.plt.draw()
+
+        self.writer.grab_frame()
+
+    def finish(self):
+        self.writer.finish()

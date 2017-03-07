@@ -1419,8 +1419,8 @@ def solve(problem,
     if plot:
         from matplotlib import pyplot as plt
         from grond import plot as gplot
-        plt.ion()
-        plt.show()
+        #plt.ion()
+        #plt.show()
         solver_plot = gplot.SolverPlot(problem, plt)
 
     while iiter < niter:
@@ -1692,7 +1692,8 @@ def solve(problem,
         iiter += 1
 
     if plot:
-        plt.ioff()
+        solver_plot.finish()
+        #plt.ioff()
 
 
 def bootstrap_outliers(problem, misfits, std_factor=1.0):
