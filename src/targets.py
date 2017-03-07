@@ -1,6 +1,7 @@
 import logging
 import math
 import numpy as num
+import copy
 
 from pyrocko import gf, trace, weeding
 from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
@@ -8,6 +9,7 @@ from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
 from pyrocko.guts_array import Array
 
 from .dataset import NotFound
+from .meta import Parameter
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.target')
@@ -57,6 +59,50 @@ class TraceSpectrum(Object):
         return self.fmin + num.arange(self.ydata.size) * self.deltaf
 
 
+class GrondTarget(object):
+
+    def set_dataset(self, ds):
+        self._ds = ds
+
+    def get_dataset(self):
+        return self._ds
+
+    @property
+    def id(self):
+        return self.scene_id
+
+    @property
+    def nparameters(self):
+        return len(self._target_parameters)
+
+    @property
+    def target_parameters(self):
+        if self._target_parameters is None:
+            self._target_parameters = copy.copy(self.parameters)
+            for p in self._target_parameters:
+                p.set_groups([self.id])
+        return self._target_parameters
+
+    @property
+    def target_ranges(self):
+        if self._target_ranges is None:
+            self._target_ranges = self.inner_misfit_config.ranges.copy()
+            for k in self._target_ranges.keys():
+                self._target_ranges['%s:%s' % (self.id, k)] =\
+                    self._target_ranges.pop(k)
+        return self._target_ranges
+
+    def set_parameter_values(self, model):
+        for i, p in enumerate(self.parameters):
+            self.parameter_values[p.name_nogroups] = model[i]
+
+    def set_result_mode(self, result_mode):
+        pass
+
+    def string_id(self):
+        return '.'.join([self.super_group, self.group, self.id])
+
+
 class InnerMisfitConfig(Object):
     fmin = Float.T()
     fmax = Float.T()
@@ -95,6 +141,8 @@ class InnerMisfitConfig(Object):
              '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
              '/ tautoshift_max**2``')
 
+    ranges = {}
+
     def get_full_frequency_range(self):
         return self.fmin / self.ffactor, self.fmax * self.ffactor
 
@@ -115,46 +163,37 @@ class MisfitResult(gf.Result):
     cc = Trace.T(optional=True)
 
 
-class MisfitTarget(gf.Target):
+class MisfitTarget(gf.Target, GrondTarget):
     misfit_config = InnerMisfitConfig.T()
     flip_norm = Bool.T(default=False)
     manual_weight = Float.T(default=1.0)
-    analysis_result = TargetAnalysisResult.T(optional=True)
     super_group = gf.StringID.T()
     group = gf.StringID.T()
+    analysis_result = TargetAnalysisResult.T(optional=True)
+
+    parameters = []
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
         self._ds = None
         self._result_mode = 'sparse'
 
+        self._target_parameters = None
+        self._target_ranges = None
+
     def string_id(self):
         return '.'.join(x for x in (
             self.super_group, self.group) + self.codes if x)
-
-    @property
-    def id(self):
-        return self.codes
 
     def get_plain_target(self):
         d = dict(
             (k, getattr(self, k)) for k in gf.Target.T.propnames)
         return gf.Target(**d)
 
-    def get_dataset(self):
-        return self._ds
-
-    def set_dataset(self, ds):
-        self._ds = ds
-
-    def set_result_mode(self, result_mode):
-        self._result_mode = result_mode
-
     def get_combined_weight(self, apply_balancing_weights):
         w = self.manual_weight
         if apply_balancing_weights:
             w *= self.get_balancing_weight()
-
         return w
 
     def get_balancing_weight(self):
@@ -468,53 +507,36 @@ def _process(tr, tmin, tmax, taper, domain):
 
 class InnerSatelliteMisfitConfig(Object):
     use_weight_focal = Bool.T(default=False)
+    optimize_leveling_plane = Bool.T(default=True)
     ranges = Dict.T(String.T(), gf.Range.T(),
-                             default={'waterlevel': '-0.5 .. 0.5',
-                                      'ramp_north': '-1e-4 .. 1e-4',
-                                      'ramp_east': '-1e-4 .. 1e-4'})
+                    default={'waterlevel': '-0.5 .. 0.5',
+                             'ramp_north': '-1e-4 .. 1e-4',
+                             'ramp_east': '-1e-4 .. 1e-4'})
 
 
-
-class MisfitSatelliteTarget(gf.SatelliteTarget):
+class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
     scene_id = String.T()
     super_group = gf.StringID.T()
     inner_misfit_config = InnerSatelliteMisfitConfig.T()
     manual_weight = Float.T(default=1.0)
     group = gf.StringID.T()
 
-    target_parameters = [
-        ...]
-
-    ranges = Dict.T(String.T(), gf.Range.T())
+    parameters = [
+        Parameter('waterlevel', 'm'),
+        Parameter('ramp_north', 'm/m'),
+        Parameter('ramp_east', 'm/m'),
+        ]
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
-        self.waterlevel = 0.
-        self.ramp_north = 0.
-        self.ramp_east = 0.
+        if not self.inner_misfit_config.optimize_leveling_plane:
+            self.parameters = []
+
         self._ds = None
-        self._distance_cache = None
 
-    def set_dataset(self, ds):
-        self._ds = ds
-
-    @property
-    def id(self):
-        return self.scene_id
-
-    def get_dataset(self):
-        return self._ds
-
-    def set_result_mode(self, result_mode):
-        pass
-
-    def string_id(self):
-        return '.'.join([self.super_group, self.group, self.scene_id])
-
-    def set_scene_levels(self, waterlevel, ramp_north, ramp_east):
-        self.waterlevel = waterlevel
-        self.ramp_north = ramp_north
-        self.ramp_east = ramp_east
+        self.parameter_values = {}
+        self._target_parameters = None
+        self._target_ranges = None
 
     def post_process(self, engine, source, statics):
         scene = self._ds.get_kite_scene(self.scene_id)
@@ -523,12 +545,16 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
         stat_obs = scene.quadtree.leaf_medians
         stat_syn = statics['displacement.los']
 
-        stat_level = num.zeros_like(stat_obs)
-        stat_level.fill(self.waterlevel)
-        stat_level += (quadtree.leaf_center_distance[:, 0] * self.ramp_east)
-        stat_level += (quadtree.leaf_center_distance[:, 1] * self.ramp_north)
+        if self.inner_misfit_config.optimize_leveling_plane:
+            stat_level = num.zeros_like(stat_obs)
+            stat_level.fill(self.parameter_values['waterlevel'])
+            stat_level += (quadtree.leaf_center_distance[:, 0]
+                           * self.parameter_values['ramp_east'])
+            stat_level += (quadtree.leaf_center_distance[:, 1]
+                           * self.parameter_values['ramp_north'])
+            stat_syn += stat_level
 
-        res = num.abs(stat_obs - (stat_syn + stat_level))
+        res = num.abs(stat_obs - stat_syn)
 
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
@@ -540,11 +566,6 @@ class MisfitSatelliteTarget(gf.SatelliteTarget):
 
     def get_combined_weight(self, apply_balancing_weights=False):
         return 1.
-
-
-class GrondTarget(MisfitSatelliteTarget, MisfitTarget):
-    def __init__(self, args):
-        super(MisfitSatelliteTarget, self).__init__()
 
 
 class TargetConfig(Object):

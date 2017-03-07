@@ -33,9 +33,7 @@ class Problem(Object):
     targets = List.T()
 
     def __init__(self, **kwargs):
-
         Object.__init__(self, **kwargs)
-        self.init_satellite_target_leveling()
 
         self._bootstrap_weights = None
         self._target_weights = None
@@ -52,14 +50,6 @@ class Problem(Object):
         o._target_weights = None
         return o
 
-    @property
-    def parameters(self):
-        ps = self.problem_parameters
-        for target in self.targets:
-            ps.extend(target.target_parameters)
-
-        return ps
-
     def set_target_parameter_values(self, x):
         i = len(self.problem_parameters)
         for target in self.targets:
@@ -67,15 +57,15 @@ class Problem(Object):
             target.set_parameter_values(x[i:i+n])
             i += n
 
-    def get_parameter_dict(self, x):
-        return ADict((p.name, v) for p, v in zip(self.parameters, x))
+    def get_parameter_dict(self, model, group=None):
+        params = []
+        for ip, p in enumerate(self.parameters):
+            if group in p.groups:
+                params.append((p.name, model[ip]))
+        return ADict(params)
 
     def get_parameter_array(self, d):
         return num.array([d[p.name] for p in self.parameters], dtype=num.float)
-
-    @property
-    def parameter_names(self):
-        return [p.name for p in self.combined]
 
     def dump_problem_info(self, dirname):
         fn = op.join(dirname, 'problem.yaml')
@@ -97,6 +87,17 @@ class Problem(Object):
     def name_to_index(self, name):
         pnames = [p.name for p in self.combined]
         return pnames.index(name)
+
+    @property
+    def parameters(self):
+        target_parameters = []
+        for target in self.targets:
+            target_parameters.extend(target.target_parameters)
+        return self.problem_parameters + target_parameters
+
+    @property
+    def parameter_names(self):
+        return [p.name for p in self.combined]
 
     @property
     def nparameters(self):
@@ -142,6 +143,9 @@ class Problem(Object):
 
     def set_engine(self, engine):
         self._engine = engine
+
+    def random_uniform(self, xbounds):
+        raise NotImplementedError()
 
     def make_bootstrap_weights(self, nbootstrap):
         ntargets = len(self.targets)
@@ -204,9 +208,8 @@ class Problem(Object):
 
         for target in self.targets:
             for p in target.target_parameters:
-                r = target.ranges[p.name]
+                r = target.target_ranges[p.name]
                 out.append((r.start, r.stop))
-
         return out
 
     def get_dependant_bounds(self):
@@ -678,6 +681,11 @@ class DoubleDCProblemConfig(ProblemConfig):
 
 
 class RectangularProblem(Problem):
+    # nucleation_x
+    # nucleation_y
+    # rupture_velocity
+    # t0
+    # stf
 
     problem_parameters = [
         Parameter('north_shift', 'm', label='Northing', **as_km),
@@ -699,7 +707,8 @@ class RectangularProblem(Problem):
         return self.get_parameter_array(source)
 
     def get_source(self, x):
-        source = self.base_source.clone(**self.get_parameter_dict(x))
+        source = self.base_source.clone(
+            **self.get_parameter_dict(x, group=None))
         return source
 
     def extract(self, xs, i):
@@ -729,8 +738,6 @@ class RectangularProblem(Problem):
         for target in self.targets:
             target.set_result_mode(result_mode)
 
-        self.set_satellite_scene_levels(x)
-
         if mask is not None:
             assert len(mask) == len(self.targets)
             targets_ok = [
@@ -738,6 +745,7 @@ class RectangularProblem(Problem):
         else:
             targets_ok = self.targets
 
+        self.set_target_parameter_values(x)
         resp = engine.process(source, targets_ok, nprocs=nprocs)
 
         if mask is not None:
@@ -770,12 +778,12 @@ class RectangularProblem(Problem):
         else:
             return ms, ns
 
-    def forward(self, x):
+    def forward(self, x, nprocs=0):
         source = self.get_source(x)
         engine = self.get_engine()
         plain_targets = [target.get_plain_target() for target in self.targets]
 
-        resp = engine.process(source, plain_targets)
+        resp = engine.process(source, plain_targets, nprocs=nprocs)
         results = []
         for target, result in zip(self.targets, resp.results_list[0]):
             if isinstance(result, gf.SeismosizerError):

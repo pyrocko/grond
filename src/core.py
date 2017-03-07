@@ -13,7 +13,7 @@ from pyrocko.guts import (load, Object, String, Float, Int, Bool, List,
 from pyrocko import orthodrome as od, gf, trace, guts, util
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import DatasetConfig
+from .dataset import DatasetConfig, NotFound
 from .problems import ProblemConfig, Problem
 from .targets import TargetAnalysisResult, TargetConfig
 from .meta import (Path, HasPaths, expand_template, xjoin, GrondError,
@@ -249,7 +249,10 @@ def analyse(problem, niter=1000, show_progress=False):
         return
 
     wtargets = []
-    for target in problem.targets:
+    if not problem.has_waveforms:
+        return
+
+    for target in problem.waveform_targets:
         wtarget = copy.copy(target)
         wtarget.flip_norm = True
         wtarget.weight = 1.0
@@ -317,14 +320,14 @@ def excentricity_compensated_choice(xs, sbx, factor):
     inonflat = num.where(sbx != 0.0)[0]
     scale = num.zeros_like(sbx)
     scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
-    #distances_all = math.sqrt(num.sum(
-    #    ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
-    #     scale[num.newaxis, num.newaxis, :])**2, axis=2))
+    # distances_all = math.sqrt(num.sum(
+    #     ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
+    #      scale[num.newaxis, num.newaxis, :])**2, axis=2))
     distances_sqr_all = num.sum(
         ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
     probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
-    print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
+    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
     probabilities /= num.sum(probabilities)
     r = num.random.random()
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
@@ -339,7 +342,7 @@ def select_most_excentric(xcandidates, xs, sbx, factor):
     distances_sqr_all = num.sum(
         ((xcandidates[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
-    #print num.sort(num.sum(distances_sqr_all < 1.0, axis=0))
+    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=0))
     ichoice = num.argmin(num.sum(distances_sqr_all < 1.0, axis=0))
     return xcandidates[ichoice]
 
@@ -355,11 +358,11 @@ def solve(problem,
           chain_length_factor=8.0,
           xs_inject=None,
           sampler_distribution='multivariate_normal',
-          compensate_excentricity=True,
+          compensate_excentricity=False,
           status=()):
 
     xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
-    npar = xbounds.shape[0]
+    npar = problem.nparameters
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
     chains_m = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.float)
@@ -383,7 +386,7 @@ def solve(problem,
     isbad_mask = None
     accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
-    pnames = [p.name for p in problem.parameters]
+    pnames = problem.parameter_names
 
     while iiter < niter:
 
@@ -832,7 +835,8 @@ def check(
 
             check_problem(problem)
 
-            xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
+            xbounds = num.array(problem.get_parameter_bounds(),
+                                dtype=num.float)
 
             results_list = []
 
@@ -907,9 +911,10 @@ def check(
                                 tfade=tfade,
                                 freqlimits=freqlimits,
                                 deltat=deltat,
-                                backazimuth=target.get_backazimuth_for_waveform(),
+                                backazimuth=target.
+                                get_backazimuth_for_waveform(),
                                 debug=True)
-                    except dataset.NotFound, e:
+                    except NotFound, e:
                         logger.warn(str(e))
                         continue
 

@@ -51,7 +51,7 @@ class ADict(dict):
 
 
 class Parameter(Object):
-    name = String.T()
+    name__ = String.T()
     unit = String.T(optional=True)
     scale_factor = Float.T(default=1., optional=True)
     scale_unit = String.T(optional=True)
@@ -63,7 +63,8 @@ class Parameter(Object):
         if len(args) >= 2:
             kwargs['unit'] = args[1]
 
-        self.target = kwargs.pop('target', None)
+        self.groups = [None]
+        self._name = None
 
         Object.__init__(self, **kwargs)
 
@@ -75,6 +76,25 @@ class Parameter(Object):
                 l.append('[%s]' % unit)
 
         return ' '.join(l)
+
+    def set_groups(self, groups):
+        if not isinstance(groups, list):
+            raise AttributeError('Groups must be a list of strings.')
+        self.groups = groups
+
+    def _get_name(self):
+        if None not in self.groups:
+            return '%s:%s' % (':'.join(self.groups), self._name)
+        return self._name
+
+    def _set_name(self, value):
+        self._name = value
+
+    name = property(_get_name, _set_name)
+
+    @property
+    def name_nogroups(self):
+        return self._name
 
     def get_value_label(self, value, format='%(value)g%(unit)s'):
         value = self.scaled(value)
