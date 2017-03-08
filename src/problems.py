@@ -281,7 +281,7 @@ class Problem(Object):
 
 class CMTProblem(Problem):
 
-    parameters = [
+    problem_parameters = [
         Parameter('time', 's', label='Time'),
         Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('east_shift', 'm', label='Easting', **as_km),
