@@ -1341,14 +1341,11 @@ def excentricity_compensated_probabilities(xs, sbx, factor):
     inonflat = num.where(sbx != 0.0)[0]
     scale = num.zeros_like(sbx)
     scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
-    #distances_all = math.sqrt(num.sum(
-    #    ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
-    #     scale[num.newaxis, num.newaxis, :])**2, axis=2))
     distances_sqr_all = num.sum(
         ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
     probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
-    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
+    print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
     probabilities /= num.sum(probabilities)
     return probabilities
 
@@ -1387,7 +1384,7 @@ def solve(problem,
           sampler_distribution='multivariate_normal',
           compensate_excentricity=True,
           status=(),
-          plot=False):
+          plot=None):
 
     xbounds = num.array(problem.bounds(), dtype=num.float)
     npar = xbounds.shape[0]
@@ -1417,11 +1414,7 @@ def solve(problem,
     pnames = [p.name for p in problem.parameters]
 
     if plot:
-        from matplotlib import pyplot as plt
-        from grond import plot as gplot
-        #plt.ion()
-        #plt.show()
-        solver_plot = gplot.SolverPlot(problem, plt)
+        plot.start(problem)
 
     while iiter < niter:
         jchoice = None
@@ -1539,7 +1532,6 @@ def solve(problem,
 
                                 xcandidates[icandidate, ipar] = v
 
-                            
                         x = select_most_excentric(
                             xcandidates,
                             xhist[chains_i[jchoice, :], :],
@@ -1679,8 +1671,8 @@ def solve(problem,
             lines.append('')
             print '\n'.join(lines)
 
-        if plot and iiter % 10 == 0:
-            solver_plot.update(
+        if plot:
+            plot.update(
                 xhist[:iiter+1, :],
                 chains_i[:, :nlinks],
                 ibase,
@@ -1688,12 +1680,10 @@ def solve(problem,
                 sbx,
                 factor)
 
-
         iiter += 1
 
     if plot:
-        solver_plot.finish()
-        #plt.ioff()
+        plot.finish()
 
 
 def bootstrap_outliers(problem, misfits, std_factor=1.0):

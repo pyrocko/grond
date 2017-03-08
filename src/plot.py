@@ -1544,15 +1544,18 @@ def plot_result(dirname, plotnames_want,
 
 class SolverPlot(object):
 
-    def __init__(self, problem, plt, xpar_name='east', ypar_name='depth'):
+    def __init__(self, plt, xpar_name, ypar_name):
+        self.plt = plt
+        self.xpar_name = xpar_name
+        self.ypar_name = ypar_name
 
+    def start(self, problem):
         fontsize = 8.
-
         nfx = 1
         nfy = 1
 
-        ixpar = problem.name_to_index(xpar_name)
-        iypar = problem.name_to_index(ypar_name)
+        ixpar = problem.name_to_index(self.xpar_name)
+        iypar = problem.name_to_index(self.ypar_name)
 
         fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
         labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
@@ -1585,7 +1588,6 @@ class SolverPlot(object):
         self.axes = axes
         self.ixpar = ixpar
         self.iypar = iypar
-        self.plt = plt
         from matplotlib import colors
         n = problem.nbootstrap + 1
         hsv = num.vstack((
@@ -1610,25 +1612,27 @@ class SolverPlot(object):
 
         from matplotlib.animation import FFMpegWriter
 
-        metadata = dict(title='Movie Test', artist='Matplotlib',
-                                comment='Movie support!')
-        self.writer = FFMpegWriter(fps=15, metadata=metadata)
+        metadata = dict(title=problem.name, artist='Grond')
+
+        self.writer = FFMpegWriter(
+            fps=30,
+            metadata=metadata,
+            codec='libx264',
+            bitrate=200000)
+
         self.writer.setup(self.fig, 'test.mp4', dpi=100)
-             
 
     def set_limits(self):
         self.axes.set_xlim(*self.xlim)
         self.axes.set_ylim(*self.ylim)
 
     def update(self, xhist, chains_i, ibase, jchoice, sbx, factor):
-    
         msize = 15.
 
         self.axes.cla()
 
-
         if jchoice is not None and sbx is not None:
-            
+
             nx = 100
             ny = 100
 
@@ -1641,18 +1645,26 @@ class SolverPlot(object):
                 ps = core.excentricity_compensated_probabilities(
                         xhist[chains_i[j, :], :], sbx, 3.)
 
-                bounds = self.problem.bounds() + self.problem.dependant_bounds()
-                x = num.linspace(bounds[self.ixpar][0], bounds[self.ixpar][1], nx)
-                y = num.linspace(bounds[self.iypar][0], bounds[self.iypar][1], ny)
+                bounds = self.problem.bounds() + \
+                    self.problem.dependant_bounds()
+
+                x = num.linspace(
+                    bounds[self.ixpar][0], bounds[self.ixpar][1], nx)
+                y = num.linspace(
+                    bounds[self.iypar][0], bounds[self.iypar][1], ny)
 
                 for ichoice in xrange(chains_i.shape[1]):
                     iiter = chains_i[j, ichoice]
                     vx = xhist[iiter, self.ixpar]
                     vy = xhist[iiter, self.iypar]
-                    pdfx = 1.0 / math.sqrt(2.0 * sx**2 * math.pi) * num.exp(-(x - vx)**2 / (2.0*sx**2))
+                    pdfx = 1.0 / math.sqrt(2.0 * sx**2 * math.pi) * num.exp(
+                        -(x - vx)**2 / (2.0*sx**2))
 
-                    pdfy = 1.0 / math.sqrt(2.0 * sy**2 * math.pi) * num.exp(-(y - vy)**2 / (2.0*sy**2))
-                    p += ps[ichoice] * pdfx[num.newaxis, :] * pdfy[:, num.newaxis]
+                    pdfy = 1.0 / math.sqrt(2.0 * sy**2 * math.pi) * num.exp(
+                        -(y - vy)**2 / (2.0*sy**2))
+
+                    p += ps[ichoice] * pdfx[num.newaxis, :] * \
+                        pdfy[:, num.newaxis]
 
             self.axes.pcolormesh(x, y, p, cmap=self.cmap)
 
@@ -1689,10 +1701,10 @@ class SolverPlot(object):
             fy = self.problem.extract(
                 xhist[(ibase, -1), :], self.iypar)
 
-        #    self.axes.plot(
-        #        self.xpar.scaled(fx),
-        #        self.ypar.scaled(fy),
-        #        color='black')
+            self.axes.plot(
+                self.xpar.scaled(fx),
+                self.ypar.scaled(fy),
+                color='black')
 
         fx = self.problem.extract(xhist[-1:, :], self.ixpar)
         fy = self.problem.extract(xhist[-1:, :], self.iypar)
@@ -1705,7 +1717,6 @@ class SolverPlot(object):
             edgecolors='black')
 
         self.set_limits()
-        #self.plt.draw()
 
         self.writer.grab_frame()
 
