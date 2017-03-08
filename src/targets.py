@@ -507,9 +507,9 @@ def _process(tr, tmin, tmax, taper, domain):
 
 class InnerSatelliteMisfitConfig(Object):
     use_weight_focal = Bool.T(default=False)
-    optimize_leveling_plane = Bool.T(default=True)
+    optimize_orbital_ramp = Bool.T(default=True)
     ranges = Dict.T(String.T(), gf.Range.T(),
-                    default={'waterlevel': '-0.5 .. 0.5',
+                    default={'offset': '-0.5 .. 0.5',
                              'ramp_north': '-1e-4 .. 1e-4',
                              'ramp_east': '-1e-4 .. 1e-4'})
 
@@ -522,14 +522,14 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
     group = gf.StringID.T()
 
     parameters = [
-        Parameter('waterlevel', 'm'),
+        Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
         Parameter('ramp_east', 'm/m'),
         ]
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
-        if not self.inner_misfit_config.optimize_leveling_plane:
+        if not self.inner_misfit_config.optimize_orbital_ramp:
             self.parameters = []
 
         self._ds = None
@@ -545,9 +545,9 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
         stat_obs = scene.quadtree.leaf_medians
         stat_syn = statics['displacement.los']
 
-        if self.inner_misfit_config.optimize_leveling_plane:
+        if self.inner_misfit_config.optimize_orbital_ramp:
             stat_level = num.zeros_like(stat_obs)
-            stat_level.fill(self.parameter_values['waterlevel'])
+            stat_level.fill(self.parameter_values['offset'])
             stat_level += (quadtree.leaf_center_distance[:, 0]
                            * self.parameter_values['ramp_east'])
             stat_level += (quadtree.leaf_center_distance[:, 1]
