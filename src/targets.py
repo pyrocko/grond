@@ -7,6 +7,7 @@ from pyrocko import gf, trace, weeding
 from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
                           StringChoice, Timestamp)
 from pyrocko.guts_array import Array
+from pyrocko.orthodrome import latlon_to_ne_numpy
 
 from .dataset import NotFound
 from .meta import Parameter
@@ -60,7 +61,6 @@ class TraceSpectrum(Object):
 
 
 class GrondTarget(object):
-
     def set_dataset(self, ds):
         self._ds = ds
 
@@ -592,17 +592,33 @@ class TargetConfig(Object):
         origin = event
 
         targets = []
+        reference_frame = None
 
         for scene in ds.get_kite_scenes():
             qt = scene.quadtree
 
             lats = num.empty(qt.nleafs)
             lons = num.empty(qt.nleafs)
-            lats.fill(qt.frame.llLat)
-            lons.fill(qt.frame.llLon)
 
             east_shifts = qt.leaf_focal_points[:, 0]
             north_shifts = qt.leaf_focal_points[:, 1]
+
+            if reference_frame is None:
+                reference_frame = scene.frame
+                lats.fill(qt.frame.llLat)
+                lons.fill(qt.frame.llLon)
+            else:
+                lats.fill(reference_frame.llLat)
+                lons.fill(reference_frame.llLon)
+
+                north_offset, east_offset = latlon_to_ne_numpy(
+                    reference_frame.llLat,
+                    reference_frame.llLon,
+                    qt.frame.llLat,
+                    qt.frame.llLon)
+
+                north_shifts += north_offset
+                east_shifts += east_offset
 
             sat_target = MisfitSatelliteTarget(
                 quantity='displacement',

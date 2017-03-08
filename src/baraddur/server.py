@@ -26,17 +26,10 @@ from bokeh.models import ColumnDataSource
 from bokeh import layouts
 from bokeh.plotting import figure
 
+from .meta import ColorCycler
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('grond.baraddur')
-
-
-def makeColorGradient(misfits, fr=1., fg=.5, fb=1.,
-                      pr=0, pg=2.5, pb=4):
-    misfits /= misfits.max()
-    r = num.sin(fr * misfits + pr) * 127 + 128
-    g = num.sin(fg * misfits + pg) * 127 + 128
-    b = num.sin(fb * misfits + pb) * 127 + 128
-    return ['#%02x%02x%02x' % (r[i], g[i], b[i]) for i in xrange(misfits.size)]
 
 
 class BaraddurModel(object):
@@ -155,6 +148,7 @@ class BaraddurModel(object):
         return nmodels, mf_dict
 
 
+# This should be realized in JS!
 class SmoothColumnDataSource(ColumnDataSource):
     '''Gauss smoothed ColumnDataSource '''
     def __init__(self, *args, **kwargs):
@@ -201,24 +195,28 @@ class BaraddurBokehHandler(BokehHandler):
         BokehHandler.__init__(self, *args, **kwargs)
         self.config = config
         self.model = config.model
-        self.nmodels = 0
 
-        self.source = ColumnDataSource()
-
-    def update_source(self, func):
+    @staticmethod
+    def update_source(doc, func):
         new_nmodels, new_data = func(
-            skip_nmodels=self.nmodels,
-            keys=self.source.data.keys())
-        self.source.stream(new_data)
-        self.nmodels += new_nmodels
+            skip_nmodels=doc.nmodels,
+            keys=doc.source.data.keys())
+        doc.source.stream(new_data)
+        doc.nmodels += new_nmodels
 
-    @gen.coroutine
-    def update_models(self):
-        return self.update_source(self.model.get_models)
+    def update_models(self, doc):
+        return self.update_source(doc, self.model.get_models)
 
-    @gen.coroutine
-    def update_misfits(self):
-        return self.update_source(self.model.get_misfits)
+    def update_misfits(self, doc):
+        return self.update_source(doc, self.model.get_misfits)
+
+    @staticmethod
+    def decorate_document(modify_document):
+        def decorator(handler, doc):
+            doc.nmodels = 0
+            doc.source = ColumnDataSource()
+            return modify_document(handler, doc)
+        return decorator
 
 
 class Rundirs(BaraddurRequestHandler):
@@ -252,12 +250,13 @@ class Misfit(BaraddurRequestHandler):
 
     class MisfitsPlot(BaraddurBokehHandler):
 
+        @BaraddurBokehHandler.decorate_document
         def modify_document(self, doc):
-            self.source.add(num.ndarray(0, dtype=num.float32),
-                            'misfit_mean')
-            self.source.add(num.ndarray(0, dtype=num.float32),
-                            'niter')
-            self.update_misfits()
+            doc.source.add(num.ndarray(0, dtype=num.float32),
+                           'misfit_mean')
+            doc.source.add(num.ndarray(0, dtype=num.float32),
+                           'niter')
+            self.update_misfits(doc)
 
             plot = figure(webgl=True,
                           responsive=True,
@@ -265,10 +264,10 @@ class Misfit(BaraddurRequestHandler):
                           x_axis_label='Iteration #',
                           y_axis_label='Misfit')
             plot.scatter('niter', 'misfit_mean',
-                         source=self.source, alpha=.4)
+                         source=doc.source, alpha=.4)
 
             doc.add_root(plot)
-            doc.add_periodic_callback(self.update_misfits,
+            doc.add_periodic_callback(lambda: self.update_misfits(doc),
                                       self.config.plot_update_small)
 
     bokeh_handlers = {'misfit': MisfitsPlot}
@@ -290,27 +289,27 @@ class Parameters(BaraddurRequestHandler):
 
         ncols = 4
 
+        @BaraddurBokehHandler.decorate_document
         def modify_document(self, doc):
             problem = self.model.problem
+            self.model = BaraddurModel(self.config.rundir)
 
             for param in ['niter'] + [p.name for p in problem.parameters]:
-                self.source.add(
+                doc.source.add(
                     num.ndarray(0, dtype=num.float32),
                     param)
-            self.model = BaraddurModel(self.config.rundir)
-            self.update_models()
+            self.update_models(doc)
 
             plots = []
             for par in problem.parameters:
                 fig = figure(webgl=True,
-                             responsive=True,
                              x_axis_label='Iteration #',
-                             y_axis_label='%s [%s]' % (par.label, par.unit))
+                             y_axis_label='%s [%s]' % (par.name, par.unit))
                 fig.scatter('niter', par.name,
-                            source=self.source, alpha=.4)
+                            source=doc.source, alpha=.4)
                 plots.append(fig)
-            if (len(plots) % self.ncols) != 0:
-                plots += [None] * (self.ncols - (len(plots) % self.ncols))
+            # if (len(plots) % self.ncols) != 0:
+            #     plots += [None] * (self.ncols - (len(plots) % self.ncols))
 
             grid = layouts.gridplot(
                 plots,
@@ -318,7 +317,7 @@ class Parameters(BaraddurRequestHandler):
                 ncols=self.ncols)
 
             doc.add_root(grid)
-            doc.add_periodic_callback(self.update_models,
+            doc.add_periodic_callback(lambda: self.update_models(doc),
                                       self.config.plot_update_small)
 
     bokeh_handlers = {'parameters': ParameterPlots}
@@ -339,10 +338,7 @@ class Targets(BaraddurRequestHandler):
 
     class TargetContributionPlot(BaraddurBokehHandler):
 
-        def __init__(self, *args, **kwargs):
-            BaraddurBokehHandler.__init__(self, *args, **kwargs)
-            self.source = SmoothColumnDataSource(sigma=20)
-
+        @BaraddurBokehHandler.decorate_document
         def modify_document(self, doc):
             plot = figure(webgl=True,
                           responsive=True,
@@ -352,15 +348,17 @@ class Targets(BaraddurRequestHandler):
 
             target_ids = [t.id for t in self.model.targets]
             for param in ['niter'] + target_ids:
-                self.source.add(
+                doc.source.add(
                     num.ndarray(0, dtype=num.float32),
                     param)
-            self.update_misfits()
-            colors = ['blue', 'red']
+            self.update_misfits(doc)
+
+            colors = ColorCycler(['blue', 'red', 'green'])
             for it, target in enumerate(self.model.targets):
+                print target.id
                 plot.scatter('niter', target.id,
-                             source=self.source,
-                             color=colors[it])
+                             source=doc.source,
+                             color=colors.next())
 
             # plot.patches(
             #     ['niter'] * self.model.ntargets,
@@ -368,7 +366,7 @@ class Targets(BaraddurRequestHandler):
             #     source=self.source)
 
             doc.add_root(plot)
-            doc.add_periodic_callback(self.update_misfits,
+            doc.add_periodic_callback(lambda: self.update_misfits(doc),
                                       self.config.plot_update_small)
 
     bokeh_handlers = {'targets': TargetContributionPlot}
