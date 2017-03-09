@@ -355,7 +355,6 @@ class Targets(BaraddurRequestHandler):
 
             colors = ColorCycler(['blue', 'red', 'green'])
             for it, target in enumerate(self.model.targets):
-                print target.id
                 plot.scatter('niter', target.id,
                              source=doc.source,
                              color=colors.next())
