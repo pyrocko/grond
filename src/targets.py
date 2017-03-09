@@ -542,7 +542,7 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
         scene = self._ds.get_kite_scene(self.scene_id)
         quadtree = scene.quadtree
 
-        stat_obs = scene.quadtree.leaf_medians
+        stat_obs = quadtree.leaf_medians
         stat_syn = statics['displacement.los']
 
         if self.inner_misfit_config.optimize_orbital_ramp:
@@ -579,6 +579,7 @@ class TargetConfig(Object):
     depth_min = Float.T(optional=True)
     depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
+
     channels = List.T(String.T(), optional=True)
     inner_misfit_config = InnerMisfitConfig.T(optional=True)
     inner_satellite_misfit_config = InnerSatelliteMisfitConfig.T(
@@ -592,7 +593,7 @@ class TargetConfig(Object):
         origin = event
 
         targets = []
-        reference_frame = None
+        scene_reference_frame = None
 
         for scene in ds.get_kite_scenes():
             qt = scene.quadtree
@@ -600,20 +601,20 @@ class TargetConfig(Object):
             lats = num.empty(qt.nleafs)
             lons = num.empty(qt.nleafs)
 
-            east_shifts = qt.leaf_focal_points[:, 0]
             north_shifts = qt.leaf_focal_points[:, 1]
+            east_shifts = qt.leaf_focal_points[:, 0]
 
-            if reference_frame is None:
-                reference_frame = scene.frame
+            if scene_reference_frame is None:
+                scene_reference_frame = scene.frame
                 lats.fill(qt.frame.llLat)
                 lons.fill(qt.frame.llLon)
             else:
-                lats.fill(reference_frame.llLat)
-                lons.fill(reference_frame.llLon)
+                lats.fill(scene_reference_frame.llLat)
+                lons.fill(scene_reference_frame.llLon)
 
                 north_offset, east_offset = latlon_to_ne_numpy(
-                    reference_frame.llLat,
-                    reference_frame.llLon,
+                    scene_reference_frame.llLat,
+                    scene_reference_frame.llLon,
                     qt.frame.llLat,
                     qt.frame.llLon)
 
