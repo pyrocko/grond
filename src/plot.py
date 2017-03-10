@@ -946,7 +946,7 @@ def draw_fits_figures(ds, model, plt):
     w_max = num.nanmax(ws)
     gcm_max = num.nanmax(gcms)
 
-    source = problem.unpack(xbest)
+    source = problem.get_source(xbest)
 
     target_to_result = {}
     all_syn_trs = []
