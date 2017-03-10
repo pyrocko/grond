@@ -34,6 +34,8 @@ logger = logging.getLogger('grond.baraddur')
 
 class BaraddurModel(object):
     def __init__(self, rundir):
+        if rundir is None:
+            return
         logger.debug('Loading problem from %s' % rundir)
         self.rundir = op.abspath(rundir)
         self.problem = grond.core.load_problem_info(self.rundir)

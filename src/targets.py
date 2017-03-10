@@ -68,10 +68,6 @@ class GrondTarget(object):
         return self._ds
 
     @property
-    def id(self):
-        return self.scene_id
-
-    @property
     def nparameters(self):
         return len(self._target_parameters)
 
@@ -103,7 +99,11 @@ class GrondTarget(object):
         return '.'.join([self.super_group, self.group, self.id])
 
 
-class InnerMisfitConfig(Object):
+class InnerTargetConfig(Object):
+    pass
+
+
+class InnerMisfitConfig(InnerTargetConfig):
     fmin = Float.T()
     fmax = Float.T()
     ffactor = Float.T(default=1.5)
@@ -184,6 +184,10 @@ class MisfitTarget(gf.Target, GrondTarget):
     def string_id(self):
         return '.'.join(x for x in (
             self.super_group, self.group) + self.codes if x)
+
+    @property
+    def id(self):
+        return '.'.join(self.codes)
 
     def get_plain_target(self):
         d = dict(
@@ -505,7 +509,7 @@ def _process(tr, tmin, tmax, taper, domain):
     return tr_proc, trspec_proc
 
 
-class InnerSatelliteMisfitConfig(Object):
+class InnerSatelliteMisfitConfig(InnerTargetConfig):
     use_weight_focal = Bool.T(default=False)
     optimize_orbital_ramp = Bool.T(default=True)
     ranges = Dict.T(String.T(), gf.Range.T(),
@@ -537,6 +541,10 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
         self.parameter_values = {}
         self._target_parameters = None
         self._target_ranges = None
+
+    @property
+    def id(self):
+        return self.scene_id
 
     def post_process(self, engine, source, statics):
         scene = self._ds.get_kite_scene(self.scene_id)
@@ -581,11 +589,10 @@ class TargetConfig(Object):
     limit = Int.T(optional=True)
 
     channels = List.T(String.T(), optional=True)
-    inner_misfit_config = InnerMisfitConfig.T(optional=True)
-    inner_satellite_misfit_config = InnerSatelliteMisfitConfig.T(
-        optional=True)
+    inner_misfit_config = InnerTargetConfig.T(optional=True)
     interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T()
+    kite_scenes = List.T(optional=True)
+    store_id = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
 
     def get_targets(self, ds, event, default_group):
@@ -596,6 +603,17 @@ class TargetConfig(Object):
         scene_reference_frame = None
 
         for scene in ds.get_kite_scenes():
+            if not self.kite_scenes:
+                continue
+            if scene.meta.scene_id not in self.kite_scenes and\
+               '*all' not in self.kite_scenes:
+                continue
+
+            if not isinstance(self.inner_misfit_config,
+                              InnerSatelliteMisfitConfig):
+                raise AttributeError('inner_misfit_config must be of type'
+                                     ' InnerSatelliteMisfitConfig')
+
             qt = scene.quadtree
 
             lats = num.empty(qt.nleafs)
@@ -635,7 +653,7 @@ class TargetConfig(Object):
                 store_id=self.store_id,
                 super_group=self.super_group,
                 group=self.group or default_group,
-                inner_misfit_config=self.inner_satellite_misfit_config)
+                inner_misfit_config=self.inner_misfit_config)
 
             sat_target.set_dataset(ds)
             targets.append(sat_target)
@@ -644,6 +662,11 @@ class TargetConfig(Object):
             for cha in self.channels:
                 if ds.is_blacklisted((st.nsl() + (cha,))):
                     continue
+
+                if not isinstance(self.inner_misfit_config,
+                                  InnerMisfitConfig):
+                    raise AttributeError('inner_misfit_config must be of type'
+                                         ' InnerMisfitConfig')
 
                 target = MisfitTarget(
                     quantity='displacement',

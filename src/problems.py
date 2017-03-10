@@ -39,6 +39,11 @@ class Problem(Object):
         self._target_weights = None
         self._engine = None
         self._group_mask = None
+
+        if hasattr(self, 'problem_waveform_parameters') and self.has_waveforms:
+            self.problem_parameters =\
+                self.problem_parameters + self.problem_waveform_parameters
+
         logger.name = self.__class__.__name__
 
     def get_engine(self):
@@ -683,8 +688,7 @@ class DoubleDCProblemConfig(ProblemConfig):
 class RectangularProblem(Problem):
     # nucleation_x
     # nucleation_y
-    # rupture_velocity
-    # t0
+    # time
     # stf
 
     problem_parameters = [
@@ -699,9 +703,16 @@ class RectangularProblem(Problem):
         Parameter('slip', 'm', label='Slip'),
         ]
 
+    problem_waveform_parameters = [
+        Parameter('nucleation_x', 'offset', label='Nucleation X'),
+        Parameter('nucleation_y', 'offset', label='Nucleation Y'),
+        Parameter('time', 's', label='Time'),
+    ]
+
     dependants = []
 
-    nbootstrap = 0
+    distance_min = Float.T(default=0.0)
+    nbootstrap = Int.T(default=10)
 
     def pack(self, source):
         return self.get_parameter_array(source)
@@ -801,6 +812,8 @@ class RectangularProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     apply_balancing_weights = Bool.T(default=False)
+    nbootstrap = Int.T(default=10)
+    distance_min = Float.T(default=0.)
 
     def get_problem(self, event, targets):
         base_source = gf.RectangularSource(
@@ -815,6 +828,8 @@ class RectangularProblemConfig(ProblemConfig):
             name=expand_template(self.name_template, event.name),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
+            nbootstrap=self.nbootstrap,
+            distance_min=self.distance_min,
             targets=targets,
             ranges=self.ranges,)
 
