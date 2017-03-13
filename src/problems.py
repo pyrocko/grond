@@ -113,6 +113,14 @@ class Problem(Object):
         return len(self.targets)
 
     @property
+    def ntargets_waveform(self):
+        return len(self.waveform_targets)
+
+    @property
+    def ntargets_static(self):
+        return len(self.satellite_targets)
+
+    @property
     def ndependants(self):
         return len(self.dependants)
 

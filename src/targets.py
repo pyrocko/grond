@@ -590,13 +590,12 @@ class TargetConfig(Object):
 
     channels = List.T(String.T(), optional=True)
     inner_misfit_config = InnerTargetConfig.T(optional=True)
-    interpolation = gf.InterpolationMethod.T()
+    interpolation = gf.InterpolationMethod.T()  
     kite_scenes = List.T(optional=True)
     store_id = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
 
     def get_targets(self, ds, event, default_group):
-
         origin = event
 
         targets = []
@@ -722,16 +721,18 @@ class TargetConfig(Object):
                     target.set_dataset(ds)
                     targets.append(target)
 
-            if self.kite_scenes is not None:
-                get_satellite_targets()
-            else:
-                get_dynamic_targets()
-
-            if self.limit:
-                return weed(origin, targets, self.limit)[0]
-            else:
-                return targets
-
+        if self.kite_scenes is not None:
+            logger.info('Selecting satellite targets...')
+            get_satellite_targets()
+        else:
+            logger.info('Selecting dynamic targets...')
+            get_dynamic_targets()
+        
+        if self.limit:
+            return weed(origin, targets, self.limit)[0]
+        else:
+            return targets
+        
 
 def weed(origin, targets, limit, neighborhood=3):
 
