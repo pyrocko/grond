@@ -723,7 +723,11 @@ class RectangularProblem(Problem):
     nbootstrap = Int.T(default=10)
 
     def pack(self, source):
-        return self.get_parameter_array(source)
+        arr = self.get_parameter_array(source)
+        for ip, p in enumerate(self.parameters):
+            if p.name == 'time':
+                arr[ip] -= self.base_source.time
+        return arr
 
     def get_source(self, x):
         d = self.get_parameter_dict(x)
@@ -733,7 +737,6 @@ class RectangularProblem(Problem):
             if k in d:
                 p[k] = float(
                     self.ranges[k].make_relative(self.base_source[k], d[k]))
-        print p
 
         source = self.base_source.clone(**p)
         return source
