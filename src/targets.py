@@ -600,129 +600,137 @@ class TargetConfig(Object):
         origin = event
 
         targets = []
-        scene_reference_frame = None
 
-        for scene in ds.get_kite_scenes():
-            if not self.kite_scenes:
-                continue
-            if scene.meta.scene_id not in self.kite_scenes and\
-               '*all' not in self.kite_scenes:
-                continue
+        def get_satellite_targets():
+            scene_reference_frame = None
 
-            if not isinstance(self.inner_misfit_config,
-                              InnerSatelliteMisfitConfig):
-                raise AttributeError('inner_misfit_config must be of type'
-                                     ' InnerSatelliteMisfitConfig')
-
-            qt = scene.quadtree
-
-            lats = num.empty(qt.nleafs)
-            lons = num.empty(qt.nleafs)
-
-            north_shifts = qt.leaf_focal_points[:, 1]
-            east_shifts = qt.leaf_focal_points[:, 0]
-
-            if scene_reference_frame is None:
-                scene_reference_frame = scene.frame
-                lats.fill(qt.frame.llLat)
-                lons.fill(qt.frame.llLon)
-            else:
-                lats.fill(scene_reference_frame.llLat)
-                lons.fill(scene_reference_frame.llLon)
-
-                north_offset, east_offset = latlon_to_ne_numpy(
-                    scene_reference_frame.llLat,
-                    scene_reference_frame.llLon,
-                    qt.frame.llLat,
-                    qt.frame.llLon)
-
-                north_shifts += north_offset
-                east_shifts += east_offset
-
-            sat_target = MisfitSatelliteTarget(
-                quantity='displacement',
-                scene_id=scene.meta.scene_id,
-                lats=lats,
-                lons=lons,
-                east_shifts=east_shifts,
-                north_shifts=north_shifts,
-                theta=qt.leaf_thetas,
-                phi=qt.leaf_phis,
-                tsnapshot=None,
-                interpolation=self.interpolation,
-                store_id=self.store_id,
-                super_group=self.super_group,
-                group=self.group or default_group,
-                inner_misfit_config=self.inner_misfit_config)
-
-            sat_target.set_dataset(ds)
-            targets.append(sat_target)
-
-        for st in ds.get_stations():
-            for cha in self.channels:
-                if ds.is_blacklisted((st.nsl() + (cha,))):
+            for scene in ds.get_kite_scenes():
+                if not self.kite_scenes:
+                    continue
+                if scene.meta.scene_id not in self.kite_scenes and\
+                   '*all' not in self.kite_scenes:
                     continue
 
                 if not isinstance(self.inner_misfit_config,
-                                  InnerMisfitConfig):
+                                  InnerSatelliteMisfitConfig):
                     raise AttributeError('inner_misfit_config must be of type'
-                                         ' InnerMisfitConfig')
+                                         ' InnerSatelliteMisfitConfig')
 
-                target = MisfitTarget(
+                qt = scene.quadtree
+
+                lats = num.empty(qt.nleafs)
+                lons = num.empty(qt.nleafs)
+
+                north_shifts = qt.leaf_focal_points[:, 1]
+                east_shifts = qt.leaf_focal_points[:, 0]
+
+                if scene_reference_frame is None:
+                    scene_reference_frame = scene.frame
+                    lats.fill(qt.frame.llLat)
+                    lons.fill(qt.frame.llLon)
+                else:
+                    lats.fill(scene_reference_frame.llLat)
+                    lons.fill(scene_reference_frame.llLon)
+
+                    north_offset, east_offset = latlon_to_ne_numpy(
+                        scene_reference_frame.llLat,
+                        scene_reference_frame.llLon,
+                        qt.frame.llLat,
+                        qt.frame.llLon)
+
+                    north_shifts += north_offset
+                    east_shifts += east_offset
+
+                sat_target = MisfitSatelliteTarget(
                     quantity='displacement',
-                    codes=st.nsl() + (cha,),
-                    lat=st.lat,
-                    lon=st.lon,
-                    depth=st.depth,
+                    scene_id=scene.meta.scene_id,
+                    lats=lats,
+                    lons=lons,
+                    east_shifts=east_shifts,
+                    north_shifts=north_shifts,
+                    theta=qt.leaf_thetas,
+                    phi=qt.leaf_phis,
+                    tsnapshot=None,
                     interpolation=self.interpolation,
                     store_id=self.store_id,
-                    misfit_config=self.inner_misfit_config,
-                    manual_weight=self.weight,
                     super_group=self.super_group,
-                    group=self.group or default_group)
+                    group=self.group or default_group,
+                    inner_misfit_config=self.inner_misfit_config)
 
-                if self.distance_min is not None and \
-                        target.distance_to(origin) < self.distance_min:
-                    continue
+                sat_target.set_dataset(ds)
+                targets.append(sat_target)
 
-                if self.distance_max is not None and \
-                        target.distance_to(origin) > self.distance_max:
-                    continue
+        def get_dynamic_targets():
+            for st in ds.get_stations():
+                for cha in self.channels:
+                    if ds.is_blacklisted((st.nsl() + (cha,))):
+                        continue
 
-                if self.distance_3d_min is not None and \
-                        target.distance_3d_to(origin) < self.distance_3d_min:
-                    continue
+                    if not isinstance(self.inner_misfit_config,
+                                      InnerMisfitConfig):
+                        raise AttributeError('inner_misfit_config must be of'
+                                             ' type InnerMisfitConfig')
 
-                if self.distance_3d_max is not None and \
-                        target.distance_3d_to(origin) > self.distance_3d_max:
-                    continue
+                    target = MisfitTarget(
+                        quantity='displacement',
+                        codes=st.nsl() + (cha,),
+                        lat=st.lat,
+                        lon=st.lon,
+                        depth=st.depth,
+                        interpolation=self.interpolation,
+                        store_id=self.store_id,
+                        misfit_config=self.inner_misfit_config,
+                        manual_weight=self.weight,
+                        super_group=self.super_group,
+                        group=self.group or default_group)
 
-                if self.depth_min is not None and \
-                        target.depth < self.depth_min:
-                    continue
+                    if self.distance_min is not None and \
+                       target.distance_to(origin) < self.distance_min:
+                        continue
 
-                if self.depth_max is not None and \
-                        target.depth > self.depth_max:
-                    continue
+                    if self.distance_max is not None and \
+                       target.distance_to(origin) > self.distance_max:
+                        continue
 
-                azi, _ = target.azibazi_to(origin)
-                if cha == 'R':
-                    target.azimuth = azi - 180.
-                    target.dip = 0.
-                elif cha == 'T':
-                    target.azimuth = azi - 90.
-                    target.dip = 0.
-                elif cha == 'Z':
-                    target.azimuth = 0.
-                    target.dip = -90.
+                    if self.distance_3d_min is not None and \
+                       target.distance_3d_to(origin) < self.distance_3d_min:
+                        continue
 
-                target.set_dataset(ds)
-                targets.append(target)
+                    if self.distance_3d_max is not None and \
+                       target.distance_3d_to(origin) > self.distance_3d_max:
+                        continue
 
-        if self.limit:
-            return weed(origin, targets, self.limit)[0]
-        else:
-            return targets
+                    if self.depth_min is not None and \
+                       target.depth < self.depth_min:
+                        continue
+
+                    if self.depth_max is not None and \
+                       target.depth > self.depth_max:
+                        continue
+
+                    azi, _ = target.azibazi_to(origin)
+                    if cha == 'R':
+                        target.azimuth = azi - 180.
+                        target.dip = 0.
+                    elif cha == 'T':
+                        target.azimuth = azi - 90.
+                        target.dip = 0.
+                    elif cha == 'Z':
+                        target.azimuth = 0.
+                        target.dip = -90.
+
+                    target.set_dataset(ds)
+                    targets.append(target)
+
+            if self.kite_scenes is not None:
+                get_satellite_targets()
+            else:
+                get_dynamic_targets()
+
+            if self.limit:
+                return weed(origin, targets, self.limit)[0]
+            else:
+                return targets
 
 
 def weed(origin, targets, limit, neighborhood=3):
