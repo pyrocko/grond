@@ -266,6 +266,7 @@ def analyse(problem, niter=1000, show_progress=False):
     xbounds = num.array(wproblem.get_parameter_bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
+    print wproblem.ntargets, problem.ntargets
     mss = num.zeros((niter, wproblem.ntargets))
     rstate = num.random.RandomState(123)
 
@@ -291,7 +292,6 @@ def analyse(problem, niter=1000, show_progress=False):
             isok_mask = num.logical_not(isbad_mask)
         else:
             isok_mask = None
-
         _, ms = wproblem.evaluate(x, mask=isok_mask)
         mss[iiter, :] = ms
 

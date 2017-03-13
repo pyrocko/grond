@@ -723,9 +723,12 @@ class TargetConfig(Object):
                     targets.append(target)
 
             if self.kite_scenes is not None:
+                logger.info('Selectiing satellite targets...')
                 get_satellite_targets()
             else:
+                logger.info('Selectiing dynamic targets...')
                 get_dynamic_targets()
+            print targets
 
             if self.limit:
                 return weed(origin, targets, self.limit)[0]
