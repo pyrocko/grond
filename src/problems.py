@@ -718,8 +718,16 @@ class RectangularProblem(Problem):
         return self.get_parameter_array(source)
 
     def get_source(self, x):
-        source = self.base_source.clone(
-            **self.get_parameter_dict(x, group=None))
+        d = self.get_parameter_dict(x)
+        p = {}
+
+        for k in self.base_source.keys():
+            if k in d:
+                p[k] = float(
+                    self.ranges[k].make_relative(self.base_source[k], d[k]))
+        print p
+
+        source = self.base_source.clone(**p)
         return source
 
     def extract(self, xs, i):
