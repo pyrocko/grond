@@ -266,7 +266,6 @@ def analyse(problem, niter=1000, show_progress=False):
     xbounds = num.array(wproblem.get_parameter_bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
-    print wproblem.ntargets, problem.ntargets
     mss = num.zeros((niter, wproblem.ntargets))
     rstate = num.random.RandomState(123)
 
