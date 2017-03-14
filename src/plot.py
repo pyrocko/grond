@@ -1544,10 +1544,16 @@ def plot_result(dirname, plotnames_want,
 
 class SolverPlot(object):
 
-    def __init__(self, plt, xpar_name, ypar_name):
+    def __init__(self, plt, xpar_name, ypar_name, show=False, update_every=1, movie_filename=None):
         self.plt = plt
         self.xpar_name = xpar_name
         self.ypar_name = ypar_name
+        self.movie_filename = movie_filename
+        self.show = show
+        self.update_every = update_every
+
+    def want_to_update(self, iiter):
+        return iiter % self.update_every == 0
 
     def start(self, problem):
         fontsize = 8.
@@ -1610,17 +1616,23 @@ class SolverPlot(object):
             (1.0, 1.0, 1.0),
             (0.5, 0.9, 0.6)])
 
-        from matplotlib.animation import FFMpegWriter
+        self.writer = None
+        if self.movie_filename:
+            from matplotlib.animation import FFMpegWriter
 
-        metadata = dict(title=problem.name, artist='Grond')
+            metadata = dict(title=problem.name, artist='Grond')
 
-        self.writer = FFMpegWriter(
-            fps=30,
-            metadata=metadata,
-            codec='libx264',
-            bitrate=200000)
+            self.writer = FFMpegWriter(
+                fps=30,
+                metadata=metadata,
+                codec='libx264',
+                bitrate=200000)
 
-        self.writer.setup(self.fig, 'test.mp4', dpi=100)
+            self.writer.setup(self.fig, self.movie_filename, dpi=100)
+
+        if self.show:
+            plt.ion()
+            plt.show()
 
     def set_limits(self):
         self.axes.set_xlim(*self.xlim)
@@ -1641,9 +1653,9 @@ class SolverPlot(object):
 
             p = num.zeros((ny, nx))
 
-            for j in xrange(self.problem.nbootstrap+1):
+            for j in [ jchoice ]: # xrange(self.problem.nbootstrap+1):
                 ps = core.excentricity_compensated_probabilities(
-                        xhist[chains_i[j, :], :], sbx, 3.)
+                        xhist[chains_i[j, :], :], sbx, 2.)
 
                 bounds = self.problem.bounds() + \
                     self.problem.dependant_bounds()
@@ -1718,7 +1730,16 @@ class SolverPlot(object):
 
         self.set_limits()
 
-        self.writer.grab_frame()
+        if self.writer:
+            self.writer.grab_frame()
+
+        if self.show:
+            plt.draw()
 
     def finish(self):
-        self.writer.finish()
+
+        if self.writer:
+            self.writer.finish()
+
+        if self.show:
+            plt.ioff()

@@ -1671,7 +1671,7 @@ def solve(problem,
             lines.append('')
             print '\n'.join(lines)
 
-        if plot:
+        if plot and plot.want_to_update(iiter):
             plot.update(
                 xhist[:iiter+1, :],
                 chains_i[:, :nlinks],
