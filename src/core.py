@@ -1464,7 +1464,7 @@ def solve(problem,
 
                         if compensate_excentricity:
                             ichoice = excentricity_compensated_choice(
-                                xhist[chains_i[jchoice, :], :], sbx, 3.)
+                                xhist[chains_i[jchoice, :], :], sbx, 2.)
 
                             xchoice = xhist[chains_i[jchoice, ichoice], :]
 
