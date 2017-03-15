@@ -70,7 +70,11 @@ class Problem(Object):
         return ADict(params)
 
     def get_parameter_array(self, d):
-        return num.array([d[p.name] for p in self.parameters], dtype=num.float)
+        arr = num.zeros(self.nparameters, dtype=num.float)
+        for ip, p in enumerate(self.parameters):
+            if p.name in d.keys():
+                arr[ip] = d[p.name]
+        return arr
 
     def dump_problem_info(self, dirname):
         fn = op.join(dirname, 'problem.yaml')
