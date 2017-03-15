@@ -344,7 +344,7 @@ class Dataset(object):
             return self.kite_scenes[0]
         else:
             for scene in self.kite_scenes:
-                if scene.meta.scene_id is scene_id:
+                if scene.meta.scene_id == scene_id:
                     return scene
         raise NotFound('No kite scene with id %s defined' % scene_id)
 
