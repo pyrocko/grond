@@ -93,7 +93,7 @@ class GrondTarget(object):
             self.parameter_values[p.name_nogroups] = model[i]
 
     def set_result_mode(self, result_mode):
-        pass
+        self._result_mode = result_mode
 
     def string_id(self):
         return '.'.join([self.super_group, self.group, self.id])
@@ -402,7 +402,7 @@ tautoshift**2 / tautoshift_max**2``
                     b_cut = b[ishift:]
 
                 mns.append(trace.Lx_norm(a_cut, b_cut, norm=exponent))
-
+            ns= (num.sum(num.sum(tr_obs))- num.sum(num.sum(tr_syn))) /num.sum(num.sum(tr_obs))
             ms, ns = num.array(mns).T
 
             iarg = num.argmin(ms)
@@ -430,10 +430,11 @@ tautoshift**2 / tautoshift_max**2``
 
         m, n = trace.Lx_norm(num.abs(a), num.abs(b), norm=exponent)
 
+
     if result_mode == 'full':
         result = MisfitResult(
-            misfit_value=m,
-            misfit_norm=n,
+            misfit_value=float(m),
+            misfit_norm=float(n),
             processed_obs=tr_proc_obs,
             processed_syn=tr_proc_syn,
             filtered_obs=tr_obs.copy(),
@@ -450,7 +451,6 @@ tautoshift**2 / tautoshift_max**2``
             misfit_norm=n)
     else:
         assert False
-
     return result
 
 
@@ -563,13 +563,18 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
             stat_syn += stat_level
 
         res = num.abs(stat_obs - stat_syn)
+        obs= num.sum(num.abs(stat_obs))
+        res_sum= num.sum(res)
+        
+        
 
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
+        misfit_norm = res_sum/obs
 
         result = MisfitResult(
             misfit_value=misfit_value,
-            misfit_norm=2)
+            misfit_norm=misfit_norm)
         return result
 
     def get_combined_weight(self, apply_balancing_weights=False):
@@ -599,6 +604,7 @@ class TargetConfig(Object):
         origin = event
 
         targets = []
+    
 
         def get_satellite_targets():
             scene_reference_frame = None
