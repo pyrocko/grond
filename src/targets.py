@@ -156,6 +156,10 @@ class MisfitResult(gf.Result):
     filtered_syn = Trace.T(optional=True)
     spectrum_obs = TraceSpectrum.T(optional=True)
     spectrum_syn = TraceSpectrum.T(optional=True)
+
+    statics_syn = Dict.T(optional=True)
+    statics_obs = Dict.T(optional=True)
+
     taper = trace.Taper.T(optional=True)
     tobs_shift = Float.T(optional=True)
     tsyn_pick = Timestamp.T(optional=True)
@@ -402,7 +406,8 @@ tautoshift**2 / tautoshift_max**2``
                     b_cut = b[ishift:]
 
                 mns.append(trace.Lx_norm(a_cut, b_cut, norm=exponent))
-            ns= (num.sum(num.sum(tr_obs))- num.sum(num.sum(tr_syn))) /num.sum(num.sum(tr_obs))
+            ns = (num.sum(num.sum(tr_obs)) - num.sum(num.sum(tr_syn)))\
+                / num.sum(num.sum(tr_obs))
             ms, ns = num.array(mns).T
 
             iarg = num.argmin(ms)
@@ -429,7 +434,6 @@ tautoshift**2 / tautoshift_max**2``
             b, a = a, b
 
         m, n = trace.Lx_norm(num.abs(a), num.abs(b), norm=exponent)
-
 
     if result_mode == 'full':
         result = MisfitResult(
@@ -551,7 +555,6 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
         quadtree = scene.quadtree
 
         stat_obs = quadtree.leaf_medians
-        stat_syn = statics['displacement.los']
 
         if self.inner_misfit_config.optimize_orbital_ramp:
             stat_level = num.zeros_like(stat_obs)
@@ -560,13 +563,13 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
                            * self.parameter_values['ramp_east'])
             stat_level += (quadtree.leaf_center_distance[:, 1]
                            * self.parameter_values['ramp_north'])
-            stat_syn += stat_level
+            statics['displacement.los'] += stat_level
+
+        stat_syn = statics['displacement.los']
 
         res = num.abs(stat_obs - stat_syn)
-        obs= num.sum(num.abs(stat_obs))
-        res_sum= num.sum(res)
-        
-        
+        obs = num.sum(num.abs(stat_obs))
+        res_sum = num.sum(res)
 
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
@@ -575,6 +578,11 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
         result = MisfitResult(
             misfit_value=misfit_value,
             misfit_norm=misfit_norm)
+
+        if self._result_mode == 'full':
+            result.statics_syn = statics
+            result.statics_obs = quadtree.leaf_medians
+
         return result
 
     def get_combined_weight(self, apply_balancing_weights=False):
@@ -595,7 +603,7 @@ class TargetConfig(Object):
 
     channels = List.T(String.T(), optional=True)
     inner_misfit_config = InnerTargetConfig.T(optional=True)
-    interpolation = gf.InterpolationMethod.T()  
+    interpolation = gf.InterpolationMethod.T()
     kite_scenes = List.T(optional=True)
     store_id = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
@@ -604,7 +612,6 @@ class TargetConfig(Object):
         origin = event
 
         targets = []
-    
 
         def get_satellite_targets():
             scene_reference_frame = None
@@ -733,12 +740,12 @@ class TargetConfig(Object):
         else:
             logger.info('Selecting dynamic targets...')
             get_dynamic_targets()
-        
+
         if self.limit:
             return weed(origin, targets, self.limit)[0]
         else:
             return targets
-        
+
 
 def weed(origin, targets, limit, neighborhood=3):
 
