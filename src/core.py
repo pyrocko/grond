@@ -1379,6 +1379,14 @@ def select_most_excentric(xcandidates, xs, sbx, factor):
     return xcandidates[ichoice]
 
 
+def local_std(xs):
+    sbx = num.std(xs, axis=0)
+    ssbx = num.sort(xs, axis=0)
+    dssbx = num.diff(ssbx, axis=0)
+    mdssbx = num.median(dssbx, axis=0)
+    return mdssbx * dssbx.shape[0] / 2.6
+
+
 def solve(problem,
           rundir=None,
           niter_uniform=1000,
@@ -1415,6 +1423,7 @@ def solve(problem,
     sbx = None
     mxs = None
     covs = None
+    local_sxs = None
     xhist = num.zeros((niter, npar))
     isbad_mask = None
     accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
@@ -1472,13 +1481,13 @@ def solve(problem,
 
                         if compensate_excentricity:
                             ichoice = excentricity_compensated_choice(
-                                xhist[chains_i[jchoice, :], :], sbx, 2.)
+                                xhist[chains_i[jchoice, :], :], local_sxs[jchoice], 2.)
 
                             xchoice = xhist[chains_i[jchoice, ichoice], :]
 
                         else:
                             ichoice = num.random.randint(0, nlinks)
-                            xchoice = xhist[chains_i[jchoice, ichoice]]
+                            xchoice = xhist[chains_i[jchoice, ichoice], :]
                     else:
                         xchoice = mxs[jchoice]
 
@@ -1519,9 +1528,9 @@ def solve(problem,
                             for ipar in xrange(npar):
                                 ntry = 0
                                 while True:
-                                    if sbx[ipar] > 0.:
+                                    if local_sxs[jchoice][ipar] > 0.:
                                         v = num.random.normal(
-                                            xchoice[ipar], factor*sbx[ipar])
+                                            xchoice[ipar], factor*local_sxs[jchoice][ipar])
                                     else:
                                         v = xchoice[ipar]
 
@@ -1543,7 +1552,7 @@ def solve(problem,
                         x = select_most_excentric(
                             xcandidates,
                             xhist[chains_i[jchoice, :], :],
-                            sbx,
+                            local_sxs[jchoice],
                             factor)
 
                 try:
@@ -1638,13 +1647,17 @@ def solve(problem,
 
             covs = []
             mxs = []
+            local_sxs = []
+
             for i in xrange(1 + problem.nbootstrap):
                 xs = xhist[chains_i[i, :nlinks], :]
                 mx = num.mean(xs, axis=0)
                 cov = num.cov(xs.T)
+                local_sx = local_std(xs)
 
                 mxs.append(mx)
                 covs.append(cov)
+                local_sxs.append(local_sx)
 
             if 'state' in status:
                 lines.append(
@@ -1685,7 +1698,7 @@ def solve(problem,
                 chains_i[:, :nlinks],
                 ibase,
                 jchoice,
-                sbx,
+                local_sxs,
                 factor)
 
         iiter += 1
@@ -2173,11 +2186,17 @@ def process_event(ievent, g_data_id):
     synt = ds.synthetic_test
     if synt and synt.inject_solution:
         xs_inject = synt.get_x()[num.newaxis, :]
+        
+    #from matplotlib import pyplot as plt
+    #from grond import plot
+    #splot = plot.SolverPlot(
+    #    plt, 'time', 'magnitude', show=False, update_every=10, movie_filename='grond_opt_time_magnitude.mp4')
 
     solve(problem,
           rundir=rundir,
           status=status,
           xs_inject=xs_inject,
+    #      plot=splot,
           **config.solver_config.get_solver_kwargs())
 
     harvest(rundir, problem, force=True)

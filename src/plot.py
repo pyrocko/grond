@@ -1638,24 +1638,24 @@ class SolverPlot(object):
         self.axes.set_xlim(*self.xlim)
         self.axes.set_ylim(*self.ylim)
 
-    def update(self, xhist, chains_i, ibase, jchoice, sbx, factor):
+    def update(self, xhist, chains_i, ibase, jchoice, local_sxs, factor):
         msize = 15.
 
         self.axes.cla()
 
-        if jchoice is not None and sbx is not None:
+        if jchoice is not None and local_sxs is not None:
 
             nx = 100
             ny = 100
 
-            sx = sbx[self.ixpar] * factor
-            sy = sbx[self.iypar] * factor
+            sx = local_sxs[jchoice][self.ixpar] * factor
+            sy = local_sxs[jchoice][self.iypar] * factor
 
             p = num.zeros((ny, nx))
 
             for j in [ jchoice ]: # xrange(self.problem.nbootstrap+1):
                 ps = core.excentricity_compensated_probabilities(
-                        xhist[chains_i[j, :], :], sbx, 2.)
+                        xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
                 bounds = self.problem.bounds() + \
                     self.problem.dependant_bounds()
