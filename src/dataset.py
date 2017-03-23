@@ -826,9 +826,13 @@ class DatasetConfig(HasPaths):
                 ds.add_waveforms(paths=fp(self.waveform_paths))
 
             if self.kite_scene_paths:
+                logger.info('Loading kite scenes...')
                 for path in self.kite_scene_paths:
                     for fn in glob.glob(xjoin(fp(path), '*.npz')):
                         ds.add_kite_scene(filename=fn)
+                if not ds.kite_scenes:
+                    logger.warning('Could not find any kite scenes at %s' %
+                                   self.kite_scene_paths)
 
             if self.clippings_path:
                 ds.add_clippings(markers_filename=fp(self.clippings_path))

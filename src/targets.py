@@ -7,7 +7,6 @@ from pyrocko import gf, trace, weeding
 from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
                           StringChoice, Timestamp)
 from pyrocko.guts_array import Array
-from pyrocko.orthodrome import latlon_to_ne_numpy
 
 from .dataset import NotFound
 from .meta import Parameter
@@ -526,8 +525,11 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
     scene_id = String.T()
     super_group = gf.StringID.T()
     inner_misfit_config = InnerSatelliteMisfitConfig.T()
-    manual_weight = Float.T(default=1.0)
-    group = gf.StringID.T()
+    manual_weight = Float.T(
+        default=1.0,
+        help='Relative weight of this target')
+    group = gf.StringID.T(
+        help='Group')
 
     parameters = [
         Parameter('offset', 'm'),
@@ -586,7 +588,7 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
         return result
 
     def get_combined_weight(self, apply_balancing_weights=False):
-        return 1.
+        return self.manual_weight
 
 
 class TargetConfig(Object):
@@ -610,15 +612,10 @@ class TargetConfig(Object):
 
     def get_targets(self, ds, event, default_group):
         origin = event
-
         targets = []
 
         def get_satellite_targets():
-            scene_reference_frame = None
-
             for scene in ds.get_kite_scenes():
-                if not self.kite_scenes:
-                    continue
                 if scene.meta.scene_id not in self.kite_scenes and\
                    '*all' not in self.kite_scenes:
                     continue
@@ -630,28 +627,13 @@ class TargetConfig(Object):
 
                 qt = scene.quadtree
 
-                lats = num.empty(qt.nleafs)
-                lons = num.empty(qt.nleafs)
+                lats = num.empty(qt.nleaves)
+                lons = num.empty(qt.nleaves)
+                lats.fill(qt.frame.llLat)
+                lons.fill(qt.frame.llLon)
 
                 north_shifts = qt.leaf_focal_points[:, 1]
                 east_shifts = qt.leaf_focal_points[:, 0]
-
-                if scene_reference_frame is None:
-                    scene_reference_frame = scene.frame
-                    lats.fill(qt.frame.llLat)
-                    lons.fill(qt.frame.llLon)
-                else:
-                    lats.fill(scene_reference_frame.llLat)
-                    lons.fill(scene_reference_frame.llLon)
-
-                    north_offset, east_offset = latlon_to_ne_numpy(
-                        scene_reference_frame.llLat,
-                        scene_reference_frame.llLon,
-                        qt.frame.llLat,
-                        qt.frame.llLon)
-
-                    north_shifts += north_offset
-                    east_shifts += east_offset
 
                 sat_target = MisfitSatelliteTarget(
                     quantity='displacement',
@@ -735,10 +717,10 @@ class TargetConfig(Object):
                     targets.append(target)
 
         if self.kite_scenes is not None:
-            logger.info('Selecting satellite targets...')
+            logger.debug('Selecting satellite targets...')
             get_satellite_targets()
         else:
-            logger.info('Selecting dynamic targets...')
+            logger.debug('Selecting dynamic targets...')
             get_dynamic_targets()
 
         if self.limit:

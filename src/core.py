@@ -258,8 +258,6 @@ def analyse(problem, niter=1000, show_progress=False):
         wtarget.weight = 1.0
         wtargets.append(wtarget)
 
-    groups, ngroups = problem.get_group_mask()
-
     wproblem = problem.copy()
     wproblem.targets = wtargets
 
@@ -302,15 +300,16 @@ def analyse(problem, niter=1000, show_progress=False):
     if show_progress:
         pbar.finish()
 
-    # mean_ms = num.mean(mss, axis=0)
-    # weights = 1.0 / mean_ms
-    weights = num.ones(wproblem.ntargets)
+    mean_ms = num.mean(mss, axis=0)
+    weights = 1. / mean_ms
+    groups, ngroups = wproblem.get_group_mask()
+
     for igroup in xrange(ngroups):
         weights[groups == igroup] /= (
             num.nansum(weights[groups == igroup]) /
             num.nansum(num.isfinite(weights[groups == igroup])))
 
-    for weight, target in zip(weights, problem.targets):
+    for weight, target in zip(weights, problem.waveform_targets):
         target.analysis_result = TargetAnalysisResult(
             balancing_weight=float(weight))
 

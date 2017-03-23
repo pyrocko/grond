@@ -796,7 +796,6 @@ class RectangularProblem(Problem):
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
-
                 data.append((None, None))
             else:
                 data.append((result.misfit_value, result.misfit_norm))
