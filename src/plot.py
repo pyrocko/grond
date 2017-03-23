@@ -919,6 +919,86 @@ def plot_spectrum(
 def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
+def draw_fits_figures_statics(ds, model, plt):
+    from matplotlib import ticker
+    from pyrocko.orthodrome import latlon_to_ne_numpy
+    problem = model.problem
+
+    for target in problem.targets:
+        target.set_dataset(ds)
+
+    gms = problem.global_misfits(model.misfits)
+    isort = num.argsort(gms)
+    gms = gms[isort]
+    xs = model.xs[isort, :]
+    xbest = xs[0, :]
+    
+    source = problem.get_source(xbest)
+
+    ms, ns, results = problem.evaluate(xbest, result_mode='full')
+
+    figures = []
+    tick_locator = ticker.MaxNLocator(nbins=5)
+
+    for sat_target,result in zip (problem.satellite_targets,results):
+        qt = ds.get_kite_scene(sat_target.scene_id).quadtree
+        E = sat_target.east_shifts
+        N = sat_target.north_shifts
+        fig = plt.figure(figsize=(16,4))
+        cmap = plt.cm.get_cmap('coolwarm')
+
+    
+        stat_obs = qt.leaf_medians
+        stat_syn = result.statics_syn['displacement.los']
+        res = (stat_obs - stat_syn)
+        lmax = num.abs([num.min(stat_obs), num.max(stat_obs)]).max()
+        levels = num.linspace(-lmax, lmax, 50)    
+        flat = stat_obs .flatten('F')
+    
+        ax = fig.add_subplot(131)
+        obs_plot = ax.tricontourf(E, N, flat, levels= levels, cmap=cmap)
+        cb = fig.colorbar(obs_plot, ax=ax, orientation='horizontal', aspect=10)
+        cb.locator = tick_locator
+        cb.update_ticks()  
+        fn, fe = source.outline(cs='xy').T
+        offset_n, offset_e = latlon_to_ne_numpy(sat_target.lats[0], sat_target.lons[0], source.lat, source.lon)
+        fn = fn+offset_n
+        fe = fe+offset_e
+        ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
+        ax.plot(fe[:2], fn[:2],linewidth=2., color='black', alpha=0.5)        
+        plt.title('Data')
+        ax.set_ylabel('[m]')    
+        ax.set_xlabel('[m]')
+        ax.set_aspect('equal')    
+
+        ax = fig.add_subplot(132)
+        ax.tricontourf(E, N, stat_syn, levels= levels, cmap=cmap)
+        cb = fig.colorbar(obs_plot, ax=ax, orientation='horizontal' ,aspect=10)
+        cb.locator = tick_locator
+        cb.update_ticks()       
+        ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
+        ax.plot(fe[:2],fn[:2],linewidth=2.,color='black',alpha=0.5)           
+        plt.title('Model')
+        ax.set_ylabel('[m]')    
+        ax.set_xlabel('[m]')
+        ax.set_aspect('equal')
+
+    
+        ax = fig.add_subplot(133) 
+        ax.tricontourf(E, N, res,  levels= levels, cmap=cmap)
+        cb = fig.colorbar(obs_plot,ax=ax, orientation='horizontal',  aspect=10)
+        cb.locator = tick_locator
+        cb.update_ticks()       
+        ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
+        ax.plot(fe[:2],fn[:2],linewidth=2.,color='black',alpha=0.5)          
+        plt.title('Residual')
+        ax.set_ylabel('[km]')    
+        ax.set_xlabel('[km]')
+        ax.set_aspect('equal')
+
+        figures.append(fig)
+        
+    return figures
 
 def draw_fits_figures(ds, model, plt):
     fontsize = 8
@@ -1441,6 +1521,7 @@ plot_dispatch = {
     'jointpar': draw_jointpar_figures,
     'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
+    'fits_statics' : draw_fits_figures_statics,
     'solution': draw_solution_figure}
 
 
@@ -1511,7 +1592,7 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
-    if 4 != len({'fits', 'jointpar', 'hudson', 'solution'} - plotnames_want):
+    if 5 != len({'fits','fits_statics', 'jointpar', 'hudson', 'solution'} - plotnames_want):
         problem, xs, misfits = core.load_problem_info_and_data(
             dirname, subset='harvest')
 
@@ -1530,6 +1611,19 @@ def plot_result(dirname, plotnames_want,
                 if save:
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
+                    
+        for plotname in ['fits_statics']:
+            if plotname in plotnames_want:
+                config = guts.load(filename=op.join(dirname, 'config.yaml'))
+                config.set_basepath(dirname)
+                config.setup_modelling_environment(problem)
+                event_name = problem.base_source.name
+                ds = config.get_dataset(event_name)
+                figs = plot_dispatch[plotname](ds, model, plt)
+                if save:
+                    fns.extend(
+                        save_figs(figs, plot_dirname, plotname, formats, dpi))
+
 
         for plotname in ['jointpar', 'hudson', 'solution']:
             if plotname in plotnames_want:
@@ -1540,3 +1634,4 @@ def plot_result(dirname, plotnames_want,
 
     if not save:
         plt.show()
+
