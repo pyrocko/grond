@@ -919,6 +919,7 @@ def plot_spectrum(
 def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
+
 def draw_fits_figures_statics(ds, model, plt):
     from matplotlib import ticker
     from pyrocko.orthodrome import latlon_to_ne_numpy
@@ -1006,11 +1007,11 @@ def draw_fits_figures(ds, model, plt):
 
     problem = model.problem
 
-    for target in problem.targets:
+    for target in problem.waveform_targets:
         target.set_dataset(ds)
 
     target_index = dict(
-        (target, i) for (i, target) in enumerate(problem.targets))
+        (target, i) for (i, target) in enumerate(problem.waveform_targets))
 
     gms = problem.global_misfits(model.misfits)
     isort = num.argsort(gms)
@@ -1034,7 +1035,7 @@ def draw_fits_figures(ds, model, plt):
     ms, ns, results = problem.evaluate(xbest, result_mode='full')
 
     dtraces = []
-    for target, result in zip(problem.targets, results):
+    for target, result in zip(problem.waveform_targets, results):
         if isinstance(result, gf.SeismosizerError):
             dtraces.append(None)
             continue
@@ -1121,7 +1122,7 @@ def draw_fits_figures(ds, model, plt):
             tr.ydata /= max(abs(dmin), abs(dmax))
 
     cg_to_targets = gather(
-        problem.targets,
+        problem.waveform_targets,
         lambda t: (t.super_group, t.group, t.codes[3]),
         filter=lambda t: t in target_to_result)
 
