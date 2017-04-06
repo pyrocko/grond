@@ -157,7 +157,10 @@ class Problem(Object):
         util.ensuredirs(fn)
         guts.dump(self, filename=fn)
 
-    def dump_problem_data(self, dirname, x, ms, ns):
+    def dump_problem_data(
+            self, dirname, x, ms, ns,
+            accept=None, ibootstrap_choice=None, ibase=None):
+
         fn = op.join(dirname, 'x')
         with open(fn, 'ab') as f:
             x.astype('<f8').tofile(f)
@@ -166,6 +169,16 @@ class Problem(Object):
         with open(fn, 'ab') as f:
             ms.astype('<f8').tofile(f)
             ns.astype('<f8').tofile(f)
+
+        if None not in (ibootstrap_choice, ibase):
+            fn = op.join(dirname, 'choices')
+            with open(fn, 'ab') as f:
+                num.array((ibootstrap_choice, ibase), dtype='<i8').tofile(f)
+
+        if accept is not None:
+            fn = op.join(dirname, 'accepted')
+            with open(fn, 'ab') as f:
+                accept.astype('<i1').tofile(f)
 
     def name_to_index(self, name):
         pnames = [p.name for p in self.combined]
@@ -1182,27 +1195,52 @@ def load_problem_info(dirname):
     return guts.load(filename=fn)
 
 
+def load_optimizer_history(dirname, problem):
+    fn = op.join(dirname, 'accepted')
+    with open(fn, 'r') as f:
+        nmodels = os.fstat(f.fileno()).st_size // (problem.nbootstrap+1)
+        data1 = num.fromfile(
+            f,
+            dtype='<i1',
+            count=nmodels*(problem.nbootstrap+1)).astype(num.bool)
+
+    accepted = data1.reshape((nmodels, problem.nbootstrap+1))
+
+    fn = op.join(dirname, 'choices')
+    with open(fn, 'r') as f:
+        data2 = num.fromfile(
+            f,
+            dtype='<i8',
+            count=nmodels*2).astype(num.int64)
+
+    print data2.shape
+    print nmodels
+
+    ibootstrap_choices, imodel_choices = data2.reshape((nmodels, 2)).T
+    return ibootstrap_choices, imodel_choices, accepted
+
+
 def load_problem_data(dirname, problem):
     fn = op.join(dirname, 'x')
     with open(fn, 'r') as f:
-        nmodels = os.fstat(f.fileno()).st_size / (problem.nparameters * 8)
-        data = num.fromfile(
+        nmodels = os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
+        data1 = num.fromfile(
             f, dtype='<f8',
             count=nmodels*problem.nparameters).astype(num.float)
 
-    nmodels = data.size/problem.nparameters
-    xs = data.reshape((nmodels, problem.nparameters))
+    nmodels = data1.size/problem.nparameters
+    xs = data1.reshape((nmodels, problem.nparameters))
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
-        data = num.fromfile(
+        data2 = num.fromfile(
             f, dtype='<f8', count=nmodels*problem.ntargets*2).astype(num.float)
 
-    data = data.reshape((nmodels, problem.ntargets*2))
+    data2 = data2.reshape((nmodels, problem.ntargets*2))
 
-    combi = num.empty_like(data)
-    combi[:, 0::2] = data[:, :problem.ntargets]
-    combi[:, 1::2] = data[:, problem.ntargets:]
+    combi = num.empty_like(data2)
+    combi[:, 0::2] = data2[:, :problem.ntargets]
+    combi[:, 1::2] = data2[:, problem.ntargets:]
 
     misfits = combi.reshape((nmodels, problem.ntargets, 2))
 
@@ -1374,13 +1412,12 @@ def select_most_excentric(xcandidates, xs, sbx, factor):
     distances_sqr_all = num.sum(
         ((xcandidates[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
-    #print num.sort(num.sum(distances_sqr_all < 1.0, axis=0))
+    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=0))
     ichoice = num.argmin(num.sum(distances_sqr_all < 1.0, axis=0))
     return xcandidates[ichoice]
 
 
 def local_std(xs):
-    sbx = num.std(xs, axis=0)
     ssbx = num.sort(xs, axis=0)
     dssbx = num.diff(ssbx, axis=0)
     mdssbx = num.median(dssbx, axis=0)
@@ -1434,7 +1471,7 @@ def solve(problem,
         plot.start(problem)
 
     while iiter < niter:
-        jchoice = None
+        ibootstrap_choice = None
         ichoice = None
 
         if iiter < niter_inject:
@@ -1474,22 +1511,26 @@ def solve(problem,
                 if mbx is None or phase == 'uniform':
                     x = problem.random_uniform(xbounds)
                 else:
-                    # jchoice = num.random.randint(0, 1 + problem.nbootstrap)
-                    jchoice = num.argmin(accept_sum)
+                    # ibootstrap_choice = num.random.randint(
+                    #     0, 1 + problem.nbootstrap)
+                    ibootstrap_choice = num.argmin(accept_sum)
 
                     if phase in ('transition', 'explorative'):
 
                         if compensate_excentricity:
                             ichoice = excentricity_compensated_choice(
-                                xhist[chains_i[jchoice, :], :], local_sxs[jchoice], 2.)
+                                xhist[chains_i[ibootstrap_choice, :], :],
+                                local_sxs[ibootstrap_choice], 2.)
 
-                            xchoice = xhist[chains_i[jchoice, ichoice], :]
+                            xchoice = xhist[
+                                chains_i[ibootstrap_choice, ichoice], :]
 
                         else:
                             ichoice = num.random.randint(0, nlinks)
-                            xchoice = xhist[chains_i[jchoice, ichoice], :]
+                            xchoice = xhist[
+                                chains_i[ibootstrap_choice, ichoice], :]
                     else:
-                        xchoice = mxs[jchoice]
+                        xchoice = mxs[ibootstrap_choice]
 
                     if sampler_distribution == 'multivariate_normal':
                         ntries_sample = 0
@@ -1499,7 +1540,7 @@ def solve(problem,
                         while True:
                             ntries_sample += 1
                             vs = num.random.multivariate_normal(
-                                xchoice, factor**2 * covs[jchoice])
+                                xchoice, factor**2 * covs[ibootstrap_choice])
 
                             ok_mask = num.logical_and(
                                 xbounds[:, 0] <= vs, vs <= xbounds[:, 1])
@@ -1528,9 +1569,11 @@ def solve(problem,
                             for ipar in xrange(npar):
                                 ntry = 0
                                 while True:
-                                    if local_sxs[jchoice][ipar] > 0.:
+                                    if local_sxs[ibootstrap_choice][ipar] > 0.:
                                         v = num.random.normal(
-                                            xchoice[ipar], factor*local_sxs[jchoice][ipar])
+                                            xchoice[ipar],
+                                            factor*local_sxs[
+                                                ibootstrap_choice][ipar])
                                     else:
                                         v = xchoice[ipar]
 
@@ -1551,8 +1594,8 @@ def solve(problem,
 
                         x = select_most_excentric(
                             xcandidates,
-                            xhist[chains_i[jchoice, :], :],
-                            local_sxs[jchoice],
+                            xhist[chains_i[ibootstrap_choice, :], :],
+                            local_sxs[ibootstrap_choice],
                             factor)
 
                 try:
@@ -1563,8 +1606,8 @@ def solve(problem,
                     pass
 
         ibase = None
-        if ichoice is not None and jchoice is not None:
-            ibase = chains_i[jchoice, ichoice]
+        if ichoice is not None and ibootstrap_choice is not None:
+            ibase = chains_i[ibootstrap_choice, ichoice]
 
         if isbad_mask is not None and num.any(isbad_mask):
             isok_mask = num.logical_not(isbad_mask)
@@ -1596,9 +1639,6 @@ def solve(problem,
                 problem.name)
             return
 
-        if rundir:
-            problem.dump_problem_data(rundir, x, ms, ns)
-
         m = problem.global_misfit(ms, ns)
         ms = problem.bootstrap_misfit(ms, ns)
 
@@ -1618,6 +1658,12 @@ def solve(problem,
             nlinks -= 1
         else:
             accept = num.ones(1 + problem.nbootstrap, dtype=num.int)
+
+        if rundir:
+            problem.dump_problem_data(
+                rundir, x, ms, ns, accept,
+                ibootstrap_choice if ibootstrap_choice is not None else -1, 
+                ibase if ibase is not None else -1)
 
         accept_sum += accept
         accept_hist[iiter] = num.sum(accept)
@@ -1697,7 +1743,7 @@ def solve(problem,
                 xhist[:iiter+1, :],
                 chains_i[:, :nlinks],
                 ibase,
-                jchoice,
+                ibootstrap_choice,
                 local_sxs,
                 factor)
 
@@ -1959,7 +2005,8 @@ def check(
                                 tfade=tfade,
                                 freqlimits=freqlimits,
                                 deltat=deltat,
-                                backazimuth=target.get_backazimuth_for_waveform(),
+                                backazimuth=target.
+                                get_backazimuth_for_waveform(),
                                 debug=True)
                     except dataset.NotFound, e:
                         logger.warn(str(e))
@@ -2186,17 +2233,20 @@ def process_event(ievent, g_data_id):
     synt = ds.synthetic_test
     if synt and synt.inject_solution:
         xs_inject = synt.get_x()[num.newaxis, :]
-        
-    #from matplotlib import pyplot as plt
-    #from grond import plot
-    #splot = plot.SolverPlot(
-    #    plt, 'time', 'magnitude', show=False, update_every=10, movie_filename='grond_opt_time_magnitude.mp4')
+
+    # from matplotlib import pyplot as plt
+    # from grond import plot
+    # splot = plot.SolverPlot(
+    #     plt, 'time', 'magnitude',
+    #     show=False,
+    #     update_every=10,
+    #     movie_filename='grond_opt_time_magnitude.mp4')
 
     solve(problem,
           rundir=rundir,
           status=status,
           xs_inject=xs_inject,
-    #      plot=splot,
+          # plot=splot,
           **config.solver_config.get_solver_kwargs())
 
     harvest(rundir, problem, force=True)
@@ -2393,7 +2443,9 @@ __all__ = '''
     Config
     HasPaths
     TargetAnalysisResult
+    load_problem_info
     load_problem_info_and_data
+    load_optimizer_history
     read_config
     write_config
     forward
