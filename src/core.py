@@ -904,7 +904,7 @@ class DatasetConfig(HasPaths):
     whitelist = List.T(
         String.T(),
         optional=True,
-        help='if not None, list of stations/components to included according '
+        help='if not None, list of stations/components to include according '
              'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
              'Note: ''when whitelisting on channel level, both, the raw and '
              'the processed channel codes have to be listed.')
