@@ -1650,11 +1650,11 @@ def solve(problem,
                 problem.name)
             return
 
-        m = problem.global_misfit(ms, ns)
-        ms = problem.bootstrap_misfit(ms, ns)
+        gm = problem.global_misfit(ms, ns)
+        bms = problem.bootstrap_misfit(ms, ns)
 
-        chains_m[0, nlinks] = m
-        chains_m[1:, nlinks] = ms
+        chains_m[0, nlinks] = gm
+        chains_m[1:, nlinks] = bms
         chains_i[:, nlinks] = iiter
 
         nlinks += 1
