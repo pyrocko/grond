@@ -1000,7 +1000,7 @@ def draw_fits_figures(ds, model, plt):
                 if spec is not None:
                     spec.ydata *= w
 
-            if result.tshift != 0.0:
+            if result.tshift is not None and result.tshift != 0.0:
                 result.filtered_syn.shift(result.tshift)
                 result.processed_syn.shift(result.tshift)
 
