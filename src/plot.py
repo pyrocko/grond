@@ -970,7 +970,7 @@ def draw_fits_figures(ds, model, plt):
                      0.),
                     (result.filtered_syn,
                      result.processed_syn,
-                     result.cc_shift)):
+                     result.tshift)):
 
                 norm = num.sum(num.abs(tr_proc.ydata)) / tr_proc.data_len()
                 tr_filt.ydata /= norm
@@ -999,6 +999,10 @@ def draw_fits_figures(ds, model, plt):
 
                 if spec is not None:
                     spec.ydata *= w
+
+            if result.tshift != 0.0:
+                result.filtered_syn.shift(result.tshift)
+                result.processed_syn.shift(result.tshift)
 
             dtrace = result.processed_syn.copy()
             dtrace.set_ydata(

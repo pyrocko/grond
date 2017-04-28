@@ -337,7 +337,7 @@ class MisfitResult(gf.Result):
     taper = trace.Taper.T(optional=True)
     tobs_shift = Float.T(optional=True)
     tsyn_pick = Timestamp.T(optional=True)
-    cc_shift = Float.T(optional=True)
+    tshift = Float.T(optional=True)
     cc = Trace.T(optional=True)
 
 
@@ -555,7 +555,7 @@ tautoshift**2 / tautoshift_max**2``
     tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain)
     tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain)
 
-    cc_shift = None
+    tshift = None
     ctr = None
     deltat = tr_proc_obs.deltat
     if domain in ('time_domain', 'envelope', 'absolute'):
@@ -599,7 +599,7 @@ tautoshift**2 / tautoshift_max**2``
             mode='same',
             normalization='normal')
 
-        cc_shift, cc_max = ctr.max()
+        tshift, cc_max = ctr.max()
         m = 0.5 - 0.5 * cc_max
         n = 0.5
 
@@ -621,7 +621,7 @@ tautoshift**2 / tautoshift_max**2``
             spectrum_obs=trspec_proc_obs,
             spectrum_syn=trspec_proc_syn,
             taper=taper,
-            cc_shift=cc_shift,
+            tshift=tshift,
             cc=ctr)
 
     elif result_mode == 'sparse':
