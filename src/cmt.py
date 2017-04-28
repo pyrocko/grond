@@ -236,64 +236,95 @@ class CMTProblem(core.Problem):
 
         return self._target_weights
 
+    def raise_invalid_norm_exponent(self):
+        raise core.GrondError('invalid norm exponent' % self.norm_exponent)
+
+    def get_sqr_sqrt(self):
+        if self.norm_exponent == 2:
+            def sqr(x):
+                return x**2
+
+            return sqr, num.sqrt
+
+        elif self.norm_exponent == 1:
+            def noop(x):
+                return x
+
+            return noop, num.abs
+
+        else:
+            self.raise_invalid_norm_exponent()
+
     def inter_group_weights(self, ns):
+        sqr, sqrt = self.get_sqr_sqrt()
+
         group, ngroups = self.get_group_mask()
 
         ws = num.zeros(self.ntargets)
         for igroup in xrange(ngroups):
             mask = group == igroup
-            ws[mask] = 1.0 / num.sqrt(num.nansum(ns[mask]**2))
+            ws[mask] = 1.0 / sqrt(num.nansum(sqr(ns[mask])))
 
         return ws
 
     def inter_group_weights2(self, ns):
+        sqr, sqrt = self.get_sqr_sqrt()
+
         group, ngroups = self.get_group_mask()
         ws = num.zeros(ns.shape)
         for igroup in xrange(ngroups):
             mask = group == igroup
-            ws[:, mask] = (1.0 / num.sqrt(
-                num.nansum(ns[:, mask]**2, axis=1)))[:, num.newaxis]
+            ws[:, mask] = (1.0 / sqrt(
+                num.nansum(sqr(ns[:, mask]), axis=1)))[:, num.newaxis]
 
         return ws
 
     def bootstrap_misfit(self, ms, ns, ibootstrap=None):
+        sqr, sqrt = self.get_sqr_sqrt()
+
         w = self.get_bootstrap_weights(ibootstrap) * \
             self.get_target_weights() * self.inter_group_weights(ns)
 
         if ibootstrap is None:
-            return num.sqrt(
-                num.nansum((w*ms[num.newaxis, :])**2, axis=1) /
-                num.nansum((w*ns[num.newaxis, :])**2, axis=1))
+            return sqrt(
+                num.nansum(sqr(w*ms[num.newaxis, :]), axis=1) /
+                num.nansum(sqr(w*ns[num.newaxis, :]), axis=1))
         else:
-            return num.sqrt(num.nansum((w*ms)**2) / num.nansum((w*ns)**2))
+            return sqrt(num.nansum(sqr(w*ms)) / num.nansum(sqr(w*ns)))
 
     def bootstrap_misfits(self, misfits, ibootstrap):
+        sqr, sqrt = self.get_sqr_sqrt()
+
         w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
             self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
 
-        bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1) /
-                       num.nansum((w*misfits[:, :, 1])**2, axis=1))
+        bms = sqrt(num.nansum(sqr(w*misfits[:, :, 0]), axis=1) /
+                   num.nansum(sqr(w*misfits[:, :, 1]), axis=1))
         return bms
 
     def global_misfit(self, ms, ns):
+        sqr, sqrt = self.get_sqr_sqrt()
+
         ws = self.get_target_weights() * self.inter_group_weights(ns)
-        m = num.sqrt(num.nansum((ws*ms)**2) / num.nansum((ws*ns)**2))
+        m = sqrt(num.nansum(sqr(ws*ms)) / num.nansum(sqr(ws*ns)))
         return m
 
     def global_misfits(self, misfits):
+        sqr, sqrt = self.get_sqr_sqrt()
         ws = self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
-        gms = num.sqrt(num.nansum((ws*misfits[:, :, 0])**2, axis=1) /
-                       num.nansum((ws*misfits[:, :, 1])**2, axis=1))
+        gms = sqrt(num.nansum(sqr(ws*misfits[:, :, 0]), axis=1) /
+                   num.nansum(sqr(ws*misfits[:, :, 1]), axis=1))
         return gms
 
     def global_contributions(self, misfits):
+        sqr, sqrt = self.get_sqr_sqrt()
         ws = self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
 
-        gcms = (ws*misfits[:, :, 0])**2 / \
-            num.nansum((ws*misfits[:, :, 1])**2, axis=1)[:, num.newaxis]
+        gcms = sqr(ws*misfits[:, :, 0]) / \
+            num.nansum(sqr(ws*misfits[:, :, 1]), axis=1)[:, num.newaxis]
 
         return gcms
 
@@ -319,6 +350,7 @@ class CMTProblemConfig(core.ProblemConfig):
         problem = CMTProblem(
             name=core.expand_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
+            norm_exponent=self.norm_exponent,
             base_source=base_source,
             targets=targets,
             ranges=self.ranges,

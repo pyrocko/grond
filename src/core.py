@@ -124,6 +124,7 @@ class Problem(Object):
     parameters = List.T(Parameter.T())
     dependants = List.T(Parameter.T())
     apply_balancing_weights = Bool.T(default=True)
+    norm_exponent = Int.T(default=2)
     base_source = gf.Source.T(optional=True)
 
     def __init__(self, **kwargs):
@@ -254,6 +255,7 @@ class Problem(Object):
 class ProblemConfig(Object):
     name_template = String.T()
     apply_balancing_weights = Bool.T(default=True)
+    norm_exponent = Int.T(default=2)
 
 
 class Forbidden(Exception):
@@ -302,6 +304,10 @@ class InnerMisfitConfig(Object):
         help='Type of data characteristic to be fitted.\n\nAvailable choices '
              'are: %s' % ', '.join("``'%s'``" % s
                                    for s in DomainChoice.choices))
+    norm_exponent = Int.T(
+        default=2,
+        help='Exponent to use in norm (1: L1-norm, 2: L2-norm)')
+
     tautoshift_max = Float.T(
         default=0.0,
         help='If non-zero, allow synthetic and observed traces to be shifted '
@@ -505,7 +511,7 @@ class MisfitTarget(gf.Target):
                     tmax_fit,
                     tmax_fit + tfade_taper),
                 domain=config.domain,
-                exponent=2,
+                exponent=config.norm_exponent,
                 flip=self.flip_norm,
                 result_mode=self._result_mode,
                 tautoshift_max=config.tautoshift_max,

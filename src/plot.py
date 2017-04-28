@@ -682,7 +682,7 @@ def draw_contributions_figure(model, plt):
 
     imodels = num.arange(model.nmodels)
 
-    gms = problem.global_misfits(model.misfits)**2
+    gms = problem.global_misfits(model.misfits)**problem.norm_exponent
 
     isort = num.argsort(gms)[::-1]
 
