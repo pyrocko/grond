@@ -549,6 +549,7 @@ tautoshift**2 / tautoshift_max**2``
     '''
 
     trace.assert_same_sampling_rate(tr_obs, tr_syn)
+    deltat = tr_obs.deltat
     tmin, tmax = taper.time_span()
 
     tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain)
@@ -670,7 +671,7 @@ def _extend_extract(tr, tmin, tmax):
     deltat = tr.deltat
     itmin_frame = int(math.floor(tmin/deltat))
     itmax_frame = int(math.ceil(tmax/deltat))
-    nframe = itmax_frame - itmin_frame
+    nframe = itmax_frame - itmin_frame + 1
     n = tr.data_len()
     a = num.empty(nframe, dtype=num.float)
     itmin_tr = int(round(tr.tmin / deltat))
@@ -683,7 +684,7 @@ def _extend_extract(tr, tmin, tmax):
     a[icut1:icut2] = tr.ydata[icut1_tr:icut2_tr]
     a[icut2:] = tr.ydata[-1]
     tr = tr.copy(data=False)
-    tr.tmin = tmin
+    tr.tmin = itmin_frame * deltat
     tr.set_ydata(a)
     return tr
 
