@@ -643,6 +643,7 @@ def _process(tr, tmin, tmax, taper, domain):
 
     if domain == 'envelope':
         tr_proc = tr_proc.envelope(inplace=False)
+        tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
 
     elif domain == 'absolute':
         tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
