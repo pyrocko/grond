@@ -86,6 +86,15 @@ def eigh_sorted(mat):
     return evals[iorder], evecs[:, iorder]
 
 
+def make_norm_trace(a, b, exponent):
+    tmin = max(a.tmin, b.tmin)
+    tmax = min(a.tmax, b.tmax)
+    c = a.chop(tmin, tmax, inplace=False)
+    bc = b.chop(tmin, tmax, inplace=False)
+    c.set_ydata(num.abs(c.get_ydata() - bc.get_ydata())**exponent)
+    return c
+
+
 class GrondModel(object):
     def __init__(self, **kwargs):
         self.listeners = []
@@ -1001,14 +1010,12 @@ def draw_fits_figures(ds, model, plt):
                     spec.ydata *= w
 
             if result.tshift is not None and result.tshift != 0.0:
-                result.filtered_syn.shift(result.tshift)
+                #result.filtered_syn.shift(result.tshift)
                 result.processed_syn.shift(result.tshift)
 
-            dtrace = result.processed_syn.copy()
-            dtrace.set_ydata(
-                (
-                    (result.processed_syn.get_ydata() -
-                     result.processed_obs.get_ydata())**2))
+            dtrace = make_norm_trace(
+                result.processed_syn, result.processed_obs,
+                problem.norm_exponent)
 
         target_to_result[target] = result
 
