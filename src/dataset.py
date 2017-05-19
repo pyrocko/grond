@@ -403,11 +403,17 @@ class Dataset(object):
         if extend_incomplete and len(trs) == 1:
             trs[0].extend(
                 tmin + toffset_noise_extract - tpad,
-                tmax + toffset_noise_extract + tpad)
+                tmax + toffset_noise_extract + tpad,
+                fillmethod='median')
 
         if not want_incomplete and len(trs) != 1:
+            if len(trs) == 0:
+                message = 'waveform missing or incomplete'
+            else:
+                message = 'waveform has gaps'
+
             raise NotFound(
-                'waveform missing or incomplete',
+                message,
                 codes=(net, sta, loc, cha),
                 time_range=(
                     tmin + toffset_noise_extract - tpad,
