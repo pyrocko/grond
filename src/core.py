@@ -902,6 +902,7 @@ class DatasetConfig(HasPaths):
     station_corrections_path = Path.T(optional=True)
     apply_correction_factors = Bool.T(default=True)
     apply_correction_delays = Bool.T(default=True)
+    extend_incomplete = Bool.T(default=False)
     picks_paths = List.T(Path.T())
     blacklist_paths = List.T(Path.T())
     blacklist = List.T(
@@ -970,6 +971,7 @@ class DatasetConfig(HasPaths):
 
             ds.apply_correction_factors = self.apply_correction_factors
             ds.apply_correction_delays = self.apply_correction_delays
+            ds.extend_incomplete = self.extend_incomplete
 
             for picks_path in self.picks_paths:
                 ds.add_picks(

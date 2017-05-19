@@ -75,6 +75,7 @@ class Dataset(object):
         self.pick_markers = []
         self.apply_correction_delays = True
         self.apply_correction_factors = True
+        self.extend_incomplete = False
         self.clip_handling = 'by_nsl'
         self.synthetic_test = None
         self._picks = None
@@ -365,7 +366,8 @@ class Dataset(object):
             tmax,
             tpad=0.,
             toffset_noise_extract=0.,
-            want_incomplete=False):
+            want_incomplete=False,
+            extend_incomplete=False):
 
         net, sta, loc, cha = self.get_nslc(obj)
 
@@ -392,11 +394,16 @@ class Dataset(object):
             tmax=tmax+toffset_noise_extract,
             tpad=tpad,
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
-            want_incomplete=want_incomplete)
+            want_incomplete=want_incomplete or extend_incomplete)
 
         if toffset_noise_extract != 0.0:
             for tr in trs:
                 tr.shift(-toffset_noise_extract)
+
+        if extend_incomplete and len(trs) == 1:
+            trs[0].extend(
+                tmin + toffset_noise_extract - tpad,
+                tmax + toffset_noise_extract + tpad)
 
         if not want_incomplete and len(trs) != 1:
             raise NotFound(
@@ -414,14 +421,16 @@ class Dataset(object):
             tmin=None, tmax=None, tpad=0.,
             tfade=0., freqlimits=None, deltat=None,
             toffset_noise_extract=0.,
-            want_incomplete=False):
+            want_incomplete=False,
+            extend_incomplete=False):
 
         assert quantity == 'displacement'  # others not yet implemented
 
         trs_raw = self.get_waveform_raw(
             obj, tmin=tmin, tmax=tmax, tpad=tpad+tfade,
             toffset_noise_extract=toffset_noise_extract,
-            want_incomplete=want_incomplete)
+            want_incomplete=want_incomplete,
+            extend_incomplete=extend_incomplete)
 
         trs_restituted = []
         for tr in trs_raw:
@@ -574,7 +583,8 @@ class Dataset(object):
                                 tfade=tfade,
                                 freqlimits=freqlimits,
                                 deltat=deltat,
-                                want_incomplete=debug)
+                                want_incomplete=debug,
+                                extend_incomplete=self.extend_incomplete)
 
                         trs_restituted_group.extend(trs_restituted_this)
                         trs_raw_group.extend(trs_raw_this)
