@@ -31,6 +31,7 @@ subcommand_descriptions = {
     'harvest': 'manually run harvesting',
     'plot': 'plot optimization result',
     'export': 'export results',
+    'qc-polarization': 'check sensor orientations with polarization analysis',
 }
 
 subcommand_usages = {
@@ -44,6 +45,8 @@ subcommand_usages = {
     'harvest': 'harvest <rundir> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
+    'qc-polarization': 'qc-polarization <configfile> <eventname> '
+                       '<targetconfigname> [options]',
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -57,14 +60,15 @@ usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
 
 Subcommands:
 
-    init          %(init)s
-    events        %(events)s
-    check         %(check)s
-    go            %(go)s
-    forward       %(forward)s
-    harvest       %(harvest)s
-    plot          %(plot)s
-    export        %(export)s
+    init            %(init)s
+    events          %(events)s
+    check           %(check)s
+    go              %(go)s
+    forward         %(forward)s
+    harvest         %(harvest)s
+    plot            %(plot)s
+    export          %(export)s
+    qc-polarization %(qc_polarization)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -418,6 +422,48 @@ def command_export(args):
 
     except grond.GrondError, e:
         die(str(e))
+
+
+def command_qc_polarization(args):
+
+    import grond.qc
+
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('qc-polarization', args, setup)
+    if len(args) != 3:
+        help_and_die(parser, 'missing arguments')
+
+    config_path, event_name, target_config_name = args
+
+    config = grond.read_config(config_path)
+
+    ds = config.get_dataset(event_name)
+
+    engine = config.engine_config.get_engine()
+
+    target_config_names_avail = []
+    for target_config in config.target_configs:
+        name = '%s.%s' % (target_config.super_group, target_config.group or '')
+        if name == target_config_name:
+            imc = target_config.inner_misfit_config
+            fmin = imc.fmin
+            fmax = imc.fmax
+            ffactor = imc.ffactor
+
+            store = engine.get_store(target_config.store_id)
+            timing = '{cake:P|cake:p|cake:P\\|cake:p\\}'
+
+            grond.qc.polarization(
+                ds, store, timing, fmin=fmin, fmax=fmax, ffactor=ffactor)
+
+            return
+
+        target_config_names_avail.append(name)
+
+        die('no target_config named "%s" found. Available: %s' % (
+            target_config_name, ', '.join(target_config_names_avail)))
 
 
 if __name__ == '__main__':

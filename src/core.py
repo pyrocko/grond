@@ -35,6 +35,17 @@ class Trace(Object):
     pass
 
 
+def backazimuth_for_waveform(azimuth, nslc):
+    if nslc[-1] == 'R':
+        backazimuth = azimuth + 180.
+    elif nslc[-1] == 'T':
+        backazimuth = azimuth + 90.
+    else:
+        backazimuth = None
+
+    return backazimuth
+
+
 class TraceSpectrum(Object):
     network = String.T()
     station = String.T()
@@ -405,15 +416,7 @@ class MisfitTarget(gf.Target):
         return tmin_fit, tmax_fit, tfade, tfade_taper
 
     def get_backazimuth_for_waveform(self):
-        nslc = self.codes
-        if nslc[-1] == 'R':
-            backazimuth = self.azimuth + 180.
-        elif nslc[-1] == 'T':
-            backazimuth = self.azimuth + 90.
-        else:
-            backazimuth = None
-
-        return backazimuth
+        return backazimuth_for_waveform(self.azimuth, self.codes)
 
     def get_freqlimits(self):
         config = self.misfit_config
