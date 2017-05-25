@@ -173,7 +173,7 @@ class GrondModel(object):
             listener()
 
 
-def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='iteration'):
+def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     problem = model.problem
 
     imodels = num.arange(model.nmodels)
@@ -1436,6 +1436,97 @@ def draw_hudson_figure(model, plt):
     return [fig]
 
 
+def draw_location_figure(model, plt):
+    from matplotlib import colors
+
+    color = 'black'
+    fontsize = 10.
+    markersize = fontsize * 1.5
+    # markersize_small = markersize * 0.2
+    beachballsize = markersize
+    beachballsize_small = beachballsize * 0.5
+    width = 7.
+    figsize = (width, width / (4./3.))
+
+    problem = model.problem
+
+    fig = plt.figure(figsize=figsize)
+    axes_en = fig.add_subplot(2, 2, 1)
+    axes_dn = fig.add_subplot(2, 2, 2)
+    axes_ed = fig.add_subplot(2, 2, 3)
+
+    bounds = problem.bounds() + problem.dependant_bounds()
+
+    gms = problem.global_misfits(model.misfits)
+
+    isort = num.argsort(gms)[::-1]
+
+    gms = gms[isort]
+    xs = model.xs[isort, :]
+
+    iorder = num.arange(model.nmodels)
+
+    for axes, xparname, yparname in [
+            (axes_en, 'east_shift', 'north_shift'),
+            (axes_dn, 'depth', 'north_shift'),
+            (axes_ed, 'east_shift', 'depth')]:
+
+
+        ixpar = problem.name_to_index(xparname)
+        iypar = problem.name_to_index(yparname)
+
+        xpar = problem.combined[ixpar]
+        ypar = problem.combined[iypar]
+
+        axes.set_xlabel(xpar.get_label())
+        axes.set_ylabel(ypar.get_label())
+
+        xmin, xmax = fixlim(*xpar.scaled(bounds[ixpar]))
+        ymin, ymax = fixlim(*ypar.scaled(bounds[iypar]))
+
+        axes.set_aspect(1.0)
+        axes.set_xlim(xmin, xmax)
+        axes.set_ylim(ymin, ymax)
+
+        #fxs = xpar.scaled(problem.extract(xs, ixpar))
+        #fys = ypar.scaled(problem.extract(xs, iypar))
+
+        #axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
+        #axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
+
+        cmap = cm.ScalarMappable(
+            norm=colors.Normalize(vmin=num.min(iorder), vmax=num.max(iorder)),
+            cmap=plt.get_cmap('coolwarm'))
+
+        for ix, x in enumerate(xs):
+            source = problem.unpack(x)
+            mt = source.pyrocko_moment_tensor()
+            fx = problem.extract(x, ixpar)
+            fy = problem.extract(x, iypar)
+            sx, sy = xpar.scaled(fx), ypar.scaled(fy)
+
+            color = cmap.to_rgba(iorder[ix])
+
+            alpha = (iorder[ix] - num.min(iorder)) / \
+                float(num.max(iorder) - num.min(iorder))
+
+            try:
+                beachball.plot_beachball_mpl(
+                    mt, axes,
+                    beachball_type='dc',
+                    position=(sx, sy),
+                    size=beachballsize_small,
+                    color_t=color,
+                    alpha=alpha,
+                    zorder=1,
+                    linewidth=0.25)
+
+            except beachball.BeachballError, e:
+                logger.warn(str(e))
+
+    return [fig]
+
+
 def xpop(s, k):
     try:
         s.remove(k)
@@ -1452,7 +1543,8 @@ plot_dispatch = {
     'jointpar': draw_jointpar_figures,
     'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
-    'solution': draw_solution_figure}
+    'solution': draw_solution_figure,
+    'location': draw_location_figure}
 
 
 def save_figs(figs, plot_dirname, plotname, formats, dpi):
@@ -1522,7 +1614,13 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
-    if 4 != len({'fits', 'jointpar', 'hudson', 'solution'} - plotnames_want):
+    if 5 != len({
+            'fits',
+            'jointpar',
+            'hudson',
+            'solution',
+            'location'} - plotnames_want):
+
         problem, xs, misfits = core.load_problem_info_and_data(
             dirname, subset='harvest')
 
@@ -1542,7 +1640,7 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
-        for plotname in ['jointpar', 'hudson', 'solution']:
+        for plotname in ['jointpar', 'hudson', 'solution', 'location']:
             if plotname in plotnames_want:
                 figs = plot_dispatch[plotname](model, plt)
                 if save:
