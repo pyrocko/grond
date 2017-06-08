@@ -5,7 +5,7 @@ import sys
 import logging
 from optparse import OptionParser
 
-from pyrocko import util
+from pyrocko import util, marker
 from pyrocko.gf import Range
 
 import grond
@@ -327,7 +327,6 @@ def command_harvest(args):
 
 
 def command_plot(args):
-    from grond import plot
 
     def setup(parser):
         parser.add_option(
@@ -342,7 +341,17 @@ def command_plot(args):
             '--dpi', '--dpi', dest='dpi', type=float, default=120.,
             help='DPI setting for raster formats (default=120)')
 
-    plotnames_avail = plot.available_plotnames()
+    # plotnames_avail = plot.available_plotnames()
+    # made explicit to avoid import of pyplot before backend can be chosen
+    plotnames_avail = [
+        'bootstrap',
+        'sequence',
+        'contributions',
+        'jointpar',
+        'hudson',
+        'fits',
+        'solution',
+        'location']
 
     details = '''Available <plotnames> are: %s, or "all". Multiple plots are
 selected by specifying a comma-separated list.''' % (
@@ -360,6 +369,12 @@ selected by specifying a comma-separated list.''' % (
 
     formats = options.formats.split(',')
     dirname = args[1]
+
+    if options.save:
+        import matplotlib
+        matplotlib.use('Agg')
+
+    from grond import plot
 
     try:
         plot.plot_result(
@@ -426,14 +441,52 @@ def command_export(args):
 
 def command_qc_polarization(args):
 
-    import grond.qc
-
     def setup(parser):
-        pass
+        parser.add_option(
+            '--time-factor', dest='time_factor', type=float,
+            metavar='NUMBER',
+            default=0.5,
+            help='set duration to extract before and after synthetic P phase '
+                 'arrival, relative to 1/fmin. fmin is taken from the '
+                 'selected target group in the config file (default=%default)')
+        parser.add_option(
+            '--distance-min', dest='distance_min', type=float,
+            metavar='NUMBER',
+            help='minimum event-station distance [m]')
+        parser.add_option(
+            '--distance-max', dest='distance_max', type=float,
+            metavar='NUMBER',
+            help='maximum event-station distance [m]')
+        parser.add_option(
+            '--depth-min', dest='depth_min', type=float,
+            metavar='NUMBER',
+            help='minimum station depth [m]')
+        parser.add_option(
+            '--depth-max', dest='depth_max', type=float,
+            metavar='NUMBER',
+            help='maximum station depth [m]')
+        parser.add_option(
+            '--picks', dest='picks_filename',
+            metavar='FILENAME',
+            help='add file with P picks in Snuffler marker format')
+        parser.add_option(
+            '--save', dest='output_filename',
+            metavar='FILENAME.FORMAT',
+            help='save output to file FILENAME.FORMAT')
+        parser.add_option(
+            '--dpi', dest='output_dpi', type=float, default=120.,
+            metavar='NUMBER',
+            help='DPI setting for raster formats (default=120)')
 
     parser, options, args = cl_parse('qc-polarization', args, setup)
     if len(args) != 3:
         help_and_die(parser, 'missing arguments')
+
+    if options.output_filename:
+        import matplotlib
+        matplotlib.use('Agg')
+
+    import grond.qc
 
     config_path, event_name, target_config_name = args
 
@@ -442,6 +495,24 @@ def command_qc_polarization(args):
     ds = config.get_dataset(event_name)
 
     engine = config.engine_config.get_engine()
+
+    nsl_to_time = None
+    if options.picks_filename:
+        markers = marker.load_markers(options.picks_filename)
+        marker.associate_phases_to_events(markers)
+
+        nsl_to_time = {}
+        for m in markers:
+            if isinstance(m, marker.PhaseMarker):
+                ev = m.get_event()
+                if ev is not None and ev.name == event_name:
+                    nsl_to_time[m.one_nslc()[:3]] = m.tmin
+
+        if not nsl_to_time:
+            help_and_die(
+                parser,
+                'no markers associated with event "%s" found in file "%s"' % (
+                    event_name, options.picks_filename))
 
     target_config_names_avail = []
     for target_config in config.target_configs:
@@ -456,7 +527,15 @@ def command_qc_polarization(args):
             timing = '{cake:P|cake:p|cake:P\\|cake:p\\}'
 
             grond.qc.polarization(
-                ds, store, timing, fmin=fmin, fmax=fmax, ffactor=ffactor)
+                ds, store, timing, fmin=fmin, fmax=fmax, ffactor=ffactor,
+                time_factor=options.time_factor,
+                distance_min=options.distance_min,
+                distance_max=options.distance_max,
+                depth_min=options.depth_min,
+                depth_max=options.depth_max,
+                nsl_to_time=nsl_to_time,
+                output_filename=options.output_filename,
+                output_dpi=options.output_dpi)
 
             return
 
