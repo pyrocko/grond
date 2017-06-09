@@ -216,21 +216,31 @@ class Problem(Object):
     def combined(self):
         return self.parameters + self.dependants
 
-    def make_bootstrap_weights(self, nbootstrap):
+    def make_bootstrap_weights(self, nbootstrap, type='classic'):
         ntargets = self.ntargets
         ws = num.zeros((nbootstrap, ntargets))
         rstate = num.random.RandomState(23)
         for ibootstrap in xrange(nbootstrap):
-            ii = rstate.randint(0, ntargets, size=self.ntargets)
-            ws[ibootstrap, :] = num.histogram(
-                ii, ntargets, (-0.5, ntargets - 0.5))[0]
+            if type == 'classic':
+                ii = rstate.randint(0, ntargets, size=self.ntargets)
+                ws[ibootstrap, :] = num.histogram(
+                    ii, ntargets, (-0.5, ntargets - 0.5))[0]
+            elif type == 'bayesian':
+                f = rstate.uniform(0., 1., size=self.ntargets+1)
+                f[0] = 0.
+                f[-1] = 1.
+                f = num.sort(f)
+                g = f[1:] - f[:-1]
+                ws[ibootstrap, :] = g * ntargets
+            else:
+                assert False
 
         return ws
 
     def get_bootstrap_weights(self, ibootstrap=None):
         if self._bootstrap_weights is None:
             self._bootstrap_weights = self.make_bootstrap_weights(
-                self.nbootstrap)
+                self.nbootstrap, type='bayesian')
 
         if ibootstrap is None:
             return self._bootstrap_weights
