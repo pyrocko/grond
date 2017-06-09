@@ -553,7 +553,7 @@ class Dataset(object):
                     return tr
 
             if syn_test.real_noise_scale != 0.0:
-                toffset_noise_extract = syn_test.toffset_real_noise
+                toffset_noise_extract = syn_test.real_noise_toffset
 
         abs_delays = []
         for ocha in 'ENZRT':
