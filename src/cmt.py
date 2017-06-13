@@ -42,7 +42,8 @@ class CMTProblem(core.Problem):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nbootstrap = Int.T(default=10)
-    mt_type = StringChoice.T(default='full', choices=['full', 'deviatoric'])
+    mt_type = StringChoice.T(
+        default='full', choices=['full', 'deviatoric', 'dc'])
 
     def unpack(self, x):
         d = self.parameter_dict(x)
@@ -133,6 +134,10 @@ class CMTProblem(core.Problem):
             trace_m = num.trace(m9)
             m_iso = num.diag([trace_m / 3., trace_m / 3., trace_m / 3.])
             m9 -= m_iso
+
+        elif self.mt_type == 'dc':
+            mt = mtm.MomentTensor(m=m9)
+            m9 = mt.standard_decomposition()[1][2]
 
         m0_unscaled = math.sqrt(num.sum(m9.A**2)) / math.sqrt(2.)
 
@@ -334,7 +339,7 @@ class CMTProblemConfig(core.ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nbootstrap = Int.T(default=10)
-    mt_type = StringChoice.T(choices=['full', 'deviatoric'])
+    mt_type = StringChoice.T(choices=['full', 'deviatoric', 'dc'])
 
     def get_problem(self, event, targets):
         if event.depth is None:
