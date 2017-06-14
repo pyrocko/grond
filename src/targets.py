@@ -1,6 +1,7 @@
 import logging
 import math
 import numpy as num
+import copy
 
 from pyrocko import gf, trace, weeding
 from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
@@ -8,6 +9,7 @@ from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
 from pyrocko.guts_array import Array
 
 from .dataset import NotFound
+from .meta import Parameter
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.target')
@@ -68,7 +70,50 @@ class TraceSpectrum(Object):
         return self.fmin + num.arange(self.ydata.size) * self.deltaf
 
 
-class InnerMisfitConfig(Object):
+class GrondTarget(object):
+    def set_dataset(self, ds):
+        self._ds = ds
+
+    def get_dataset(self):
+        return self._ds
+
+    @property
+    def nparameters(self):
+        return len(self._target_parameters)
+
+    @property
+    def target_parameters(self):
+        if self._target_parameters is None:
+            self._target_parameters = copy.deepcopy(self.parameters)
+            for p in self._target_parameters:
+                p.set_groups([self.id])
+        return self._target_parameters
+
+    @property
+    def target_ranges(self):
+        if self._target_ranges is None:
+            self._target_ranges = self.inner_misfit_config.ranges.copy()
+            for k in self._target_ranges.keys():
+                self._target_ranges['%s:%s' % (self.id, k)] =\
+                    self._target_ranges.pop(k)
+        return self._target_ranges
+
+    def set_parameter_values(self, model):
+        for i, p in enumerate(self.parameters):
+            self.parameter_values[p.name_nogroups] = model[i]
+
+    def set_result_mode(self, result_mode):
+        self._result_mode = result_mode
+
+    def string_id(self):
+        return '.'.join([self.super_group, self.group, self.id])
+
+
+class InnerTargetConfig(Object):
+    pass
+
+
+class InnerMisfitConfig(InnerTargetConfig):
     fmin = Float.T()
     fmax = Float.T()
     ffactor = Float.T(default=1.5)
@@ -109,6 +154,8 @@ class InnerMisfitConfig(Object):
              '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
              '/ tautoshift_max**2``')
 
+    ranges = {}
+
     def get_full_frequency_range(self):
         return self.fmin / self.ffactor, self.fmax * self.ffactor
 
@@ -122,6 +169,10 @@ class MisfitResult(gf.Result):
     filtered_syn = Trace.T(optional=True)
     spectrum_obs = TraceSpectrum.T(optional=True)
     spectrum_syn = TraceSpectrum.T(optional=True)
+
+    statics_syn = Dict.T(optional=True)
+    statics_obs = Dict.T(optional=True)
+
     taper = trace.Taper.T(optional=True)
     tobs_shift = Float.T(optional=True)
     tsyn_pick = Timestamp.T(optional=True)
@@ -129,18 +180,23 @@ class MisfitResult(gf.Result):
     cc = Trace.T(optional=True)
 
 
-class MisfitTarget(gf.Target):
+class MisfitTarget(gf.Target, GrondTarget):
     misfit_config = InnerMisfitConfig.T()
     flip_norm = Bool.T(default=False)
     manual_weight = Float.T(default=1.0)
-    analysis_result = TargetAnalysisResult.T(optional=True)
     super_group = gf.StringID.T()
     group = gf.StringID.T()
+    analysis_result = TargetAnalysisResult.T(optional=True)
+
+    parameters = []
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
         self._ds = None
         self._result_mode = 'sparse'
+
+        self._target_parameters = None
+        self._target_ranges = None
 
     def string_id(self):
         return '.'.join(x for x in (
@@ -148,27 +204,17 @@ class MisfitTarget(gf.Target):
 
     @property
     def id(self):
-        return self.codes
+        return '.'.join(self.codes)
 
     def get_plain_target(self):
         d = dict(
             (k, getattr(self, k)) for k in gf.Target.T.propnames)
         return gf.Target(**d)
 
-    def get_dataset(self):
-        return self._ds
-
-    def set_dataset(self, ds):
-        self._ds = ds
-
-    def set_result_mode(self, result_mode):
-        self._result_mode = result_mode
-
     def get_combined_weight(self, apply_balancing_weights):
         w = self.manual_weight
         if apply_balancing_weights:
             w *= self.get_balancing_weight()
-
         return w
 
     def get_balancing_weight(self):
@@ -366,7 +412,8 @@ tautoshift**2 / tautoshift_max**2``
                     b_cut = b[ishift:]
 
                 mns.append(trace.Lx_norm(a_cut, b_cut, norm=exponent))
-
+            ns = (num.sum(num.sum(tr_obs)) - num.sum(num.sum(tr_syn)))\
+                / num.sum(num.sum(tr_obs))
             ms, ns = num.array(mns).T
 
             iarg = num.argmin(ms)
@@ -396,8 +443,8 @@ tautoshift**2 / tautoshift_max**2``
 
     if result_mode == 'full':
         result = MisfitResult(
-            misfit_value=m,
-            misfit_norm=n,
+            misfit_value=float(m),
+            misfit_norm=float(n),
             processed_obs=tr_proc_obs,
             processed_syn=tr_proc_syn,
             filtered_obs=tr_obs.copy(),
@@ -414,7 +461,6 @@ tautoshift**2 / tautoshift_max**2``
             misfit_norm=n)
     else:
         assert False
-
     return result
 
 
@@ -474,82 +520,82 @@ def _process(tr, tmin, tmax, taper, domain):
     return tr_proc, trspec_proc
 
 
-class InnerSatelliteMisfitConfig(Object):
+class InnerSatelliteMisfitConfig(InnerTargetConfig):
     use_weight_focal = Bool.T(default=False)
-    ranges = Dict.T(
-        String.T(), gf.Range.T(),
-        default={'waterlevel': '-0.5 .. 0.5',
-                 'ramp_north': '-1e-4 .. 1e-4',
-                 'ramp_east': '-1e-4 .. 1e-4'})
+    optimize_orbital_ramp = Bool.T(default=True)
+    ranges = Dict.T(String.T(), gf.Range.T(),
+                    default={'offset': '-0.5 .. 0.5',
+                             'ramp_north': '-1e-4 .. 1e-4',
+                             'ramp_east': '-1e-4 .. 1e-4'})
 
 
-class MisfitSatelliteTarget(gf.SatelliteTarget):
+class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
     scene_id = String.T()
     super_group = gf.StringID.T()
     inner_misfit_config = InnerSatelliteMisfitConfig.T()
-    manual_weight = Float.T(default=1.0)
-    group = gf.StringID.T()
+    manual_weight = Float.T(
+        default=1.0,
+        help='Relative weight of this target')
+    group = gf.StringID.T(
+        help='Group')
 
-    ranges = Dict.T(String.T(), gf.Range.T())
+    parameters = [
+        Parameter('offset', 'm'),
+        Parameter('ramp_north', 'm/m'),
+        Parameter('ramp_east', 'm/m'),
+        ]
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
-        self.waterlevel = 0.
-        self.ramp_north = 0.
-        self.ramp_east = 0.
-        self._ds = None
-        self._distance_cache = None
+        if not self.inner_misfit_config.optimize_orbital_ramp:
+            self.parameters = []
 
-    def set_dataset(self, ds):
-        self._ds = ds
+        self._ds = None
+
+        self.parameter_values = {}
+        self._target_parameters = None
+        self._target_ranges = None
 
     @property
     def id(self):
         return self.scene_id
 
-    def get_dataset(self):
-        return self._ds
-
-    def set_result_mode(self, result_mode):
-        pass
-
-    def string_id(self):
-        return '.'.join([self.super_group, self.group, self.scene_id])
-
-    def set_scene_levels(self, waterlevel, ramp_north, ramp_east):
-        self.waterlevel = waterlevel
-        self.ramp_north = ramp_north
-        self.ramp_east = ramp_east
-
     def post_process(self, engine, source, statics):
         scene = self._ds.get_kite_scene(self.scene_id)
         quadtree = scene.quadtree
 
-        stat_obs = scene.quadtree.leaf_medians
+        stat_obs = quadtree.leaf_medians
+
+        if self.inner_misfit_config.optimize_orbital_ramp:
+            stat_level = num.zeros_like(stat_obs)
+            stat_level.fill(self.parameter_values['offset'])
+            stat_level += (quadtree.leaf_center_distance[:, 0]
+                           * self.parameter_values['ramp_east'])
+            stat_level += (quadtree.leaf_center_distance[:, 1]
+                           * self.parameter_values['ramp_north'])
+            statics['displacement.los'] += stat_level
+
         stat_syn = statics['displacement.los']
 
-        stat_level = num.zeros_like(stat_obs)
-        stat_level.fill(self.waterlevel)
-        stat_level += (quadtree.leaf_center_distance[:, 0] * self.ramp_east)
-        stat_level += (quadtree.leaf_center_distance[:, 1] * self.ramp_north)
-
-        res = num.abs(stat_obs - (stat_syn + stat_level))
+        res = stat_obs - stat_syn
 
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
+        misfit_norm = num.sqrt(
+            num.sum((stat_obs * scene.covariance.weight_vector)**2))
 
         result = MisfitResult(
             misfit_value=misfit_value,
-            misfit_norm=2)
+            misfit_norm=misfit_norm)
+
+        if self._result_mode == 'full':
+            result.statics_syn = statics
+            result.statics_obs = quadtree.leaf_medians
+
         return result
 
     def get_combined_weight(self, apply_balancing_weights=False):
-        return 1.
-
-
-class GrondTarget(MisfitSatelliteTarget, MisfitTarget):
-    def __init__(self, args):
-        super(MisfitSatelliteTarget, self).__init__()
+        return self.manual_weight
 
 
 class TargetConfig(Object):
@@ -563,105 +609,126 @@ class TargetConfig(Object):
     depth_min = Float.T(optional=True)
     depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
+
     channels = List.T(String.T(), optional=True)
-    inner_misfit_config = InnerMisfitConfig.T(optional=True)
-    inner_satellite_misfit_config = InnerSatelliteMisfitConfig.T(
-        optional=True)
+    inner_misfit_config = InnerTargetConfig.T(optional=True)
     interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T()
+    kite_scenes = List.T(optional=True)
+    store_id = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
 
     def get_targets(self, ds, event, default_group):
-
         origin = event
-
         targets = []
 
-        for scene in ds.get_kite_scenes():
-            qt = scene.quadtree
-
-            lats = num.empty(qt.nleafs)
-            lons = num.empty(qt.nleafs)
-            lats.fill(qt.frame.llLat)
-            lons.fill(qt.frame.llLon)
-
-            east_shifts = qt.leaf_focal_points[:, 0]
-            north_shifts = qt.leaf_focal_points[:, 1]
-
-            sat_target = MisfitSatelliteTarget(
-                quantity='displacement',
-                scene_id=scene.meta.scene_id,
-                lats=lats,
-                lons=lons,
-                east_shifts=east_shifts,
-                north_shifts=north_shifts,
-                theta=qt.leaf_thetas,
-                phi=qt.leaf_phis,
-                tsnapshot=None,
-                interpolation=self.interpolation,
-                store_id=self.store_id,
-                super_group=self.super_group,
-                group=self.group or default_group,
-                inner_misfit_config=self.inner_satellite_misfit_config)
-
-            sat_target.set_dataset(ds)
-            targets.append(sat_target)
-
-        for st in ds.get_stations():
-            for cha in self.channels:
-                if ds.is_blacklisted((st.nsl() + (cha,))):
+        def get_satellite_targets():
+            for scene in ds.get_kite_scenes():
+                if scene.meta.scene_id not in self.kite_scenes and\
+                   '*all' not in self.kite_scenes:
                     continue
 
-                target = MisfitTarget(
+                if not isinstance(self.inner_misfit_config,
+                                  InnerSatelliteMisfitConfig):
+                    raise AttributeError('inner_misfit_config must be of type'
+                                         ' InnerSatelliteMisfitConfig')
+
+                qt = scene.quadtree
+
+                lats = num.empty(qt.nleaves)
+                lons = num.empty(qt.nleaves)
+                lats.fill(qt.frame.llLat)
+                lons.fill(qt.frame.llLon)
+
+                north_shifts = qt.leaf_focal_points[:, 1]
+                east_shifts = qt.leaf_focal_points[:, 0]
+
+                sat_target = MisfitSatelliteTarget(
                     quantity='displacement',
-                    codes=st.nsl() + (cha,),
-                    lat=st.lat,
-                    lon=st.lon,
-                    depth=st.depth,
+                    scene_id=scene.meta.scene_id,
+                    lats=lats,
+                    lons=lons,
+                    east_shifts=east_shifts,
+                    north_shifts=north_shifts,
+                    theta=qt.leaf_thetas,
+                    phi=qt.leaf_phis,
+                    tsnapshot=None,
                     interpolation=self.interpolation,
                     store_id=self.store_id,
-                    misfit_config=self.inner_misfit_config,
-                    manual_weight=self.weight,
                     super_group=self.super_group,
-                    group=self.group or default_group)
+                    group=self.group or default_group,
+                    inner_misfit_config=self.inner_misfit_config)
 
-                if self.distance_min is not None and \
-                        target.distance_to(origin) < self.distance_min:
-                    continue
+                sat_target.set_dataset(ds)
+                targets.append(sat_target)
 
-                if self.distance_max is not None and \
-                        target.distance_to(origin) > self.distance_max:
-                    continue
+        def get_dynamic_targets():
+            for st in ds.get_stations():
+                for cha in self.channels:
+                    if ds.is_blacklisted((st.nsl() + (cha,))):
+                        continue
 
-                if self.distance_3d_min is not None and \
-                        target.distance_3d_to(origin) < self.distance_3d_min:
-                    continue
+                    if not isinstance(self.inner_misfit_config,
+                                      InnerMisfitConfig):
+                        raise AttributeError('inner_misfit_config must be of'
+                                             ' type InnerMisfitConfig')
 
-                if self.distance_3d_max is not None and \
-                        target.distance_3d_to(origin) > self.distance_3d_max:
-                    continue
+                    target = MisfitTarget(
+                        quantity='displacement',
+                        codes=st.nsl() + (cha,),
+                        lat=st.lat,
+                        lon=st.lon,
+                        depth=st.depth,
+                        interpolation=self.interpolation,
+                        store_id=self.store_id,
+                        misfit_config=self.inner_misfit_config,
+                        manual_weight=self.weight,
+                        super_group=self.super_group,
+                        group=self.group or default_group)
 
-                if self.depth_min is not None and \
-                        target.depth < self.depth_min:
-                    continue
+                    if self.distance_min is not None and \
+                       target.distance_to(origin) < self.distance_min:
+                        continue
 
-                if self.depth_max is not None and \
-                        target.depth > self.depth_max:
-                    continue
+                    if self.distance_max is not None and \
+                       target.distance_to(origin) > self.distance_max:
+                        continue
 
-                azi, _ = target.azibazi_to(origin)
-                if cha == 'R':
-                    target.azimuth = azi - 180.
-                    target.dip = 0.
-                elif cha == 'T':
-                    target.azimuth = azi - 90.
-                    target.dip = 0.
-                elif cha == 'Z':
-                    target.azimuth = 0.
-                    target.dip = -90.
+                    if self.distance_3d_min is not None and \
+                       target.distance_3d_to(origin) < self.distance_3d_min:
+                        continue
 
-                target.set_dataset(ds)
-                targets.append(target)
+                    if self.distance_3d_max is not None and \
+                       target.distance_3d_to(origin) > self.distance_3d_max:
+                        continue
+
+                    if self.depth_min is not None and \
+                       target.depth < self.depth_min:
+                        continue
+
+                    if self.depth_max is not None and \
+                       target.depth > self.depth_max:
+                        continue
+
+                    azi, _ = target.azibazi_to(origin)
+                    if cha == 'R':
+                        target.azimuth = azi - 180.
+                        target.dip = 0.
+                    elif cha == 'T':
+                        target.azimuth = azi - 90.
+                        target.dip = 0.
+                    elif cha == 'Z':
+                        target.azimuth = 0.
+                        target.dip = -90.
+
+                    target.set_dataset(ds)
+                    targets.append(target)
+
+        if self.kite_scenes is not None:
+            logger.debug('Selecting satellite targets...')
+            get_satellite_targets()
+        else:
+            logger.debug('Selecting dynamic targets...')
+            get_dynamic_targets()
 
         if self.limit:
             return weed(origin, targets, self.limit)[0]

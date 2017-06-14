@@ -10,7 +10,7 @@ from pyrocko import beachball, guts, trace, util, gf
 from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
-from matplotlib import cm, patches
+from matplotlib import cm, patches, gridspec
 from pyrocko.cake_plot import colors, \
     str_to_mpl_color as scolor, light
 
@@ -78,6 +78,18 @@ def str_duration(t):
         return s + util.time_to_str(t, format='%H:%M h')
     else:
         return s + '%.1f d' % (t / (24.*3600.))
+
+
+def scale_axes(ax, scale):
+    from matplotlib.ticker import ScalarFormatter
+
+    class FormatScaled(ScalarFormatter):
+        @staticmethod
+        def __call__(value, pos):
+            return u'%d' % (value * scale)
+
+    ax.get_xaxis().set_major_formatter(FormatScaled())
+    ax.get_yaxis().set_major_formatter(FormatScaled())
 
 
 def eigh_sorted(mat):
@@ -929,17 +941,137 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
+def draw_fits_figures_statics(ds, model, plt):
+    from pyrocko.orthodrome import latlon_to_ne_numpy
+    problem = model.problem
+
+    for target in problem.targets:
+        target.set_dataset(ds)
+
+    gms = problem.global_misfits(model.misfits)
+    isort = num.argsort(gms)
+    gms = gms[isort]
+    xs = model.xs[isort, :]
+    xbest = xs[0, :]
+
+    source = problem.get_source(xbest)
+
+    ms, ns, results = problem.evaluate(xbest, result_mode='full')
+
+    figures = []
+
+    def decorateAxes(ax, title):
+        ax.set_title(title)
+        ax.set_xlabel('[km]')
+        scale_axes(ax, 1./km)
+        ax.set_aspect('equal')
+
+    def drawRectangularOutline(ax):
+        source.regularize()
+        fn, fe = source.outline(cs='xy').T
+        offset_n, offset_e = latlon_to_ne_numpy(
+            sat_target.lats[0], sat_target.lons[0],
+            source.lat, source.lon)
+        fn += offset_n
+        fe += offset_e
+        ax.plot(offset_e, offset_n, marker='o')
+        ax.plot(fe, fn, marker='o')
+        # ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
+        # ax.plot(fe[:2], fn[:2], linewidth=2., color='black', alpha=0.5)
+
+    def mapDisplacementGrid(displacements, scene):
+        qt = scene.quadtree
+        array = num.empty_like(scene.displacement)
+        array.fill(num.nan)
+        for syn_v, l in zip(displacements, qt.leaves):
+            array[l._slice_rows, l._slice_cols] = syn_v
+
+        array[scene.displacement_mask] = num.nan
+        return array
+
+    def drawTiles(ax, scene):
+        rect = scene.quadtree.getMPLRectangles()
+        for r in rect:
+            r.set_edgecolor((.4, .4, .4))
+            r.set_linewidth(.5)
+            r.set_facecolor('none')
+        map(ax.add_artist, rect)
+
+        ax.scatter(scene.quadtree.leaf_coordinates[:, 0],
+                   scene.quadtree.leaf_coordinates[:, 1],
+                   s=.25, c='black', alpha=.1)
+
+    for sat_target, result in zip(problem.satellite_targets, results):
+        fig = plt.figure()
+        fig.set_size_inches(16, 4)
+        axes = []
+        gs = gridspec.GridSpec(1, 3,
+                               hspace=.0001, left=.06, bottom=.1,
+                               right=.9)
+        axes.append(plt.subplot(gs[0, 0]))
+        axes.append(plt.subplot(gs[0, 1]))
+        axes.append(plt.subplot(gs[0, 2]))
+
+        scene = ds.get_kite_scene(sat_target.scene_id)
+
+        stat_obs = result.statics_obs
+        cmw = cm.ScalarMappable(cmap='coolwarm')
+        cmw.set_array(stat_obs)
+        cmap = cmw.get_cmap()
+        norm = cmw.norm
+
+        stat_syn = result.statics_syn['displacement.los']
+        res = (stat_obs - stat_syn)
+        im_extent = (scene.frame.E.min(), scene.frame.E.max(),
+                     scene.frame.N.min(), scene.frame.N.max())
+
+        ax = axes[0]
+        ax.imshow(mapDisplacementGrid(stat_obs, scene),
+                  extent=im_extent, cmap=cmap,
+                  origin='lower', norm=norm)
+        drawTiles(ax, scene)
+        drawRectangularOutline(ax)
+        decorateAxes(ax, 'Data')
+        ax.set_ylabel('[km]')
+
+        ax = axes[1]
+        ax.imshow(mapDisplacementGrid(stat_syn, scene),
+                  extent=im_extent, cmap=cmap,
+                  origin='lower', norm=norm)
+        drawTiles(ax, scene)
+        drawRectangularOutline(ax)
+        decorateAxes(ax, 'Model')
+        ax.get_yaxis().set_visible(False)
+
+        ax = axes[2]
+        ax.imshow(mapDisplacementGrid(res, scene),
+                  extent=im_extent, cmap=cmap,
+                  origin='lower', norm=norm)
+        drawTiles(ax, scene)
+        drawRectangularOutline(ax)
+        decorateAxes(ax, 'Residual')
+        ax.get_yaxis().set_visible(False)
+
+        pos = ax.get_position()
+        cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.02, pos.y1 - pos.y0])
+        cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
+        cbar.set_label('[m]')
+        figures.append(fig)
+
+    return figures
+
+
 def draw_fits_figures(ds, model, plt):
     fontsize = 8
     fontsize_title = 10
 
     problem = model.problem
 
-    for target in problem.targets:
+    for target in problem.waveform_targets:
         target.set_dataset(ds)
 
     target_index = dict(
-        (target, i) for (i, target) in enumerate(problem.targets))
+        (target, i) for (i, target) in enumerate(problem.waveform_targets))
 
     gms = problem.global_misfits(model.misfits)
     isort = num.argsort(gms)
@@ -955,7 +1087,7 @@ def draw_fits_figures(ds, model, plt):
     w_max = num.nanmax(ws)
     gcm_max = num.nanmax(gcms)
 
-    source = problem.unpack(xbest)
+    source = problem.get_source(xbest)
 
     target_to_result = {}
     all_syn_trs = []
@@ -963,7 +1095,7 @@ def draw_fits_figures(ds, model, plt):
     ms, ns, results = problem.evaluate(xbest, result_mode='full')
 
     dtraces = []
-    for target, result in zip(problem.targets, results):
+    for target, result in zip(problem.waveform_targets, results):
         if isinstance(result, gf.SeismosizerError):
             dtraces.append(None)
             continue
@@ -1052,7 +1184,7 @@ def draw_fits_figures(ds, model, plt):
             tr.ydata /= max(abs(dmin), abs(dmax))
 
     cg_to_targets = gather(
-        problem.targets,
+        problem.waveform_targets,
         lambda t: (t.super_group, t.group, t.codes[3]),
         filter=lambda t: t in target_to_result)
 
@@ -1542,6 +1674,7 @@ plot_dispatch = {
     'jointpar': draw_jointpar_figures,
     'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
+    'fits_statics': draw_fits_figures_statics,
     'solution': draw_solution_figure,
     'location': draw_location_figure}
 
@@ -1613,8 +1746,9 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
-    if 5 != len({
+    if 6 != len({
             'fits',
+            'fits_statics',
             'jointpar',
             'hudson',
             'solution',
@@ -1627,7 +1761,7 @@ def plot_result(dirname, plotnames_want,
         model.set_problem(problem)
         model.append(xs, misfits)
 
-        for plotname in ['fits']:
+        for plotname in ['fits', 'fits_statics']:
             if plotname in plotnames_want:
                 config = guts.load(filename=op.join(dirname, 'config.yaml'))
                 config.set_basepath(dirname)

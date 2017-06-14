@@ -4,11 +4,11 @@ import logging
 import os.path as op
 import math
 
-from meta import Forbidden, expand_template
 from pyrocko import gf, util, guts, moment_tensor as mtm
 from pyrocko.guts import (Object, String, Bool, List, Float, Dict, Int,
                           StringChoice)
 
+from .meta import Forbidden, expand_template, ADict, Parameter, GrondError
 from .targets import MisfitTarget, MisfitSatelliteTarget
 
 
@@ -16,69 +16,6 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
-
-
-class Parameter(Object):
-    name = String.T()
-    unit = String.T(optional=True)
-    scale_factor = Float.T(default=1., optional=True)
-    scale_unit = String.T(optional=True)
-    label = String.T(optional=True)
-
-    def __init__(self, *args, **kwargs):
-        if len(args) >= 1:
-            kwargs['name'] = args[0]
-        if len(args) >= 2:
-            kwargs['unit'] = args[1]
-
-        self.target = kwargs.pop('target', None)
-
-        Object.__init__(self, **kwargs)
-
-    def get_label(self, with_unit=True):
-        l = [self.label or self.name]
-        if with_unit:
-            unit = self.get_unit_label()
-            if unit:
-                l.append('[%s]' % unit)
-
-        return ' '.join(l)
-
-    def get_value_label(self, value, format='%(value)g%(unit)s'):
-        value = self.scaled(value)
-        unit = self.get_unit_suffix()
-        return format % dict(value=value, unit=unit)
-
-    def get_unit_label(self):
-        if self.scale_unit is not None:
-            return self.scale_unit
-        elif self.unit:
-            return self.unit
-        else:
-            return None
-
-    def get_unit_suffix(self):
-        unit = self.get_unit_label()
-        if not unit:
-            return ''
-        else:
-            return ' %s' % unit
-
-    def scaled(self, x):
-        if isinstance(x, tuple):
-            return tuple(v/self.scale_factor for v in x)
-        if isinstance(x, list):
-            return list(v/self.scale_factor for v in x)
-        else:
-            return x/self.scale_factor
-
-
-class ADict(dict):
-    def __getattr__(self, k):
-        return self[k]
-
-    def __setattr__(self, k, v):
-        self[k] = v
 
 
 class ProblemConfig(Object):
@@ -98,14 +35,17 @@ class Problem(Object):
     targets = List.T()
 
     def __init__(self, **kwargs):
-
         Object.__init__(self, **kwargs)
-        self.init_satellite_target_leveling()
 
         self._bootstrap_weights = None
         self._target_weights = None
         self._engine = None
         self._group_mask = None
+
+        if hasattr(self, 'problem_waveform_parameters') and self.has_waveforms:
+            self.problem_parameters =\
+                self.problem_parameters + self.problem_waveform_parameters
+
         logger.name = self.__class__.__name__
 
     def get_engine(self):
@@ -117,14 +57,6 @@ class Problem(Object):
         o._target_weights = None
         return o
 
-    @property
-    def parameters(self):
-        ps = self.problem_parameters
-        for target in self.targets:
-            ps.extend(target.target_parameters)
-
-        return ps
-
     def set_target_parameter_values(self, x):
         i = len(self.problem_parameters)
         for target in self.targets:
@@ -132,15 +64,19 @@ class Problem(Object):
             target.set_parameter_values(x[i:i+n])
             i += n
 
-    def get_parameter_dict(self, x):
-        return ADict((p.name, v) for p, v in zip(self.parameters, x))
+    def get_parameter_dict(self, model, group=None):
+        params = []
+        for ip, p in enumerate(self.parameters):
+            if group in p.groups:
+                params.append((p.name, model[ip]))
+        return ADict(params)
 
     def get_parameter_array(self, d):
-        return num.array([d[p.name] for p in self.parameters], dtype=num.float)
-
-    @property
-    def parameter_names(self):
-        return [p.name for p in self.combined]
+        arr = num.zeros(self.nparameters, dtype=num.float)
+        for ip, p in enumerate(self.parameters):
+            if p.name in d.keys():
+                arr[ip] = d[p.name]
+        return arr
 
     def dump_problem_info(self, dirname):
         fn = op.join(dirname, 'problem.yaml')
@@ -177,12 +113,31 @@ class Problem(Object):
         return pnames.index(name)
 
     @property
+    def parameters(self):
+        target_parameters = []
+        for target in self.targets:
+            target_parameters.extend(target.target_parameters)
+        return self.problem_parameters + target_parameters
+
+    @property
+    def parameter_names(self):
+        return [p.name for p in self.combined]
+
+    @property
     def nparameters(self):
         return len(self.parameters)
 
     @property
     def ntargets(self):
         return len(self.targets)
+
+    @property
+    def ntargets_waveform(self):
+        return len(self.waveform_targets)
+
+    @property
+    def ntargets_static(self):
+        return len(self.satellite_targets)
 
     @property
     def ndependants(self):
@@ -220,6 +175,9 @@ class Problem(Object):
 
     def set_engine(self, engine):
         self._engine = engine
+
+    def random_uniform(self, xbounds):
+        raise NotImplementedError()
 
     def make_bootstrap_weights(self, nbootstrap, type='classic'):
         ntargets = self.ntargets
@@ -296,16 +254,15 @@ class Problem(Object):
 
         for target in self.targets:
             for p in target.target_parameters:
-                r = target.ranges[p.name]
+                r = target.target_ranges[p.name]
                 out.append((r.start, r.stop))
-
         return out
 
     def get_dependant_bounds(self):
         return []
 
     def raise_invalid_norm_exponent(self):
-        raise core.GrondError('invalid norm exponent' % self.norm_exponent)
+        raise GrondError('invalid norm exponent' % self.norm_exponent)
 
     def get_sqr_sqrt(self):
         if self.norm_exponent == 2:
@@ -345,6 +302,15 @@ class Problem(Object):
 
         bms = sqrt(num.nansum(sqr(w*misfits[:, :, 0]), axis=1) /
                    num.nansum(sqr(w*misfits[:, :, 1]), axis=1))
+
+        # From Henriette
+        # w = self.get_target_weights()[num.newaxis, :] * \
+        #     self.inter_group_weights2(misfits[:, :, 1])
+        # #w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
+        # #    self.get_target_weights()[num.newaxis, :] * \
+        # #    self.inter_group_weights2(misfits[:, :, 1])
+
+        # bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1))
         return bms
 
     def global_misfit(self, ms, ns):
@@ -397,7 +363,7 @@ class Problem(Object):
 
 class CMTProblem(Problem):
 
-    parameters = [
+    problem_parameters = [
         Parameter('time', 's', label='Time'),
         Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('east_shift', 'm', label='Easting', **as_km),
@@ -804,6 +770,10 @@ class DoubleDCProblemConfig(ProblemConfig):
 
 
 class RectangularProblem(Problem):
+    # nucleation_x
+    # nucleation_y
+    # time
+    # stf
 
     problem_parameters = [
         Parameter('north_shift', 'm', label='Northing', **as_km),
@@ -817,15 +787,29 @@ class RectangularProblem(Problem):
         Parameter('slip', 'm', label='Slip'),
         ]
 
+    problem_waveform_parameters = [
+        Parameter('nucleation_x', 'offset', label='Nucleation X'),
+        Parameter('nucleation_y', 'offset', label='Nucleation Y'),
+        Parameter('time', 's', label='Time'),
+    ]
+
     dependants = []
 
-    nbootstrap = 0
+    distance_min = Float.T(default=0.0)
+    nbootstrap = Int.T(default=10)
 
     def pack(self, source):
-        return self.get_parameter_array(source)
+        arr = self.get_parameter_array(source)
+        for ip, p in enumerate(self.parameters):
+            if p.name == 'time':
+                arr[ip] -= self.base_source.time
+        return arr
 
     def get_source(self, x):
-        source = self.base_source.clone(**self.get_parameter_dict(x))
+        d = self.get_parameter_dict(x)
+        if 'time' in d.keys():
+            d['time'] += self.base_source['time']
+        source = self.base_source.clone(**d)
         return source
 
     def extract(self, xs, i):
@@ -855,8 +839,6 @@ class RectangularProblem(Problem):
         for target in self.targets:
             target.set_result_mode(result_mode)
 
-        self.set_satellite_scene_levels(x)
-
         if mask is not None:
             assert len(mask) == len(self.targets)
             targets_ok = [
@@ -864,6 +846,7 @@ class RectangularProblem(Problem):
         else:
             targets_ok = self.targets
 
+        self.set_target_parameter_values(x)
         resp = engine.process(source, targets_ok, nprocs=nprocs)
 
         if mask is not None:
@@ -885,7 +868,6 @@ class RectangularProblem(Problem):
             if isinstance(result, gf.SeismosizerError):
                 logger.debug(
                     '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
-
                 data.append((None, None))
             else:
                 data.append((result.misfit_value, result.misfit_norm))
@@ -896,12 +878,12 @@ class RectangularProblem(Problem):
         else:
             return ms, ns
 
-    def forward(self, x):
+    def forward(self, x, nprocs=0):
         source = self.get_source(x)
         engine = self.get_engine()
         plain_targets = [target.get_plain_target() for target in self.targets]
 
-        resp = engine.process(source, plain_targets)
+        resp = engine.process(source, plain_targets, nprocs=nprocs)
         results = []
         for target, result in zip(self.targets, resp.results_list[0]):
             if isinstance(result, gf.SeismosizerError):
@@ -920,6 +902,8 @@ class RectangularProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     apply_balancing_weights = Bool.T(default=False)
     decimation_factor = Int.T(default=1)
+    nbootstrap = Int.T(default=10)
+    distance_min = Float.T(default=0.)
 
     def get_problem(self, event, targets):
         base_source = gf.RectangularSource(
@@ -935,6 +919,8 @@ class RectangularProblemConfig(ProblemConfig):
             name=expand_template(self.name_template, event.name),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
+            nbootstrap=self.nbootstrap,
+            distance_min=self.distance_min,
             targets=targets,
             ranges=self.ranges,
             norm_exponent=self.norm_exponent)

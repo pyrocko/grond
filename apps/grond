@@ -218,7 +218,8 @@ def command_init(args):
             group='all',
             interpolation='multilinear',
             store_id='gf_store',
-            inner_satellite_misfit_config=grond.InnerSatelliteMisfitConfig(
+            kite_scenes=['*all'],
+            inner_misfit_config=grond.InnerSatelliteMisfitConfig(
                 use_weight_focal=False))]
 
         problem_config = grond.RectangularProblemConfig(

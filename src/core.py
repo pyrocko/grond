@@ -300,13 +300,14 @@ def analyse(problem, niter=1000, show_progress=False):
         return
 
     wtargets = []
-    for target in problem.targets:
+    if not problem.has_waveforms:
+        return
+
+    for target in problem.waveform_targets:
         wtarget = copy.copy(target)
         wtarget.flip_norm = True
         wtarget.weight = 1.0
         wtargets.append(wtarget)
-
-    groups, ngroups = problem.get_group_mask()
 
     wproblem = problem.copy()
     wproblem.targets = wtargets
@@ -339,7 +340,6 @@ def analyse(problem, niter=1000, show_progress=False):
             isok_mask = num.logical_not(isbad_mask)
         else:
             isok_mask = None
-
         _, ms = wproblem.evaluate(x, mask=isok_mask)
         mss[iiter, :] = ms
 
@@ -351,15 +351,16 @@ def analyse(problem, niter=1000, show_progress=False):
     if show_progress:
         pbar.finish()
 
-    # mean_ms = num.mean(mss, axis=0)
-    # weights = 1.0 / mean_ms
-    weights = num.ones(wproblem.ntargets)
+    mean_ms = num.mean(mss, axis=0)
+    weights = 1. / mean_ms
+    groups, ngroups = wproblem.get_group_mask()
+
     for igroup in xrange(ngroups):
         weights[groups == igroup] /= (
             num.nansum(weights[groups == igroup]) /
             num.nansum(num.isfinite(weights[groups == igroup])))
 
-    for weight, target in zip(weights, problem.targets):
+    for weight, target in zip(weights, problem.waveform_targets):
         target.analysis_result = TargetAnalysisResult(
             balancing_weight=float(weight))
 
@@ -422,7 +423,7 @@ def solve(problem,
           plot=None):
 
     xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
-    npar = xbounds.shape[0]
+    npar = problem.nparameters
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
     chains_m = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.float)
@@ -447,7 +448,7 @@ def solve(problem,
     isbad_mask = None
     accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
-    pnames = [p.name for p in problem.parameters]
+    pnames = problem.parameter_names
 
     if plot:
         plot.start(problem)
