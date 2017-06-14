@@ -5,61 +5,22 @@ import logging
 import time
 import copy
 import shutil
-import glob
 import os.path as op
-from string import Template
-
 import numpy as num
 
-from pyrocko.guts import load, Object, String, Float, Int, Bool, List, \
-    StringChoice, Dict, Timestamp
+from pyrocko.guts import (load, Object, String, Float, Int, Bool, List,
+                          StringChoice)
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
-from pyrocko.guts_array import Array
 
-from grond import dataset
+from .dataset import DatasetConfig, NotFound
+from .problems import ProblemConfig, Problem
+from .targets import TargetAnalysisResult, TargetConfig
+from .meta import (Path, HasPaths, expand_template, xjoin, GrondError,
+                   Forbidden)
 
 logger = logging.getLogger('grond.core')
-
 guts_prefix = 'grond'
-
-
-def float_or_none(x):
-    if x is None:
-        return x
-    else:
-        return float(x)
-
-
-class Trace(Object):
-    pass
-
-
-def backazimuth_for_waveform(azimuth, nslc):
-    if nslc[-1] == 'R':
-        backazimuth = azimuth + 180.
-    elif nslc[-1] == 'T':
-        backazimuth = azimuth + 90.
-    else:
-        backazimuth = None
-
-    return backazimuth
-
-
-class TraceSpectrum(Object):
-    network = String.T()
-    station = String.T()
-    location = String.T()
-    channel = String.T()
-    deltaf = Float.T(default=1.0)
-    fmin = Float.T(default=0.0)
-    ydata = Array.T(shape=(None,), dtype=num.complex, serialize_as='list')
-
-    def get_ydata(self):
-        return self.ydata
-
-    def get_xdata(self):
-        return self.fmin + num.arange(self.ydata.size) * self.deltaf
 
 
 def mahalanobis_distance(xs, mx, cov):
@@ -69,938 +30,8 @@ def mahalanobis_distance(xs, mx, cov):
     return num.sqrt(num.sum(temp * num.dot(icov, temp.T).T, axis=1))
 
 
-class Parameter(Object):
-    name = String.T()
-    unit = String.T(optional=True)
-    scale_factor = Float.T(default=1., optional=True)
-    scale_unit = String.T(optional=True)
-    label = String.T(optional=True)
-
-    def __init__(self, *args, **kwargs):
-        if len(args) >= 1:
-            kwargs['name'] = args[0]
-        if len(args) >= 2:
-            kwargs['unit'] = args[1]
-
-        Object.__init__(self, **kwargs)
-
-    def get_label(self, with_unit=True):
-        l = [self.label or self.name]
-        if with_unit:
-            unit = self.get_unit_label()
-            if unit:
-                l.append('[%s]' % unit)
-
-        return ' '.join(l)
-
-    def get_value_label(self, value, format='%(value)g%(unit)s'):
-        value = self.scaled(value)
-        unit = self.get_unit_suffix()
-        return format % dict(value=value, unit=unit)
-
-    def get_unit_label(self):
-        if self.scale_unit is not None:
-            return self.scale_unit
-        elif self.unit:
-            return self.unit
-        else:
-            return None
-
-    def get_unit_suffix(self):
-        unit = self.get_unit_label()
-        if not unit:
-            return ''
-        else:
-            return ' %s' % unit
-
-    def scaled(self, x):
-        if isinstance(x, tuple):
-            return tuple(v/self.scale_factor for v in x)
-        if isinstance(x, list):
-            return list(v/self.scale_factor for v in x)
-        else:
-            return x/self.scale_factor
-
-
-class ADict(dict):
-    def __getattr__(self, k):
-        return self[k]
-
-    def __setattr__(self, k, v):
-        self[k] = v
-
-
-class Problem(Object):
-    name = String.T()
-    parameters = List.T(Parameter.T())
-    dependants = List.T(Parameter.T())
-    apply_balancing_weights = Bool.T(default=True)
-    norm_exponent = Int.T(default=2)
-    base_source = gf.Source.T(optional=True)
-
-    def __init__(self, **kwargs):
-        Object.__init__(self, **kwargs)
-        self._bootstrap_weights = None
-        self._target_weights = None
-        self._engine = None
-        self._group_mask = None
-
-    def get_engine(self):
-        return self._engine
-
-    def copy(self):
-        o = copy.copy(self)
-        o._bootstrap_weights = None
-        o._target_weights = None
-        return o
-
-    def parameter_dict(self, x):
-        return ADict((p.name, v) for (p, v) in zip(self.parameters, x))
-
-    def parameter_array(self, d):
-        return num.array([d[p.name] for p in self.parameters], dtype=num.float)
-
-    @property
-    def parameter_names(self):
-        return [p.name for p in self.combined]
-
-    def dump_problem_info(self, dirname):
-        fn = op.join(dirname, 'problem.yaml')
-        util.ensuredirs(fn)
-        guts.dump(self, filename=fn)
-
-    def dump_problem_data(
-            self, dirname, x, ms, ns,
-            accept=None, ibootstrap_choice=None, ibase=None):
-
-        fn = op.join(dirname, 'x')
-        with open(fn, 'ab') as f:
-            x.astype('<f8').tofile(f)
-
-        fn = op.join(dirname, 'misfits')
-        with open(fn, 'ab') as f:
-            ms.astype('<f8').tofile(f)
-            ns.astype('<f8').tofile(f)
-
-        if None not in (ibootstrap_choice, ibase):
-            fn = op.join(dirname, 'choices')
-            with open(fn, 'ab') as f:
-                num.array((ibootstrap_choice, ibase), dtype='<i8').tofile(f)
-
-        if accept is not None:
-            fn = op.join(dirname, 'accepted')
-            with open(fn, 'ab') as f:
-                accept.astype('<i1').tofile(f)
-
-    def name_to_index(self, name):
-        pnames = [p.name for p in self.combined]
-        return pnames.index(name)
-
-    @property
-    def nparameters(self):
-        return len(self.parameters)
-
-    @property
-    def ntargets(self):
-        return len(self.targets)
-
-    @property
-    def ndependants(self):
-        return len(self.dependants)
-
-    @property
-    def ncombined(self):
-        return len(self.parameters) + len(self.dependants)
-
-    @property
-    def combined(self):
-        return self.parameters + self.dependants
-
-    def make_bootstrap_weights(self, nbootstrap, type='classic'):
-        ntargets = self.ntargets
-        ws = num.zeros((nbootstrap, ntargets))
-        rstate = num.random.RandomState(23)
-        for ibootstrap in xrange(nbootstrap):
-            if type == 'classic':
-                ii = rstate.randint(0, ntargets, size=self.ntargets)
-                ws[ibootstrap, :] = num.histogram(
-                    ii, ntargets, (-0.5, ntargets - 0.5))[0]
-            elif type == 'bayesian':
-                f = rstate.uniform(0., 1., size=self.ntargets+1)
-                f[0] = 0.
-                f[-1] = 1.
-                f = num.sort(f)
-                g = f[1:] - f[:-1]
-                ws[ibootstrap, :] = g * ntargets
-            else:
-                assert False
-
-        return ws
-
-    def get_bootstrap_weights(self, ibootstrap=None):
-        if self._bootstrap_weights is None:
-            self._bootstrap_weights = self.make_bootstrap_weights(
-                self.nbootstrap, type='bayesian')
-
-        if ibootstrap is None:
-            return self._bootstrap_weights
-        else:
-            return self._bootstrap_weights[ibootstrap, :]
-
-    def set_engine(self, engine):
-        self._engine = engine
-
-    def make_group_mask(self):
-        super_group_names = set()
-        groups = num.zeros(len(self.targets), dtype=num.int)
-        ngroups = 0
-        for itarget, target in enumerate(self.targets):
-            if target.super_group not in super_group_names:
-                super_group_names.add(target.super_group)
-                ngroups += 1
-
-            groups[itarget] = ngroups - 1
-
-        return groups, ngroups
-
-    def get_group_mask(self):
-        if self._group_mask is None:
-            self._group_mask = self.make_group_mask()
-
-        return self._group_mask
-
-    def xref(self):
-        return self.pack(self.base_source)
-
-
-class ProblemConfig(Object):
-    name_template = String.T()
-    apply_balancing_weights = Bool.T(default=True)
-    norm_exponent = Int.T(default=2)
-
-
-class Forbidden(Exception):
-    pass
-
-
 class DirectoryAlreadyExists(Exception):
     pass
-
-
-class GrondError(Exception):
-    pass
-
-
-class DomainChoice(StringChoice):
-    choices = [
-        'time_domain',
-        'frequency_domain',
-        'envelope',
-        'absolute',
-        'cc_max_norm']
-
-
-class InnerMisfitConfig(Object):
-    fmin = Float.T()
-    fmax = Float.T()
-    ffactor = Float.T(default=1.5)
-    tmin = gf.Timing.T(
-        help='Start of main time window used for waveform fitting.')
-    tmax = gf.Timing.T(
-        help='End of main time window used for waveform fitting.')
-    tfade = Float.T(
-        optional=True,
-        help='Decay time of taper prepended and appended to main time window '
-             'used for waveform fitting [s].')
-    pick_synthetic_traveltime = gf.Timing.T(
-        optional=True,
-        help='Synthetic phase arrival definition for alignment of observed '
-             'and synthetic traces.')
-    pick_phasename = String.T(
-        optional=True,
-        help='Name of picked phase for alignment of observed and synthetic '
-             'traces.')
-    domain = DomainChoice.T(
-        default='time_domain',
-        help='Type of data characteristic to be fitted.\n\nAvailable choices '
-             'are: %s' % ', '.join("``'%s'``" % s
-                                   for s in DomainChoice.choices))
-    norm_exponent = Int.T(
-        default=2,
-        help='Exponent to use in norm (1: L1-norm, 2: L2-norm)')
-
-    tautoshift_max = Float.T(
-        default=0.0,
-        help='If non-zero, allow synthetic and observed traces to be shifted '
-             'against each other by up to +/- the given value [s].')
-    autoshift_penalty_max = Float.T(
-        default=0.0,
-        help='If non-zero, a penalty misfit is added for non-zero shift '
-             'values.\n\nThe penalty value is computed as '
-             '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
-             '/ tautoshift_max**2``')
-
-    def get_full_frequency_range(self):
-        return self.fmin / self.ffactor, self.fmax * self.ffactor
-
-
-class TargetAnalysisResult(Object):
-    balancing_weight = Float.T()
-
-
-class NoAnalysisResults(Exception):
-    pass
-
-
-class MisfitResult(gf.Result):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
-    processed_obs = Trace.T(optional=True)
-    processed_syn = Trace.T(optional=True)
-    filtered_obs = Trace.T(optional=True)
-    filtered_syn = Trace.T(optional=True)
-    spectrum_obs = TraceSpectrum.T(optional=True)
-    spectrum_syn = TraceSpectrum.T(optional=True)
-    taper = trace.Taper.T(optional=True)
-    tobs_shift = Float.T(optional=True)
-    tsyn_pick = Timestamp.T(optional=True)
-    tshift = Float.T(optional=True)
-    cc = Trace.T(optional=True)
-
-
-class MisfitTarget(gf.Target):
-    misfit_config = InnerMisfitConfig.T()
-    flip_norm = Bool.T(default=False)
-    manual_weight = Float.T(default=1.0)
-    analysis_result = TargetAnalysisResult.T(optional=True)
-    super_group = gf.StringID.T()
-    group = gf.StringID.T()
-
-    def __init__(self, **kwargs):
-        gf.Target.__init__(self, **kwargs)
-        self._ds = None
-        self._result_mode = 'sparse'
-
-    def string_id(self):
-        return '.'.join(x for x in (
-            self.super_group, self.group) + self.codes if x)
-
-    def get_plain_target(self):
-        d = dict(
-            (k, getattr(self, k)) for k in gf.Target.T.propnames)
-        return gf.Target(**d)
-
-    def get_dataset(self):
-        return self._ds
-
-    def set_dataset(self, ds):
-        self._ds = ds
-
-    def set_result_mode(self, result_mode):
-        self._result_mode = result_mode
-
-    def get_combined_weight(self, apply_balancing_weights):
-        w = self.manual_weight
-        if apply_balancing_weights:
-            w *= self.get_balancing_weight()
-
-        return w
-
-    def get_balancing_weight(self):
-        if not self.analysis_result:
-            raise NoAnalysisResults('no balancing weights available')
-
-        return self.analysis_result.balancing_weight
-
-    def get_taper_params(self, engine, source):
-        store = engine.get_store(self.store_id)
-        config = self.misfit_config
-        tmin_fit = source.time + store.t(config.tmin, source, self)
-        tmax_fit = source.time + store.t(config.tmax, source, self)
-        tfade = 1.0/config.fmin
-        if config.tfade is None:
-            tfade_taper = tfade
-        else:
-            tfade_taper = config.tfade
-
-        return tmin_fit, tmax_fit, tfade, tfade_taper
-
-    def get_backazimuth_for_waveform(self):
-        return backazimuth_for_waveform(self.azimuth, self.codes)
-
-    def get_freqlimits(self):
-        config = self.misfit_config
-
-        return (
-            config.fmin/config.ffactor,
-            config.fmin, config.fmax,
-            config.fmax*config.ffactor)
-
-    def get_pick_shift(self, engine, source):
-        config = self.misfit_config
-        tobs = None
-        tsyn = None
-        ds = self.get_dataset()
-
-        if config.pick_synthetic_traveltime and config.pick_phasename:
-            store = engine.get_store(self.store_id)
-            tsyn = source.time + store.t(
-                config.pick_synthetic_traveltime, source, self)
-
-            marker = ds.get_pick(
-                source.name,
-                self.codes[:3],
-                config.pick_phasename)
-
-            if marker:
-                tobs = marker.tmin
-
-        return tobs, tsyn
-
-    def get_cutout_timespan(self, tmin, tmax, tfade):
-        tinc_obs = 1.0 / self.misfit_config.fmin
-
-        tmin_obs = (math.floor(
-            (tmin - tfade) / tinc_obs) - 1.0) * tinc_obs
-        tmax_obs = (math.ceil(
-            (tmax + tfade) / tinc_obs) + 1.0) * tinc_obs
-
-        return tmin_obs, tmax_obs
-
-    def post_process(self, engine, source, tr_syn):
-
-        tr_syn = tr_syn.pyrocko_trace()
-        nslc = self.codes
-
-        config = self.misfit_config
-
-        tmin_fit, tmax_fit, tfade, tfade_taper = \
-            self.get_taper_params(engine, source)
-
-        ds = self.get_dataset()
-
-        tobs, tsyn = self.get_pick_shift(engine, source)
-        if None not in (tobs, tsyn):
-            tobs_shift = tobs - tsyn
-        else:
-            tobs_shift = 0.0
-
-        tr_syn.extend(
-            tmin_fit - tfade * 2.0,
-            tmax_fit + tfade * 2.0,
-            fillmethod='repeat')
-
-        freqlimits = self.get_freqlimits()
-
-        tr_syn = tr_syn.transfer(
-            freqlimits=freqlimits,
-            tfade=tfade)
-
-        tr_syn.chop(tmin_fit - 2*tfade, tmax_fit + 2*tfade)
-
-        tmin_obs, tmax_obs = self.get_cutout_timespan(
-            tmin_fit+tobs_shift, tmax_fit+tobs_shift, tfade)
-
-        try:
-            tr_obs = ds.get_waveform(
-                nslc,
-                tmin=tmin_obs,
-                tmax=tmax_obs,
-                tfade=tfade,
-                freqlimits=freqlimits,
-                deltat=tr_syn.deltat,
-                cache=True,
-                backazimuth=self.get_backazimuth_for_waveform())
-
-            if tobs_shift != 0.0:
-                tr_obs = tr_obs.copy()
-                tr_obs.shift(-tobs_shift)
-
-            mr = misfit(
-                tr_obs, tr_syn,
-                taper=trace.CosTaper(
-                    tmin_fit - tfade_taper,
-                    tmin_fit,
-                    tmax_fit,
-                    tmax_fit + tfade_taper),
-                domain=config.domain,
-                exponent=config.norm_exponent,
-                flip=self.flip_norm,
-                result_mode=self._result_mode,
-                tautoshift_max=config.tautoshift_max,
-                autoshift_penalty_max=config.autoshift_penalty_max)
-
-            mr.tobs_shift = float(tobs_shift)
-            mr.tsyn_pick = float_or_none(tsyn)
-
-            return mr
-
-        except dataset.NotFound, e:
-            logger.debug(str(e))
-            raise gf.SeismosizerError('no waveform data, %s' % str(e))
-
-
-def misfit(
-        tr_obs, tr_syn, taper, domain, exponent, tautoshift_max,
-        autoshift_penalty_max, flip, result_mode='sparse'):
-
-    '''
-    Calculate misfit between observed and synthetic trace.
-
-    :param tr_obs: observed trace as :py:class:`pyrocko.trace.Trace`
-    :param tr_syn: synthetic trace as :py:class:`pyrocko.trace.Trace`
-    :param taper: taper applied in timedomain as
-        :py:class:`pyrocko.trace.Taper`
-    :param domain: how to calculate difference, see :py:class:`DomainChoice`
-    :param exponent: exponent of Lx type norms
-    :param tautoshift_max: if non-zero, return lowest misfit when traces are
-        allowed to shift against each other by up to +/- ``tautoshift_max``
-    :param autoshift_penalty_max: if non-zero, a penalty misfit is added for
-        for non-zero shift values. The penalty value is
-        ``autoshift_penalty_max * normalization_factor * \
-tautoshift**2 / tautoshift_max**2``
-    :param flip: ``bool``, if set to ``True``, normalization factor is
-        computed against *tr_syn* rather than *tr_obs*
-    :param result_mode: ``'full'``, include traces and spectra or ``'sparse'``,
-        include only misfit and normalization factor in result
-
-    :returns: object of type :py:class:`MisfitResult`
-    '''
-
-    trace.assert_same_sampling_rate(tr_obs, tr_syn)
-    deltat = tr_obs.deltat
-    tmin, tmax = taper.time_span()
-
-    tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain)
-    tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain)
-
-    tshift = None
-    ctr = None
-    deltat = tr_proc_obs.deltat
-    if domain in ('time_domain', 'envelope', 'absolute'):
-        a, b = tr_proc_syn.ydata, tr_proc_obs.ydata
-        if flip:
-            b, a = a, b
-
-        nshift_max = max(0, min(a.size-1,
-                                int(math.floor(tautoshift_max / deltat))))
-
-        if nshift_max == 0:
-            m, n = trace.Lx_norm(a, b, norm=exponent)
-        else:
-            mns = []
-            for ishift in xrange(-nshift_max, nshift_max+1):
-                if ishift < 0:
-                    a_cut = a[-ishift:]
-                    b_cut = b[:ishift]
-                elif ishift == 0:
-                    a_cut = a
-                    b_cut = b
-                elif ishift > 0:
-                    a_cut = a[:-ishift]
-                    b_cut = b[ishift:]
-
-                mns.append(trace.Lx_norm(a_cut, b_cut, norm=exponent))
-
-            ms, ns = num.array(mns).T
-
-            iarg = num.argmin(ms)
-            tshift = (iarg-nshift_max)*deltat
-
-            m, n = ms[iarg], ns[iarg]
-            m += autoshift_penalty_max * n * tshift**2 / tautoshift_max**2
-
-    elif domain == 'cc_max_norm':
-
-        ctr = trace.correlate(
-            tr_proc_syn,
-            tr_proc_obs,
-            mode='same',
-            normalization='normal')
-
-        tshift, cc_max = ctr.max()
-        m = 0.5 - 0.5 * cc_max
-        n = 0.5
-
-    elif domain == 'frequency_domain':
-        a, b = trspec_proc_syn.ydata, trspec_proc_obs.ydata
-        if flip:
-            b, a = a, b
-
-        m, n = trace.Lx_norm(num.abs(a), num.abs(b), norm=exponent)
-
-    if result_mode == 'full':
-        result = MisfitResult(
-            misfit_value=m,
-            misfit_norm=n,
-            processed_obs=tr_proc_obs,
-            processed_syn=tr_proc_syn,
-            filtered_obs=tr_obs.copy(),
-            filtered_syn=tr_syn,
-            spectrum_obs=trspec_proc_obs,
-            spectrum_syn=trspec_proc_syn,
-            taper=taper,
-            tshift=tshift,
-            cc=ctr)
-
-    elif result_mode == 'sparse':
-        result = MisfitResult(
-            misfit_value=m,
-            misfit_norm=n)
-    else:
-        assert False
-
-    return result
-
-
-def _process(tr, tmin, tmax, taper, domain):
-    tr_proc = _extend_extract(tr, tmin, tmax)
-    tr_proc.taper(taper)
-
-    df = None
-    trspec_proc = None
-
-    if domain == 'envelope':
-        tr_proc = tr_proc.envelope(inplace=False)
-        tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
-
-    elif domain == 'absolute':
-        tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
-
-    elif domain == 'frequency_domain':
-        ndata = tr_proc.ydata.size
-        nfft = trace.nextpow2(ndata)
-        padded = num.zeros(nfft, dtype=num.float)
-        padded[:ndata] = tr_proc.ydata
-        spectrum = num.fft.rfft(padded)
-        df = 1.0 / (tr_proc.deltat * nfft)
-
-        trspec_proc = TraceSpectrum(
-            network=tr_proc.network,
-            station=tr_proc.station,
-            location=tr_proc.location,
-            channel=tr_proc.channel,
-            deltaf=df,
-            fmin=0.0,
-            ydata=spectrum)
-
-    return tr_proc, trspec_proc
-
-
-def _extend_extract(tr, tmin, tmax):
-    deltat = tr.deltat
-    itmin_frame = int(math.floor(tmin/deltat))
-    itmax_frame = int(math.ceil(tmax/deltat))
-    nframe = itmax_frame - itmin_frame + 1
-    n = tr.data_len()
-    a = num.empty(nframe, dtype=num.float)
-    itmin_tr = int(round(tr.tmin / deltat))
-    itmax_tr = itmin_tr + n
-    icut1 = min(max(0, itmin_tr - itmin_frame), nframe)
-    icut2 = min(max(0, itmax_tr - itmin_frame), nframe)
-    icut1_tr = min(max(0, icut1 + itmin_frame - itmin_tr), n)
-    icut2_tr = min(max(0, icut2 + itmin_frame - itmin_tr), n)
-    a[:icut1] = tr.ydata[0]
-    a[icut1:icut2] = tr.ydata[icut1_tr:icut2_tr]
-    a[icut2:] = tr.ydata[-1]
-    tr = tr.copy(data=False)
-    tr.tmin = itmin_frame * deltat
-    tr.set_ydata(a)
-    return tr
-
-
-def xjoin(basepath, path):
-    if path is None and basepath is not None:
-        return basepath
-    elif op.isabs(path) or basepath is None:
-        return path
-    else:
-        return op.join(basepath, path)
-
-
-def xrelpath(path, start):
-    if op.isabs(path):
-        return path
-    else:
-        return op.relpath(path, start)
-
-
-class Path(String):
-    pass
-
-
-class HasPaths(Object):
-    path_prefix = Path.T(optional=True)
-
-    def __init__(self, *args, **kwargs):
-        Object.__init__(self, *args, **kwargs)
-        self._basepath = None
-        self._parent_path_prefix = None
-
-    def set_basepath(self, basepath, parent_path_prefix=None):
-        self._basepath = basepath
-        self._parent_path_prefix = parent_path_prefix
-        for (prop, val) in self.T.ipropvals(self):
-            if isinstance(val, HasPaths):
-                val.set_basepath(
-                    basepath, self.path_prefix or self._parent_path_prefix)
-
-    def get_basepath(self):
-        assert self._basepath is not None
-        return self._basepath
-
-    def change_basepath(self, new_basepath, parent_path_prefix=None):
-        assert self._basepath is not None
-
-        self._parent_path_prefix = parent_path_prefix
-        if self.path_prefix or not self._parent_path_prefix:
-
-            self.path_prefix = op.normpath(xjoin(xrelpath(
-                self._basepath, new_basepath), self.path_prefix))
-
-        for val in self.T.ivals(self):
-            if isinstance(val, HasPaths):
-                val.change_basepath(
-                    new_basepath, self.path_prefix or self._parent_path_prefix)
-
-        self._basepath = new_basepath
-
-    def expand_path(self, path, extra=None):
-        assert self._basepath is not None
-
-        if extra is None:
-            def extra(path):
-                return path
-
-        path_prefix = self.path_prefix or self._parent_path_prefix
-
-        if path is None:
-            return None
-        elif isinstance(path, basestring):
-            return extra(
-                op.normpath(xjoin(self._basepath, xjoin(path_prefix, path))))
-        else:
-            return [
-                extra(
-                    op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
-                for p in path]
-
-
-class RandomResponse(trace.FrequencyResponse):
-
-    scale = Float.T(default=0.0)
-
-    def set_random_state(self, rstate):
-        self._rstate = rstate
-
-    def evaluate(self, freqs):
-        n = freqs.size
-        return 1.0 + (
-            self._rstate.normal(scale=self.scale, size=n) +
-            0.0J * self._rstate.normal(scale=self.scale, size=n))
-
-
-class SyntheticWaveformNotAvailable(Exception):
-    pass
-
-
-class SyntheticTest(Object):
-    inject_solution = Bool.T(default=False)
-    respect_data_availability = Bool.T(default=False)
-    real_noise_scale = Float.T(default=0.0)
-    white_noise_scale = Float.T(default=0.0)
-    relative_white_noise_scale = Float.T(default=0.0)
-    random_response_scale = Float.T(default=0.0)
-    real_noise_toffset = Float.T(default=-3600.)
-    random_seed = Int.T(optional=True)
-    x = Dict.T(String.T(), Float.T())
-
-    def __init__(self, **kwargs):
-        Object.__init__(self, **kwargs)
-        self._problem = None
-        self._synthetics = None
-
-    def set_problem(self, problem):
-        self._problem = problem
-        self._synthetics = None
-
-    def get_problem(self):
-        if self._problem is None:
-            raise SyntheticWaveformNotAvailable(
-                'SyntheticTest.set_problem() has not been called yet')
-
-        return self._problem
-
-    def get_x(self):
-        problem = self.get_problem()
-        if self.x:
-            x = problem.preconstrain(
-                problem.parameter_array(self.x))
-
-        else:
-            x = problem.preconstrain(
-                problem.pack(
-                    problem.base_source))
-
-        return x
-
-    def get_synthetics(self):
-        problem = self.get_problem()
-        if self._synthetics is None:
-            x = self.get_x()
-            results = problem.forward(x)
-            synthetics = {}
-            for iresult, result in enumerate(results):
-                tr = result.trace.pyrocko_trace()
-                tfade = tr.tmax - tr.tmin
-                tr_orig = tr.copy()
-                tr.extend(tr.tmin - tfade, tr.tmax + tfade)
-                rstate = num.random.RandomState(
-                    (self.random_seed or 0) + iresult)
-
-                if self.random_response_scale != 0:
-                    tf = RandomResponse(scale=self.random_response_scale)
-                    tf.set_random_state(rstate)
-                    tr = tr.transfer(
-                        tfade=tfade,
-                        transfer_function=tf)
-
-                if self.white_noise_scale != 0.0:
-                    u = rstate.normal(
-                        scale=self.white_noise_scale,
-                        size=tr.data_len())
-
-                    tr.ydata += u
-
-                if self.relative_white_noise_scale != 0.0:
-                    u = rstate.normal(
-                        scale=self.relative_white_noise_scale * num.std(
-                            tr_orig.ydata),
-                        size=tr.data_len())
-
-                    tr.ydata += u
-
-                synthetics[result.trace.codes] = tr
-
-            self._synthetics = synthetics
-
-        return self._synthetics
-
-    def get_waveform(self, nslc, tmin, tmax, tfade=0., freqlimits=None):
-        synthetics = self.get_synthetics()
-
-        if nslc not in synthetics:
-            return None
-
-        tr = synthetics[nslc]
-        tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
-
-        tr = tr.transfer(
-            tfade=tfade,
-            freqlimits=freqlimits)
-
-        tr.chop(tmin, tmax)
-        return tr
-
-
-class DatasetConfig(HasPaths):
-
-    stations_path = Path.T(optional=True)
-    stations_stationxml_paths = List.T(Path.T())
-    events_path = Path.T()
-    waveform_paths = List.T(Path.T())
-    clippings_path = Path.T(optional=True)
-    responses_sacpz_path = Path.T(optional=True)
-    responses_stationxml_paths = List.T(Path.T())
-    station_corrections_path = Path.T(optional=True)
-    apply_correction_factors = Bool.T(default=True)
-    apply_correction_delays = Bool.T(default=True)
-    extend_incomplete = Bool.T(default=False)
-    picks_paths = List.T(Path.T())
-    blacklist_paths = List.T(Path.T())
-    blacklist = List.T(
-        String.T(),
-        help='stations/components to be excluded according to their STA, '
-             'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
-    whitelist_paths = List.T(Path.T())
-    whitelist = List.T(
-        String.T(),
-        optional=True,
-        help='if not None, list of stations/components to include according '
-             'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
-             'Note: ''when whitelisting on channel level, both, the raw and '
-             'the processed channel codes have to be listed.')
-    synthetic_test = SyntheticTest.T(optional=True)
-
-    def __init__(self, *args, **kwargs):
-        HasPaths.__init__(self, *args, **kwargs)
-        self._ds = {}
-
-    def get_event_names(self):
-        def extra(path):
-            return expand_template(path, dict(
-                event_name='*'))
-
-        def fp(path):
-            return self.expand_path(path, extra=extra)
-
-        events = []
-        for fn in glob.glob(fp(self.events_path)):
-            events.extend(model.load_events(filename=fn))
-
-        event_names = [ev.name for ev in events]
-        return event_names
-
-    def get_dataset(self, event_name):
-        if event_name not in self._ds:
-            def extra(path):
-                return expand_template(path, dict(
-                    event_name=event_name))
-
-            def fp(path):
-                return self.expand_path(path, extra=extra)
-
-            ds = dataset.Dataset(event_name)
-            ds.add_stations(
-                pyrocko_stations_filename=fp(self.stations_path),
-                stationxml_filenames=fp(self.stations_stationxml_paths))
-
-            ds.add_events(filename=fp(self.events_path))
-            ds.add_waveforms(paths=fp(self.waveform_paths))
-            if self.clippings_path:
-                ds.add_clippings(markers_filename=fp(self.clippings_path))
-
-            if self.responses_sacpz_path:
-                ds.add_responses(
-                    sacpz_dirname=fp(self.responses_sacpz_path))
-
-            if self.responses_stationxml_paths:
-                ds.add_responses(
-                    stationxml_filenames=fp(self.responses_stationxml_paths))
-
-            if self.station_corrections_path:
-                ds.add_station_corrections(
-                    filename=fp(self.station_corrections_path))
-
-            ds.apply_correction_factors = self.apply_correction_factors
-            ds.apply_correction_delays = self.apply_correction_delays
-            ds.extend_incomplete = self.extend_incomplete
-
-            for picks_path in self.picks_paths:
-                ds.add_picks(
-                    filename=fp(picks_path))
-
-            ds.add_blacklist(self.blacklist)
-            ds.add_blacklist(filenames=fp(self.blacklist_paths))
-            if self.whitelist:
-                ds.add_whitelist(self.whitelist)
-            if self.whitelist_paths:
-                ds.add_whitelist(filenames=fp(self.whitelist_paths))
-
-            ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
-            self._ds[event_name] = ds
-
-        return self._ds[event_name]
 
 
 def weed(origin, targets, limit, neighborhood=3):
@@ -1021,90 +52,6 @@ def weed(origin, targets, limit, neighborhood=3):
         target for (delete, target) in zip(deleted, targets) if not delete]
 
     return targets_weeded, meandists_kept, deleted
-
-
-class TargetConfig(Object):
-
-    super_group = gf.StringID.T(default='', optional=True)
-    group = gf.StringID.T(optional=True)
-    distance_min = Float.T(optional=True)
-    distance_max = Float.T(optional=True)
-    distance_3d_min = Float.T(optional=True)
-    distance_3d_max = Float.T(optional=True)
-    depth_min = Float.T(optional=True)
-    depth_max = Float.T(optional=True)
-    limit = Int.T(optional=True)
-    channels = List.T(String.T())
-    inner_misfit_config = InnerMisfitConfig.T()
-    interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T()
-    weight = Float.T(default=1.0)
-
-    def get_targets(self, ds, event, default_group):
-
-        origin = event
-
-        targets = []
-        for st in ds.get_stations():
-            for cha in self.channels:
-                if ds.is_blacklisted((st.nsl() + (cha,))):
-                    continue
-
-                target = MisfitTarget(
-                    quantity='displacement',
-                    codes=st.nsl() + (cha,),
-                    lat=st.lat,
-                    lon=st.lon,
-                    depth=st.depth,
-                    interpolation=self.interpolation,
-                    store_id=self.store_id,
-                    misfit_config=self.inner_misfit_config,
-                    manual_weight=self.weight,
-                    super_group=self.super_group,
-                    group=self.group or default_group)
-
-                if self.distance_min is not None and \
-                        target.distance_to(origin) < self.distance_min:
-                    continue
-
-                if self.distance_max is not None and \
-                        target.distance_to(origin) > self.distance_max:
-                    continue
-
-                if self.distance_3d_min is not None and \
-                        target.distance_3d_to(origin) < self.distance_3d_min:
-                    continue
-
-                if self.distance_3d_max is not None and \
-                        target.distance_3d_to(origin) > self.distance_3d_max:
-                    continue
-
-                if self.depth_min is not None and \
-                        target.depth < self.depth_min:
-                    continue
-
-                if self.depth_max is not None and \
-                        target.depth > self.depth_max:
-                    continue
-
-                azi, _ = target.azibazi_to(origin)
-                if cha == 'R':
-                    target.azimuth = azi - 180.
-                    target.dip = 0.
-                elif cha == 'T':
-                    target.azimuth = azi - 90.
-                    target.dip = 0.
-                elif cha == 'Z':
-                    target.azimuth = 0.
-                    target.dip = -90.
-
-                target.set_dataset(ds)
-                targets.append(target)
-
-        if self.limit:
-            return weed(origin, targets, self.limit)[0]
-        else:
-            return targets
 
 
 class AnalyserConfig(Object):
@@ -1204,7 +151,7 @@ class Config(HasPaths):
         synt = ds.synthetic_test
         if synt:
             synt.set_problem(problem)
-            problem.base_source = problem.unpack(synt.get_x())
+            problem.base_source = problem.get_source(synt.get_x())
 
     def get_problem(self, event):
         targets = self.get_targets(event)
@@ -1246,26 +193,27 @@ def load_optimizer_history(dirname, problem):
             dtype='<i8',
             count=nmodels*2).astype(num.int64)
 
-    print data2.shape
-    print nmodels
-
     ibootstrap_choices, imodel_choices = data2.reshape((nmodels, 2)).T
     return ibootstrap_choices, imodel_choices, accepted
 
 
-def load_problem_data(dirname, problem):
-    fn = op.join(dirname, 'x')
+def load_problem_data(dirname, problem, skip_models=0):
+    fn = op.join(dirname, 'models')
     with open(fn, 'r') as f:
         nmodels = os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
+        nmodels -= skip_models
+        f.seek(skip_models * problem.nparameters * 8)
         data1 = num.fromfile(
             f, dtype='<f8',
-            count=nmodels*problem.nparameters).astype(num.float)
+            count=nmodels * problem.nparameters)\
+            .astype(num.float)
 
-    nmodels = data1.size/problem.nparameters
+    nmodels = data1.size/problem.nparameters - skip_models
     xs = data1.reshape((nmodels, problem.nparameters))
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
+        f.seek(skip_models * problem.ntargets * 2 * 8)
         data2 = num.fromfile(
             f, dtype='<f8', count=nmodels*problem.ntargets*2).astype(num.float)
 
@@ -1303,13 +251,13 @@ def get_best_x_and_gm(problem, xs, misfits):
 
 def get_mean_source(problem, xs):
     x_mean = get_mean_x(xs)
-    source = problem.unpack(x_mean)
+    source = problem.get_source(x_mean)
     return source
 
 
 def get_best_source(problem, xs, misfits):
     x_best = get_best_x(problem, xs, misfits)
-    source = problem.unpack(x_best)
+    source = problem.get_source(x_best)
     return source
 
 
@@ -1363,10 +311,10 @@ def analyse(problem, niter=1000, show_progress=False):
     wproblem = problem.copy()
     wproblem.targets = wtargets
 
-    xbounds = num.array(wproblem.bounds(), dtype=num.float)
+    xbounds = num.array(wproblem.get_parameter_bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
-    mss = num.zeros((niter, problem.ntargets))
+    mss = num.zeros((niter, wproblem.ntargets))
     rstate = num.random.RandomState(123)
 
     if show_progress:
@@ -1403,9 +351,9 @@ def analyse(problem, niter=1000, show_progress=False):
     if show_progress:
         pbar.finish()
 
-    mean_ms = num.mean(mss, axis=0)
-
-    weights = 1.0 / mean_ms
+    # mean_ms = num.mean(mss, axis=0)
+    # weights = 1.0 / mean_ms
+    weights = num.ones(wproblem.ntargets)
     for igroup in xrange(ngroups):
         weights[groups == igroup] /= (
             num.nansum(weights[groups == igroup]) /
@@ -1473,7 +421,7 @@ def solve(problem,
           status=(),
           plot=None):
 
-    xbounds = num.array(problem.bounds(), dtype=num.float)
+    xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
     npar = xbounds.shape[0]
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
@@ -1713,6 +661,11 @@ def solve(problem,
         gxs = xhist[chains_i[0, :nlinks], :]
         gms = chains_m[0, :nlinks]
 
+        col_width = 15
+        col_param_width = max([len(p) for p in problem.parameter_names])+2
+        console_output = '{:<{col_param_width}s}'
+        console_output += ''.join(['{:>{col_width}{type}}'] * 5)
+
         if nlinks > (nlinks_cap-1)/2:
             # mean and std of all bootstrap ensembles together
             mbx = num.mean(bxs, axis=0)
@@ -1752,26 +705,41 @@ def solve(problem,
 
             if 'state' in status:
                 lines.append(
-                    '%-15s %15s %15s %15s %15s %15s' %
-                    ('parameter', 'B mean', 'B std', 'G mean', 'G std',
-                     'G best'))
+                    console_output.format(
+                        'parameter', 'B mean', 'B std', 'G mean', 'G std',
+                        'G best',
+                        col_param_width=col_param_width,
+                        col_width=col_width,
+                        type='s'))
 
                 for (pname, mbv, sbv, mgv, sgv, bgv) in zip(
                         pnames, mbx, sbx, mgx, sgx, bgx):
 
                     lines.append(
-                        '%-15s %15.4g %15.4g %15.4g %15.4g %15.4g' %
-                        (pname, mbv, sbv, mgv, sgv, bgv))
+                        console_output.format(
+                            pname, mbv, sbv, mgv, sgv, bgv,
+                            col_param_width=col_param_width,
+                            col_width=col_width,
+                            type='.4g'))
 
-                lines.append('%-15s %15s %15s %15.4g %15.4g %15.4g' % (
-                    'misfit', '', '',
-                    num.mean(gms), num.std(gms), num.min(gms)))
+                lines.append(
+                    console_output.format(
+                        'misfit', '', '',
+                        '%.4g' % num.mean(gms),
+                        '%.4g' % num.std(gms),
+                        '%.4g' % num.min(gms),
+                        col_param_width=col_param_width,
+                        col_width=col_width,
+                        type='s'))
 
         if 'state' in status:
             lines.append(
-                '%-15s %15i %-15s %15i %15i' % (
+                console_output.format(
                     'iteration', iiter+1, '(%s, %g)' % (phase, factor),
-                    ntries_sample, ntries_preconstrain))
+                    ntries_sample, ntries_preconstrain, '',
+                    col_param_width=col_param_width,
+                    col_width=col_width,
+                    type=''))
 
         if 'matrix' in status:
             matrix = (chains_i[:, :30] % 94 + 32).T
@@ -1860,7 +828,7 @@ def forward(rundir_or_config_path, event_names):
         ds.empty_cache()
         ms, ns, results = problem.evaluate(x, result_mode='full')
 
-        event = problem.unpack(x).pyrocko_event()
+        event = problem.get_source(x).pyrocko_event()
         events.append(event)
 
         for result in results:
@@ -1975,7 +943,8 @@ def check(
 
             check_problem(problem)
 
-            xbounds = num.array(problem.bounds(), dtype=num.float)
+            xbounds = num.array(
+                problem.get_parameter_bounds(), dtype=num.float)
 
             results_list = []
 
@@ -1989,7 +958,7 @@ def check(
             else:
                 for i in xrange(n_random_synthetics):
                     x = problem.random_uniform(xbounds)
-                    sources.append(problem.unpack(x))
+                    sources.append(problem.get_source(x))
                     ms, ns, results = problem.evaluate(x, result_mode='full')
                     results_list.append(results)
 
@@ -2053,7 +1022,7 @@ def check(
                                 backazimuth=target.
                                 get_backazimuth_for_waveform(),
                                 debug=True)
-                    except dataset.NotFound, e:
+                    except NotFound, e:
                         logger.warn(str(e))
                         continue
 
@@ -2193,9 +1162,7 @@ g_state = {}
 def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     status = tuple(status)
-
     g_data = (config, force, status, nparallel, event_names)
-
     g_state[id(g_data)] = g_data
 
     nevents = len(event_names)
@@ -2207,17 +1174,6 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
             nprocs=nparallel):
 
         pass
-
-
-def expand_template(template, d):
-    try:
-        return Template(template).substitute(d)
-    except KeyError as e:
-        raise GrondError(
-            'invalid placeholder "%s" in template: "%s"' % (str(e), template))
-    except ValueError:
-        raise GrondError(
-            'malformed placeholder in template: "%s"' % template)
 
 
 def process_event(ievent, g_data_id):
@@ -2241,7 +1197,7 @@ def process_event(ievent, g_data_id):
 
     synt = ds.synthetic_test
     if synt:
-        problem.base_source = problem.unpack(synt.get_x())
+        problem.base_source = problem.get_source(synt.get_x())
 
     check_problem(problem)
 
@@ -2405,11 +1361,11 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
                 '%16.7g' % gm
 
         elif type == 'source':
-            source = problem.unpack(x)
+            source = problem.get_source(x)
             guts.dump(source, stream=out)
 
         elif type == 'event':
-            ev = problem.unpack(x).pyrocko_event()
+            ev = problem.get_source(x).pyrocko_event()
             model.dump_events([ev], stream=out)
 
         else:
@@ -2471,24 +1427,10 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
 
 __all__ = '''
-    GrondError
-    Parameter
-    ADict
-    Path
-    Problem
-    ProblemConfig
-    MisfitTarget
-    MisfitResult
-    Forbidden
-    InnerMisfitConfig
-    DatasetConfig
-    TargetConfig
     SamplerDistributionChoice
     SolverConfig
     EngineConfig
     Config
-    HasPaths
-    TargetAnalysisResult
     load_problem_info
     load_problem_info_and_data
     load_optimizer_history

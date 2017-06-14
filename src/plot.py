@@ -177,7 +177,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     problem = model.problem
 
     imodels = num.arange(model.nmodels)
-    bounds = problem.bounds() + problem.dependant_bounds()
+    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
 
     xref = problem.xref()
 
@@ -346,7 +346,7 @@ def draw_jointpar_figures(
 
     xs = model.xs
 
-    bounds = problem.bounds() + problem.dependant_bounds()
+    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
     for ipar in xrange(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
@@ -356,7 +356,7 @@ def draw_jointpar_figures(
 
             exclude.append(par.name)
 
-    xref = problem.xref()
+    xref = problem.get_xref()
 
     if ibootstrap is not None:
         gms = problem.bootstrap_misfits(model.misfits, ibootstrap)
@@ -1010,7 +1010,7 @@ def draw_fits_figures(ds, model, plt):
                     spec.ydata *= w
 
             if result.tshift is not None and result.tshift != 0.0:
-                #result.filtered_syn.shift(result.tshift)
+                # result.filtered_syn.shift(result.tshift)
                 result.processed_syn.shift(result.tshift)
 
             dtrace = make_norm_trace(
@@ -1471,7 +1471,6 @@ def draw_location_figure(model, plt):
             (axes_dn, 'depth', 'north_shift'),
             (axes_ed, 'east_shift', 'depth')]:
 
-
         ixpar = problem.name_to_index(xparname)
         iypar = problem.name_to_index(yparname)
 
@@ -1488,11 +1487,11 @@ def draw_location_figure(model, plt):
         axes.set_xlim(xmin, xmax)
         axes.set_ylim(ymin, ymax)
 
-        #fxs = xpar.scaled(problem.extract(xs, ixpar))
-        #fys = ypar.scaled(problem.extract(xs, iypar))
+        # fxs = xpar.scaled(problem.extract(xs, ixpar))
+        # fys = ypar.scaled(problem.extract(xs, iypar))
 
-        #axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
-        #axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
+        # axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
+        # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
 
         cmap = cm.ScalarMappable(
             norm=colors.Normalize(vmin=num.min(iorder), vmax=num.max(iorder)),
@@ -1653,7 +1652,10 @@ def plot_result(dirname, plotnames_want,
 
 class SolverPlot(object):
 
-    def __init__(self, plt, xpar_name, ypar_name, show=False, update_every=1, movie_filename=None):
+    def __init__(
+            self, plt, xpar_name, ypar_name, show=False, update_every=1,
+            movie_filename=None):
+
         self.plt = plt
         self.xpar_name = xpar_name
         self.ypar_name = ypar_name
@@ -1762,7 +1764,7 @@ class SolverPlot(object):
 
             p = num.zeros((ny, nx))
 
-            for j in [ jchoice ]: # xrange(self.problem.nbootstrap+1):
+            for j in [jchoice]:  # xrange(self.problem.nbootstrap+1):
                 ps = core.excentricity_compensated_probabilities(
                         xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 

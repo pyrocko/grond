@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+{% end %}
+
+{% block content %}
+<header>
+    <h1 class="content-subhead">Problem <i>{{ problem.name }}</i></h1>
+    <p><span style="font-family: monospace;">{{ problem.__class__.__name__ }}</span> | <span style="font-family: monospace;">{{ problem.base_source.__class__.__name__ }}</span></p>
+</header>
+<div class="pure-g">
+    <div class="pure-u-1 pure-u-md-1 pure-u-lg-1-1">
+        <h2 class="content-subhead">Contributors</h3>
+        <p>Contributions of each target to the solution</p>
+        <div class="pure-u-1">
+            {% raw target_misfit_plot %}
+        </div>
+    </div>
+    <div class="pure-u-1 pure-u-md-1 pure-u-lg-1-1">
+        <h2 class="content-subhead">Targets</h3>
+        <p>Targets to optimize.</p>
+        {% include "table_targets.html" %}
+    </div>
+    <div class="pure-u-1">
+        <h2 class="content-subhead">Geographical map</h2>
+        <div id="initial_model_map" class="pure-u-1" style="min-height: 250px;">
+            <script>
+                var map = L.map('initial_model_map').setView(
+                    [{{ problem.base_source["lat"] }}, {{ problem.base_source["lon"] }}], 5);
+                L.tileLayer('http://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                            maxZoom: 19,
+                            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, Tiles courtesy of <a href="http://hot.openstreetmap.org/" target="_blank">Humanitarian OpenStreetMap Team</a>'
+                }).addTo(map);
+                var TargetIcon = L.Icon.extend({
+                    options: {
+                        // shadowUrl: 'leaf-shadow.png',
+                        iconSize:     [38, 95],
+                        shadowSize:   [50, 64],
+                        iconAnchor:   [22, 94],
+                        shadowAnchor: [4, 62],
+                    }
+                });
+                var target_icon = new TargetIcon({});
+
+                // Add markers
+                L.marker([
+                    {{ problem.base_source["lat"] }},
+                    {{ problem.base_source["lon"] }}],
+                    {}).addTo(map)
+                .bindPopup("<i>Problem: {{ problem.name }}</i><br>Lat: {{ problem.base_source["lat"] }}<br>Lon: {{ problem.base_source["lon"] }}<br>{{ problem.base_source["name"] }}");
+
+                {% for it, target in enumerate(problem.targets) %}
+                    var popup = "<span style='font-family: monospace;'>{{ target.__class__.__name__ }}</span> {{ target.id }}<br>Manual weight: {{ target.manual_weight }}";
+                    {% if target.__class__.__name__ == "MisfitSatelliteTarget" %}
+                    {% set coords = target.get_corner_coords() %}
+                        L.polygon([
+                            [{{ coords[0][0] }}, {{ coords[0][1] }}],
+                            [{{ coords[1][0] }}, {{ coords[1][1] }}],
+                            [{{ coords[2][0] }}, {{ coords[2][1] }}],
+                            [{{ coords[3][0] }}, {{ coords[3][1] }}],
+                            ]).addTo(map)
+                        .bindPopup(popup);
+                    {% else %}
+                        L.marker([
+                            {{ target.lat }},
+                            {{ target.lon }}],
+                            {}).addTo(map)
+                        .bindPopup(popup);
+                    {% end %}
+                {% end %}
+            </script>
+        </div>
+    </div>
+</div>
+{% end %}

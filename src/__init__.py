@@ -1,4 +1,6 @@
-from core import *  # noqa
-from cmt import *  # noqa
-from double_dc import *  # noqa
-from dataset import *  # noqa
+from .core import *  # noqa
+from .dataset import *  # noqa
+from .problems import *  # noqa
+from .targets import *  # noqa
+from .meta import *  # noqa
+from .synthetic_tests import *  #noqa

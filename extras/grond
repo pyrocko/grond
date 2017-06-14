@@ -1,0 +1,59 @@
+# bash-completion
+# For grond, the earthquake buster!
+
+_opt_filenames()
+{
+    echo $(compgen -o filenames -A file -- $cur)
+}
+
+_opt_dirnames()
+{
+    echo $(compgen -o plusdirs -f -- $cur)
+}
+
+_grond_options()
+{
+    local cur opts std
+    COMPREPLY=()
+    opts=""
+
+    cur=${COMP_WORDS[COMP_CWORD]}
+
+    declare -A arg_sub
+    arg_sub["init"]=""
+    arg_sub["check"]="$(_opt_filenames)"
+    arg_sub["go"]="$(_opt_filenames)"
+    arg_sub["forward"]="$(_opt_dirnames)"
+    arg_sub["harvest"]="$(_opt_dirnames)"
+    arg_sub["map-geometry"]="$(_opt_filenames)"
+    arg_sub["plot"]="bootstrap sequence hudson solution jointpar fits contributions all"
+    arg_sub["export"]="best mean ensemble stats"
+
+    _std="--help -h --loglevel"
+    declare -A arg_subsub
+    arg_subsub["init"]=""
+    arg_subsub["check"]="--event $_std"
+    arg_subsub["go"]="--event --force --status --parallel $_std"
+    arg_subsub["forward"]="--event $_std"
+    arg_subsub["harvest"]="--force --neach --weed $_std"
+    arg_subsub["map-geometry"]=" $_std"
+    arg_subsub["plot"]="$(_opt_dirnames)"
+    arg_subsub["export"]="$(_opt_dirnames)"
+
+    declare -A arg_subsubsub
+    arg_subsubsub["plot"]="--save --format --dpi $_std"
+    arg_subsubsub["export"]="--type --parameters --output $_std"
+
+    if [ $COMP_CWORD = 1 ]; then
+        opts="init check go forward harvest map-geometry plot export"
+    elif [ $COMP_CWORD = 2 ]; then
+        opts=${arg_sub[${COMP_WORDS[1]}]}
+    elif [ $COMP_CWORD = 3 ]; then
+        opts=${arg_subsub[${COMP_WORDS[1]}]}
+    elif [ $COMP_CWORD = 4 ]; then
+    	opts=${arg_subsubsub[${COMP_WORDS[1]}]}
+    fi
+    COMPREPLY=( $(compgen -W "${opts}" -- $cur) )
+    return 0
+}
+complete -o nospace -o filenames -F _grond_options grond
