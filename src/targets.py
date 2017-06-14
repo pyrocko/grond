@@ -412,8 +412,7 @@ tautoshift**2 / tautoshift_max**2``
                     b_cut = b[ishift:]
 
                 mns.append(trace.Lx_norm(a_cut, b_cut, norm=exponent))
-            ns = (num.sum(num.sum(tr_obs)) - num.sum(num.sum(tr_syn)))\
-                / num.sum(num.sum(tr_obs))
+
             ms, ns = num.array(mns).T
 
             iarg = num.argmin(ms)
@@ -461,6 +460,7 @@ tautoshift**2 / tautoshift_max**2``
             misfit_norm=n)
     else:
         assert False
+
     return result
 
 
