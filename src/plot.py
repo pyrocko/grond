@@ -191,7 +191,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     imodels = num.arange(model.nmodels)
     bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
 
-    xref = problem.xref()
+    xref = problem.get_xref()
 
     xs = model.xs
 
@@ -1490,7 +1490,7 @@ def draw_hudson_figure(model, plt):
 
     data = []
     for ix, x in enumerate(model.xs):
-        source = problem.unpack(x)
+        source = problem.get_source(x)
         mt = source.pyrocko_moment_tensor()
         u, v = hudson.project(mt)
 
@@ -1587,7 +1587,7 @@ def draw_location_figure(model, plt):
     axes_dn = fig.add_subplot(2, 2, 2)
     axes_ed = fig.add_subplot(2, 2, 3)
 
-    bounds = problem.bounds() + problem.dependant_bounds()
+    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
 
     gms = problem.global_misfits(model.misfits)
 
@@ -1630,7 +1630,7 @@ def draw_location_figure(model, plt):
             cmap=plt.get_cmap('coolwarm'))
 
         for ix, x in enumerate(xs):
-            source = problem.unpack(x)
+            source = problem.get_source(x)
             mt = source.pyrocko_moment_tensor()
             fx = problem.extract(x, ixpar)
             fy = problem.extract(x, iypar)
@@ -1828,7 +1828,7 @@ class SolverPlot(object):
         axes.get_xaxis().set_major_locator(plt.MaxNLocator(4))
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
 
-        xref = problem.xref()
+        xref = problem.get_xref()
         axes.axhline(xpar.scaled(xref[ixpar]), color='black', alpha=0.3)
         axes.axvline(ypar.scaled(xref[iypar]), color='black', alpha=0.3)
 
@@ -1848,7 +1848,7 @@ class SolverPlot(object):
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
 
-        bounds = self.problem.bounds() + self.problem.dependant_bounds()
+        bounds = self.problem.get_parameter_bounds() + self.problem.get_dependant_bounds()
 
         self.xlim = fixlim(*xpar.scaled(bounds[ixpar]))
         self.ylim = fixlim(*ypar.scaled(bounds[iypar]))
@@ -1902,8 +1902,8 @@ class SolverPlot(object):
                 ps = core.excentricity_compensated_probabilities(
                         xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
-                bounds = self.problem.bounds() + \
-                    self.problem.dependant_bounds()
+                bounds = self.problem.get_parameter_bounds() + \
+                    self.problem.get_dependant_bounds()
 
                 x = num.linspace(
                     bounds[self.ixpar][0], bounds[self.ixpar][1], nx)

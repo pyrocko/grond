@@ -462,6 +462,7 @@ def command_plot(args):
         'jointpar',
         'hudson',
         'fits',
+        'fits_statics',
         'solution',
         'location']
 
