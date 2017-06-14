@@ -220,26 +220,26 @@ class Problem(Object):
         return self._target_weights
 
     def inter_group_weights(self, ns):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
 
         group, ngroups = self.get_group_mask()
 
         ws = num.zeros(self.ntargets)
         for igroup in xrange(ngroups):
             mask = group == igroup
-            ws[mask] = 1.0 / sqrt(num.nansum(sqr(ns[mask])))
+            ws[mask] = 1.0 / root(num.nansum(exp(ns[mask])))
 
         return ws
 
     def inter_group_weights2(self, ns):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
 
         group, ngroups = self.get_group_mask()
         ws = num.zeros(ns.shape)
         for igroup in xrange(ngroups):
             mask = group == igroup
-            ws[:, mask] = (1.0 / sqrt(
-                num.nansum(sqr(ns[:, mask]), axis=1)))[:, num.newaxis]
+            ws[:, mask] = (1.0 / root(
+                num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]
 
         return ws
 
@@ -264,7 +264,7 @@ class Problem(Object):
     def raise_invalid_norm_exponent(self):
         raise GrondError('invalid norm exponent' % self.norm_exponent)
 
-    def get_sqr_sqrt(self):
+    def get_norm_functions(self):
         if self.norm_exponent == 2:
             def sqr(x):
                 return x**2
@@ -281,27 +281,27 @@ class Problem(Object):
             self.raise_invalid_norm_exponent()
 
     def bootstrap_misfit(self, ms, ns, ibootstrap=None):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
 
         w = self.get_bootstrap_weights(ibootstrap) * \
             self.get_target_weights() * self.inter_group_weights(ns)
 
         if ibootstrap is None:
-            return sqrt(
-                num.nansum(sqr(w*ms[num.newaxis, :]), axis=1) /
-                num.nansum(sqr(w*ns[num.newaxis, :]), axis=1))
+            return root(
+                num.nansum(exp(w*ms[num.newaxis, :]), axis=1) /
+                num.nansum(exp(w*ns[num.newaxis, :]), axis=1))
         else:
-            return sqrt(num.nansum(sqr(w*ms)) / num.nansum(sqr(w*ns)))
+            return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
 
     def bootstrap_misfits(self, misfits, ibootstrap):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
 
         w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
             self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
 
-        bms = sqrt(num.nansum(sqr(w*misfits[:, :, 0]), axis=1) /
-                   num.nansum(sqr(w*misfits[:, :, 1]), axis=1))
+        bms = root(num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
+                   num.nansum(exp(w*misfits[:, :, 1]), axis=1))
 
         # From Henriette
         # w = self.get_target_weights()[num.newaxis, :] * \
@@ -314,27 +314,27 @@ class Problem(Object):
         return bms
 
     def global_misfit(self, ms, ns):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
 
         ws = self.get_target_weights() * self.inter_group_weights(ns)
-        m = sqrt(num.nansum(sqr(ws*ms)) / num.nansum(sqr(ws*ns)))
+        m = root(num.nansum(exp(ws*ms)) / num.nansum(exp(ws*ns)))
         return m
 
     def global_misfits(self, misfits):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
         ws = self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
-        gms = sqrt(num.nansum(sqr(ws*misfits[:, :, 0]), axis=1) /
-                   num.nansum(sqr(ws*misfits[:, :, 1]), axis=1))
+        gms = root(num.nansum(exp(ws*misfits[:, :, 0]), axis=1) /
+                   num.nansum(exp(ws*misfits[:, :, 1]), axis=1))
         return gms
 
     def global_contributions(self, misfits):
-        sqr, sqrt = self.get_sqr_sqrt()
+        exp, root = self.get_norm_functions()
         ws = self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
 
-        gcms = sqr(ws*misfits[:, :, 0]) / \
-            num.nansum(sqr(ws*misfits[:, :, 1]), axis=1)[:, num.newaxis]
+        gcms = exp(ws*misfits[:, :, 0]) / \
+            num.nansum(exp(ws*misfits[:, :, 1]), axis=1)[:, num.newaxis]
 
         return gcms
 
