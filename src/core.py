@@ -2400,7 +2400,8 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     def dump(x, gm, indices):
         if type == 'vector':
-            print >>out, ' ', ' '.join('%16.7g' % v for v in x[indices]), \
+            print >>out, ' ', ' '.join(
+                '%16.7g' % problem.extract(x, i) for i in indices), \
                 '%16.7g' % gm
 
         elif type == 'source':
