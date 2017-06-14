@@ -14,7 +14,7 @@ from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import DatasetConfig, NotFound
-from .problems import ProblemConfig, Problem
+from .problems.base import ProblemConfig, Problem
 from .targets import TargetAnalysisResult, TargetConfig
 from .meta import (Path, HasPaths, expand_template, xjoin, GrondError,
                    Forbidden)
