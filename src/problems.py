@@ -250,6 +250,16 @@ class Problem(Object):
 
         bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1) /
                        num.nansum((w*misfits[:, :, 1])**2, axis=1))
+
+
+        ##### From Henriette
+        # w = self.get_target_weights()[num.newaxis, :] * \
+        #     self.inter_group_weights2(misfits[:, :, 1])
+        # #w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
+        # #    self.get_target_weights()[num.newaxis, :] * \
+        # #    self.inter_group_weights2(misfits[:, :, 1])
+
+        # bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1))
         return bms
 
     def global_misfit(self, ms, ns):
@@ -839,6 +849,7 @@ class RectangularProblemConfig(ProblemConfig):
             time=event.time,
             depth=event.depth,
             anchor='top',
+            decimation_factor=4,
             )
 
         problem = RectangularProblem(

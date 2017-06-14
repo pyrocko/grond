@@ -569,13 +569,14 @@ class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
 
         stat_syn = statics['displacement.los']
 
-        res = num.abs(stat_obs - stat_syn)
-        obs = num.sum(num.abs(stat_obs))
+        res = stat_obs - stat_syn
+        obssum = num.sum(num.abs(stat_obs))
         res_sum = num.sum(res)
 
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
-        misfit_norm = res_sum/obs
+        misfit_norm = num.sqrt(
+            num.sum((stat_obs * scene.covariance.weight_vector)**2))
 
         result = MisfitResult(
             misfit_value=misfit_value,

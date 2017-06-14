@@ -10,7 +10,7 @@ from pyrocko import beachball, guts, trace, util, gf
 from pyrocko import hudson
 from grond import core
 from matplotlib import pyplot as plt
-from matplotlib import cm, patches
+from matplotlib import cm, patches, gridspec
 from pyrocko.cake_plot import colors, \
     str_to_mpl_color as scolor, light
 
@@ -78,6 +78,18 @@ def str_duration(t):
         return s + util.time_to_str(t, format='%H:%M h')
     else:
         return s + '%.1f d' % (t / (24.*3600.))
+
+
+def scale_axes(ax, scale):
+    from matplotlib.ticker import ScalarFormatter
+
+    class FormatScaled(ScalarFormatter):
+        @staticmethod
+        def __call__(value, pos):
+            return u'%d' % (value * scale)
+
+    ax.get_xaxis().set_major_formatter(FormatScaled())
+    ax.get_yaxis().set_major_formatter(FormatScaled())
 
 
 def eigh_sorted(mat):
@@ -939,70 +951,104 @@ def draw_fits_figures_statics(ds, model, plt):
     ms, ns, results = problem.evaluate(xbest, result_mode='full')
 
     figures = []
-    tick_locator = ticker.MaxNLocator(nbins=5)
 
     def decorateAxes(ax, title):
         ax.set_title(title)
-        ax.set_ylabel('[m]')
-        ax.set_xlabel('[m]')
+        ax.set_xlabel('[km]')
+        scale_axes(ax, 1./km)
         ax.set_aspect('equal')
 
     def drawRectangularOutline(ax):
         source.regularize()
-        print source
         fn, fe = source.outline(cs='xy').T
         offset_n, offset_e = latlon_to_ne_numpy(
             sat_target.lats[0], sat_target.lons[0],
             source.lat, source.lon)
-        print 'fn', fn
-        print 'fe', fe
         fn += offset_n
         fe += offset_e
-        print 'fn_off', fn
-        print 'fe_off', fe
-        print sat_target.lats[0], sat_target.lons[0], source.lat, source.lon,\
-            offset_e, offset_n
         ax.plot(offset_e, offset_n, marker='o')
         ax.plot(fe, fn, marker='o')
         # ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
         # ax.plot(fe[:2], fn[:2], linewidth=2., color='black', alpha=0.5)
 
+    def mapDisplacementGrid(displacements, scene):
+        qt = scene.quadtree
+        array = num.empty_like(scene.displacement)
+        array.fill(num.nan)
+        for syn_v, l in zip(displacements, qt.leaves):
+            array[l._slice_rows, l._slice_cols] = syn_v
+
+        array[scene.displacement_mask] = num.nan
+        return array
+
+    def drawTiles(ax, scene):
+        rect = scene.quadtree.getMPLRectangles()
+        for r in rect:
+            r.set_edgecolor((.4, .4, .4))
+            r.set_linewidth(.5)
+            r.set_facecolor('none')
+        map(ax.add_artist, rect)
+
+        ax.scatter(scene.quadtree.leaf_coordinates[:, 0],
+                   scene.quadtree.leaf_coordinates[:, 1],
+                   s=.25, c='black', alpha=.1)
+
     for sat_target, result in zip(problem.satellite_targets, results):
-        fig = plt.figure(figsize=(16, 4))
-        cmap = plt.cm.get_cmap('coolwarm')
+        fig = plt.figure()
+        fig.set_size_inches(16, 4)
+        axes = []
+        gs = gridspec.GridSpec(1, 3,
+                               hspace=.0001, left=.06, bottom=.1,
+                               right=.9)
+        axes.append(plt.subplot(gs[0, 0]))
+        axes.append(plt.subplot(gs[0, 1]))
+        axes.append(plt.subplot(gs[0, 2]))
 
-        qt = ds.get_kite_scene(sat_target.scene_id).quadtree
-        E = sat_target.east_shifts
-        N = sat_target.north_shifts
+        scene = ds.get_kite_scene(sat_target.scene_id)
+        qt = scene.quadtree
 
-        stat_obs = qt.leaf_medians
+        stat_obs = result.statics_obs
+        cmw = cm.ScalarMappable(cmap='coolwarm')
+        cmw.set_array(stat_obs)
+        cmap = cmw.get_cmap()
+        norm = cmw.norm
+
         stat_syn = result.statics_syn['displacement.los']
         res = (stat_obs - stat_syn)
-        lmax = num.abs(stat_obs).max()
-        levels = num.linspace(-lmax, lmax, 50)
-        flat = stat_obs.flatten('F')
+        im_extent = (scene.frame.E.min(), scene.frame.E.max(),
+                     scene.frame.N.min(), scene.frame.N.max())
 
-        ax = fig.add_subplot(131)
-        obs_plot = ax.tricontourf(E, N, flat, levels=levels, cmap=cmap)
-        fig.colorbar(obs_plot, ax=ax, orientation='horizontal', aspect=10,
-                     ticks=tick_locator)
+        ax = axes[0]
+        ax.imshow(mapDisplacementGrid(stat_obs, scene),
+                  extent=im_extent, cmap=cmap,
+                  origin='lower', norm=norm)
+        drawTiles(ax, scene)
         drawRectangularOutline(ax)
         decorateAxes(ax, 'Data')
+        ax.set_ylabel('[km]')
 
-        ax = fig.add_subplot(132)
-        ax.tricontourf(E, N, stat_syn, levels=levels, cmap=cmap)
-        fig.colorbar(obs_plot, ax=ax, orientation='horizontal', aspect=10,
-                     ticks=tick_locator)
+        ax = axes[1]
+        ax.imshow(mapDisplacementGrid(stat_syn, scene),
+                  extent=im_extent, cmap=cmap,
+                  origin='lower', norm=norm)
+        drawTiles(ax, scene)
         drawRectangularOutline(ax)
         decorateAxes(ax, 'Model')
+        ax.get_yaxis().set_visible(False)
 
-        ax = fig.add_subplot(133)
-        ax.tricontourf(E, N, res, levels=levels, cmap=cmap)
-        fig.colorbar(obs_plot, ax=ax, orientation='horizontal', aspect=10,
-                     ticks=tick_locator)
+        ax = axes[2]
+        ax.imshow(mapDisplacementGrid(res, scene),
+                  extent=im_extent, cmap=cmap,
+                  origin='lower', norm=norm)
+        drawTiles(ax, scene)
         drawRectangularOutline(ax)
         decorateAxes(ax, 'Residual')
+        ax.get_yaxis().set_visible(False)
 
+        pos = ax.get_position()
+        cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.02, pos.y1 - pos.y0])
+        cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
+        cbar.set_label('[m]')
         figures.append(fig)
 
     return figures
