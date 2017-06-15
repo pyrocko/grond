@@ -3,6 +3,8 @@ import logging
 
 import numpy as num
 
+from collections import OrderedDict
+
 from pyrocko.guts import StringChoice, Int, Float, Bool
 
 from ..meta import GrondError, Forbidden
@@ -101,9 +103,19 @@ def solve(problem,
     pnames = problem.parameter_names
 
     state.problem_name = problem.name
-    state.column_names = ['B mean', 'B std',
-                          'G mean', 'G std', 'G best']
     state.parameter_names = problem.parameter_names + ['Misfit']
+
+    state.parameter_sets = OrderedDict()
+
+    state.parameter_sets['BS mean'] = num.zeros(problem.nparameters + 1)
+    state.parameter_sets['BS std'] = num.zeros(problem.nparameters + 1)
+    state.parameter_sets['Global mean'] = num.zeros(problem.nparameters + 1)
+    state.parameter_sets['Global std'] = num.zeros(problem.nparameters + 1)
+    state.parameter_sets['Global best'] = num.zeros(problem.nparameters + 1)
+
+    for par in state.parameter_sets.values():
+        par.fill(num.nan)
+
     state.niter = niter
 
     if plot:
@@ -350,12 +362,16 @@ def solve(problem,
                 else:
                     assert False, 'invalid standard_deviation_estimator choice'
 
-            state.parameter_values = [
-                num.append(mbx, num.nan),
-                num.append(sbx, num.nan),
-                num.append(mgx, num.mean(gms)),
-                num.append(sgx, num.std(gms)),
-                num.append(bgx, num.min(gms))]
+            state.parameter_sets['BS mean'][:-1] = mbx
+            state.parameter_sets['BS std'][:-1] = sbx
+            state.parameter_sets['Global mean'][:-1] = mgx
+            state.parameter_sets['Global std'][:-1] = sgx
+            state.parameter_sets['Global best'][:-1] = bgx
+
+            state.parameter_sets['Global mean'][-1] = num.mean(gms)
+            state.parameter_sets['Global std'][-1] = num.std(gms)
+            state.parameter_sets['Global best'][-1] = num.min(gms)
+
             state.iiter = iiter + 1
             state.extra_text =\
                 'Phase: %s (factor %d); ntries %d, ntries_preconstrain %d'\

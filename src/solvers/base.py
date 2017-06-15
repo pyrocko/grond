@@ -2,12 +2,18 @@ import logging
 import time
 import numpy as num
 from datetime import timedelta
+from collections import OrderedDict
 
 from pyrocko.guts import Object
 
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.solver')
+
+
+class SimpleTimedelta(timedelta):
+    def __str__(self):
+        return timedelta.__str__(self).split('.')[0]
 
 
 class RingBuffer(num.ndarray):
@@ -24,16 +30,18 @@ class RingBuffer(num.ndarray):
 
 class SolverState(object):
     problem_name = ''
+    parameter_sets = OrderedDict()
     parameter_names = []
-    parameter_values = []
-    column_names = []
-    extra_text = ''
+
+    starttime = time.time()
 
     niter = 0
-    _iiter = 0
     iter_per_second = 0.
-    _iter_buffer = RingBuffer(20)
-    starttime = time.time()
+
+    extra_text = ''
+
+    _iiter = 0
+    _iter_buffer = RingBuffer(25)
     _last_update = time.time()
 
     @property
@@ -50,14 +58,14 @@ class SolverState(object):
 
     @property
     def runtime(self):
-        return timedelta(seconds=time.time() - self.starttime)
+        return SimpleTimedelta(seconds=time.time() - self.starttime)
 
     @property
     def runtime_remaining(self):
         if self.iter_per_second == 0.:
-            return timedelta()
-        return timedelta(seconds=(self.niter - self.iiter)
-                         / self.iter_per_second)
+            return SimpleTimedelta()
+        return SimpleTimedelta(seconds=(self.niter - self.iiter)
+                               / self.iter_per_second)
 
 
 class Solver(object):

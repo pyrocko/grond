@@ -42,17 +42,17 @@ class TerminalListener(Listener):
             lines.append(t)
 
         out_ln = self.row_name +\
-            ''.join([self.parameter_fmt] * len(state.parameter_values))
+            ''.join([self.parameter_fmt] * len(state.parameter_sets))
         col_param_width = max([len(p) for p in state.parameter_names]) + 2
 
         l('Problem name: {s.problem_name}'
           '\t({s.runtime:s} - remaining {s.runtime_remaining})'
             .format(s=state))
-        l('Iteration {s.iiter} / {s.niter} ({s.iter_per_second:.1f} iter/s)'
+        l('Iteration {s.iiter} / {s.niter}\t\t({s.iter_per_second:.1f} iter/s)'
           .format(s=state))
 
         l(out_ln.format(
-            *['Parameter'] + state.column_names,
+            *['Parameter'] + state.parameter_sets.keys(),
             col_param_width=col_param_width,
             col_width=self.col_width,
             type='s'))
@@ -60,7 +60,7 @@ class TerminalListener(Listener):
         for ip, parameter_name in enumerate(state.parameter_names):
             l(out_ln.format(
                 parameter_name,
-                *[v[ip] for v in state.parameter_values],
+                *[v[ip] for v in state.parameter_sets.values()],
                 col_param_width=col_param_width,
                 col_width=self.col_width,
                 type='.4g'))
