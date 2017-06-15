@@ -198,9 +198,9 @@ class Notifier(object):
 
     def emit(self, signal_name, *args, **kwargs):
         for listener in self._listeners:
-            try:
-                getattr(listener, signal_name)(*args, **kwargs)
-
-            except AttributeError:
+            if not hasattr(listener, signal_name):
                 logger.warn(
-                    'signal name %s not implemented in listener' % signal_name)
+                    'signal name \'%s\' not implemented in listener %s'
+                    % (signal_name, type(listener)))
+                continue
+            getattr(listener, signal_name)(*args, **kwargs)

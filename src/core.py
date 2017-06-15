@@ -15,6 +15,7 @@ from .dataset import DatasetConfig, NotFound
 from .problems.base import ProblemConfig, Problem
 from .solvers.base import SolverConfig
 from .analysers.base import AnalyserConfig
+from .listeners import TerminalListener
 from .targets import TargetConfig
 from .meta import Path, HasPaths, expand_template, xjoin, GrondError, Notifier
 
@@ -704,6 +705,7 @@ def process_event(ievent, g_data_id):
         'start %i / %i' % (ievent+1, nevents))
 
     notifier = Notifier()
+    notifier.add_listener(TerminalListener())
 
     analyser = config.analyser_config.get_analyser()
     analyser.analyse(problem, notifier=notifier)

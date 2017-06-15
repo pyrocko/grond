@@ -69,7 +69,8 @@ def solve(problem,
           xs_inject=None,
           status=(),
           plot=None,
-          notifier=None):
+          notifier=None,
+          state=None):
 
     xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
     npar = problem.nparameters
@@ -98,6 +99,12 @@ def solve(problem,
     accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
     pnames = problem.parameter_names
+
+    state.problem_name = problem.name
+    state.column_names = ['B mean', 'B std',
+                          'G mean', 'G std', 'G best']
+    state.parameter_names = problem.parameter_names + ['Misfit']
+    state.niter = niter
 
     if plot:
         plot.start(problem)
@@ -300,21 +307,11 @@ def solve(problem,
         accept_sum += accept
         accept_hist[iiter] = num.sum(accept)
 
-        lines = []
-        if 'state' in status:
-            lines.append('%s, %i' % (problem.name, iiter))
-            lines.append(''.join('-X'[int(acc)] for acc in accept))
-
         xhist[iiter, :] = x
 
         bxs = xhist[chains_i[:, :nlinks].ravel(), :]
         gxs = xhist[chains_i[0, :nlinks], :]
         gms = chains_m[0, :nlinks]
-
-        col_width = 15
-        col_param_width = max([len(p) for p in problem.parameter_names])+2
-        console_output = '{:<{col_param_width}s}'
-        console_output += ''.join(['{:>{col_width}{type}}'] * 5)
 
         if nlinks > (nlinks_cap-1)/2:
             # mean and std of all bootstrap ensembles together
@@ -353,52 +350,25 @@ def solve(problem,
                 else:
                     assert False, 'invalid standard_deviation_estimator choice'
 
-            if 'state' in status:
-                lines.append(
-                    console_output.format(
-                        'parameter', 'B mean', 'B std', 'G mean', 'G std',
-                        'G best',
-                        col_param_width=col_param_width,
-                        col_width=col_width,
-                        type='s'))
-
-                for (pname, mbv, sbv, mgv, sgv, bgv) in zip(
-                        pnames, mbx, sbx, mgx, sgx, bgx):
-
-                    lines.append(
-                        console_output.format(
-                            pname, mbv, sbv, mgv, sgv, bgv,
-                            col_param_width=col_param_width,
-                            col_width=col_width,
-                            type='.4g'))
-
-                lines.append(
-                    console_output.format(
-                        'misfit', '', '',
-                        '%.4g' % num.mean(gms),
-                        '%.4g' % num.std(gms),
-                        '%.4g' % num.min(gms),
-                        col_param_width=col_param_width,
-                        col_width=col_width,
-                        type='s'))
+            state.parameter_values = [
+                num.append(mbx, num.nan),
+                num.append(sbx, num.nan),
+                num.append(mgx, num.mean(gms)),
+                num.append(sgx, num.std(gms)),
+                num.append(bgx, num.min(gms))]
+            state.iiter = iiter + 1
+            state.extra_text =\
+                'Phase: %s (factor %d); ntries %d, ntries_preconstrain %d'\
+                % (phase, factor, ntries_sample, ntries_preconstrain)
 
         if 'state' in status:
-            lines.append(
-                console_output.format(
-                    'iteration', iiter+1, '(%s, %g)' % (phase, factor),
-                    ntries_sample, ntries_preconstrain, '',
-                    col_param_width=col_param_width,
-                    col_width=col_width,
-                    type=''))
+            notifier.emit('state', state)
 
         if 'matrix' in status:
+            lines = []
             matrix = (chains_i[:, :30] % 94 + 32).T
             for row in matrix[::-1]:
                 lines.append(''.join(chr(xxx) for xxx in row))
-
-        if status:
-            lines[0:0] = ['\033[2J']
-            lines.append('')
             print '\n'.join(lines)
 
         if plot and plot.want_to_update(iiter):
@@ -433,6 +403,7 @@ class HighScoreSolver(Solver):
             plot=plot,
             xs_inject=xs_inject,
             notifier=notifier,
+            state=self.state,
             **self._kwargs)
 
 
