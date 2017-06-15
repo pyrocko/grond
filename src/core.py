@@ -1,4 +1,3 @@
-import math
 import os
 import sys
 import logging
@@ -8,16 +7,16 @@ import shutil
 import os.path as op
 import numpy as num
 
-from pyrocko.guts import (load, Object, String, Float, Int, Bool, List,
-                          StringChoice)
+from pyrocko.guts import load, Object, String, Float, Bool, List
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import DatasetConfig, NotFound
 from .problems.base import ProblemConfig, Problem
-from .targets import TargetAnalysisResult, TargetConfig
-from .meta import (Path, HasPaths, expand_template, xjoin, GrondError,
-                   Forbidden)
+from .solver.base import SolverConfig, AnalyserConfig
+from .solver.highscore import HighScoreSolverConfig
+from .targets import TargetConfig
+from .meta import Path, HasPaths, expand_template, xjoin, GrondError
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
@@ -52,45 +51,6 @@ def weed(origin, targets, limit, neighborhood=3):
         target for (delete, target) in zip(deleted, targets) if not delete]
 
     return targets_weeded, meandists_kept, deleted
-
-
-class SamplerDistributionChoice(StringChoice):
-    choices = ['multivariate_normal', 'normal']
-
-
-class StandardDeviationEstimatorChoice(StringChoice):
-    choices = [
-        'median_density_single_chain',
-        'standard_deviation_all_chains',
-        'standard_deviation_single_chain']
-
-
-class SolverConfig(Object):
-    niter_uniform = Int.T(default=1000)
-    niter_transition = Int.T(default=0)
-    niter_explorative = Int.T(default=10000)
-    niter_non_explorative = Int.T(default=0)
-    sampler_distribution = SamplerDistributionChoice.T(
-        default='multivariate_normal')
-    standard_deviation_estimator = StandardDeviationEstimatorChoice.T(
-        default='median_density_single_chain')
-    scatter_scale_transition = Float.T(default=2.0)
-    scatter_scale = Float.T(default=1.0)
-    chain_length_factor = Float.T(default=8.0)
-    compensate_excentricity = Bool.T(default=True)
-
-    def get_solver_kwargs(self):
-        return dict(
-            niter_uniform=self.niter_uniform,
-            niter_transition=self.niter_transition,
-            niter_explorative=self.niter_explorative,
-            niter_non_explorative=self.niter_non_explorative,
-            sampler_distribution=self.sampler_distribution,
-            standard_deviation_estimator=self.standard_deviation_estimator,
-            scatter_scale_transition=self.scatter_scale_transition,
-            scatter_scale=self.scatter_scale,
-            chain_length_factor=self.chain_length_factor,
-            compensate_excentricity=self.compensate_excentricity)
 
 
 class EngineConfig(HasPaths):
@@ -289,8 +249,6 @@ def write_config(config, path):
     config.change_basepath(dirname)
     guts.dump(config, filename=path)
     config.change_basepath(basepath)
-
-
 
 
 def bootstrap_outliers(problem, misfits, std_factor=1.0):
@@ -745,10 +703,8 @@ def process_event(ievent, g_data_id):
     logger.info(
         'start %i / %i' % (ievent+1, nevents))
 
-    analyse(
-        problem,
-        niter=config.analyser_config.niter,
-        show_progress=nparallel == 1 and status)
+    solver = config.solver_config.get_solver()
+    solver.analyse(problem)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -770,12 +726,11 @@ def process_event(ievent, g_data_id):
     #     update_every=10,
     #     movie_filename='grond_opt_time_magnitude.mp4')
 
-    solve(problem,
+    solver.solve(problem,
           rundir=rundir,
           status=status,
-          xs_inject=xs_inject,
+          xs_inject=xs_inject)
           # plot=splot,
-          **config.solver_config.get_solver_kwargs())
 
     harvest(rundir, problem, force=True)
 
@@ -954,8 +909,6 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
 
 __all__ = '''
-    SamplerDistributionChoice
-    SolverConfig
     EngineConfig
     Config
     load_problem_info
@@ -969,5 +922,4 @@ __all__ = '''
     get_event_names
     check
     export
-    solve
 '''.split()
