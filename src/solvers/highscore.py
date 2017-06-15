@@ -68,7 +68,8 @@ def solve(problem,
           compensate_excentricity=True,
           xs_inject=None,
           status=(),
-          plot=None):
+          plot=None,
+          notifier=None):
 
     xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
     npar = problem.nparameters
@@ -417,12 +418,13 @@ def solve(problem,
 
 class HighScoreSolver(Solver):
 
-    def __init__(self, analyser, kwargs):
-        Solver.__init__(self, analyser)
+    def __init__(self, kwargs):
+        Solver.__init__(self)
         self._kwargs = kwargs
 
     def solve(
-            self, problem, rundir=None, status=(), plot=None, xs_inject=None):
+            self, problem, rundir=None, status=(), plot=None, xs_inject=None,
+            notifier=None):
 
         solve(
             problem,
@@ -430,7 +432,8 @@ class HighScoreSolver(Solver):
             status=status,
             plot=plot,
             xs_inject=xs_inject,
-            **self.kwargs)
+            notifier=notifier,
+            **self._kwargs)
 
 
 class SamplerDistributionChoice(StringChoice):
@@ -472,7 +475,7 @@ class HighScoreSolverConfig(SolverConfig):
             compensate_excentricity=self.compensate_excentricity)
 
     def get_solver(self):
-        return HighScoreSolver(self.get_analyser(), self.get_solver_kwargs())
+        return HighScoreSolver(self.get_solver_kwargs())
 
 
 __all__ = '''

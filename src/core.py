@@ -16,7 +16,7 @@ from .problems.base import ProblemConfig, Problem
 from .solvers.base import SolverConfig
 from .analysers.base import AnalyserConfig
 from .targets import TargetConfig
-from .meta import Path, HasPaths, expand_template, xjoin, GrondError
+from .meta import Path, HasPaths, expand_template, xjoin, GrondError, Notifier
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
@@ -703,8 +703,10 @@ def process_event(ievent, g_data_id):
     logger.info(
         'start %i / %i' % (ievent+1, nevents))
 
-    solver = config.solver_config.get_solver()
-    solver.analyse(problem)
+    notifier = Notifier()
+
+    analyser = config.analyser_config.get_analyser()
+    analyser.analyse(problem, notifier=notifier)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -726,11 +728,14 @@ def process_event(ievent, g_data_id):
     #     update_every=10,
     #     movie_filename='grond_opt_time_magnitude.mp4')
 
-    solver.solve(problem,
-          rundir=rundir,
-          status=status,
-          xs_inject=xs_inject)
-          # plot=splot,
+    solver = config.solver_config.get_solver()
+    solver.solve(
+        problem,
+        rundir=rundir,
+        status=status,
+        # plot=splot,
+        xs_inject=xs_inject,
+        notifier=notifier)
 
     harvest(rundir, problem, force=True)
 

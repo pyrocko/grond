@@ -6,15 +6,15 @@ from ..targets import TargetAnalysisResult
 from ..meta import Forbidden
 
 
+guts_prefix = 'grond'
+
+
 class Analyser(object):
 
     def __init__(self, niter):
         self.niter = niter
 
-    def set_notifier(self, notifier):
-        self.notifier = notifier
-
-    def analyse(self, problem):
+    def analyse(self, problem, notifier):
         if self.niter == 0:
             return
 
@@ -37,7 +37,7 @@ class Analyser(object):
         mss = num.zeros((self.niter, wproblem.ntargets))
         rstate = num.random.RandomState(123)
 
-        self.notifier.emit('progress_start', 'analysing problem', self.niter)
+        notifier.emit('progress_start', 'analysing problem', self.niter)
 
         isbad_mask = None
         for iiter in xrange(self.niter):
@@ -62,9 +62,9 @@ class Analyser(object):
             mss[iiter, :] = ms
 
             isbad_mask = num.isnan(ms)
-            self.notifier.emit('progress_update', 'analysing problem', iiter)
+            notifier.emit('progress_update', 'analysing problem', iiter)
 
-        self.notifier.emit('progress_finish', 'analysing problem')
+        notifier.emit('progress_finish', 'analysing problem')
 
         mean_ms = num.mean(mss, axis=0)
         weights = 1. / mean_ms
