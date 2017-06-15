@@ -13,8 +13,8 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import DatasetConfig, NotFound
 from .problems.base import ProblemConfig, Problem
-from .solver.base import SolverConfig, AnalyserConfig
-from .solver.highscore import HighScoreSolverConfig
+from .solvers.base import SolverConfig
+from .analysers.base import AnalyserConfig
 from .targets import TargetConfig
 from .meta import Path, HasPaths, expand_template, xjoin, GrondError
 

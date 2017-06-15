@@ -15,7 +15,7 @@ setup(
     version='0.1',
     author='Sebastian Heimann',
     author_email='sebastian.heimann@gfz-potsdam.de',
-    packages=['grond', 'grond.baraddur', 'grond.problems', 'grond.solver'],
+    packages=['grond', 'grond.baraddur', 'grond.problems', 'grond.solvers', 'grond.analysers'],
     scripts=['apps/grond'],
     package_dir={'grond': 'src'},
     package_data={'grond': ['baraddur/templates/*.html',

@@ -1,6 +1,10 @@
+import logging
 import os.path as op
 from string import Template
 from pyrocko.guts import Object, String, Float
+
+
+logger = logging.getLogger('grond.meta')
 
 
 def xjoin(basepath, path):
@@ -180,3 +184,23 @@ class HasPaths(Object):
                 extra(
                     op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
                 for p in path]
+
+
+class Notifier(object):
+    def __init__(self):
+        self._listeners = []
+
+    def add_listener(self, listener):
+        self._listeners.append(listener)
+
+    def remove_listener(self, listener):
+        self._listeners.remove(listener)
+
+    def emit(self, signal_name, *args, **kwargs):
+        for listener in self._listeners:
+            try:
+                getattr(listener, signal_name)(*args, **kwargs)
+
+            except AttributeError:
+                logger.warn(
+                    'signal name %s not implemented in listener' % signal_name)
