@@ -7,7 +7,7 @@ from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, Bool, List, Dict, Int
 
 from ..meta import ADict, Parameter, GrondError
-from ..targets import MisfitTarget, MisfitSatelliteTarget
+from ..targets import WaveformMisfitTarget, SatelliteMisfitTarget
 
 
 guts_prefix = 'grond'
@@ -152,12 +152,12 @@ class Problem(Object):
     @property
     def satellite_targets(self):
         return [t for t in self.targets
-                if isinstance(t, MisfitSatelliteTarget)]
+                if isinstance(t, SatelliteMisfitTarget)]
 
     @property
     def waveform_targets(self):
         return [t for t in self.targets
-                if isinstance(t, MisfitTarget)]
+                if isinstance(t, WaveformMisfitTarget)]
 
     @property
     def has_statics(self):

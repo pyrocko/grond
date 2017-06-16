@@ -14,9 +14,9 @@ from pyrocko import parimap, model, marker as pmarker
 from .dataset import DatasetConfig, NotFound
 from .problems.base import ProblemConfig, Problem
 from .solvers.base import SolverConfig
+from .targets.base import TargetGroup
 from .analysers.base import AnalyserConfig
 from .listeners import TerminalListener
-from .targets import TargetConfig
 from .meta import Path, HasPaths, expand_template, xjoin, GrondError, Notifier
 
 logger = logging.getLogger('grond.core')
@@ -77,7 +77,7 @@ class EngineConfig(HasPaths):
 class Config(HasPaths):
     rundir_template = Path.T()
     dataset_config = DatasetConfig.T()
-    target_configs = List.T(TargetConfig.T())
+    target_groups = List.T(TargetGroup.T())
     problem_config = ProblemConfig.T()
     analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
     solver_config = SolverConfig.T(default=SolverConfig.D())
@@ -96,7 +96,7 @@ class Config(HasPaths):
         ds = self.get_dataset(event.name)
 
         targets = []
-        for igroup, target_config in enumerate(self.target_configs):
+        for igroup, target_config in enumerate(self.target_groups):
             targets.extend(target_config.get_targets(
                 ds, event, 'group_%i' % igroup))
 

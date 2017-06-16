@@ -1,25 +1,120 @@
 import logging
 import math
 import numpy as num
-import copy
 
 from pyrocko import gf, trace, weeding
-from pyrocko.guts import (Object, String, Float, Bool, Int, List, Dict,
-                          StringChoice, Timestamp)
+from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
+                          Timestamp, List)
 from pyrocko.guts_array import Array
 
-from .dataset import NotFound
-from .meta import Parameter
+from .base import (MisfitConfig, MisfitTarget, TargetGroup,
+                   MisfitResult, TargetAnalysisResult)
+
+from ..dataset import NotFound
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.target')
+logger = logging.getLogger('grond.target').getChild('waveform')
 
 
-def float_or_none(x):
-    if x is None:
-        return x
-    else:
-        return float(x)
+class WaveformTargetGroup(TargetGroup):
+    distance_min = Float.T(optional=True)
+    distance_max = Float.T(optional=True)
+    distance_3d_min = Float.T(optional=True)
+    distance_3d_max = Float.T(optional=True)
+    depth_min = Float.T(optional=True)
+    depth_max = Float.T(optional=True)
+    limit = Int.T(optional=True)
+    channels = List.T(String.T(), optional=True)
+
+    def get_targets(self, ds, event, default_group):
+        logger.debug('Selecting waveform targets...')
+        origin = event
+        targets = []
+
+        for st in ds.get_stations():
+            for cha in self.channels:
+                if ds.is_blacklisted((st.nsl() + (cha,))):
+                    continue
+
+                if not isinstance(self.misfit_config,
+                                  WaveformMisfitConfig):
+                    raise AttributeError('misfit_config must be of'
+                                         ' type WaveformMisfitConfig')
+
+                target = WaveformMisfitTarget(
+                    quantity='displacement',
+                    codes=st.nsl() + (cha,),
+                    lat=st.lat,
+                    lon=st.lon,
+                    depth=st.depth,
+                    interpolation=self.interpolation,
+                    store_id=self.store_id,
+                    misfit_config=self.misfit_config,
+                    manual_weight=self.weight,
+                    super_group=self.super_group,
+                    group=self.group or default_group)
+
+                if self.distance_min is not None and \
+                   target.distance_to(origin) < self.distance_min:
+                    continue
+
+                if self.distance_max is not None and \
+                   target.distance_to(origin) > self.distance_max:
+                    continue
+
+                if self.distance_3d_min is not None and \
+                   target.distance_3d_to(origin) < self.distance_3d_min:
+                    continue
+
+                if self.distance_3d_max is not None and \
+                   target.distance_3d_to(origin) > self.distance_3d_max:
+                    continue
+
+                if self.depth_min is not None and \
+                   target.depth < self.depth_min:
+                    continue
+
+                if self.depth_max is not None and \
+                   target.depth > self.depth_max:
+                    continue
+
+                azi, _ = target.azibazi_to(origin)
+                if cha == 'R':
+                    target.azimuth = azi - 180.
+                    target.dip = 0.
+                elif cha == 'T':
+                    target.azimuth = azi - 90.
+                    target.dip = 0.
+                elif cha == 'Z':
+                    target.azimuth = 0.
+                    target.dip = -90.
+
+                target.set_dataset(ds)
+                targets.append(target)
+
+        if self.limit:
+            return self.weed(origin, targets, self.limit)[0]
+        else:
+            return targets
+
+    @staticmethod
+    def weed(origin, targets, limit, neighborhood=3):
+        azimuths = num.zeros(len(targets))
+        dists = num.zeros(len(targets))
+        for i, target in enumerate(targets):
+            _, azimuths[i] = target.azibazi_to(origin)
+            dists[i] = target.distance_to(origin)
+
+        badnesses = num.ones(len(targets), dtype=float)
+        deleted, meandists_kept = weeding.weed(
+            azimuths, dists, badnesses,
+            nwanted=limit,
+            neighborhood=neighborhood)
+
+        targets_weeded = [
+            target for (delete, target) in zip(deleted, targets) if not delete]
+
+        return targets_weeded, meandists_kept, deleted
 
 
 class DomainChoice(StringChoice):
@@ -31,27 +126,8 @@ class DomainChoice(StringChoice):
         'cc_max_norm']
 
 
-class TargetAnalysisResult(Object):
-    balancing_weight = Float.T()
-
-
-class NoAnalysisResults(Exception):
-    pass
-
-
 class Trace(Object):
     pass
-
-
-def backazimuth_for_waveform(azimuth, nslc):
-    if nslc[-1] == 'R':
-        backazimuth = azimuth + 180.
-    elif nslc[-1] == 'T':
-        backazimuth = azimuth + 90.
-    else:
-        backazimuth = None
-
-    return backazimuth
 
 
 class TraceSpectrum(Object):
@@ -70,50 +146,22 @@ class TraceSpectrum(Object):
         return self.fmin + num.arange(self.ydata.size) * self.deltaf
 
 
-class GrondTarget(object):
-    def set_dataset(self, ds):
-        self._ds = ds
+class WaveformMisfitResult(MisfitResult):
+    processed_obs = Trace.T(optional=True)
+    processed_syn = Trace.T(optional=True)
+    filtered_obs = Trace.T(optional=True)
+    filtered_syn = Trace.T(optional=True)
+    spectrum_obs = TraceSpectrum.T(optional=True)
+    spectrum_syn = TraceSpectrum.T(optional=True)
 
-    def get_dataset(self):
-        return self._ds
-
-    @property
-    def nparameters(self):
-        return len(self._target_parameters)
-
-    @property
-    def target_parameters(self):
-        if self._target_parameters is None:
-            self._target_parameters = copy.deepcopy(self.parameters)
-            for p in self._target_parameters:
-                p.set_groups([self.id])
-        return self._target_parameters
-
-    @property
-    def target_ranges(self):
-        if self._target_ranges is None:
-            self._target_ranges = self.inner_misfit_config.ranges.copy()
-            for k in self._target_ranges.keys():
-                self._target_ranges['%s:%s' % (self.id, k)] =\
-                    self._target_ranges.pop(k)
-        return self._target_ranges
-
-    def set_parameter_values(self, model):
-        for i, p in enumerate(self.parameters):
-            self.parameter_values[p.name_nogroups] = model[i]
-
-    def set_result_mode(self, result_mode):
-        self._result_mode = result_mode
-
-    def string_id(self):
-        return '.'.join([self.super_group, self.group, self.id])
+    taper = trace.Taper.T(optional=True)
+    tobs_shift = Float.T(optional=True)
+    tsyn_pick = Timestamp.T(optional=True)
+    tshift = Float.T(optional=True)
+    cc = Trace.T(optional=True)
 
 
-class InnerTargetConfig(Object):
-    pass
-
-
-class InnerMisfitConfig(InnerTargetConfig):
+class WaveformMisfitConfig(MisfitConfig):
     fmin = Float.T()
     fmax = Float.T()
     ffactor = Float.T(default=1.5)
@@ -160,28 +208,8 @@ class InnerMisfitConfig(InnerTargetConfig):
         return self.fmin / self.ffactor, self.fmax * self.ffactor
 
 
-class MisfitResult(gf.Result):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
-    processed_obs = Trace.T(optional=True)
-    processed_syn = Trace.T(optional=True)
-    filtered_obs = Trace.T(optional=True)
-    filtered_syn = Trace.T(optional=True)
-    spectrum_obs = TraceSpectrum.T(optional=True)
-    spectrum_syn = TraceSpectrum.T(optional=True)
-
-    statics_syn = Dict.T(optional=True)
-    statics_obs = Dict.T(optional=True)
-
-    taper = trace.Taper.T(optional=True)
-    tobs_shift = Float.T(optional=True)
-    tsyn_pick = Timestamp.T(optional=True)
-    tshift = Float.T(optional=True)
-    cc = Trace.T(optional=True)
-
-
-class MisfitTarget(gf.Target, GrondTarget):
-    misfit_config = InnerMisfitConfig.T()
+class WaveformMisfitTarget(gf.Target, MisfitTarget):
+    misfit_config = WaveformMisfitConfig.T()
     flip_norm = Bool.T(default=False)
     manual_weight = Float.T(default=1.0)
     super_group = gf.StringID.T()
@@ -219,7 +247,8 @@ class MisfitTarget(gf.Target, GrondTarget):
 
     def get_balancing_weight(self):
         if not self.analysis_result:
-            raise NoAnalysisResults('no balancing weights available')
+            raise TargetAnalysisResult.tNoResults(
+                'no balancing weights available')
 
         return self.analysis_result.balancing_weight
 
@@ -375,7 +404,7 @@ tautoshift**2 / tautoshift_max**2``
     :param result_mode: ``'full'``, include traces and spectra or ``'sparse'``,
         include only misfit and normalization factor in result
 
-    :returns: object of type :py:class:`MisfitResult`
+    :returns: object of type :py:class:`WaveformMisfitResult`
     '''
 
     trace.assert_same_sampling_rate(tr_obs, tr_syn)
@@ -441,7 +470,7 @@ tautoshift**2 / tautoshift_max**2``
         m, n = trace.Lx_norm(num.abs(a), num.abs(b), norm=exponent)
 
     if result_mode == 'full':
-        result = MisfitResult(
+        result = WaveformMisfitResult(
             misfit_value=float(m),
             misfit_norm=float(n),
             processed_obs=tr_proc_obs,
@@ -455,7 +484,7 @@ tautoshift**2 / tautoshift_max**2``
             cc=ctr)
 
     elif result_mode == 'sparse':
-        result = MisfitResult(
+        result = WaveformMisfitResult(
             misfit_value=m,
             misfit_norm=n)
     else:
@@ -520,237 +549,19 @@ def _process(tr, tmin, tmax, taper, domain):
     return tr_proc, trspec_proc
 
 
-class InnerSatelliteMisfitConfig(InnerTargetConfig):
-    use_weight_focal = Bool.T(default=False)
-    optimize_orbital_ramp = Bool.T(default=True)
-    ranges = Dict.T(String.T(), gf.Range.T(),
-                    default={'offset': '-0.5 .. 0.5',
-                             'ramp_north': '-1e-4 .. 1e-4',
-                             'ramp_east': '-1e-4 .. 1e-4'})
+def backazimuth_for_waveform(azimuth, nslc):
+    if nslc[-1] == 'R':
+        backazimuth = azimuth + 180.
+    elif nslc[-1] == 'T':
+        backazimuth = azimuth + 90.
+    else:
+        backazimuth = None
+
+    return backazimuth
 
 
-class MisfitSatelliteTarget(gf.SatelliteTarget, GrondTarget):
-    scene_id = String.T()
-    super_group = gf.StringID.T()
-    inner_misfit_config = InnerSatelliteMisfitConfig.T()
-    manual_weight = Float.T(
-        default=1.0,
-        help='Relative weight of this target')
-    group = gf.StringID.T(
-        help='Group')
-
-    parameters = [
-        Parameter('offset', 'm'),
-        Parameter('ramp_north', 'm/m'),
-        Parameter('ramp_east', 'm/m'),
-        ]
-
-    def __init__(self, *args, **kwargs):
-        gf.SatelliteTarget.__init__(self, *args, **kwargs)
-        if not self.inner_misfit_config.optimize_orbital_ramp:
-            self.parameters = []
-
-        self._ds = None
-
-        self.parameter_values = {}
-        self._target_parameters = None
-        self._target_ranges = None
-
-    @property
-    def id(self):
-        return self.scene_id
-
-    def post_process(self, engine, source, statics):
-        scene = self._ds.get_kite_scene(self.scene_id)
-        quadtree = scene.quadtree
-
-        stat_obs = quadtree.leaf_medians
-
-        if self.inner_misfit_config.optimize_orbital_ramp:
-            stat_level = num.zeros_like(stat_obs)
-            stat_level.fill(self.parameter_values['offset'])
-            stat_level += (quadtree.leaf_center_distance[:, 0]
-                           * self.parameter_values['ramp_east'])
-            stat_level += (quadtree.leaf_center_distance[:, 1]
-                           * self.parameter_values['ramp_north'])
-            statics['displacement.los'] += stat_level
-
-        stat_syn = statics['displacement.los']
-
-        res = stat_obs - stat_syn
-
-        misfit_value = num.sqrt(
-            num.sum((res * scene.covariance.weight_vector)**2))
-        misfit_norm = num.sqrt(
-            num.sum((stat_obs * scene.covariance.weight_vector)**2))
-
-        result = MisfitResult(
-            misfit_value=misfit_value,
-            misfit_norm=misfit_norm)
-
-        if self._result_mode == 'full':
-            result.statics_syn = statics
-            result.statics_obs = quadtree.leaf_medians
-
-        return result
-
-    def get_combined_weight(self, apply_balancing_weights=False):
-        return self.manual_weight
-
-
-class TargetConfig(Object):
-
-    super_group = gf.StringID.T(default='', optional=True)
-    group = gf.StringID.T(optional=True)
-    distance_min = Float.T(optional=True)
-    distance_max = Float.T(optional=True)
-    distance_3d_min = Float.T(optional=True)
-    distance_3d_max = Float.T(optional=True)
-    depth_min = Float.T(optional=True)
-    depth_max = Float.T(optional=True)
-    limit = Int.T(optional=True)
-
-    channels = List.T(String.T(), optional=True)
-    inner_misfit_config = InnerTargetConfig.T(optional=True)
-    interpolation = gf.InterpolationMethod.T()
-    kite_scenes = List.T(optional=True)
-    store_id = gf.StringID.T(optional=True)
-    weight = Float.T(default=1.0)
-
-    def get_targets(self, ds, event, default_group):
-        origin = event
-        targets = []
-
-        def get_satellite_targets():
-            for scene in ds.get_kite_scenes():
-                if scene.meta.scene_id not in self.kite_scenes and\
-                   '*all' not in self.kite_scenes:
-                    continue
-
-                if not isinstance(self.inner_misfit_config,
-                                  InnerSatelliteMisfitConfig):
-                    raise AttributeError('inner_misfit_config must be of type'
-                                         ' InnerSatelliteMisfitConfig')
-
-                qt = scene.quadtree
-
-                lats = num.empty(qt.nleaves)
-                lons = num.empty(qt.nleaves)
-                lats.fill(qt.frame.llLat)
-                lons.fill(qt.frame.llLon)
-
-                north_shifts = qt.leaf_focal_points[:, 1]
-                east_shifts = qt.leaf_focal_points[:, 0]
-
-                sat_target = MisfitSatelliteTarget(
-                    quantity='displacement',
-                    scene_id=scene.meta.scene_id,
-                    lats=lats,
-                    lons=lons,
-                    east_shifts=east_shifts,
-                    north_shifts=north_shifts,
-                    theta=qt.leaf_thetas,
-                    phi=qt.leaf_phis,
-                    tsnapshot=None,
-                    interpolation=self.interpolation,
-                    store_id=self.store_id,
-                    super_group=self.super_group,
-                    group=self.group or default_group,
-                    inner_misfit_config=self.inner_misfit_config)
-
-                sat_target.set_dataset(ds)
-                targets.append(sat_target)
-
-        def get_dynamic_targets():
-            for st in ds.get_stations():
-                for cha in self.channels:
-                    if ds.is_blacklisted((st.nsl() + (cha,))):
-                        continue
-
-                    if not isinstance(self.inner_misfit_config,
-                                      InnerMisfitConfig):
-                        raise AttributeError('inner_misfit_config must be of'
-                                             ' type InnerMisfitConfig')
-
-                    target = MisfitTarget(
-                        quantity='displacement',
-                        codes=st.nsl() + (cha,),
-                        lat=st.lat,
-                        lon=st.lon,
-                        depth=st.depth,
-                        interpolation=self.interpolation,
-                        store_id=self.store_id,
-                        misfit_config=self.inner_misfit_config,
-                        manual_weight=self.weight,
-                        super_group=self.super_group,
-                        group=self.group or default_group)
-
-                    if self.distance_min is not None and \
-                       target.distance_to(origin) < self.distance_min:
-                        continue
-
-                    if self.distance_max is not None and \
-                       target.distance_to(origin) > self.distance_max:
-                        continue
-
-                    if self.distance_3d_min is not None and \
-                       target.distance_3d_to(origin) < self.distance_3d_min:
-                        continue
-
-                    if self.distance_3d_max is not None and \
-                       target.distance_3d_to(origin) > self.distance_3d_max:
-                        continue
-
-                    if self.depth_min is not None and \
-                       target.depth < self.depth_min:
-                        continue
-
-                    if self.depth_max is not None and \
-                       target.depth > self.depth_max:
-                        continue
-
-                    azi, _ = target.azibazi_to(origin)
-                    if cha == 'R':
-                        target.azimuth = azi - 180.
-                        target.dip = 0.
-                    elif cha == 'T':
-                        target.azimuth = azi - 90.
-                        target.dip = 0.
-                    elif cha == 'Z':
-                        target.azimuth = 0.
-                        target.dip = -90.
-
-                    target.set_dataset(ds)
-                    targets.append(target)
-
-        if self.kite_scenes is not None:
-            logger.debug('Selecting satellite targets...')
-            get_satellite_targets()
-        else:
-            logger.debug('Selecting dynamic targets...')
-            get_dynamic_targets()
-
-        if self.limit:
-            return weed(origin, targets, self.limit)[0]
-        else:
-            return targets
-
-
-def weed(origin, targets, limit, neighborhood=3):
-
-    azimuths = num.zeros(len(targets))
-    dists = num.zeros(len(targets))
-    for i, target in enumerate(targets):
-        _, azimuths[i] = target.azibazi_to(origin)
-        dists[i] = target.distance_to(origin)
-
-    badnesses = num.ones(len(targets), dtype=float)
-    deleted, meandists_kept = weeding.weed(
-        azimuths, dists, badnesses,
-        nwanted=limit,
-        neighborhood=neighborhood)
-
-    targets_weeded = [
-        target for (delete, target) in zip(deleted, targets) if not delete]
-
-    return targets_weeded, meandists_kept, deleted
+def float_or_none(x):
+    if x is None:
+        return x
+    else:
+        return float(x)
