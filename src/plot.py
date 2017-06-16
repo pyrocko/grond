@@ -1151,17 +1151,21 @@ def draw_fits_figures(ds, model, plt):
 
         target_to_result[target] = result
 
-        dtrace.meta = dict(super_group=target.super_group, group=target.group)
+        dtrace.meta = dict(
+            normalisation_family=target.normalisation_family,
+            path=target.path)
         dtraces.append(dtrace)
 
         result.processed_syn.meta = dict(
-            super_group=target.super_group, group=target.group)
+            normalisation_family=target.normalisation_family,
+            path=target.path)
 
         all_syn_trs.append(result.processed_syn)
 
         if result.spectrum_syn:
             result.spectrum_syn.meta = dict(
-                super_group=target.super_group, group=target.group)
+                normalisation_family=target.normalisation_family,
+                path=target.path)
 
             all_syn_specs.append(result.spectrum_syn)
 
@@ -1170,7 +1174,7 @@ def draw_fits_figures(ds, model, plt):
         return []
 
     def skey(tr):
-        return tr.meta['super_group'], tr.meta['group']
+        return tr.meta['normalisation_family'], tr.meta['path']
 
     trace_minmaxs = trace.minmax(all_syn_trs, skey)
 
@@ -1185,7 +1189,7 @@ def draw_fits_figures(ds, model, plt):
 
     cg_to_targets = gather(
         problem.waveform_targets,
-        lambda t: (t.super_group, t.group, t.codes[3]),
+        lambda t: (t.normalisation_family, t.path, t.codes[3]),
         filter=lambda t: t in target_to_result)
 
     cgs = sorted(cg_to_targets.keys())
@@ -1283,7 +1287,8 @@ def draw_fits_figures(ds, model, plt):
 
                 target = frame_to_target[iy, ix]
 
-                amin, amax = trace_minmaxs[target.super_group, target.group]
+                amin, amax = trace_minmaxs[
+                    target.normalisation_family, target.path]
                 absmax = max(abs(amin), abs(amax))
 
                 ny_this = nymax  # min(ny, nymax)
@@ -1343,7 +1348,8 @@ def draw_fits_figures(ds, model, plt):
 
                 elif target.misfit_config.domain == 'frequency_domain':
 
-                    asmax = amp_spec_maxs[target.super_group, target.group]
+                    asmax = amp_spec_maxs[
+                        target.normalisation_family, target.path]
                     fmin, fmax = \
                         target.misfit_config.get_full_frequency_range()
 
@@ -1848,7 +1854,8 @@ class SolverPlot(object):
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
 
-        bounds = self.problem.get_parameter_bounds() + self.problem.get_dependant_bounds()
+        bounds = self.problem.get_parameter_bounds()\
+            + self.problem.get_dependant_bounds()
 
         self.xlim = fixlim(*xpar.scaled(bounds[ixpar]))
         self.ylim = fixlim(*ypar.scaled(bounds[iypar]))

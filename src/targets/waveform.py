@@ -26,7 +26,7 @@ class WaveformTargetGroup(TargetGroup):
     limit = Int.T(optional=True)
     channels = List.T(String.T(), optional=True)
 
-    def get_targets(self, ds, event, default_group):
+    def get_targets(self, ds, event, default_path):
         logger.debug('Selecting waveform targets...')
         origin = event
         targets = []
@@ -51,8 +51,8 @@ class WaveformTargetGroup(TargetGroup):
                     store_id=self.store_id,
                     misfit_config=self.misfit_config,
                     manual_weight=self.weight,
-                    super_group=self.super_group,
-                    group=self.group or default_group)
+                    normalisation_family=self.normalisation_family,
+                    path=self.path or default_path)
 
                 if self.distance_min is not None and \
                    target.distance_to(origin) < self.distance_min:
@@ -212,8 +212,8 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     misfit_config = WaveformMisfitConfig.T()
     flip_norm = Bool.T(default=False)
     manual_weight = Float.T(default=1.0)
-    super_group = gf.StringID.T()
-    group = gf.StringID.T()
+    normalisation_family = gf.StringID.T()
+    path = gf.StringID.T()
     analysis_result = TargetAnalysisResult.T(optional=True)
 
     parameters = []
@@ -227,8 +227,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         self._target_ranges = None
 
     def string_id(self):
-        return '.'.join(x for x in (
-            self.super_group, self.group) + self.codes if x)
+        return '.'.join(x for x in (self.path) + self.codes if x)
 
     @property
     def id(self):

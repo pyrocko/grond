@@ -96,9 +96,9 @@ class Config(HasPaths):
         ds = self.get_dataset(event.name)
 
         targets = []
-        for igroup, target_config in enumerate(self.target_groups):
-            targets.extend(target_config.get_targets(
-                ds, event, 'group_%i' % igroup))
+        for igroup, target_group in enumerate(self.target_groups):
+            targets.extend(target_group.get_targets(
+                ds, event, 'target.%i' % igroup))
 
         return targets
 

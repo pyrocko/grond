@@ -14,7 +14,7 @@ logger = logging.getLogger('grond.target').getChild('satellite')
 class SatelliteTargetGroup(TargetGroup):
     kite_scenes = List.T(optional=True)
 
-    def get_targets(self, ds, event, default_group):
+    def get_targets(self, ds, event, default_path):
         logger.debug('Selecting satellite targets...')
         targets = []
 
@@ -50,8 +50,8 @@ class SatelliteTargetGroup(TargetGroup):
                 tsnapshot=None,
                 interpolation=self.interpolation,
                 store_id=self.store_id,
-                super_group=self.super_group,
-                group=self.group or default_group,
+                normalisation_family=self.normalisation_family,
+                path=self.path or default_path,
                 misfit_config=self.misfit_config)
 
             sat_target.set_dataset(ds)
@@ -76,12 +76,12 @@ class SatelliteMisfitConfig(MisfitConfig):
 
 class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     scene_id = String.T()
-    super_group = gf.StringID.T()
+    normalisation_family = gf.StringID.T()
     misfit_config = SatelliteMisfitConfig.T()
     manual_weight = Float.T(
         default=1.0,
         help='Relative weight of this target')
-    group = gf.StringID.T(
+    path = gf.StringID.T(
         help='Group')
 
     parameters = [

@@ -337,17 +337,14 @@ class Problem(Object):
         return gcms
 
     def make_group_mask(self):
-        super_group_names = set()
-        groups = num.zeros(len(self.targets), dtype=num.int)
-        ngroups = 0
+        family_names = set()
+        families = num.zeros(len(self.targets), dtype=num.int)
+
         for itarget, target in enumerate(self.targets):
-            if target.super_group not in super_group_names:
-                super_group_names.add(target.super_group)
-                ngroups += 1
+            family_names.add(target.normalisation_family)
+            families[itarget] = len(family_names) - 1
 
-            groups[itarget] = ngroups - 1
-
-        return groups, ngroups
+        return families, len(family_names)
 
     def get_group_mask(self):
         if self._group_mask is None:

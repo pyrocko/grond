@@ -1,14 +1,15 @@
 import numpy as num
 import math
+import logging
 
 from pyrocko import gf, util, moment_tensor as mtm
 from pyrocko.guts import String, Float, Dict, Int, StringChoice
 
-from .base import Problem, ProblemConfig, logger
+from .base import Problem, ProblemConfig
 from ..meta import Forbidden, expand_template, Parameter
 
 guts_prefix = 'grond'
-logger = logger.getChild('cmt')
+logger = logging.getLogger('grond.problems').getChild('cmt')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 

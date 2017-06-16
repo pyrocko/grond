@@ -9,8 +9,8 @@ class MisfitConfig(Object):
 
 
 class TargetGroup(Object):
-    super_group = gf.StringID.T(default='', optional=True)
-    group = gf.StringID.T(optional=True)
+    normalisation_family = gf.StringID.T(default='', optional=True)
+    path = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
 
     misfit_config = MisfitConfig.T(optional=True)
@@ -18,7 +18,7 @@ class TargetGroup(Object):
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T(optional=True)
 
-    def get_targets(self, ds, event, default_group):
+    def get_targets(self, ds, event, default_path):
         raise NotImplementedError()
 
 
@@ -58,7 +58,7 @@ class MisfitTarget(object):
         self._result_mode = result_mode
 
     def string_id(self):
-        return '.'.join([self.super_group, self.group, self.id])
+        return '.'.join([self.normalisation_family, self.path, self.id])
 
     def post_process(self, engine, source, statics):
         raise NotImplementedError()
