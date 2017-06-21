@@ -5,14 +5,15 @@ import numpy as num
 
 from collections import OrderedDict
 
-from pyrocko.guts import StringChoice, Int, Float, Bool
+from pyrocko.guts import StringChoice, Int, Float, Bool, Object
+from pyrocko.guts_array import Array
 
 from ..meta import GrondError, Forbidden
-from .base import Solver, SolverConfig
+from .base import Optimizer, OptimizerConfig
 
 guts_prefix = 'grond'
 
-logger = logging.getLogger('grond.solver.highscore')
+logger = logging.getLogger('grond.optimizers.highscore')
 
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
@@ -37,18 +38,6 @@ def excentricity_compensated_choice(xs, sbx, factor):
     return ichoice
 
 
-def select_most_excentric(xcandidates, xs, sbx, factor):
-    inonflat = num.where(sbx != 0.0)[0]
-    scale = num.zeros_like(sbx)
-    scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
-    distances_sqr_all = num.sum(
-        ((xcandidates[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
-         scale[num.newaxis, num.newaxis, :])**2, axis=2)
-    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=0))
-    ichoice = num.argmin(num.sum(distances_sqr_all < 1.0, axis=0))
-    return xcandidates[ichoice]
-
-
 def local_std(xs):
     ssbx = num.sort(xs, axis=0)
     dssbx = num.diff(ssbx, axis=0)
@@ -56,40 +45,270 @@ def local_std(xs):
     return mdssbx * dssbx.shape[0] / 2.6
 
 
+class Phase(Object):
+    niterations = Int.T()
+    ntries_preconstrain_limit = Int.T(default=1000)
+
+    def set_problem(self, problem):
+        self._problem = problem
+
+    def get_sample(
+            self, iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
+            nlinks):
+
+        assert 0 <= iiter < self.niterations
+
+        ntries_preconstrain = 0
+        for ntries_preconstrain in xrange(self.ntries_preconstrain_limit):
+            try:
+                return self._problem.preconstrain(self.get_raw_sample(
+                    iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs, 
+                    nlinks))
+
+            except Forbidden:
+                pass
+
+        raise GrondError(
+            'could not find any suitable candidate sample within %i tries' % (
+                self.ntries_preconstrain_limit))
+
+
+class InjectionPhase(Phase):
+    xs_inject = Array.T(dtype=num.float, shape=(None, None))
+
+    def get_raw_sample(
+            self, iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
+            nlinks):
+        return self.xs_inject[iiter, :]
+
+
+class UniformPhase(Phase):
+
+    def get_raw_sample(
+            self, iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
+            nlinks):
+        xbounds = self._problem.get_parameter_bounds()
+        return self._problem.random_uniform(xbounds)
+
+
+class DirectedPhase(Phase):
+    scatter_scale = Float.T(optional=True)
+    scatter_scale_begin = Float.T(optional=True)
+    scatter_scale_end = Float.T(optional=True)
+    starting_point = StringChoice.T(
+        choices=['excentricity_compensated', 'random', 'mean'])
+
+    sampler_distribution = StringChoice.T(
+        choices=['normal', 'multivariate_normal'])
+
+    def get_scatter_scale_factor(self, iiter):
+        s = self.scatter_scale
+        sa = self.scatter_scale_begin
+        sb = self.scatter_scale_end
+
+        assert s is None or (sa is None and sb is None)
+
+        if sa != sb:
+            tb = float(self.niterations-1)
+            tau = tb/(math.log(sa) - math.log(sb))
+            t0 = math.log(sa) * tau
+            t = float(iiter)
+            return num.exp(-(t-t0) / tau)
+
+        else:
+            return s or 1.0
+
+    def get_raw_sample(
+            self, iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
+            nlinks):
+
+        factor = self.get_scatter_scale_factor()
+        npar = self._problem.nparameters
+        pnames = self._problem.parameter_names
+        xbounds = self._problem.get_parameter_bounds()
+
+        ichain_choice = num.argmin(accept_sum)
+
+        if self.starting_point == 'excentricity_compensated':
+            ichoice = excentricity_compensated_choice(
+                xhist[chains_i[ichain_choice, :], :],
+                local_sxs[ichain_choice], 2.)
+
+            xchoice = xhist[
+                chains_i[ichain_choice, ichoice], :]
+
+        elif self.starting_point == 'random':
+            ichoice = num.random.randint(0, nlinks)
+            xchoice = xhist[
+                chains_i[ichain_choice, ichoice], :]
+
+        elif self.starting_point == 'mean':
+            xchoice = mxs[ichain_choice]
+
+        else:
+            assert False, 'invalid starting_point choice: %s' % (
+                self.starting_point)
+
+        ntries_sample = 0
+        if self.sampler_distribution == 'normal':
+            x = num.zeros(npar, dtype=num.float)
+            for ipar in xrange(npar):
+                ntries = 0
+                while True:
+                    if local_sxs[ichain_choice][ipar] > 0.:
+                        v = num.random.normal(
+                            xchoice[ipar],
+                            factor*local_sxs[
+                                ichain_choice][ipar])
+                    else:
+                        v = xchoice[ipar]
+
+                    if xbounds[ipar, 0] <= v and \
+                            v <= xbounds[ipar, 1]:
+
+                        break
+
+                    if ntries > self.ntries_sample_limit:
+                        raise GrondError(
+                            'failed to produce a suitable '
+                            'candidate sample from normal '
+                            'distribution')
+
+                    ntries += 1
+
+                x[ipar] = v
+
+        elif self.sampler_distribution == 'multivariate_normal':
+            ok_mask_sum = num.zeros(npar, dtype=num.int)
+            while True:
+                ntries_sample += 1
+                xcandi = num.random.multivariate_normal(
+                    xchoice, factor**2 * covs[ichain_choice])
+
+                ok_mask = num.logical_and(
+                    xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
+
+                if num.all(ok_mask):
+                    break
+
+                ok_mask_sum += ok_mask
+
+                if ntries_sample > self.ntries_sample_limit:
+                    raise GrondError(
+                        'failed to produce a suitable candidate '
+                        'sample from multivariate normal '
+                        'distribution, (%s)' %
+                        ', '.join('%s:%i' % xx for xx in
+                                  zip(pnames, ok_mask_sum)))
+
+            x = xcandi
+
+        return x, ichain_choice, ichoice, ntries_sample
+
+class OptimizerRunData(object):
+
+    nmodels_capacity_min = 1024
+
+    def __init__(self, problem):
+        self.problem = problem
+        self.nmodels_capacity = self.nmodels_capacity_min
+
+    @property
+    def nmodels(self):
+        if self.models is None:
+            return 0
+        else:
+            return self.models.shape[0]
+
+    @nmodels.setter
+    def nmodels(self, nmodels_new):
+        assert 0 <= nmodels_new <= self.nmodels
+        self.models = self._models_buffer[:nmodels_new, :]
+        self.misfits = self._misfits_buffer[:nmodels_new, :, :]
+
+    @property
+    def nmodels_capacity(self):
+        if self._models_buffer is None:
+            return 0
+        else:
+            return self._models_buffer.shape[0]
+
+    @nmodels_capacity.setter
+    def nmodels_capacity(self, nmodels_capacity_new):
+        if self.nmodels_capacity != self.nmodels_capacity_new:
+            models_buffer = num.zeros(
+                (nmodels_capacity_new, self.problem.nparameters),
+                dtype=num.float)
+
+            misfits_buffer = num.zeros(
+                (nmodels_capacity_new, self.problem.ntargets, 2),
+                dtype=num.float)
+
+            ncopy = min(self.nmodels, nmodels_capacity_new)
+
+            models_buffer[:ncopy, :] = self._models_buffer[:ncopy, :]
+            misfits_buffer[:ncopy, :, :] = self._misfits_buffer[:ncopy, :, :]
+            self._models_buffer = models_buffer
+            self._misfits_buffer = misfits_buffer
+
+    def clear(self):
+        self.nmodels = 0
+        self.nmodels_capacity = self.nmodels_capacity_min
+
+    def append(self, models, misfits):
+        assert models.shape[0] == misfits.shape[0]
+
+        nmodels_add = models.shape[0]
+
+        nmodels = self.nmodels
+        nmodels_new = nmodels + nmodels_add
+
+        nmodels_capacity_want = max(
+            nmodels_capacity_min, nextpow2(nmodels_new))
+
+        if nmodels_capacity_want != self.nmodels_capacity:
+            self.nmodels_capacity = nmodels_capacity_want
+
+        self._models_buffer[nmodels:nmodels+nmodels_add, :] = models
+        self._misfits_buffer[nmodels:nmodels+nmodels_add, :, :] = misfits
+
+        nmodels = nmodels_new
+
+        self.models = self._models_buffer[:nmodels, :]
+        self.misfits = self._misfits_buffer[:nmodels, :, :]
+
+
+class Chains(object):
+    def __init__(self, problem, nchains, nlinks_cap):
+        problem
+
+
+class BadProblem(GrondError):
+    pass
+
+
 def solve(problem,
+          phases,
           rundir=None,
-          niter_uniform=1000,
-          niter_transition=1000,
-          niter_explorative=10000,
-          niter_non_explorative=0,
-          scatter_scale_transition=2.0,
-          scatter_scale=1.0,
+
           chain_length_factor=8.0,
-          sampler_distribution='multivariate_normal',
           standard_deviation_estimator='median_density_single_chain',
-          compensate_excentricity=True,
-          xs_inject=None,
+
           status=(),
           plot=None,
           notifier=None,
           state=None):
 
-    xbounds = num.array(problem.get_parameter_bounds(), dtype=num.float)
+    xbounds = problem.get_parameter_bounds()
     npar = problem.nparameters
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
-    chains_m = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.float)
-    chains_i = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.int)
+    chains_m = num.zeros((1 + problem.nchains, nlinks_cap), num.float)
+    chains_i = num.zeros((1 + problem.nchains, nlinks_cap), num.int)
     nlinks = 0
     mbx = None
 
-    if xs_inject is not None and xs_inject.size != 0:
-        niter_inject = xs_inject.shape[0]
-    else:
-        niter_inject = 0
-
-    niter = niter_inject + niter_uniform + niter_transition + \
-        niter_explorative + niter_non_explorative
+    niter = sum(phase.nitererations for phase in phases)
 
     iiter = 0
     sbx = None
@@ -98,20 +317,10 @@ def solve(problem,
     local_sxs = None
     xhist = num.zeros((niter, npar))
     isbad_mask = None
-    accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
+    accept_sum = num.zeros(1 + problem.nchains, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
     pnames = problem.parameter_names
 
-    state.problem_name = problem.name
-    state.parameter_names = problem.parameter_names + ['Misfit']
-
-    state.parameter_sets = OrderedDict()
-
-    state.parameter_sets['BS mean'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['BS std'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['Global mean'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['Global std'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['Global best'] = num.zeros(problem.nparameters + 1)
 
     for par in state.parameter_sets.values():
         par.fill(num.nan)
@@ -121,144 +330,24 @@ def solve(problem,
     if plot:
         plot.start(problem)
 
+    phase = phases.pop(0)
+    iiter_phase_start = 0
     while iiter < niter:
-        ibootstrap_choice = None
-        ichoice = None
 
-        if iiter < niter_inject:
-            phase = 'inject'
-        elif iiter < niter_inject + niter_uniform:
-            phase = 'uniform'
-        elif iiter < niter_inject + niter_uniform + niter_transition:
-            phase = 'transition'
-        elif iiter < niter_inject + niter_uniform + niter_transition + \
-                niter_explorative:
-            phase = 'explorative'
-        else:
-            phase = 'non_explorative'
+        if iiter - iiter_phase_starte == phase.niterations:
+            phase = phases.pop(0)
+            iiter_phase_start = iiter
 
-        factor = 0.0
-        if phase == 'transition':
-            T = float(niter_transition)
-            A = scatter_scale_transition
-            B = scatter_scale
-            tau = T/(math.log(A) - math.log(B))
-            t0 = math.log(A) * T / (math.log(A) - math.log(B))
-            t = float(iiter - niter_uniform - niter_inject)
-            factor = num.exp(-(t-t0) / tau)
+        iiter_phase = iiter - iiter_phase_start
 
-        elif phase in ('explorative', 'non_explorative'):
-            factor = scatter_scale
-
-        ntries_preconstrain = 0
-        ntries_sample = 0
-
-        if phase == 'inject':
-            x = xs_inject[iiter, :]
-        else:
-            while True:
-                ntries_preconstrain += 1
-
-                if mbx is None or phase == 'uniform':
-                    x = problem.random_uniform(xbounds)
-                else:
-                    # ibootstrap_choice = num.random.randint(
-                    #     0, 1 + problem.nbootstrap)
-                    ibootstrap_choice = num.argmin(accept_sum)
-
-                    if phase in ('transition', 'explorative'):
-
-                        if compensate_excentricity:
-                            ichoice = excentricity_compensated_choice(
-                                xhist[chains_i[ibootstrap_choice, :], :],
-                                local_sxs[ibootstrap_choice], 2.)
-
-                            xchoice = xhist[
-                                chains_i[ibootstrap_choice, ichoice], :]
-
-                        else:
-                            ichoice = num.random.randint(0, nlinks)
-                            xchoice = xhist[
-                                chains_i[ibootstrap_choice, ichoice], :]
-                    else:
-                        xchoice = mxs[ibootstrap_choice]
-
-                    if sampler_distribution == 'multivariate_normal':
-                        ntries_sample = 0
-
-                        ntry = 0
-                        ok_mask_sum = num.zeros(npar, dtype=num.int)
-                        while True:
-                            ntries_sample += 1
-                            vs = num.random.multivariate_normal(
-                                xchoice, factor**2 * covs[ibootstrap_choice])
-
-                            ok_mask = num.logical_and(
-                                xbounds[:, 0] <= vs, vs <= xbounds[:, 1])
-
-                            if num.all(ok_mask):
-                                break
-
-                            ok_mask_sum += ok_mask
-
-                            if ntry > 1000:
-                                raise GrondError(
-                                    'failed to produce a suitable candidate '
-                                    'sample from multivariate normal '
-                                    'distribution, (%s)' %
-                                    ', '.join('%s:%i' % xx for xx in
-                                              zip(pnames, ok_mask_sum)))
-
-                            ntry += 1
-
-                        x = vs.tolist()
-
-                    if sampler_distribution == 'normal':
-                        ncandidates = 1
-                        xcandidates = num.zeros((ncandidates, npar))
-                        for icandidate in xrange(ncandidates):
-                            for ipar in xrange(npar):
-                                ntry = 0
-                                while True:
-                                    if local_sxs[ibootstrap_choice][ipar] > 0.:
-                                        v = num.random.normal(
-                                            xchoice[ipar],
-                                            factor*local_sxs[
-                                                ibootstrap_choice][ipar])
-                                    else:
-                                        v = xchoice[ipar]
-
-                                    if xbounds[ipar, 0] <= v and \
-                                            v <= xbounds[ipar, 1]:
-
-                                        break
-
-                                    if ntry > 1000:
-                                        raise GrondError(
-                                            'failed to produce a suitable '
-                                            'candidate sample from normal '
-                                            'distribution')
-
-                                    ntry += 1
-
-                                xcandidates[icandidate, ipar] = v
-
-                        x = select_most_excentric(
-                            xcandidates,
-                            xhist[chains_i[ibootstrap_choice, :], :],
-                            local_sxs[ibootstrap_choice],
-                            factor)
-
-                try:
-                    x = problem.preconstrain(x)
-                    break
-
-                except Forbidden:
-                    pass
+        x, ichain_choice, ichoice, ntries_preconstrain, ntries_sample = \
+            phase.get_sample(
+                iiter_phase, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
+                nlinks):
 
         ibase = None
-        if ichoice is not None and ibootstrap_choice is not None:
-            ibase = chains_i[ibootstrap_choice, ichoice]
+        if ichoice is not None and ichain_choice is not None:
+            ibase = chains_i[ichain_choice, ichoice]
 
         if isbad_mask is not None and num.any(isbad_mask):
             isok_mask = num.logical_not(isbad_mask)
@@ -269,26 +358,24 @@ def solve(problem,
 
         isbad_mask_new = num.isnan(ms)
         if isbad_mask is not None and num.any(isbad_mask != isbad_mask_new):
-            logger.error(
-                'skipping problem %s: inconsistency in data availability' %
-                problem.name)
+            errmess = [
+                'problem %s: inconsistency in data availability' %
+                problem.name]
 
             for target, isbad_new, isbad in zip(
                     problem.targets, isbad_mask_new, isbad_mask):
 
                 if isbad_new != isbad:
-                    logger.error('%s, %s -> %s' % (
+                    errmess.append('  %s, %s -> %s' % (
                         target.string_id(), isbad, isbad_new))
 
-            return
+            raise BadProblem(errmess)
 
         isbad_mask = isbad_mask_new
 
         if num.all(isbad_mask):
-            logger.error(
-                'skipping problem %s: all target misfit values are NaN' %
-                problem.name)
-            return
+            raise BadProblem(
+                'problem %s: all target misfit values are NaN' % problem.name)
 
         gm = problem.global_misfit(ms, ns)
         bms = problem.bootstrap_misfit(ms, ns)
@@ -308,12 +395,12 @@ def solve(problem,
             accept = (chains_i[:, nlinks_cap-1] != iiter).astype(num.int)
             nlinks -= 1
         else:
-            accept = num.ones(1 + problem.nbootstrap, dtype=num.int)
+            accept = num.ones(1 + problem.nchains, dtype=num.int)
 
         if rundir:
             problem.dump_problem_data(
                 rundir, x, ms, ns, accept,
-                ibootstrap_choice if ibootstrap_choice is not None else -1,
+                ichain_choice if ichain_choice is not None else -1,
                 ibase if ibase is not None else -1)
 
         accept_sum += accept
@@ -341,7 +428,7 @@ def solve(problem,
             mxs = []
             local_sxs = []
 
-            for i in xrange(1 + problem.nbootstrap):
+            for i in xrange(1 + problem.nchains):
                 xs = xhist[chains_i[i, :nlinks], :]
                 mx = num.mean(xs, axis=0)
                 cov = num.cov(xs.T)
@@ -362,11 +449,11 @@ def solve(problem,
                 else:
                     assert False, 'invalid standard_deviation_estimator choice'
 
-            state.parameter_sets['BS mean'][:-1] = mbx
-            state.parameter_sets['BS std'][:-1] = sbx
-            state.parameter_sets['Global mean'][:-1] = mgx
-            state.parameter_sets['Global std'][:-1] = sgx
-            state.parameter_sets['Global best'][:-1] = bgx
+            state.parameter_sets['BS mean'][:-1-problem.ndependants] = mbx
+            state.parameter_sets['BS std'][:-1-problem.ndependants] = sbx
+            state.parameter_sets['Global mean'][:-1-problem.ndependants] = mgx
+            state.parameter_sets['Global std'][:-1-problem.ndependants] = sgx
+            state.parameter_sets['Global best'][:-1-problem.ndependants] = bgx
 
             state.parameter_sets['Global mean'][-1] = num.mean(gms)
             state.parameter_sets['Global std'][-1] = num.std(gms)
@@ -392,7 +479,7 @@ def solve(problem,
                 xhist[:iiter+1, :],
                 chains_i[:, :nlinks],
                 ibase,
-                ibootstrap_choice,
+                ichain_choice,
                 local_sxs,
                 factor)
 
@@ -402,10 +489,10 @@ def solve(problem,
         plot.finish()
 
 
-class HighScoreSolver(Solver):
+class HighScoreOptimizer(Optimizer):
 
     def __init__(self, kwargs):
-        Solver.__init__(self)
+        Optimizer.__init__(self)
         self._kwargs = kwargs
 
     def solve(
@@ -434,7 +521,7 @@ class StandardDeviationEstimatorChoice(StringChoice):
         'standard_deviation_single_chain']
 
 
-class HighScoreSolverConfig(SolverConfig):
+class HighScoreOptimizerConfig(OptimizerConfig):
     niter_uniform = Int.T(default=1000)
     niter_transition = Int.T(default=0)
     niter_explorative = Int.T(default=10000)
@@ -448,7 +535,7 @@ class HighScoreSolverConfig(SolverConfig):
     chain_length_factor = Float.T(default=8.0)
     compensate_excentricity = Bool.T(default=True)
 
-    def get_solver_kwargs(self):
+    def get_optimizer_kwargs(self):
         return dict(
             niter_uniform=self.niter_uniform,
             niter_transition=self.niter_transition,
@@ -461,13 +548,13 @@ class HighScoreSolverConfig(SolverConfig):
             chain_length_factor=self.chain_length_factor,
             compensate_excentricity=self.compensate_excentricity)
 
-    def get_solver(self):
-        return HighScoreSolver(self.get_solver_kwargs())
+    def get_optimizer(self):
+        return HighScoreOptimizer(self.get_optimizer_kwargs())
 
 
 __all__ = '''
-    HighScoreSolver
+    HighScoreOptimizer
     SamplerDistributionChoice
     StandardDeviationEstimatorChoice
-    HighScoreSolverConfig
+    HighScoreOptimizerConfig
 '''.split()

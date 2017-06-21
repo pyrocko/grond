@@ -254,7 +254,8 @@ class Problem(Object):
             for p in target.target_parameters:
                 r = target.target_ranges[p.name]
                 out.append((r.start, r.stop))
-        return out
+
+        return num.array(out, dtype=num.float)
 
     def get_dependant_bounds(self):
         return []
