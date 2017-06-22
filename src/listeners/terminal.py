@@ -47,9 +47,6 @@ class TerminalListener(Listener):
         def fmt(s):
             return util.gform(s, significant_digits=(self.col_width-1-6)/2)
 
-        print state.parameter_names
-        print state.parameter_sets
-
         out_ln = self.row_name +\
             ''.join([self.parameter_fmt] * len(state.parameter_sets))
         col_param_width = max([len(p) for p in state.parameter_names]) + 2

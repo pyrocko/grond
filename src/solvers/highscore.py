@@ -104,14 +104,15 @@ def solve(problem,
 
     state.problem_name = problem.name
     state.parameter_names = problem.parameter_names + ['Misfit']
+    npar = len(state.parameter_names)
 
     state.parameter_sets = OrderedDict()
 
-    state.parameter_sets['BS mean'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['BS std'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['Global mean'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['Global std'] = num.zeros(problem.nparameters + 1)
-    state.parameter_sets['Global best'] = num.zeros(problem.nparameters + 1)
+    state.parameter_sets['BS mean'] = num.zeros(npar)
+    state.parameter_sets['BS std'] = num.zeros(npar)
+    state.parameter_sets['Global mean'] = num.zeros(npar)
+    state.parameter_sets['Global std'] = num.zeros(npar)
+    state.parameter_sets['Global best'] = num.zeros(npar)
 
     for par in state.parameter_sets.values():
         par.fill(num.nan)
@@ -362,11 +363,11 @@ def solve(problem,
                 else:
                     assert False, 'invalid standard_deviation_estimator choice'
 
-            state.parameter_sets['BS mean'][:-1] = mbx
-            state.parameter_sets['BS std'][:-1] = sbx
-            state.parameter_sets['Global mean'][:-1] = mgx
-            state.parameter_sets['Global std'][:-1] = sgx
-            state.parameter_sets['Global best'][:-1] = bgx
+            state.parameter_sets['BS mean'][:-1-problem.ndependants] = mbx
+            state.parameter_sets['BS std'][:-1-problem.ndependants] = sbx
+            state.parameter_sets['Global mean'][:-1-problem.ndependants] = mgx
+            state.parameter_sets['Global std'][:-1-problem.ndependants] = sgx
+            state.parameter_sets['Global best'][:-1-problem.ndependants] = bgx
 
             state.parameter_sets['Global mean'][-1] = num.mean(gms)
             state.parameter_sets['Global std'][-1] = num.std(gms)

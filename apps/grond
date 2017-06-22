@@ -171,15 +171,15 @@ def command_init(args):
             events_path='events.txt',
             waveform_paths=['data'])
 
-        target_configs = [grond.TargetConfig(
-            super_group='time_domain',
-            group='all',
+        target_groups = [grond.WaveformTargetGroup(
+            normalisation_family='time_domain',
+            path='all',
             distance_min=10*km,
             distance_max=1000*km,
             channels=['Z', 'R', 'T'],
             interpolation='multilinear',
             store_id='gf_store',
-            inner_misfit_config=grond.InnerMisfitConfig(
+            misfit_config=grond.WaveformMisfitConfig(
                 fmin=0.01,
                 fmax=0.1))]
 
@@ -213,14 +213,21 @@ def command_init(args):
             kite_scene_paths=['scenes'],
             )
 
-        target_configs = [grond.TargetConfig(
-            super_group='insar_target',
-            group='all',
+        target_groups = [grond.SatelliteTargetGroup(
+            normalisation_family='insar_target',
+            path='all',
             interpolation='multilinear',
             store_id='gf_store',
             kite_scenes=['*all'],
-            inner_misfit_config=grond.InnerSatelliteMisfitConfig(
-                use_weight_focal=False))]
+            misfit_config=grond.SatelliteMisfitConfig(
+                use_weight_focal=False,
+                optimize_orbital_ramp=True,
+                ranges={
+                    'offset': '-0.5 .. 0.5',
+                    'ramp_north': '-1e-4 .. 1e4',
+                    'ramp_east': '-1e-4 .. 1e4'
+                    }
+                ))]
 
         problem_config = grond.RectangularProblemConfig(
             name_template='rect_source',
@@ -242,7 +249,7 @@ def command_init(args):
     config = grond.Config(
         rundir_template=op.join(op.abspath(op.curdir), 'rundir'),
         dataset_config=dataset_config,
-        target_configs=target_configs,
+        target_groups=target_groups,
         problem_config=problem_config,
         engine_config=engine_config)
 
@@ -289,8 +296,9 @@ def command_events(args):
     config_path = args[0]
     config = grond.read_config(config_path)
 
+    print 'Available Events:'
     for event_name in grond.get_event_names(config):
-        print event_name
+        print '* %s' % event_name
 
 
 def command_check(args):
@@ -355,6 +363,18 @@ def command_go(args):
             help='start the Barad-dur plotting server')
 
     parser, options, args = cl_parse('go', args, setup)
+
+    if len(args) == 1:
+        config_path = args[0]
+        config = grond.read_config(config_path)
+
+        print 'Available Events:'
+        for event_name in grond.get_event_names(config):
+            print '* %s' % event_name
+        print '\n'
+
+        help_and_die(parser, 'missing arguments')
+
     if len(args) < 2:
         help_and_die(parser, 'missing arguments')
 
