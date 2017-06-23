@@ -1,2 +1,6 @@
 build
 *.pyc
+*.aux
+*.log
+
+docs/_build
