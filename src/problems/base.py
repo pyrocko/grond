@@ -138,6 +138,13 @@ class Problem(Object):
         return len(self.satellite_targets)
 
     @property
+    def nmisfits(self):
+        nmisfits = 0
+        for target in self.targets:
+            nmisfits += target.nmisfits
+        return nmisfits
+
+    @property
     def ndependants(self):
         return len(self.dependants)
 

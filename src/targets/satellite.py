@@ -2,9 +2,9 @@ import logging
 import numpy as num
 
 from pyrocko import gf
-from pyrocko.guts import String, Float, Bool, Dict, List
+from pyrocko.guts import String, Bool, Dict, List
 
-from .base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
+from .base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
 from ..meta import Parameter
 
 guts_prefix = 'grond'
@@ -76,15 +76,8 @@ class SatelliteMisfitConfig(MisfitConfig):
 
 class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     scene_id = String.T()
-    normalisation_family = gf.StringID.T()
-    misfit_config = SatelliteMisfitConfig.T()
-    manual_weight = Float.T(
-        default=1.0,
-        help='Relative weight of this target')
-    path = gf.StringID.T(
-        help='Group')
 
-    parameters = [
+    available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
         Parameter('ramp_east', 'm/m'),
@@ -92,18 +85,22 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
+        MisfitTarget.__init__(self)
         if not self.misfit_config.optimize_orbital_ramp:
             self.parameters = []
-
-        self._ds = None
+        else:
+            self.parameters = self.available_parameters
 
         self.parameter_values = {}
-        self._target_parameters = None
-        self._target_ranges = None
 
     @property
     def id(self):
         return self.scene_id
+
+    def set_dataset(self, ds):
+        MisfitTarget.set_dataset(self, ds)
+        scene = self._ds.get_kite_scene(self.scene_id)
+        self.nmisfits = scene.quadtree.nleaves
 
     def post_process(self, engine, source, statics):
         scene = self._ds.get_kite_scene(self.scene_id)

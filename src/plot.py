@@ -42,7 +42,7 @@ def ordersort(x):
 
 
 def nextpow2(i):
-    return 2**int(math.ceil(math.log(i)/math.log(2.)))
+    return 2**int(math.ceil(math.log(i) / math.log(2.)))
 
 
 def fixlim(lo, hi):
@@ -55,9 +55,9 @@ def fixlim(lo, hi):
 def str_dist(dist):
     if dist < 10.0:
         return '%g m' % dist
-    elif 10. <= dist < 1.*km:
+    elif 10. <= dist < 1. * km:
         return '%.0f m' % dist
-    elif 1.*km <= dist < 10.*km:
+    elif 1. * km <= dist < 10. * km:
         return '%.1f km' % (dist / km)
     else:
         return '%.0f km' % (dist / km)
@@ -74,16 +74,17 @@ def str_duration(t):
         return s + '%.2g s' % t
     elif 10.0 <= t < 3600.:
         return s + util.time_to_str(t, format='%M:%S min')
-    elif 3600. <= t < 24*3600.:
+    elif 3600. <= t < 24 * 3600.:
         return s + util.time_to_str(t, format='%H:%M h')
     else:
-        return s + '%.1f d' % (t / (24.*3600.))
+        return s + '%.1f d' % (t / (24. * 3600.))
 
 
 def scale_axes(ax, scale):
     from matplotlib.ticker import ScalarFormatter
 
     class FormatScaled(ScalarFormatter):
+
         @staticmethod
         def __call__(value, pos):
             return u'%d' % (value * scale)
@@ -108,6 +109,7 @@ def make_norm_trace(a, b, exponent):
 
 
 class GrondModel(object):
+
     def __init__(self, **kwargs):
         self.listeners = []
         self.set_problem(None)
@@ -170,8 +172,8 @@ class GrondModel(object):
             self._xs_buffer = xs_buffer
             self._misfits_buffer = misfits_buffer
 
-        self._xs_buffer[nmodels:nmodels+nmodels_add, :] = xs
-        self._misfits_buffer[nmodels:nmodels+nmodels_add, :, :] = misfits
+        self._xs_buffer[nmodels:nmodels + nmodels_add, :] = xs
+        self._misfits_buffer[nmodels:nmodels + nmodels_add, :, :] = misfits
 
         nmodels = nmodels_new
 
@@ -226,7 +228,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
         if (impl - 1) % nfx != nfx - 1:
             axes.get_yaxis().tick_left()
 
-        if (impl - 1) >= (nfx * (nfy-1)) or iplot >= nplots - nfx:
+        if (impl - 1) >= (nfx * (nfy - 1)) or iplot >= nplots - nfx:
             axes.set_xlabel('Iteration')
             if not (impl - 1) / nfx == 0:
                 axes.get_xaxis().tick_bottom()
@@ -249,7 +251,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     fig = None
     alpha = 0.5
     for ipar in xrange(npar):
-        impl = ipar % (nfx*nfy) + 1
+        impl = ipar % (nfx * nfy) + 1
 
         if impl == 1:
             fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
@@ -265,7 +267,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
         axes.set_ylabel(par.get_label())
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
 
-        config_axes(axes, nfx, nfy, impl, ipar, npar+ndep+1)
+        config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
 
         axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
         axes.set_xlim(0, model.nmodels)
@@ -278,7 +280,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
 
     for idep in xrange(ndep):
         # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
-        impl = (npar+idep) % (nfx*nfy) + 1
+        impl = (npar + idep) % (nfx * nfy) + 1
 
         if impl == 1:
             fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
@@ -294,9 +296,9 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
         axes.set_ylabel(par.get_label())
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
 
-        config_axes(axes, nfx, nfy, impl, npar+idep, npar+ndep+1)
+        config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
 
-        axes.set_ylim(*fixlim(*par.scaled(bounds[npar+idep])))
+        axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
         axes.set_xlim(0, model.nmodels)
 
         ys = problem.make_dependant(xs[ibest, :], par.name)
@@ -307,7 +309,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
         y = problem.make_dependant(xref, par.name)
         axes.axhline(par.scaled(y), color='black', alpha=0.3)
 
-    impl = (npar+ndep) % (nfx*nfy) + 1
+    impl = (npar + ndep) % (nfx * nfy) + 1
     if impl == 1:
         fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
         labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
@@ -317,7 +319,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     axes = fig.add_subplot(nfy, nfx, impl)
     labelpos(axes, 2.5, 2.0)
 
-    config_axes(axes, nfx, nfy, impl, npar+ndep, npar+ndep+1)
+    config_axes(axes, nfx, nfy, impl, npar + ndep, npar + ndep + 1)
 
     axes.set_ylim(0., 1.5)
     axes.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4])
@@ -419,7 +421,7 @@ def draw_jointpar_figures(
                     'parameters selected')
         return []
 
-    nfig = (nselected-2) / neach + 1
+    nfig = (nselected - 2) / neach + 1
 
     figs = []
     for ifig in xrange(nfig):
@@ -445,8 +447,8 @@ def draw_jointpar_figures(
             ix = ixg % neach
             iy = iyg % neach
 
-            ifig = ixg/neach
-            jfig = iyg/neach
+            ifig = ixg / neach
+            jfig = iyg / neach
 
             aind = (neach, neach, (ix * neach) + iy + 1)
 
@@ -526,8 +528,8 @@ def draw_jointpar_figures(
                 evals = num.sqrt(evals)
                 ell = patches.Ellipse(
                     xy=(num.mean(xpar.scaled(fx)), num.mean(ypar.scaled(fy))),
-                    width=evals[0]*2,
-                    height=evals[1]*2,
+                    width=evals[0] * 2,
+                    height=evals[1] * 2,
                     angle=num.rad2deg(num.arctan2(evecs[1][0], evecs[0][0])))
 
                 ell.set_facecolor('none')
@@ -587,7 +589,7 @@ def draw_solution_figure(
 
         axes.annotate(
             label,
-            xy=(1+xpos, 3),
+            xy=(1 + xpos, 3),
             xycoords='data',
             xytext=(0., 0.),
             textcoords='offset points',
@@ -640,18 +642,18 @@ def draw_solution_figure(
                     beachball.plot_beachball_mpl(
                         mt_part, axes,
                         beachball_type='full',
-                        position=(1.+xpos, ypos),
-                        size=0.9*size0*math.sqrt(ratio),
+                        position=(1. + xpos, ypos),
+                        size=0.9 * size0 * math.sqrt(ratio),
                         size_units='data',
                         color_t=color_t,
                         linewidth=1.0)
 
-                except beachball.BeachballError, e:
+                except beachball.BeachballError as e:
                     logger.warn(str(e))
 
                     axes.annotate(
                         'ERROR',
-                        xy=(1.+xpos, ypos),
+                        xy=(1. + xpos, ypos),
                         ha='center',
                         va='center',
                         color='red',
@@ -660,7 +662,7 @@ def draw_solution_figure(
             else:
                 axes.annotate(
                     'N/A',
-                    xy=(1.+xpos, ypos),
+                    xy=(1. + xpos, ypos),
                     ha='center',
                     va='center',
                     color='black',
@@ -833,9 +835,9 @@ def draw_bootstrap_figure(model, plt):
     m = num.median(gms[ibests])
     s = num.std(gms[ibests])
 
-    axes.axhline(m+s, color='black', alpha=0.5)
+    axes.axhline(m + s, color='black', alpha=0.5)
     axes.axhline(m, color='black')
-    axes.axhline(m-s, color='black', alpha=0.5)
+    axes.axhline(m - s, color='black', alpha=0.5)
 
     axes.plot(imodels, gms_softclip[isort], color='black')
 
@@ -880,7 +882,7 @@ def plot_dtrace(axes, tr, space, mi, ma, **kwargs):
     t = tr.get_xdata()
     y = tr.get_ydata()
     y2 = (num.concatenate((y, num.zeros(y.size))) - mi) / \
-        (ma-mi) * space - (1.0 + space)
+        (ma - mi) * space - (1.0 + space)
     t2 = num.concatenate((t, t[::-1]))
     axes.fill(
         t2, y2,
@@ -906,7 +908,7 @@ def plot_spectrum(
         y = num.abs(spec.get_ydata())[mask]
 
         y2 = (num.concatenate((y, num.zeros(y.size))) - mi) / \
-            (ma-mi) * space - (1.0 + space)
+            (ma - mi) * space - (1.0 + space)
         f2 = num.concatenate((f, f[::-1]))
         axes2 = axes.twiny()
         axes2.set_axis_off()
@@ -928,8 +930,8 @@ def plot_spectrum(
             xy=(fx, -1.0),
             xycoords='data',
             xytext=(
-                fontsize*0.4 * [-1, 1][ha == 'left'],
-                -fontsize*0.2),
+                fontsize * 0.4 * [-1, 1][ha == 'left'],
+                -fontsize * 0.2),
             textcoords='offset points',
             ha=ha,
             va='top',
@@ -963,7 +965,7 @@ def draw_fits_figures_statics(ds, model, plt):
     def decorateAxes(ax, title):
         ax.set_title(title)
         ax.set_xlabel('[km]')
-        scale_axes(ax, 1./km)
+        scale_axes(ax, 1. / km)
         ax.set_aspect('equal')
 
     def drawRectangularOutline(ax):
@@ -1200,13 +1202,13 @@ def draw_fits_figures(ds, model, plt):
         nframes = len(targets)
 
         nx = int(math.ceil(math.sqrt(nframes)))
-        ny = (nframes-1)/nx+1
+        ny = (nframes - 1) / nx + 1
 
         nxmax = 4
         nymax = 4
 
-        nxx = (nx-1) / nxmax + 1
-        nyy = (ny-1) / nymax + 1
+        nxx = (nx - 1) / nxmax + 1
+        nyy = (ny - 1) / nymax + 1
 
         # nz = nxx * nyy
 
@@ -1224,8 +1226,8 @@ def draw_fits_figures(ds, model, plt):
         for target in targets:
             azi = source.azibazi_to(target)[0]
             dist = source.distance_to(target)
-            x = dist*num.sin(num.deg2rad(azi))
-            y = dist*num.cos(num.deg2rad(azi))
+            x = dist * num.sin(num.deg2rad(azi))
+            y = dist * num.cos(num.deg2rad(azi))
             data.append((x, y, dist))
 
         gxs, gys, dists = num.array(data, dtype=num.float).T
@@ -1267,8 +1269,8 @@ def draw_fits_figures(ds, model, plt):
                 if (iy, ix) not in frame_to_target:
                     continue
 
-                ixx = ix/nxmax
-                iyy = iy/nymax
+                ixx = ix / nxmax
+                iyy = iy / nymax
                 if (iyy, ixx) not in figures:
                     figures[iyy, ixx] = plt.figure(
                         figsize=mpl_papersize('a4', 'landscape'))
@@ -1308,7 +1310,7 @@ def draw_fits_figures(ds, model, plt):
                 if target.misfit_config.domain == 'cc_max_norm':
                     axes.set_ylim(-10. * space_factor, 10.)
                 else:
-                    axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
+                    axes.set_ylim(-absmax * 1.33 * space_factor, absmax * 1.33)
 
                 itarget = target_index[target]
                 result = target_to_result[target]
@@ -1412,8 +1414,8 @@ def draw_fits_figures(ds, model, plt):
                         xy=(tmark, -0.9),
                         xycoords='data',
                         xytext=(
-                            fontsize*0.4 * [-1, 1][ha == 'left'],
-                            fontsize*0.2),
+                            fontsize * 0.4 * [-1, 1][ha == 'left'],
+                            fontsize * 0.2),
                         textcoords='offset points',
                         ha=ha,
                         va='bottom',
@@ -1428,11 +1430,11 @@ def draw_fits_figures(ds, model, plt):
                 ph = 0.01
 
                 for (ih, rw, facecolor, edgecolor) in [
-                        (0, rel_w,  light(weight_color, 0.5), weight_color),
-                        (1, rel_c,  light(misfit_color, 0.5), misfit_color)]:
+                        (0, rel_w, light(weight_color, 0.5), weight_color),
+                        (1, rel_c, light(misfit_color, 0.5), misfit_color)]:
 
                     bar = patches.Rectangle(
-                        (1.0-rw*sw, 1.0-(ih+1)*sh+ph), rw*sw, sh-2*ph,
+                        (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph), rw * sw, sh - 2 * ph,
                         facecolor=facecolor, edgecolor=edgecolor,
                         zorder=10,
                         transform=axes.transAxes, clip_on=False)
@@ -1469,7 +1471,7 @@ def draw_fits_figures(ds, model, plt):
         for (iyy, ixx), fig in figures.iteritems():
             title = '.'.join(x for x in cg if x)
             if len(figures) > 1:
-                title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
+                title += ' (%i/%i, %i/%i)' % (iyy + 1, nyy, ixx + 1, nxx)
 
             fig.suptitle(title, fontsize=fontsize_title)
 
@@ -1485,7 +1487,7 @@ def draw_hudson_figure(model, plt):
     beachballsize = markersize
     beachballsize_small = beachballsize * 0.5
     width = 7.
-    figsize = (width, width / (4./3.))
+    figsize = (width, width / (4. / 3.))
 
     problem = model.problem
     mean_source = core.get_mean_source(problem, model.xs)
@@ -1511,7 +1513,7 @@ def draw_hudson_figure(model, plt):
                     alpha=0.5,
                     zorder=1,
                     linewidth=0.25)
-            except beachball.BeachballError, e:
+            except beachball.BeachballError as e:
                 logger.warn(str(e))
 
         else:
@@ -1542,7 +1544,7 @@ def draw_hudson_figure(model, plt):
             color_t=color,
             zorder=2,
             linewidth=0.5)
-    except beachball.BeachballError, e:
+    except beachball.BeachballError as e:
         logger.warn(str(e))
 
     mt = best_source.pyrocko_moment_tensor()
@@ -1568,7 +1570,7 @@ def draw_hudson_figure(model, plt):
             color_t='red',
             zorder=2,
             linewidth=0.5)
-    except beachball.BeachballError, e:
+    except beachball.BeachballError as e:
         logger.warn(str(e))
 
     return [fig]
@@ -1584,7 +1586,7 @@ def draw_location_figure(model, plt):
     beachballsize = markersize
     beachballsize_small = beachballsize * 0.5
     width = 7.
-    figsize = (width, width / (4./3.))
+    figsize = (width, width / (4. / 3.))
 
     problem = model.problem
 
@@ -1658,7 +1660,7 @@ def draw_location_figure(model, plt):
                     zorder=1,
                     linewidth=0.25)
 
-            except beachball.BeachballError, e:
+            except beachball.BeachballError as e:
                 logger.warn(str(e))
 
     return [fig]
@@ -1907,7 +1909,7 @@ class SolverPlot(object):
 
             for j in [jchoice]:  # xrange(self.problem.nbootstrap+1):
                 ps = core.excentricity_compensated_probabilities(
-                        xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
+                    xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
                 bounds = self.problem.get_parameter_bounds() + \
                     self.problem.get_dependant_bounds()
@@ -1922,10 +1924,10 @@ class SolverPlot(object):
                     vx = xhist[iiter, self.ixpar]
                     vy = xhist[iiter, self.iypar]
                     pdfx = 1.0 / math.sqrt(2.0 * sx**2 * math.pi) * num.exp(
-                        -(x - vx)**2 / (2.0*sx**2))
+                        -(x - vx)**2 / (2.0 * sx**2))
 
                     pdfy = 1.0 / math.sqrt(2.0 * sy**2 * math.pi) * num.exp(
-                        -(y - vy)**2 / (2.0*sy**2))
+                        -(y - vy)**2 / (2.0 * sy**2))
 
                     p += ps[ichoice] * pdfx[num.newaxis, :] * \
                         pdfy[:, num.newaxis]
@@ -1939,9 +1941,9 @@ class SolverPlot(object):
             self.xpar.scaled(fx),
             self.ypar.scaled(fy),
             color='black',
-            s=msize*0.15, alpha=0.2, edgecolors='none')
+            s=msize * 0.15, alpha=0.2, edgecolors='none')
 
-        for ibootstrap in xrange(self.problem.nbootstrap+1):
+        for ibootstrap in xrange(self.problem.nbootstrap + 1):
 
             iiters = chains_i[ibootstrap, :]
             fx = self.problem.extract(xhist[iiters, :], self.ixpar)
@@ -1949,7 +1951,7 @@ class SolverPlot(object):
 
             nfade = 20
             factors = 1.0 + 5.0 * (num.maximum(
-                    0.0, iiters - (xhist.shape[0]-nfade)) / nfade)**2
+                0.0, iiters - (xhist.shape[0] - nfade)) / nfade)**2
 
             msizes = msize * factors
 

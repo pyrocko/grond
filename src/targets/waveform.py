@@ -209,22 +209,13 @@ class WaveformMisfitConfig(MisfitConfig):
 
 
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
-    misfit_config = WaveformMisfitConfig.T()
     flip_norm = Bool.T(default=False)
-    manual_weight = Float.T(default=1.0)
-    normalisation_family = gf.StringID.T()
-    path = gf.StringID.T()
-    analysis_result = TargetAnalysisResult.T(optional=True)
-
-    parameters = []
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
-        self._ds = None
-        self._result_mode = 'sparse'
+        MisfitTarget.__init__(self)
 
-        self._target_parameters = None
-        self._target_ranges = None
+        nmisfits = 1
 
     def string_id(self):
         return '.'.join(x for x in (self.path) + self.codes if x)
@@ -564,3 +555,7 @@ def float_or_none(x):
         return x
     else:
         return float(x)
+
+
+__all__ = [WaveformMisfitConfig, WaveformMisfitTarget, WaveformMisfitResult,
+           WaveformTargetGroup]

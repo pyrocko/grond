@@ -22,7 +22,43 @@ class TargetGroup(Object):
         raise NotImplementedError()
 
 
-class MisfitTarget(object):
+class TargetAnalysisResult(Object):
+    class NoResult(Exception):
+        pass
+
+    balancing_weight = Float.T()
+
+
+class MisfitResult(gf.Result):
+    misfit_value = Float.T()
+    misfit_norm = Float.T()
+
+
+class MisfitTarget(Object):
+
+    manual_weight = Float.T(
+        default=1.0,
+        help='Relative weight of this target')
+    analysis_result = TargetAnalysisResult.T(
+        optional=True)
+    misfit_config = MisfitConfig.T(
+        help='Configuration object how the misfit is calculated.')
+
+    normalisation_family = gf.StringID.T(
+        help='Normalisation family of this misfitTarget')
+    path = gf.StringID.T(
+        help='A path identifier used for plotting')
+
+    def __init__(self):
+        self.parameters = []
+        self.nmisfits = 0
+
+        self._ds = None
+        self._result_mode = 'sparse'
+
+        self._target_parameters = None
+        self._target_ranges = None
+
     def set_dataset(self, ds):
         self._ds = ds
 
@@ -65,15 +101,3 @@ class MisfitTarget(object):
 
     def get_combined_weight(self, apply_balancing_weights=False):
         raise NotImplementedError()
-
-
-class MisfitResult(gf.Result):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
-
-
-class TargetAnalysisResult(Object):
-    class NoResult(Exception):
-        pass
-
-    balancing_weight = Float.T()
