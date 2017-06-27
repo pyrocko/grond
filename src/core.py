@@ -730,16 +730,20 @@ def process_event(ievent, g_data_id):
     #     update_every=10,
     #     movie_filename='grond_opt_time_magnitude.mp4')
 
-    solver = config.solver_config.get_solver()
-    solver.solve(
-        problem,
-        rundir=rundir,
-        status=status,
-        # plot=splot,
-        xs_inject=xs_inject,
-        notifier=notifier)
+    try:
+        solver = config.solver_config.get_solver()
+        solver.solve(
+            problem,
+            rundir=rundir,
+            status=status,
+            # plot=splot,
+            xs_inject=xs_inject,
+            notifier=notifier)
 
-    harvest(rundir, problem, force=True)
+        harvest(rundir, problem, force=True)
+
+    except BadProblem as e:
+        logger.error(str(e))
 
     tstop = time.time()
     logger.info(
