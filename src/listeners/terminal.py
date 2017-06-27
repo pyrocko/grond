@@ -1,5 +1,4 @@
 from pyrocko import util
-import progressbar as pbar
 from .base import Listener
 
 
@@ -45,14 +44,18 @@ class TerminalListener(Listener):
         def l(t):
             lines.append(t)
 
+        def fmt(s):
+            return util.gform(s, significant_digits=(self.col_width-1-6)/2)
+
         out_ln = self.row_name +\
             ''.join([self.parameter_fmt] * len(state.parameter_sets))
         col_param_width = max([len(p) for p in state.parameter_names]) + 2
 
         l('Problem name: {s.problem_name}'
-          '\t({s.runtime:s} - remaining {s.runtime_remaining})'
+          '\t({s.runtime:s} - remaining {s.runtime_remaining}'
+          ' @ {s.iter_per_second:.1f} iter/s)'
             .format(s=state))
-        l('Iteration {s.iiter} / {s.niter}\t\t({s.iter_per_second:.1f} iter/s)'
+        l('Iteration {s.iiter} / {s.niter}'
           .format(s=state))
 
         l(out_ln.format(
@@ -60,9 +63,6 @@ class TerminalListener(Listener):
             col_param_width=col_param_width,
             col_width=self.col_width,
             type='s'))
-
-        def fmt(s):
-            return util.gform(s, significant_digits=(self.col_width-1-6)/2)
 
         for ip, parameter_name in enumerate(state.parameter_names):
             l(out_ln.format(

@@ -119,7 +119,7 @@ class CursesListener(object):
     def set_screen(self, scr):
         self.scr = scr
 
-    def set_state(self, state):
+    def state(self, state):
         self.state = state
         self.parameter_pad.update(state)
         self.header_pad.update(state)

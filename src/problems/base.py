@@ -7,7 +7,7 @@ from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, Bool, List, Dict, Int
 
 from ..meta import ADict, Parameter, GrondError
-from ..targets import MisfitTarget, MisfitSatelliteTarget
+from ..targets import WaveformMisfitTarget, SatelliteMisfitTarget
 
 
 guts_prefix = 'grond'
@@ -152,12 +152,12 @@ class Problem(Object):
     @property
     def satellite_targets(self):
         return [t for t in self.targets
-                if isinstance(t, MisfitSatelliteTarget)]
+                if isinstance(t, SatelliteMisfitTarget)]
 
     @property
     def waveform_targets(self):
         return [t for t in self.targets
-                if isinstance(t, MisfitTarget)]
+                if isinstance(t, WaveformMisfitTarget)]
 
     @property
     def has_statics(self):
@@ -338,17 +338,14 @@ class Problem(Object):
         return gcms
 
     def make_group_mask(self):
-        super_group_names = set()
-        groups = num.zeros(len(self.targets), dtype=num.int)
-        ngroups = 0
+        family_names = set()
+        families = num.zeros(len(self.targets), dtype=num.int)
+
         for itarget, target in enumerate(self.targets):
-            if target.super_group not in super_group_names:
-                super_group_names.add(target.super_group)
-                ngroups += 1
+            family_names.add(target.normalisation_family)
+            families[itarget] = len(family_names) - 1
 
-            groups[itarget] = ngroups - 1
-
-        return groups, ngroups
+        return families, len(family_names)
 
     def get_group_mask(self):
         if self._group_mask is None:

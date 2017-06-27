@@ -16,7 +16,7 @@ setup(
     author='Sebastian Heimann',
     author_email='sebastian.heimann@gfz-potsdam.de',
     packages=['grond', 'grond.baraddur', 'grond.problems', 'grond.solvers',
-              'grond.analysers', 'grond.listeners'],
+              'grond.analysers', 'grond.listeners', 'grond.targets'],
     scripts=['apps/grond'],
     package_dir={'grond': 'src'},
     package_data={'grond': ['baraddur/templates/*.html',

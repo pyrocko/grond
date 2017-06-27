@@ -1,13 +1,14 @@
 import numpy as num
+import logging
 
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Float, Dict, Int
 
-from .base import Problem, ProblemConfig, logger
+from .base import Problem, ProblemConfig
 from ..meta import expand_template, Parameter
 
 guts_prefix = 'grond'
-logger = logger.getChild('rectangular')
+logger = logging.getLogger('grond.problems').getChild('rectangular')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
