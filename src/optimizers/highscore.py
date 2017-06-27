@@ -3,8 +3,6 @@ import logging
 
 import numpy as num
 
-from collections import OrderedDict
-
 from pyrocko.guts import StringChoice, Int, Float, Bool, Object
 from pyrocko.guts_array import Array
 
@@ -14,6 +12,10 @@ from .base import Optimizer, OptimizerConfig
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimizers.highscore')
+
+
+def nextpow2(i):
+    return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
@@ -52,9 +54,7 @@ class Phase(Object):
     def set_problem(self, problem):
         self._problem = problem
 
-    def get_sample(
-            self, iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
-            nlinks):
+    def get_sample(self, iiter, chains):
 
         assert 0 <= iiter < self.niterations
 
@@ -62,7 +62,7 @@ class Phase(Object):
         for ntries_preconstrain in xrange(self.ntries_preconstrain_limit):
             try:
                 return self._problem.preconstrain(self.get_raw_sample(
-                    iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs, 
+                    iiter, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
                     nlinks))
 
             except Forbidden:
@@ -101,6 +101,9 @@ class DirectedPhase(Phase):
     sampler_distribution = StringChoice.T(
         choices=['normal', 'multivariate_normal'])
 
+    standard_deviation_estimator = StandardDeviationEstimatorChoice.T(
+        default='median_density_single_chain')
+
     def get_scatter_scale_factor(self, iiter):
         s = self.scatter_scale
         sa = self.scatter_scale_begin
@@ -130,17 +133,17 @@ class DirectedPhase(Phase):
         ichain_choice = num.argmin(accept_sum)
 
         if self.starting_point == 'excentricity_compensated':
-            ichoice = excentricity_compensated_choice(
+            ilink_choice = excentricity_compensated_choice(
                 xhist[chains_i[ichain_choice, :], :],
                 local_sxs[ichain_choice], 2.)
 
             xchoice = xhist[
-                chains_i[ichain_choice, ichoice], :]
+                chains_i[ichain_choice, ilink_choice], :]
 
         elif self.starting_point == 'random':
-            ichoice = num.random.randint(0, nlinks)
+            ilink_choice = num.random.randint(0, nlinks)
             xchoice = xhist[
-                chains_i[ichain_choice, ichoice], :]
+                chains_i[ichain_choice, ilink_choice], :]
 
         elif self.starting_point == 'mean':
             xchoice = mxs[ichain_choice]
@@ -203,9 +206,10 @@ class DirectedPhase(Phase):
 
             x = xcandi
 
-        return x, ichain_choice, ichoice, ntries_sample
+        return x, ichain_choice, ilink_choice, ntries_sample
 
-class OptimizerRunData(object):
+
+class ProblemData(object):
 
     nmodels_capacity_min = 1024
 
@@ -264,7 +268,7 @@ class OptimizerRunData(object):
         nmodels_new = nmodels + nmodels_add
 
         nmodels_capacity_want = max(
-            nmodels_capacity_min, nextpow2(nmodels_new))
+            self.nmodels_capacity_min, nextpow2(nmodels_new))
 
         if nmodels_capacity_want != self.nmodels_capacity:
             self.nmodels_capacity = nmodels_capacity_want
@@ -280,11 +284,47 @@ class OptimizerRunData(object):
 
 class Chains(object):
     def __init__(self, problem, nchains, nlinks_cap):
-        problem
+
+        self.problem = problem
+        self.nchains = nchains
+        self.nlinks_cap = nlinks_cap
+        self.chains_m = num.zeros(
+            (1 + problem.nchains, nlinks_cap), num.float)
+        self.chains_i = num.zeros(
+            (1 + problem.nchains, nlinks_cap), num.int)
+        self.nlinks = 0
+        self.accept_sum = num.zeros(1 + problem.nchains, dtype=num.int)
+
+    def insert(self, ms, iiter):
+
+        self.chains_m[:, self.nlinks] = ms
+        self.chains_i[:, self.nlinks] = iiter
+
+        self.nlinks += 1
+        nlinks = self.nlinks
+        chains_m = self.chains_m
+        chains_i = self.chains_i
+
+        for ichain in xrange(chains_m.shape[0]):
+            isort = num.argsort(chains_m[ichain, :nlinks])
+            chains_m[ichain, :nlinks] = chains_m[ichain, isort]
+            chains_i[ichain, :nlinks] = chains_i[ichain, isort]
+
+        if nlinks == self.nlinks_cap:
+            accept = (chains_i[:, self.nlinks_cap-1] != iiter).astype(num.int)
+            nlinks -= 1
+        else:
+            accept = num.ones(1 + self.problem.nchains, dtype=num.int)
+
+        self.accept_sum += accept
+
+        return accept
 
 
 class BadProblem(GrondError):
     pass
+
+
 
 
 def solve(problem,
@@ -299,7 +339,6 @@ def solve(problem,
           notifier=None,
           state=None):
 
-    xbounds = problem.get_parameter_bounds()
     npar = problem.nparameters
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
@@ -319,8 +358,6 @@ def solve(problem,
     isbad_mask = None
     accept_sum = num.zeros(1 + problem.nchains, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
-    pnames = problem.parameter_names
-
 
     for par in state.parameter_sets.values():
         par.fill(num.nan)
@@ -330,24 +367,26 @@ def solve(problem,
     if plot:
         plot.start(problem)
 
+    rundata = ProblemData(problem)
+
     phase = phases.pop(0)
     iiter_phase_start = 0
     while iiter < niter:
 
-        if iiter - iiter_phase_starte == phase.niterations:
+        if iiter - iiter_phase_start == phase.niterations:
             phase = phases.pop(0)
             iiter_phase_start = iiter
 
         iiter_phase = iiter - iiter_phase_start
 
-        x, ichain_choice, ichoice, ntries_preconstrain, ntries_sample = \
+        x, ichain_choice, ilink_choice = \
             phase.get_sample(
                 iiter_phase, accept_sum, xhist, chains_i, local_sxs, mxs, covs,
-                nlinks):
+                nlinks)
 
         ibase = None
-        if ichoice is not None and ichain_choice is not None:
-            ibase = chains_i[ichain_choice, ichoice]
+        if ilink_choice is not None and ichain_choice is not None:
+            ibase = chains_i[ichain_choice, ilink_choice]
 
         if isbad_mask is not None and num.any(isbad_mask):
             isok_mask = num.logical_not(isbad_mask)
@@ -355,6 +394,10 @@ def solve(problem,
             isok_mask = None
 
         ms, ns = problem.evaluate(x, mask=isok_mask)
+
+        misfits = num.vstack((ms, ns)).T
+
+        rundata.append(x, misfits)
 
         isbad_mask_new = num.isnan(ms)
         if isbad_mask is not None and num.any(isbad_mask != isbad_mask_new):
@@ -379,6 +422,11 @@ def solve(problem,
 
         gm = problem.global_misfit(ms, ns)
         bms = problem.bootstrap_misfit(ms, ns)
+
+        gbms = num.concatenate(([gm], bms))
+
+        chains.insert(gbms, iiter)
+
 
         chains_m[0, nlinks] = gm
         chains_m[1:, nlinks] = bms
@@ -460,9 +508,6 @@ def solve(problem,
             state.parameter_sets['Global best'][-1] = num.min(gms)
 
             state.iiter = iiter + 1
-            state.extra_text =\
-                'Phase: %s (factor %d); ntries %d, ntries_preconstrain %d'\
-                % (phase, factor, ntries_sample, ntries_preconstrain)
 
         if 'state' in status:
             notifier.emit('state', state)
@@ -480,8 +525,7 @@ def solve(problem,
                 chains_i[:, :nlinks],
                 ibase,
                 ichain_choice,
-                local_sxs,
-                factor)
+                local_sxs)
 
         iiter += 1
 
@@ -495,19 +539,88 @@ class HighScoreOptimizer(Optimizer):
         Optimizer.__init__(self)
         self._kwargs = kwargs
 
-    def solve(
-            self, problem, rundir=None, status=(), plot=None, xs_inject=None,
-            notifier=None):
 
-        solve(
-            problem,
-            rundir=rundir,
-            status=status,
-            plot=plot,
-            xs_inject=xs_inject,
-            notifier=notifier,
-            state=self.state,
-            **self._kwargs)
+    def solve(
+              problem,
+              phases,
+              rundir=None,
+
+              chain_length_factor=
+              chain_length_factor=8.0,
+              standard_deviation_estimator='median_density_single_chain',
+
+              status=(),
+              plot=None,
+              notifier=None,
+              state=None):
+
+        niter = sum(phase.nitererations for phase in phases)
+
+        iiter = 0
+
+        isbad_mask = None
+
+        for par in state.parameter_sets.values():
+            par.fill(num.nan)
+
+        state.niter = niter
+
+        nlinks_cap = int(round(chain_length_factor * npar + 1))
+
+        problem_data = ProblemData(problem)
+        chains = Chains(problem, problem_data, nchains, nlinks_cap)
+
+        phase = phases.pop(0)
+        iiter_phase_start = 0
+        while iiter < niter:
+
+            if iiter - iiter_phase_start == phase.niterations:
+                phase = phases.pop(0)
+                iiter_phase_start = iiter
+
+            iiter_phase = iiter - iiter_phase_start
+
+            x, ichain_choice, ilink_choice = \
+                phase.get_sample(iiter_phase, chains)
+
+            if isbad_mask is not None and num.any(isbad_mask):
+                isok_mask = num.logical_not(isbad_mask)
+            else:
+                isok_mask = None
+
+            misfits = problem.evaluate(x, mask=isok_mask)
+
+            problem_data.append(x, misfits)
+
+            isbad_mask_new = num.isnan(ms)
+            if isbad_mask is not None and num.any(isbad_mask != isbad_mask_new):
+                errmess = [
+                    'problem %s: inconsistency in data availability' %
+                    problem.name]
+
+                for target, isbad_new, isbad in zip(
+                        problem.targets, isbad_mask_new, isbad_mask):
+
+                    if isbad_new != isbad:
+                        errmess.append('  %s, %s -> %s' % (
+                            target.string_id(), isbad, isbad_new))
+
+                raise BadProblem(errmess)
+
+            isbad_mask = isbad_mask_new
+
+            if num.all(isbad_mask):
+                raise BadProblem(
+                    'problem %s: all target misfit values are NaN' % problem.name)
+
+            gm = problem.global_misfit(ms, ns)
+            bms = problem.bootstrap_misfit(ms, ns)
+
+            gbms = num.concatenate(([gm], bms))
+
+            chains.insert(gbms, iiter)
+
+            iiter += 1
 
 
 class SamplerDistributionChoice(StringChoice):

@@ -17,7 +17,6 @@ class CMTProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=10)
     mt_type = StringChoice.T(choices=['full', 'deviatoric'])
 
     def get_problem(self, event, targets):
@@ -38,7 +37,6 @@ class CMTProblemConfig(ProblemConfig):
             targets=targets,
             ranges=self.ranges,
             distance_min=self.distance_min,
-            nbootstrap=self.nbootstrap,
             mt_type=self.mt_type,
             norm_exponent=self.norm_exponent)
 
@@ -66,7 +64,6 @@ class CMTProblem(Problem):
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
     distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=10)
     mt_type = StringChoice.T(
         default='full', choices=['full', 'deviatoric', 'dc'])
 

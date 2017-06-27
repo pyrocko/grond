@@ -198,10 +198,10 @@ class Problem(Object):
 
         return ws
 
-    def get_bootstrap_weights(self, ibootstrap=None):
+    def get_bootstrap_weights(self, nbootstrap, ibootstrap=None):
         if self._bootstrap_weights is None:
             self._bootstrap_weights = self.make_bootstrap_weights(
-                self.nbootstrap, type='bayesian')
+                nbootstrap, type='bayesian')
 
         if ibootstrap is None:
             return self._bootstrap_weights
