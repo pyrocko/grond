@@ -6,19 +6,32 @@ import os
 import os.path as op
 import numpy as num
 from scipy import signal
-from pyrocko import beachball, guts, trace, util, gf
-from pyrocko import hudson
-from grond import core
+
 from matplotlib import pyplot as plt
 from matplotlib import cm, patches, gridspec
-from pyrocko.cake_plot import colors, \
-    str_to_mpl_color as scolor, light
 
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins
+from pyrocko import beachball, guts, trace, util, gf
+from pyrocko import hudson
+
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
+    mpl_graph_color, mpl_color
+
+from . import core
+from .meta import xjoin
+from .problems.base import ModelHistory, load_problem_info
+
 
 logger = logging.getLogger('grond.plot')
 
 km = 1000.
+
+
+def light(color, factor=0.5):
+    return tuple(1-(1-c)*factor for c in color)
+
+
+def dark(color, factor=0.5):
+    return tuple(c*factor for c in color)
 
 
 def amp_spec_max(spec_trs, key):
@@ -108,105 +121,21 @@ def make_norm_trace(a, b, exponent):
     return c
 
 
-class GrondModel(object):
+def draw_sequence_figures(
+        history, optimizer, plt, misfit_cutoff=None, sort_by='misfit'):
 
-    def __init__(self, **kwargs):
-        self.listeners = []
-        self.set_config(None)
-        self.set_problem(None)
-
-    def add_listener(self, listener):
-        self.listeners.append(listener)
-
-    def set_config(self, config):
-        self.config = config
-
-    def set_problem(self, problem):
-
-        self.problem = problem
-        if problem:
-            nparameters = problem.nparameters
-            ntargets = problem.ntargets
-        else:
-            nparameters = 0
-            ntargets = 0
-
-        nmodels = 0
-        nmodels_capacity = 1024
-
-        self._xs_buffer = num.zeros(
-            (nmodels_capacity, nparameters), dtype=num.float)
-        self._misfits_buffer = num.zeros(
-            (nmodels_capacity, ntargets, 2), dtype=num.float)
-
-        self.xs = self._xs_buffer[:nmodels, :]
-        self.misfits = self._misfits_buffer[:nmodels, :, :]
-
-        self.data_changed()
-
-    @property
-    def nmodels(self):
-        return self.xs.shape[0]
-
-    @property
-    def nmodels_capacity(self):
-        return self._xs_buffer.shape[0]
-
-    def append(self, xs, misfits):
-        assert xs.shape[0] == misfits.shape[0]
-
-        nmodels_add = xs.shape[0]
-
-        nmodels = self.nmodels
-        nmodels_new = nmodels + nmodels_add
-        nmodels_capacity_new = max(1024, nextpow2(nmodels_new))
-
-        nmodels_capacity = self.nmodels_capacity
-        if nmodels_capacity_new > nmodels_capacity:
-            xs_buffer = num.zeros(
-                (nmodels_capacity_new, self.problem.nparameters),
-                dtype=num.float)
-
-            misfits_buffer = num.zeros(
-                (nmodels_capacity_new, self.problem.ntargets, 2),
-                dtype=num.float)
-
-            xs_buffer[:nmodels, :] = self._xs_buffer[:nmodels]
-            misfits_buffer[:nmodels, :] = self._misfits_buffer[:nmodels]
-            self._xs_buffer = xs_buffer
-            self._misfits_buffer = misfits_buffer
-
-        self._xs_buffer[nmodels:nmodels + nmodels_add, :] = xs
-        self._misfits_buffer[nmodels:nmodels + nmodels_add, :, :] = misfits
-
-        nmodels = nmodels_new
-
-        self.xs = self._xs_buffer[:nmodels, :]
-        self.misfits = self._misfits_buffer[:nmodels, :, :]
-
-        self.data_changed()
-
-    def data_changed(self):
-        for listener in self.listeners:
-            listener()
-
-
-def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
-    problem = model.problem
+    problem = history.problem
     npar = problem.nparameters
     ndep = problem.ndependants
 
-    imodels = num.arange(model.nmodels)
-    bounds = problem.get_parameter_bounds()
-
-    if ndep > 0:
-        bounds = num.concatenate((bounds, problem.get_dependant_bounds()))
+    imodels = num.arange(history.nmodels)
+    bounds = problem.get_combined_bounds()
 
     xref = problem.get_xref()
 
-    xs = model.xs
+    models = history.models
 
-    gms = problem.global_misfits(model.misfits)
+    gms = problem.global_misfits(history.misfits)
     gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
 
     isort = num.argsort(gms)[::-1]
@@ -220,7 +149,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
 
     gms = gms[isort]
     gms_softclip = gms_softclip[isort]
-    xs = xs[isort, :]
+    models = models[isort, :]
 
     iorder = num.empty_like(isort)
     iorder = num.arange(iorder.size)
@@ -236,9 +165,9 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
 
         if (impl - 1) >= (nfx * (nfy - 1)) or iplot >= nplots - nfx:
             axes.set_xlabel('Iteration')
-            if not (impl - 1) / nfx == 0:
+            if not (impl - 1) // nfx == 0:
                 axes.get_xaxis().tick_bottom()
-        elif (impl - 1) / nfx == 0:
+        elif (impl - 1) // nfx == 0:
             axes.get_xaxis().tick_top()
             axes.set_xticklabels([])
         else:
@@ -276,10 +205,10 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
         config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
 
         axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
-        axes.set_xlim(0, model.nmodels)
+        axes.set_xlim(0, history.nmodels)
 
         axes.scatter(
-            imodels[ibest], par.scaled(xs[ibest, ipar]), s=msize,
+            imodels[ibest], par.scaled(models[ibest, ipar]), s=msize,
             c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha)
 
         axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
@@ -305,9 +234,9 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
         config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
 
         axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
-        axes.set_xlim(0, model.nmodels)
+        axes.set_xlim(0, history.nmodels)
 
-        ys = problem.make_dependant(xs[ibest, :], par.name)
+        ys = problem.make_dependant(models[ibest, :], par.name)
         axes.scatter(
             imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
             edgecolors='none', cmap=cmap, alpha=alpha)
@@ -338,7 +267,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     axes.axhspan(1.0, 1.5, color=(0.8, 0.8, 0.8), alpha=0.2)
     axes.axhline(1.0, color=(0.5, 0.5, 0.5), zorder=2)
 
-    axes.set_xlim(0, model.nmodels)
+    axes.set_xlim(0, history.nmodels)
     axes.set_xlabel('Iteration')
 
     axes.set_ylabel('Misfit')
@@ -347,8 +276,8 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
 
 
 def draw_jointpar_figures(
-        model, plt, misfit_cutoff=None, ibootstrap=None, color=None,
-        exclude=None, include=None, draw_ellipses=False):
+        history, optimizer, plt, misfit_cutoff=None, ibootstrap=None,
+        color=None, exclude=None, include=None, draw_ellipses=False):
 
     color = 'misfit'
     # exclude = ['duration']
@@ -360,17 +289,13 @@ def draw_jointpar_figures(
     cmap = cm.coolwarm
     msize = 1.5
 
-    problem = model.problem
-    solver = model.config.solver_config
+    problem = history.problem
     if not problem:
         return []
 
-    xs = model.xs
+    models = history.models
 
-    bounds = num.concatenate((
-        problem.get_parameter_bounds(),
-        problem.get_dependant_bounds()))
-
+    bounds = problem.get_combined_bounds()
     for ipar in range(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
@@ -384,26 +309,26 @@ def draw_jointpar_figures(
 
     if ibootstrap is not None:
         gms = problem.bootstrap_misfits(
-            model.misfits, solver.nbootstrap, ibootstrap)
+            history.misfits, optimizer.nbootstrap, ibootstrap)
     else:
-        gms = problem.global_misfits(model.misfits)
+        gms = problem.global_misfits(history.misfits)
 
     isort = num.argsort(gms)[::-1]
 
     gms = gms[isort]
-    xs = xs[isort, :]
+    models = models[isort, :]
 
     if misfit_cutoff is not None:
         ibest = gms < misfit_cutoff
         gms = gms[ibest]
-        xs = xs[ibest]
+        models = models[ibest]
 
-    nmodels = xs.shape[0]
+    nmodels = models.shape[0]
 
     if color == 'dist':
-        mx = num.mean(xs, axis=0)
-        cov = num.cov(xs.T)
-        mdists = core.mahalanobis_distance(xs, mx, cov)
+        mx = num.mean(models, axis=0)
+        cov = num.cov(models.T)
+        mdists = core.mahalanobis_distance(models, mx, cov)
         color = ordersort(mdists)
 
     elif color == 'misfit':
@@ -412,7 +337,7 @@ def draw_jointpar_figures(
 
     elif color in problem.parameter_names:
         ind = problem.name_to_index(color)
-        color = ordersort(problem.extract(xs, ind))
+        color = ordersort(problem.extract(models, ind))
 
     smap = {}
     iselected = 0
@@ -432,7 +357,7 @@ def draw_jointpar_figures(
                     'parameters selected')
         return []
 
-    nfig = (nselected - 2) / neach + 1
+    nfig = (nselected - 2) // neach + 1
 
     figs = []
     for ifig in range(nfig):
@@ -458,8 +383,8 @@ def draw_jointpar_figures(
             ix = ixg % neach
             iy = iyg % neach
 
-            ifig = ixg / neach
-            jfig = iyg / neach
+            ifig = ixg // neach
+            jfig = iyg // neach
 
             aind = (neach, neach, (ix * neach) + iy + 1)
 
@@ -467,10 +392,10 @@ def draw_jointpar_figures(
 
             axes = fig.add_subplot(*aind)
 
-            axes.axvline(0., color=scolor('aluminium3'), lw=0.5)
-            axes.axhline(0., color=scolor('aluminium3'), lw=0.5)
+            axes.axvline(0., color=mpl_color('aluminium3'), lw=0.5)
+            axes.axhline(0., color=mpl_color('aluminium3'), lw=0.5)
             for spine in axes.spines.values():
-                spine.set_edgecolor(scolor('aluminium5'))
+                spine.set_edgecolor(mpl_color('aluminium5'))
                 spine.set_linewidth(0.5)
 
             xmin, xmax = fixlim(*xpar.scaled(bounds[jpar]))
@@ -524,8 +449,8 @@ def draw_jointpar_figures(
                     horizontalalignment='right',
                     rotation=45.)
 
-            fx = problem.extract(xs, jpar)
-            fy = problem.extract(xs, ipar)
+            fx = problem.extract(models, jpar)
+            fy = problem.extract(models, ipar)
 
             axes.scatter(
                 xpar.scaled(fx),
@@ -549,7 +474,7 @@ def draw_jointpar_figures(
             fx = problem.extract(xref, jpar)
             fy = problem.extract(xref, ipar)
 
-            ref_color = scolor('aluminium6')
+            ref_color = mpl_color('aluminium6')
             ref_color_light = 'none'
             axes.plot(
                 xpar.scaled(fx), ypar.scaled(fy), 's',
@@ -563,7 +488,7 @@ def draw_jointpar_figures(
 
 
 def draw_solution_figure(
-        model, plt, misfit_cutoff=None, beachball_type='full'):
+        history, optimizer, plt, misfit_cutoff=None, beachball_type='full'):
 
     fontsize = 10.
 
@@ -571,24 +496,28 @@ def draw_solution_figure(
     axes = fig.add_subplot(1, 1, 1, aspect=1.0)
     fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
 
-    problem = model.problem
+    problem = history.problem
     if not problem:
         logger.warn('problem not set')
         return []
 
-    xs = model.xs
+    models = history.models
 
-    if xs.size == 0:
+    if models.size == 0:
         logger.warn('empty models vector')
         return []
 
-    gms = problem.global_misfits(model.misfits)
+    gms = problem.global_misfits(history.misfits)
     isort = num.argsort(gms)
     iorder = num.empty_like(isort)
     iorder[isort] = num.arange(iorder.size)[::-1]
 
-    mean_source = core.get_mean_source(problem, model.xs)
-    best_source = core.get_best_source(problem, model.xs, model.misfits)
+    mean_source = core.get_mean_source(
+        problem, history.models)
+
+    best_source = core.get_best_source(
+        problem, history.models, history.misfits)
+
     ref_source = problem.base_source
 
     for xpos, label in [
@@ -618,9 +547,9 @@ def draw_solution_figure(
     moment_full_max = max(deco[-1][0] for deco in decos)
 
     for ypos, label, deco, color_t in [
-            (2., 'Ensemble best', decos[0], scolor('aluminium5')),
-            (1., 'Ensemble mean', decos[1], scolor('scarletred1')),
-            (0., 'Reference', decos[2], scolor('aluminium3'))]:
+            (2., 'Ensemble best', decos[0], mpl_color('aluminium5')),
+            (1., 'Ensemble mean', decos[1], mpl_color('scarletred1')),
+            (0., 'Reference', decos[2], mpl_color('aluminium3'))]:
 
         [(moment_iso, ratio_iso, m_iso),
          (moment_dc, ratio_dc, m_dc),
@@ -695,7 +624,7 @@ def draw_solution_figure(
     return [fig]
 
 
-def draw_contributions_figure(model, plt):
+def draw_contributions_figure(history, optimizer, plt):
 
     fontsize = 10.
 
@@ -703,20 +632,20 @@ def draw_contributions_figure(model, plt):
     labelpos = mpl_margins(fig, nw=2, nh=2, w=7., h=5., wspace=2.,
                            hspace=5., units=fontsize)
 
-    problem = model.problem
+    problem = history.problem
     if not problem:
         logger.warn('problem not set')
         return []
 
-    xs = model.xs
+    models = history.models
 
-    if xs.size == 0:
+    if models.size == 0:
         logger.warn('empty models vector')
         return []
 
-    imodels = num.arange(model.nmodels)
+    imodels = num.arange(history.nmodels)
 
-    gms = problem.global_misfits(model.misfits)**problem.norm_exponent
+    gms = problem.global_misfits(history.misfits)**problem.norm_exponent
 
     isort = num.argsort(gms)[::-1]
 
@@ -724,7 +653,7 @@ def draw_contributions_figure(model, plt):
 
     gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
-    gcms = problem.global_contributions(model.misfits)
+    gcms = problem.global_contributions(history.misfits)
     gcms = gcms[isort, :]
 
     jsort = num.argsort(gcms[-1, :])[::-1]
@@ -754,9 +683,9 @@ def draw_contributions_figure(model, plt):
 
     axes2.set_xlim(imodels[0], imodels[-1])
 
-    rel_ms_sum = num.zeros(model.nmodels)
-    rel_ms_smooth_sum = num.zeros(model.nmodels)
-    ms_smooth_sum = num.zeros(model.nmodels)
+    rel_ms_sum = num.zeros(history.nmodels)
+    rel_ms_smooth_sum = num.zeros(history.nmodels)
+    ms_smooth_sum = num.zeros(history.nmodels)
     b = num.hanning(100)
     b /= num.sum(b)
     a = [1]
@@ -786,13 +715,13 @@ def draw_contributions_figure(model, plt):
         axes.fill(
             poly_x, rel_poly_y,
             alpha=0.5,
-            color=colors[ii % len(colors)],
+            color=mpl_graph_color(ii),
             **add_args)
 
         poly_y = num.concatenate(
             [ms_smooth_sum[::-1], ms_smooth_sum + ms_smooth])
 
-        axes2.fill(poly_x, poly_y, alpha=0.5, color=colors[ii % len(colors)])
+        axes2.fill(poly_x, poly_y, alpha=0.5, color=mpl_graph_color(ii))
 
         rel_ms_sum += rel_ms
 
@@ -814,24 +743,23 @@ def draw_contributions_figure(model, plt):
     return [fig]
 
 
-def draw_bootstrap_figure(model, plt):
+def draw_bootstrap_figure(history, optimizer, plt):
 
     fig = plt.figure()
 
-    problem = model.problem
-    solver = model.config.solver_config
-    gms = problem.global_misfits(model.misfits)
+    problem = history.problem
+    gms = problem.global_misfits(history.misfits)
 
-    imodels = num.arange(model.nmodels)
+    imodels = num.arange(history.nmodels)
 
     axes = fig.add_subplot(1, 1, 1)
 
     gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
     ibests = []
-    for ibootstrap in range(solver.nbootstrap):
+    for ibootstrap in range(optimizer.nbootstrap):
         bms = problem.bootstrap_misfits(
-            model.misfits, solver.nbootstrap, ibootstrap)
+            history.misfits, optimizer.nbootstrap, ibootstrap)
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])
@@ -956,22 +884,22 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
-def draw_fits_figures_statics(ds, model, plt):
+def draw_fits_figures_statics(ds, history, optimizer, plt):
     from pyrocko.orthodrome import latlon_to_ne_numpy
-    problem = model.problem
+    problem = history.problem
 
     for target in problem.targets:
         target.set_dataset(ds)
 
-    gms = problem.global_misfits(model.misfits)
+    gms = problem.global_misfits(history.misfits)
     isort = num.argsort(gms)
     gms = gms[isort]
-    xs = model.xs[isort, :]
-    xbest = xs[0, :]
+    models = history.models[isort, :]
+    xbest = models[0, :]
 
     source = problem.get_source(xbest)
 
-    ms, ns, results = problem.evaluate(xbest, result_mode='full')
+    _, results = problem.evaluate(xbest, result_mode='full')
 
     figures = []
 
@@ -1076,11 +1004,11 @@ def draw_fits_figures_statics(ds, model, plt):
     return figures
 
 
-def draw_fits_figures(ds, model, plt):
+def draw_fits_figures(ds, history, optimizer, plt):
     fontsize = 8
     fontsize_title = 10
 
-    problem = model.problem
+    problem = history.problem
 
     for target in problem.waveform_targets:
         target.set_dataset(ds)
@@ -1088,13 +1016,13 @@ def draw_fits_figures(ds, model, plt):
     target_index = dict(
         (target, i) for (i, target) in enumerate(problem.waveform_targets))
 
-    gms = problem.global_misfits(model.misfits)
+    gms = problem.global_misfits(history.misfits)
     isort = num.argsort(gms)
     gms = gms[isort]
-    xs = model.xs[isort, :]
-    misfits = model.misfits[isort, :]
+    models = history.models[isort, :]
+    misfits = history.misfits[isort, :]
 
-    xbest = xs[0, :]
+    xbest = models[0, :]
 
     ws = problem.get_target_weights()
     gcms = problem.global_contributions(misfits[:1])[0]
@@ -1107,7 +1035,7 @@ def draw_fits_figures(ds, model, plt):
     target_to_result = {}
     all_syn_trs = []
     all_syn_specs = []
-    ms, ns, results = problem.evaluate(xbest, result_mode='full')
+    _, results = problem.evaluate(xbest, result_mode='full')
 
     dtraces = []
     for target, result in zip(problem.waveform_targets, results):
@@ -1215,18 +1143,18 @@ def draw_fits_figures(ds, model, plt):
         nframes = len(targets)
 
         nx = int(math.ceil(math.sqrt(nframes)))
-        ny = (nframes - 1) / nx + 1
+        ny = (nframes - 1) // nx + 1
 
         nxmax = 4
         nymax = 4
 
-        nxx = (nx - 1) / nxmax + 1
-        nyy = (ny - 1) / nymax + 1
+        nxx = (nx - 1) // nxmax + 1
+        nyy = (ny - 1) // nymax + 1
 
         # nz = nxx * nyy
 
-        xs = num.arange(nx) / ((max(2, nx) - 1.0) / 2.)
-        ys = num.arange(ny) / ((max(2, ny) - 1.0) / 2.)
+        xs = num.arange(nx) // ((max(2, nx) - 1.0) / 2.)
+        ys = num.arange(ny) // ((max(2, ny) - 1.0) / 2.)
 
         xs -= num.mean(xs)
         ys -= num.mean(ys)
@@ -1282,8 +1210,8 @@ def draw_fits_figures(ds, model, plt):
                 if (iy, ix) not in frame_to_target:
                     continue
 
-                ixx = ix / nxmax
-                iyy = iy / nymax
+                ixx = ix // nxmax
+                iyy = iy // nymax
                 if (iyy, ixx) not in figures:
                     figures[iyy, ixx] = plt.figure(
                         figsize=mpl_papersize('a4', 'landscape'))
@@ -1338,16 +1266,16 @@ def draw_fits_figures(ds, model, plt):
                     axes2, result.processed_obs.get_xdata(), result.taper,
                     fc=tap_color_fill, ec=tap_color_edge)
 
-                obs_color = scolor('aluminium5')
+                obs_color = mpl_color('aluminium5')
                 obs_color_light = light(obs_color, 0.5)
 
-                syn_color = scolor('scarletred2')
+                syn_color = mpl_color('scarletred2')
                 syn_color_light = light(syn_color, 0.5)
 
-                misfit_color = scolor('scarletred2')
-                weight_color = scolor('chocolate2')
+                misfit_color = mpl_color('scarletred2')
+                weight_color = mpl_color('chocolate2')
 
-                cc_color = scolor('aluminium5')
+                cc_color = mpl_color('aluminium5')
 
                 if target.misfit_config.domain == 'cc_max_norm':
                     tref = (result.filtered_obs.tmin +
@@ -1448,7 +1376,8 @@ def draw_fits_figures(ds, model, plt):
 
                     bar = patches.Rectangle(
                         (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph),
-                        rw * sw, sh - 2 * ph,
+                        rw * sw,
+                        sh - 2 * ph,
                         facecolor=facecolor, edgecolor=edgecolor,
                         zorder=10,
                         transform=axes.transAxes, clip_on=False)
@@ -1492,7 +1421,7 @@ def draw_fits_figures(ds, model, plt):
     return figs
 
 
-def draw_hudson_figure(model, plt):
+def draw_hudson_figure(history, optimizer, plt):
 
     color = 'black'
     fontsize = 10.
@@ -1503,15 +1432,16 @@ def draw_hudson_figure(model, plt):
     width = 7.
     figsize = (width, width / (4. / 3.))
 
-    problem = model.problem
-    mean_source = core.get_mean_source(problem, model.xs)
-    best_source = core.get_best_source(problem, model.xs, model.misfits)
+    problem = history.problem
+    mean_source = core.get_mean_source(problem, history.models)
+    best_source = core.get_best_source(
+        problem, history.models, history.misfits)
 
     fig = plt.figure(figsize=figsize)
     axes = fig.add_subplot(1, 1, 1)
 
     data = []
-    for ix, x in enumerate(model.xs):
+    for ix, x in enumerate(history.models):
         source = problem.get_source(x)
         mt = source.pyrocko_moment_tensor()
         u, v = hudson.project(mt)
@@ -1590,7 +1520,7 @@ def draw_hudson_figure(model, plt):
     return [fig]
 
 
-def draw_location_figure(model, plt):
+def draw_location_figure(history, optimizer, plt):
     from matplotlib import colors
 
     color = 'black'
@@ -1602,25 +1532,23 @@ def draw_location_figure(model, plt):
     width = 7.
     figsize = (width, width / (4. / 3.))
 
-    problem = model.problem
+    problem = history.problem
 
     fig = plt.figure(figsize=figsize)
     axes_en = fig.add_subplot(2, 2, 1)
     axes_dn = fig.add_subplot(2, 2, 2)
     axes_ed = fig.add_subplot(2, 2, 3)
 
-    bounds = num.concatenate((
-        problem.get_parameter_bounds(),
-        problem.get_dependant_bounds()))
+    bounds = problem.get_combined_bounds()
 
-    gms = problem.global_misfits(model.misfits)
+    gms = problem.global_misfits(history.misfits)
 
     isort = num.argsort(gms)[::-1]
 
     gms = gms[isort]
-    xs = model.xs[isort, :]
+    models = history.models[isort, :]
 
-    iorder = num.arange(model.nmodels)
+    iorder = num.arange(history.nmodels)
 
     for axes, xparname, yparname in [
             (axes_en, 'east_shift', 'north_shift'),
@@ -1643,8 +1571,8 @@ def draw_location_figure(model, plt):
         axes.set_xlim(xmin, xmax)
         axes.set_ylim(ymin, ymax)
 
-        # fxs = xpar.scaled(problem.extract(xs, ixpar))
-        # fys = ypar.scaled(problem.extract(xs, iypar))
+        # fxs = xpar.scaled(problem.extract(models, ixpar))
+        # fys = ypar.scaled(problem.extract(models, iypar))
 
         # axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
         # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
@@ -1653,7 +1581,7 @@ def draw_location_figure(model, plt):
             norm=colors.Normalize(vmin=num.min(iorder), vmax=num.max(iorder)),
             cmap=plt.get_cmap('coolwarm'))
 
-        for ix, x in enumerate(xs):
+        for ix, x in enumerate(models):
             source = problem.get_source(x)
             mt = source.pyrocko_moment_tensor()
             fx = problem.extract(x, ixpar)
@@ -1754,24 +1682,18 @@ def plot_result(dirname, plotnames_want,
 
     mpl_init(fontsize=fontsize)
     fns = []
+    config = None
+
+    optimizer_fn = op.join(dirname, 'optimizer.yaml')
+    optimizer = guts.load(filename=optimizer_fn)
 
     if 3 != len({'bootstrap', 'sequence', 'contributions'} - plotnames_want):
-        problem, xs, misfits = core.load_problem_info_and_data(
-            dirname, subset=None)
-
-        model = GrondModel()
-        model.set_problem(problem)
-        model.append(xs, misfits)
-
-        config = guts.load(filename=op.join(dirname, 'config.yaml'))
-        config.set_basepath(dirname)
-        config.setup_modelling_environment(problem)
-
-        model.set_config(config)
+        problem = load_problem_info(dirname)
+        history = ModelHistory(problem, path=dirname)
 
         for plotname in ['bootstrap', 'sequence', 'contributions']:
             if plotname in plotnames_want:
-                figs = plot_dispatch[plotname](model, plt)
+                figs = plot_dispatch[plotname](history, optimizer, plt)
                 if save:
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
@@ -1784,31 +1706,28 @@ def plot_result(dirname, plotnames_want,
             'solution',
             'location'} - plotnames_want):
 
-        problem, xs, misfits = core.load_problem_info_and_data(
-            dirname, subset='harvest')
-
-        model = GrondModel()
-        model.set_problem(problem)
-        model.append(xs, misfits)
-
-        config = guts.load(filename=op.join(dirname, 'config.yaml'))
-        config.set_basepath(dirname)
-        config.setup_modelling_environment(problem)
-
-        model.set_config(config)
+        problem = load_problem_info(dirname)
+        history = ModelHistory(problem, path=xjoin(dirname, 'harvest'))
 
         for plotname in ['fits', 'fits_statics']:
             if plotname in plotnames_want:
                 event_name = problem.base_source.name
-                ds = model.config.get_dataset(event_name)
-                figs = plot_dispatch[plotname](ds, model, plt)
+
+                if config is None:
+                    config = guts.load(
+                        filename=op.join(dirname, 'config.yaml'))
+                    config.set_basepath(dirname)
+                    config.setup_modelling_environment(problem)
+
+                ds = config.get_dataset(event_name)
+                figs = plot_dispatch[plotname](ds, history, optimizer, plt)
                 if save:
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
         for plotname in ['jointpar', 'hudson', 'solution', 'location']:
             if plotname in plotnames_want:
-                figs = plot_dispatch[plotname](model, plt)
+                figs = plot_dispatch[plotname](history, optimizer, plt)
                 if save:
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
@@ -1881,9 +1800,7 @@ class SolverPlot(object):
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
 
-        bounds = num.concatenate((
-            problem.get_parameter_bounds(),
-            problem.get_dependant_bounds()))
+        bounds = self.problem.get_combined_bounds()
 
         self.xlim = fixlim(*xpar.scaled(bounds[ixpar]))
         self.ylim = fixlim(*ypar.scaled(bounds[iypar]))
@@ -1937,9 +1854,7 @@ class SolverPlot(object):
                 ps = core.excentricity_compensated_probabilities(
                     xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
-                bounds = num.concatenate((
-                    self.problem.get_parameter_bounds(),
-                    self.problem.get_dependant_bounds()))
+                bounds = self.get_combined_bounds()
 
                 x = num.linspace(
                     bounds[self.ixpar][0], bounds[self.ixpar][1], nx)

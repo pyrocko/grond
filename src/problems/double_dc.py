@@ -2,7 +2,7 @@ import numpy as num
 import logging
 
 from pyrocko import gf, util
-from pyrocko.guts import String, Float, Dict, Int
+from pyrocko.guts import String, Float, Dict
 
 from .base import Problem, ProblemConfig
 from ..meta import Forbidden, expand_template, Parameter
@@ -87,16 +87,6 @@ class DoubleDCProblem(Problem):
 
         raise KeyError(pname)
 
-    def extract(self, xs, i):
-        if xs.ndim == 1:
-            return self.extract(xs[num.newaxis, :], i)[0]
-
-        if i < self.nparameters:
-            return xs[:, i]
-        else:
-            return self.make_dependant(
-                xs, self.dependants[i-self.nparameters].name)
-
     def pack(self, source):
         x = num.array([
             source.time - self.base_source.time,
@@ -180,3 +170,9 @@ class DoubleDCProblem(Problem):
                 results.append(result)
 
         return results
+
+
+__all__ = '''
+    DoubleDCProblem
+    DoubleDCProblemConfig
+'''.split()

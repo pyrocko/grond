@@ -4,12 +4,15 @@ from pyrocko import gf
 from pyrocko.guts import Object, Float
 
 
+guts_prefix = 'grond'
+
+
 class MisfitConfig(Object):
     pass
 
 
 class TargetGroup(Object):
-    normalisation_family = gf.StringID.T(default='', optional=True)
+    normalisation_family = gf.StringID.T(optional=True)
     path = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
 
@@ -42,14 +45,16 @@ class MisfitTarget(Object):
     analysis_result = TargetAnalysisResult.T(
         optional=True)
     misfit_config = MisfitConfig.T(
+        optional=True,
         help='Configuration object how the misfit is calculated.')
-
     normalisation_family = gf.StringID.T(
+        optional=True,
         help='Normalisation family of this misfitTarget')
     path = gf.StringID.T(
         help='A path identifier used for plotting')
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
         self.parameters = []
         self.nmisfits = 0
 
@@ -94,10 +99,19 @@ class MisfitTarget(Object):
         self._result_mode = result_mode
 
     def string_id(self):
-        return '.'.join([self.normalisation_family, self.path, self.id])
+        return '.'.join([self.path, self.id])
 
     def post_process(self, engine, source, statics):
         raise NotImplementedError()
 
     def get_combined_weight(self, apply_balancing_weights=False):
         raise NotImplementedError()
+
+
+__all__ = '''
+    TargetGroup
+    MisfitConfig
+    MisfitTarget
+    MisfitResult
+    TargetAnalysisResult
+'''.split()

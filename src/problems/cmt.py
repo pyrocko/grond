@@ -112,16 +112,6 @@ class CMTProblem(Problem):
         else:
             raise KeyError(pname)
 
-    def extract(self, xs, i):
-        if xs.ndim == 1:
-            return self.extract(xs[num.newaxis, :], i)[0]
-
-        if i < self.nparameters:
-            return xs[:, i]
-        else:
-            return self.make_dependant(
-                xs, self.dependants[i-self.nparameters].name)
-
     def pack(self, source):
         m6 = source.m6
         mt = source.pyrocko_moment_tensor()
@@ -223,11 +213,11 @@ class CMTProblem(Problem):
             else:
                 data.append((result.misfit_value, result.misfit_norm))
 
-        ms, ns = num.array(data, dtype=num.float).T
+        misfits = num.array(data, dtype=num.float)
         if result_mode == 'full':
-            return ms, ns, results
+            return misfits, results
         else:
-            return ms, ns
+            return misfits
 
     def forward(self, x):
         source = self.get_source(x)
@@ -246,3 +236,9 @@ class CMTProblem(Problem):
                 results.append(result)
 
         return results
+
+
+__all__ = '''
+    CMTProblem
+    CMTProblemConfig
+'''.split()

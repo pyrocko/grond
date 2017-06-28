@@ -1,3 +1,4 @@
-from .cmt import CMTProblem, CMTProblemConfig  # noqa
-from .rectangular import RectangularProblem, RectangularProblemConfig  # noqa
-from .double_dc import DoubleDCProblem, DoubleDCProblemConfig  # noqa
+from .base import *  # noqa
+from .cmt import *  # noqa
+from .rectangular import *  # noqa
+from .double_dc import *  # noqa

@@ -15,7 +15,7 @@ setup(
     version='0.1',
     author='Sebastian Heimann',
     author_email='sebastian.heimann@gfz-potsdam.de',
-    packages=['grond', 'grond.baraddur', 'grond.problems', 'grond.solvers',
+    packages=['grond', 'grond.baraddur', 'grond.problems', 'grond.optimizers',
               'grond.analysers', 'grond.listeners', 'grond.targets'],
     python_requires='>=3.5',
     scripts=['apps/grond'],

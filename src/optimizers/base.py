@@ -6,9 +6,20 @@ from collections import OrderedDict
 
 from pyrocko.guts import Object
 
+from ..meta import GrondError
+
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.solver')
+
+
+class BadProblem(GrondError):
+    pass
+
+
+class SimpleTimedelta(timedelta):
+    def __str__(self):
+        return timedelta.__str__(self).split('.')[0]
 
 
 class RingBuffer(num.ndarray):
@@ -70,23 +81,18 @@ class SolverState(object):
         return len(self.parameter_names)
 
 
-class Solver(object):
-    state = SolverState()
+class Optimizer(Object):
 
-    def solve(
-            self, problem, rundir=None, status=(), plot=None, xs_inject=None,
-            notifier=None):
+    def optimize(self, problem):
         raise NotImplemented()
 
 
-class SolverConfig(Object):
-
-    def get_solver(self):
-        return Solver()
+class OptimizerConfig(Object):
+    pass
 
 
 __all__ = '''
-    Solver
-    SolverState
-    SolverConfig
+    BadProblem
+    Optimizer
+    OptimizerConfig
 '''.split()

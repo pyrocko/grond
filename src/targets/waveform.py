@@ -213,9 +213,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
-        MisfitTarget.__init__(self)
-
-        nmisfits = 1
+        MisfitTarget.__init__(self, **kwargs)
 
     def string_id(self):
         return '.'.join(x for x in (self.path,) + self.codes if x)
@@ -557,5 +555,9 @@ def float_or_none(x):
         return float(x)
 
 
-__all__ = [WaveformMisfitConfig, WaveformMisfitTarget, WaveformMisfitResult,
-           WaveformTargetGroup]
+__all__ = '''
+    WaveformTargetGroup
+    WaveformMisfitConfig
+    WaveformMisfitTarget
+    WaveformMisfitResult
+'''.split()

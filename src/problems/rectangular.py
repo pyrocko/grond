@@ -84,12 +84,6 @@ class RectangularProblem(Problem):
         source = self.base_source.clone(**d)
         return source
 
-    def extract(self, xs, i):
-        if xs.ndim == 1:
-            return self.extract(xs[num.newaxis, :], i)[0]
-
-        return xs[:, i]
-
     def random_uniform(self, xbounds):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
@@ -167,3 +161,9 @@ class RectangularProblem(Problem):
                 results.append(result)
 
         return results
+
+
+__all__ = '''
+    RectangularProblem
+    RectangularProblemConfig
+'''.split()

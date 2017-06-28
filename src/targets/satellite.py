@@ -74,9 +74,8 @@ class SatelliteMisfitConfig(MisfitConfig):
                              'ramp_east': '-1e-4 .. 1e-4'})
 
 
-class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
+class SatelliteMisfitTarget(MisfitTarget, gf.SatelliteTarget):
     scene_id = String.T()
-
     available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
@@ -138,3 +137,11 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def get_combined_weight(self, apply_balancing_weights=False):
         return self.manual_weight
+
+__all__ = '''
+    SatelliteTargetGroup
+    SatelliteMisfitConfig
+    SatelliteMisfitTarget
+    SatelliteMisfitResult
+'''.split()
+

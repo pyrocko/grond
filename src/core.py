@@ -14,13 +14,15 @@ from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import DatasetConfig, NotFound
-from .problems.base import ProblemConfig, Problem
-from .solvers.base import SolverConfig
+from .problems.base import ProblemConfig, Problem, \
+    load_problem_info_and_data, load_problem_data
+
+from .optimizers.base import OptimizerConfig, BadProblem
 from .targets.base import TargetGroup
 from .analysers.base import AnalyserConfig
 from .listeners import TerminalListener
-from .meta import Path, HasPaths, expand_template, xjoin, GrondError, \
-    Notifier, Forbidden
+from .meta import Path, HasPaths, expand_template, GrondError, Notifier, \
+    Forbidden
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
@@ -57,10 +59,6 @@ def weed(origin, targets, limit, neighborhood=3):
     return targets_weeded, meandists_kept, deleted
 
 
-class BadProblem(Exception):
-    pass
-
-
 class EngineConfig(HasPaths):
     gf_stores_from_pyrocko_config = Bool.T(default=True)
     gf_store_superdirs = List.T(Path.T())
@@ -87,7 +85,7 @@ class Config(HasPaths):
     target_groups = List.T(TargetGroup.T())
     problem_config = ProblemConfig.T()
     analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
-    solver_config = SolverConfig.T(default=SolverConfig.D())
+    optimizer_config = OptimizerConfig.T()
     engine_config = EngineConfig.T(default=EngineConfig.D())
 
     def __init__(self, *args, **kwargs):
@@ -126,75 +124,6 @@ class Config(HasPaths):
 
 def sarr(a):
     return ' '.join('%15g' % x for x in a)
-
-
-def load_config(dirname):
-    fn = op.join(dirname, 'config.yaml')
-    return guts.load(filename=fn)
-
-
-def load_problem_info_and_data(dirname, subset=None):
-    problem = load_problem_info(dirname)
-    xs, misfits = load_problem_data(xjoin(dirname, subset), problem)
-    return problem, xs, misfits
-
-
-def load_problem_info(dirname):
-    fn = op.join(dirname, 'problem.yaml')
-    return guts.load(filename=fn)
-
-
-def load_optimizer_history(dirname, problem):
-    fn = op.join(dirname, 'accepted')
-    with open(fn, 'r') as f:
-        nmodels = os.fstat(f.fileno()).st_size // (problem.nbootstrap+1)
-        data1 = num.fromfile(
-            f,
-            dtype='<i1',
-            count=nmodels*(problem.nbootstrap+1)).astype(num.bool)
-
-    accepted = data1.reshape((nmodels, problem.nbootstrap+1))
-
-    fn = op.join(dirname, 'choices')
-    with open(fn, 'r') as f:
-        data2 = num.fromfile(
-            f,
-            dtype='<i8',
-            count=nmodels*2).astype(num.int64)
-
-    ibootstrap_choices, imodel_choices = data2.reshape((nmodels, 2)).T
-    return ibootstrap_choices, imodel_choices, accepted
-
-
-def load_problem_data(dirname, problem, skip_models=0):
-    fn = op.join(dirname, 'models')
-    with open(fn, 'r') as f:
-        nmodels = os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
-        nmodels -= skip_models
-        f.seek(skip_models * problem.nparameters * 8)
-        data1 = num.fromfile(
-            f, dtype='<f8',
-            count=nmodels * problem.nparameters)\
-            .astype(num.float)
-
-    nmodels = data1.size//problem.nparameters - skip_models
-    xs = data1.reshape((nmodels, problem.nparameters))
-
-    fn = op.join(dirname, 'misfits')
-    with open(fn, 'r') as f:
-        f.seek(skip_models * problem.ntargets * 2 * 8)
-        data2 = num.fromfile(
-            f, dtype='<f8', count=nmodels*problem.ntargets*2).astype(num.float)
-
-    data2 = data2.reshape((nmodels, problem.ntargets*2))
-
-    combi = num.empty_like(data2)
-    combi[:, 0::2] = data2[:, :problem.ntargets]
-    combi[:, 1::2] = data2[:, problem.ntargets:]
-
-    misfits = combi.reshape((nmodels, problem.ntargets, 2))
-
-    return xs, misfits
 
 
 def get_mean_x(xs):
@@ -264,26 +193,6 @@ def write_config(config, path):
     config.change_basepath(basepath)
 
 
-def bootstrap_outliers(problem, misfits, std_factor=1.0):
-    '''
-    Identify bootstrap configurations performing bad in global configuration
-    '''
-
-    raise Exception('this function is broken')
-
-    gms = problem.global_misfits(misfits)
-
-    ibests = []
-    for ibootstrap in range(problem.nbootstrap):
-        bms = problem.bootstrap_misfits(misfits, ibootstrap)
-        ibests.append(num.argmin(bms))
-
-    m = num.median(gms[ibests])
-    s = num.std(gms[ibests])
-
-    return num.where(gms > m+s)[0]
-
-
 def forward(rundir_or_config_path, event_names):
 
     if not event_names:
@@ -326,7 +235,7 @@ def forward(rundir_or_config_path, event_names):
     events = []
     for (problem, x) in payload:
         ds.empty_cache()
-        ms, ns, results = problem.evaluate(x, result_mode='full')
+        _, results = problem.evaluate(x, result_mode='full')
 
         event = problem.get_source(x).pyrocko_event()
         events.append(event)
@@ -352,7 +261,9 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     else:
         xs, misfits = load_problem_data(rundir, problem)
 
-    config = load_config(rundir)
+    optimizer_fn = op.join(rundir, 'optimizer.yaml')
+    optimizer = guts.load(filename=optimizer_fn)
+    nbootstrap = optimizer.nbootstrap
 
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
@@ -371,9 +282,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     ibests_list.append(isort[:nbest])
 
     if weed != 3:
-        for ibootstrap in range(config.solver_config.nbootstrap):
-            bms = problem.bootstrap_misfits(
-                misfits, config.solver_config.nbootstrap, ibootstrap)
+        for ibootstrap in range(nbootstrap):
+            bms = problem.bootstrap_misfits(misfits, nbootstrap, ibootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
@@ -397,10 +307,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         ibests = ibests[gms[ibests] < mean_gm_best]
 
     for i in ibests:
-        x = xs[i]
-        ms = misfits[i, :, 0]
-        ns = misfits[i, :, 1]
-        problem.dump_problem_data(dumpdir, x, ms, ns)
+        problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
 
 def get_event_names(config):
@@ -455,7 +362,7 @@ def check(
             if n_random_synthetics == 0:
                 x = problem.pack(problem.base_source)
                 sources.append(problem.base_source)
-                ms, ns, results = problem.evaluate(x, result_mode='full')
+                _, results = problem.evaluate(x, result_mode='full')
                 results_list.append(results)
 
             else:
@@ -470,7 +377,7 @@ def check(
                             pass
 
                     sources.append(problem.get_source(x))
-                    ms, ns, results = problem.evaluate(x, result_mode='full')
+                    _, results = problem.evaluate(x, result_mode='full')
                     results_list.append(results)
 
             if show_waveforms:
@@ -691,9 +598,6 @@ def process_event(ievent, g_data_id):
 
     config, force, status, nparallel, event_names = g_state[g_data_id]
 
-    if nparallel > 1:
-        status = ()
-
     event_name = event_names[ievent]
 
     ds = config.get_dataset(event_name)
@@ -756,14 +660,19 @@ def process_event(ievent, g_data_id):
     #     movie_filename='grond_opt_time_magnitude.mp4')
 
     try:
-        solver = config.solver_config.get_solver()
-        solver.solve(
+        optimizer = config.optimizer_config.get_optimizer()
+        if xs_inject is not None:
+            from .optimizers import highscore
+            if not isinstance(optimizer, highscore.HighScoreOptimizer()):
+                raise GrondError(
+                    'optimizer does not support injections')
+
+            optimizer.sampler_phases[0:0] = [
+                highscore.InjectionSamplerPhase(xs_inject=xs_inject)]
+
+        optimizer.optimize(
             problem,
-            rundir=rundir,
-            status=status,
-            # plot=splot,
-            xs_inject=xs_inject,
-            notifier=notifier)
+            rundir=rundir)
 
         harvest(rundir, problem, force=True)
 
@@ -947,9 +856,6 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 __all__ = '''
     EngineConfig
     Config
-    load_problem_info
-    load_problem_info_and_data
-    load_optimizer_history
     read_config
     write_config
     forward

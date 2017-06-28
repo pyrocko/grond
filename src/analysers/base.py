@@ -57,7 +57,7 @@ class Analyser(object):
                 isok_mask = num.logical_not(isbad_mask)
             else:
                 isok_mask = None
-            _, ms = wproblem.evaluate(x, mask=isok_mask)
+            ms = wproblem.evaluate(x, mask=isok_mask)[:, 1]
             mss[iiter, :] = ms
 
             isbad_mask = num.isnan(ms)
@@ -80,10 +80,10 @@ class Analyser(object):
 
 
 class AnalyserConfig(Object):
-    niter = Int.T(default=1000)
+    niterations = Int.T(default=1000)
 
     def get_analyser(self):
-        return Analyser(niter=self.niter)
+        return Analyser(niter=self.niterations)
 
 
 __all__ = '''
