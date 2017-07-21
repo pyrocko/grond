@@ -1660,21 +1660,22 @@ class SolverPlot(object):
         self.movie_filename = movie_filename
         self.show = show
         self.update_every = update_every
+        self.fontsize = 10
 
     def want_to_update(self, iiter):
         return iiter % self.update_every == 0
 
     def start(self, problem):
-        fontsize = 8.
         nfx = 1
         nfy = 1
 
         ixpar = problem.name_to_index(self.xpar_name)
         iypar = problem.name_to_index(self.ypar_name)
 
-        fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+        mpl_init(fontsize=self.fontsize)
+        fig = plt.figure(figsize=(9.6, 5.4))
         labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
-                               hspace=2., units=fontsize)
+                               hspace=2., units=self.fontsize)
 
         xpar = problem.parameters[ixpar]
         ypar = problem.parameters[iypar]
@@ -1711,6 +1712,7 @@ class SolverPlot(object):
             num.repeat(0.7, n))).T
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
+        self.bcolors[0, :] = [0., 0., 0.]
 
         bounds = self.problem.bounds() + self.problem.dependant_bounds()
 
@@ -1737,7 +1739,7 @@ class SolverPlot(object):
                 codec='libx264',
                 bitrate=200000)
 
-            self.writer.setup(self.fig, self.movie_filename, dpi=100)
+            self.writer.setup(self.fig, self.movie_filename, dpi=200)
 
         if self.show:
             plt.ion()
@@ -1747,8 +1749,10 @@ class SolverPlot(object):
         self.axes.set_xlim(*self.xlim)
         self.axes.set_ylim(*self.ylim)
 
-    def update(self, xhist, chains_i, ibase, jchoice, local_sxs, factor):
+    def update(self, xhist, chains_i, ibase, jchoice, local_sxs, factor, phase, compensate_excentricity):
         msize = 15.
+
+        iiter_frame = len(xhist)
 
         self.axes.cla()
 
@@ -1763,8 +1767,12 @@ class SolverPlot(object):
             p = num.zeros((ny, nx))
 
             for j in [ jchoice ]: # xrange(self.problem.nbootstrap+1):
-                ps = core.excentricity_compensated_probabilities(
-                        xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
+
+                if compensate_excentricity:
+                    ps = core.excentricity_compensated_probabilities(
+                            xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
+                else:
+                    ps = num.ones(chains_i.shape[1])
 
                 bounds = self.problem.bounds() + \
                     self.problem.dependant_bounds()
@@ -1816,16 +1824,16 @@ class SolverPlot(object):
                 color=self.bcolors[ibootstrap],
                 s=msizes, alpha=0.5, edgecolors='none')
 
-        if ibase is not None:
-            fx = self.problem.extract(
-                xhist[(ibase, -1), :], self.ixpar)
-            fy = self.problem.extract(
-                xhist[(ibase, -1), :], self.iypar)
+        # if ibase is not None:
+        #     fx = self.problem.extract(
+        #         xhist[(ibase, -1), :], self.ixpar)
+        #     fy = self.problem.extract(
+        #         xhist[(ibase, -1), :], self.iypar)
 
-            self.axes.plot(
-                self.xpar.scaled(fx),
-                self.ypar.scaled(fy),
-                color='black')
+        #     self.axes.plot(
+        #         self.xpar.scaled(fx),
+        #         self.ypar.scaled(fy),
+        #         color='black')
 
         fx = self.problem.extract(xhist[-1:, :], self.ixpar)
         fy = self.problem.extract(xhist[-1:, :], self.iypar)
@@ -1835,15 +1843,32 @@ class SolverPlot(object):
             self.ypar.scaled(fy),
             s=msize * 5.0,
             color='none',
-            edgecolors='black')
+            edgecolors=self.bcolors[ibootstrap])
+
+        self.axes.annotate(
+            '%i (%s)' % (iiter_frame, phase),
+            xy=(0., 1.),
+            xycoords='axes fraction',
+            xytext=(self.fontsize/2., -self.fontsize/2.),
+            textcoords='offset points',
+            ha='left',
+            va='top',
+            fontsize=self.fontsize,
+            fontstyle='normal')
+
 
         self.set_limits()
+
+        self.post_update()
 
         if self.writer:
             self.writer.grab_frame()
 
         if self.show:
             plt.draw()
+
+    def post_update(self):
+        pass
 
     def finish(self):
 

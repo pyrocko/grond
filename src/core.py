@@ -1790,7 +1790,9 @@ def solve(problem,
                 ibase,
                 ibootstrap_choice,
                 local_sxs,
-                factor)
+                factor,
+                phase,
+                compensate_excentricity)
 
         iiter += 1
 
