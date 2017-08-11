@@ -54,6 +54,9 @@ def weed(origin, targets, limit, neighborhood=3):
     return targets_weeded, meandists_kept, deleted
 
 
+class BadProblem(Exception):
+    pass
+
 class EngineConfig(HasPaths):
     gf_stores_from_pyrocko_config = Bool.T(default=True)
     gf_store_superdirs = List.T(Path.T())

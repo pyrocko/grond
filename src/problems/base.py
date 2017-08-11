@@ -287,17 +287,17 @@ class Problem(Object):
             self.raise_invalid_norm_exponent()
 
     def bootstrap_misfit(self, ms, ns, ibootstrap=None):
+        # Should this be nbootstrap?
         exp, root = self.get_norm_functions()
 
-        w = self.get_bootstrap_weights(ibootstrap) * \
-            self.get_target_weights() * self.inter_group_weights(ns)
-
+        w = self.get_target_weights() * self.inter_group_weights(ns)
         if ibootstrap is None:
             return root(
                 num.nansum(exp(w*ms[num.newaxis, :]), axis=1) /
                 num.nansum(exp(w*ns[num.newaxis, :]), axis=1))
-        else:
-            return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
+
+        w *= self.get_bootstrap_weights(ibootstrap)
+        return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
 
     def bootstrap_misfits(self, misfits, ibootstrap):
         exp, root = self.get_norm_functions()

@@ -14,6 +14,36 @@ km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
 
+class DoubleDCProblemConfig(ProblemConfig):
+
+    ranges = Dict.T(String.T(), gf.Range.T())
+    distance_min = Float.T(default=0.0)
+    nbootstrap = Int.T(default=100)
+
+    def get_problem(self, event, targets):
+        if event.depth is None:
+            event.depth = 0.
+
+        base_source = gf.DoubleDCSource.from_pyrocko_event(event)
+        base_source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
+
+        subs = dict(
+            event_name=event.name,
+            event_time=util.time_to_str(event.time))
+
+        problem = DoubleDCProblem(
+            name=expand_template(self.name_template, subs),
+            apply_balancing_weights=self.apply_balancing_weights,
+            base_source=base_source,
+            targets=targets,
+            ranges=self.ranges,
+            distance_min=self.distance_min,
+            nbootstrap=self.nbootstrap,
+            norm_exponent=self.norm_exponent)
+
+        return problem
+
+
 class DoubleDCProblem(Problem):
 
     problem_parameters = [
@@ -153,33 +183,3 @@ class DoubleDCProblem(Problem):
                 results.append(result)
 
         return results
-
-
-class DoubleDCProblemConfig(ProblemConfig):
-
-    ranges = Dict.T(String.T(), gf.Range.T())
-    distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=100)
-
-    def get_problem(self, event, targets):
-        if event.depth is None:
-            event.depth = 0.
-
-        base_source = gf.DoubleDCSource.from_pyrocko_event(event)
-        base_source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
-
-        subs = dict(
-            event_name=event.name,
-            event_time=util.time_to_str(event.time))
-
-        problem = DoubleDCProblem(
-            name=expand_template(self.name_template, subs),
-            apply_balancing_weights=self.apply_balancing_weights,
-            base_source=base_source,
-            targets=targets,
-            ranges=self.ranges,
-            distance_min=self.distance_min,
-            nbootstrap=self.nbootstrap,
-            norm_exponent=self.norm_exponent)
-
-        return problem
