@@ -23,7 +23,7 @@ def excentricity_compensated_probabilities(xs, sbx, factor):
         ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
     probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
-    print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
+    # print num.sort(num.sum(distances_sqr_all < 1.0, axis=1))
     probabilities /= num.sum(probabilities)
     return probabilities
 
@@ -105,15 +105,14 @@ def solve(problem,
 
     state.problem_name = problem.name
     state.parameter_names = problem.parameter_names + ['Misfit']
-    npar = len(state.parameter_names)
 
     state.parameter_sets = OrderedDict()
 
-    state.parameter_sets['BS mean'] = num.zeros(npar)
-    state.parameter_sets['BS std'] = num.zeros(npar)
-    state.parameter_sets['Global mean'] = num.zeros(npar)
-    state.parameter_sets['Global std'] = num.zeros(npar)
-    state.parameter_sets['Global best'] = num.zeros(npar)
+    state.parameter_sets['BS mean'] = num.zeros(state.nparameters)
+    state.parameter_sets['BS std'] = num.zeros(state.nparameters)
+    state.parameter_sets['Global mean'] = num.zeros(state.nparameters)
+    state.parameter_sets['Global std'] = num.zeros(state.nparameters)
+    state.parameter_sets['Global best'] = num.zeros(state.nparameters)
 
     for par in state.parameter_sets.values():
         par.fill(num.nan)

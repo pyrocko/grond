@@ -67,6 +67,10 @@ class SolverState(object):
         return SimpleTimedelta(seconds=(self.niter - self.iiter)
                                / self.iter_per_second)
 
+    @property
+    def nparameters(self):
+        return len(self.parameter_names)
+
 
 class Solver(object):
     state = SolverState()
