@@ -69,7 +69,6 @@ class RectangularProblem(Problem):
     dependants = []
 
     distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=10)
 
     def pack(self, source):
         arr = self.get_parameter_array(source)
