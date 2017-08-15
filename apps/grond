@@ -187,7 +187,6 @@ def command_init(args):
         problem_config = grond.CMTProblemConfig(
             name_template='cmt_%(event_name)s',
             distance_min=2.*km,
-            nbootstrap=100,
             mt_type='deviatoric',
             ranges=dict(
                 time=Range(0, 10.0, relative='add'),

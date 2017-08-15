@@ -58,6 +58,7 @@ def local_std(xs):
 
 def solve(problem,
           rundir=None,
+          nbootstrap=100,
           niter_uniform=1000,
           niter_transition=1000,
           niter_explorative=10000,
@@ -78,8 +79,8 @@ def solve(problem,
     npar = problem.nparameters
 
     nlinks_cap = int(round(chain_length_factor * npar + 1))
-    chains_m = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.float)
-    chains_i = num.zeros((1 + problem.nbootstrap, nlinks_cap), num.int)
+    chains_m = num.zeros((1 + nbootstrap, nlinks_cap), num.float)
+    chains_i = num.zeros((1 + nbootstrap, nlinks_cap), num.int)
     nlinks = 0
     mbx = None
 
@@ -98,7 +99,7 @@ def solve(problem,
     local_sxs = None
     xhist = num.zeros((niter, npar))
     isbad_mask = None
-    accept_sum = num.zeros(1 + problem.nbootstrap, dtype=num.int)
+    accept_sum = num.zeros(1 + nbootstrap, dtype=num.int)
     accept_hist = num.zeros(niter, dtype=num.int)
     pnames = problem.parameter_names
 
@@ -164,7 +165,7 @@ def solve(problem,
                     x = problem.random_uniform(xbounds)
                 else:
                     # ibootstrap_choice = num.random.randint(
-                    #     0, 1 + problem.nbootstrap)
+                    #     0, 1 + nbootstrap)
                     ibootstrap_choice = num.argmin(accept_sum)
 
                     if phase in ('transition', 'explorative'):
@@ -309,7 +310,7 @@ def solve(problem,
             accept = (chains_i[:, nlinks_cap-1] != iiter).astype(num.int)
             nlinks -= 1
         else:
-            accept = num.ones(1 + problem.nbootstrap, dtype=num.int)
+            accept = num.ones(1 + nbootstrap, dtype=num.int)
 
         if rundir:
             problem.dump_problem_data(
@@ -342,7 +343,7 @@ def solve(problem,
             mxs = []
             local_sxs = []
 
-            for i in xrange(1 + problem.nbootstrap):
+            for i in xrange(1 + nbootstrap):
                 xs = xhist[chains_i[i, :nlinks], :]
                 mx = num.mean(xs, axis=0)
                 cov = num.cov(xs.T)
@@ -436,6 +437,7 @@ class StandardDeviationEstimatorChoice(StringChoice):
 
 
 class HighScoreSolverConfig(SolverConfig):
+    nbootstrap = Int.T(default=100)
     niter_uniform = Int.T(default=1000)
     niter_transition = Int.T(default=0)
     niter_explorative = Int.T(default=10000)
@@ -451,6 +453,7 @@ class HighScoreSolverConfig(SolverConfig):
 
     def get_solver_kwargs(self):
         return dict(
+            nbootstrap=self.nbootstrap,
             niter_uniform=self.niter_uniform,
             niter_transition=self.niter_transition,
             niter_explorative=self.niter_explorative,

@@ -18,7 +18,6 @@ class RectangularProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     apply_balancing_weights = Bool.T(default=False)
     decimation_factor = Int.T(default=1)
-    nbootstrap = Int.T(default=10)
     distance_min = Float.T(default=0.)
 
     def get_problem(self, event, targets):
@@ -35,7 +34,6 @@ class RectangularProblemConfig(ProblemConfig):
             name=expand_template(self.name_template, event.name),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
-            nbootstrap=self.nbootstrap,
             distance_min=self.distance_min,
             targets=targets,
             ranges=self.ranges,

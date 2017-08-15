@@ -325,8 +325,6 @@ class BadProblem(GrondError):
     pass
 
 
-
-
 def solve(problem,
           phases,
           rundir=None,
@@ -426,7 +424,6 @@ def solve(problem,
         gbms = num.concatenate(([gm], bms))
 
         chains.insert(gbms, iiter)
-
 
         chains_m[0, nlinks] = gm
         chains_m[1:, nlinks] = bms
@@ -539,13 +536,11 @@ class HighScoreOptimizer(Optimizer):
         Optimizer.__init__(self)
         self._kwargs = kwargs
 
-
     def solve(
               problem,
               phases,
               rundir=None,
 
-              chain_length_factor=
               chain_length_factor=8.0,
               standard_deviation_estimator='median_density_single_chain',
 
@@ -635,6 +630,7 @@ class StandardDeviationEstimatorChoice(StringChoice):
 
 
 class HighScoreOptimizerConfig(OptimizerConfig):
+    nbootstrap = Int.T(default=100)
     niter_uniform = Int.T(default=1000)
     niter_transition = Int.T(default=0)
     niter_explorative = Int.T(default=10000)
@@ -650,6 +646,7 @@ class HighScoreOptimizerConfig(OptimizerConfig):
 
     def get_optimizer_kwargs(self):
         return dict(
+            nbootstrap=self.nbootstrap,
             niter_uniform=self.niter_uniform,
             niter_transition=self.niter_transition,
             niter_explorative=self.niter_explorative,

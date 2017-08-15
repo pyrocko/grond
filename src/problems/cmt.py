@@ -3,7 +3,7 @@ import math
 import logging
 
 from pyrocko import gf, util, moment_tensor as mtm
-from pyrocko.guts import String, Float, Dict, Int, StringChoice
+from pyrocko.guts import String, Float, Dict, StringChoice
 
 from .base import Problem, ProblemConfig
 from ..meta import Forbidden, expand_template, Parameter

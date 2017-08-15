@@ -18,7 +18,6 @@ class DoubleDCProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=100)
 
     def get_problem(self, event, targets):
         if event.depth is None:
@@ -38,7 +37,6 @@ class DoubleDCProblemConfig(ProblemConfig):
             targets=targets,
             ranges=self.ranges,
             distance_min=self.distance_min,
-            nbootstrap=self.nbootstrap,
             norm_exponent=self.norm_exponent)
 
         return problem
