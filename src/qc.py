@@ -6,7 +6,7 @@ import numpy as num
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-from pyrocko import gf, orthodrome as od, plot
+from pyrocko import gf, orthodrome as od, plot, model
 from grond import dataset
 
 km = 1000.
@@ -47,9 +47,6 @@ def polarization(
 
     event = ds.get_event()
     stations = ds.get_stations()
-
-    nsl_to_station = dict(
-        (s.nsl(), s) for s in stations)
 
     source = gf.Source.from_pyrocko_event(event)
 
@@ -112,11 +109,37 @@ def polarization(
                 logger.warn(str(e))
                 continue
 
-    d_trs = defaultdict(dict)
-    for tr in trs:
-        d_trs[tr.nslc_id[:3]][tr.nslc_id[3]] = tr
+    plot_polarizations(
+        stations, trs,
+        event=event,
+        size_factor=size_factor,
+        output_filename=output_filename,
+        output_format=output_format,
+        output_dpi=output_dpi)
 
-    fontsize = 10.
+
+def plot_polarizations(
+        stations, trs,
+        event=None,
+        size_factor=0.05,
+        fontsize=10.,
+        output_filename=None,
+        output_format=None,
+        output_dpi=None):
+
+    if event is None:
+        slats = num.array([s.lat for s in stations], dtype=num.float)
+        slons = num.array([s.lon for s in stations], dtype=num.float)
+        clat, clon = od.geographic_midpoint(slats, slons)
+        event = od.Loc(clat, clon)
+
+    nsl_c_to_trs = defaultdict(dict)
+    for tr in trs:
+        nsl_c_to_trs[tr.nslc_id[:3]][tr.nslc_id[3]] = tr
+
+    nsl_to_station = dict(
+        (s.nsl(), s) for s in stations)
+
     plot.mpl_init(fontsize=fontsize)
     fig = plt.figure(figsize=plot.mpl_papersize('a4', 'landscape'))
     plot.mpl_margins(fig, w=7., h=6., units=fontsize)
@@ -140,14 +163,15 @@ def polarization(
     axes_ed.set_ylabel('Depth [km]')
     axes_ed.set_xlabel('Easting [km]')
 
-    axes_en.plot(0., 0., '*')
-    axes_dn.plot(event.depth/km, 0., '*')
-    axes_ed.plot(0., event.depth/km, '*')
+    if isinstance(event, model.Event):
+        axes_en.plot(0., 0., '*')
+        axes_dn.plot(event.depth/km, 0., '*')
+        axes_ed.plot(0., event.depth/km, '*')
 
     grid[3].set_axis_off()
 
     locations = []
-    for nsl in sorted(d_trs.keys()):
+    for nsl in sorted(nsl_c_to_trs.keys()):
         station = nsl_to_station[nsl]
         n, e = od.latlon_to_ne(
             event.lat, event.lon, station.lat, station.lon)
@@ -166,14 +190,14 @@ def polarization(
     fontsize_annot = fontsize * 0.7
 
     data = {}
-    for insl, nsl in enumerate(sorted(d_trs.keys())):
+    for insl, nsl in enumerate(sorted(nsl_c_to_trs.keys())):
 
         color = plot.mpl_graph_color(insl)
 
         try:
-            tr_e = d_trs[nsl]['E']
-            tr_n = d_trs[nsl]['N']
-            tr_z = d_trs[nsl]['Z']
+            tr_e = nsl_c_to_trs[nsl]['E']
+            tr_n = nsl_c_to_trs[nsl]['N']
+            tr_z = nsl_c_to_trs[nsl]['Z']
 
         except KeyError:
             continue
