@@ -6,7 +6,7 @@ import numpy as num
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-from pyrocko import gf, orthodrome as od, plot, model
+from pyrocko import gf, orthodrome as od, plot, model, trace
 from grond import dataset
 
 km = 1000.
@@ -34,7 +34,8 @@ def plot_color_line(axes, x, y, t, color, tmin, tmax):
 
 def polarization(
         ds, store, timing, fmin, fmax, ffactor,
-        time_factor=2.,
+        time_factor_pre=2.,
+        time_factor_post=2.,
         distance_min=None,
         distance_max=None,
         depth_min=None,
@@ -80,8 +81,8 @@ def polarization(
 
         for component in 'ZNE':
 
-            tmin = tp - time_factor / fmin
-            tmax = tp + time_factor / fmin
+            tmin = tp - time_factor_pre / fmin
+            tmax = tp + time_factor_post / fmin
 
             nslc = nsl + (component,)
 
@@ -103,11 +104,16 @@ def polarization(
                         freqlimits=freqlimits,
                         debug=True)
 
+                for tr in trs_projected:
+                    tr.shift(-tp)
+
                 trs.extend(trs_projected)
 
             except dataset.NotFound, e:
                 logger.warn(str(e))
                 continue
+
+    trace.snuffle(trs, stations=stations)
 
     plot_polarizations(
         stations, trs,
