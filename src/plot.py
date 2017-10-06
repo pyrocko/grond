@@ -189,16 +189,18 @@ class GrondModel(object):
 
 def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     problem = model.problem
+    npar = problem.nparameters
+    ndep = problem.ndependants
 
     imodels = num.arange(model.nmodels)
-    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
+    bounds = problem.get_parameter_bounds()
+
+    if ndep > 0:
+        bounds += problem.get_dependant_bounds()
 
     xref = problem.get_xref()
 
     xs = model.xs
-
-    npar = problem.nparameters
-    ndep = problem.ndependants
 
     gms = problem.global_misfits(model.misfits)
     gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
@@ -1434,7 +1436,8 @@ def draw_fits_figures(ds, model, plt):
                         (1, rel_c, light(misfit_color, 0.5), misfit_color)]:
 
                     bar = patches.Rectangle(
-                        (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph), rw * sw, sh - 2 * ph,
+                        (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph),
+                        rw * sw, sh - 2 * ph,
                         facecolor=facecolor, edgecolor=edgecolor,
                         zorder=10,
                         transform=axes.transAxes, clip_on=False)

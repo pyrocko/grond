@@ -265,7 +265,7 @@ class Problem(Object):
         return num.array(out, dtype=num.float)
 
     def get_dependant_bounds(self):
-        return []
+        return None
 
     def raise_invalid_norm_exponent(self):
         raise GrondError('invalid norm exponent' % self.norm_exponent)
