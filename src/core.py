@@ -57,6 +57,7 @@ def weed(origin, targets, limit, neighborhood=3):
 class BadProblem(Exception):
     pass
 
+
 class EngineConfig(HasPaths):
     gf_stores_from_pyrocko_config = Bool.T(default=True)
     gf_store_superdirs = List.T(Path.T())
@@ -122,6 +123,11 @@ class Config(HasPaths):
 
 def sarr(a):
     return ' '.join('%15g' % x for x in a)
+
+
+def load_config(dirname):
+    fn = op.join(dirname, 'config.yaml')
+    return guts.load(filename=fn)
 
 
 def load_problem_info_and_data(dirname, subset=None):
@@ -341,6 +347,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     else:
         xs, misfits = load_problem_data(rundir, problem)
 
+    config = load_config(rundir)
+
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
         if force:
@@ -358,7 +366,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     ibests_list.append(isort[:nbest])
 
     if weed != 3:
-        for ibootstrap in xrange(problem.nbootstrap):
+        for ibootstrap in xrange(config.solver_config.nbootstrap):
             bms = problem.bootstrap_misfits(misfits, ibootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
