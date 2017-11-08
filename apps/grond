@@ -223,8 +223,8 @@ def command_init(args):
                 optimize_orbital_ramp=True,
                 ranges={
                     'offset': '-0.5 .. 0.5',
-                    'ramp_north': '-1e-4 .. 1e4',
-                    'ramp_east': '-1e-4 .. 1e4'
+                    'ramp_north': '-1e-4 .. 1e-4',
+                    'ramp_east': '-1e-4 .. 1e-4'
                     }
                 ))]
 
