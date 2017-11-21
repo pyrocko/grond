@@ -108,7 +108,7 @@ def polarization(
 
                 trs.extend(trs_projected)
 
-            except dataset.NotFound, e:
+            except dataset.NotFound as e:
                 logger.warn(str(e))
                 continue
 

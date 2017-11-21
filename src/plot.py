@@ -87,7 +87,7 @@ def scale_axes(ax, scale):
 
         @staticmethod
         def __call__(value, pos):
-            return u'%d' % (value * scale)
+            return '%d' % (value * scale)
 
     ax.get_xaxis().set_major_formatter(FormatScaled())
     ax.get_yaxis().set_major_formatter(FormatScaled())
@@ -252,7 +252,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     figs = []
     fig = None
     alpha = 0.5
-    for ipar in xrange(npar):
+    for ipar in range(npar):
         impl = ipar % (nfx * nfy) + 1
 
         if impl == 1:
@@ -280,7 +280,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
 
         axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 
-    for idep in xrange(ndep):
+    for idep in range(ndep):
         # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
         impl = (npar + idep) % (nfx * nfy) + 1
 
@@ -363,7 +363,7 @@ def draw_jointpar_figures(
     xs = model.xs
 
     bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
-    for ipar in xrange(problem.ncombined):
+    for ipar in range(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
         if lo == hi:
@@ -407,7 +407,7 @@ def draw_jointpar_figures(
 
     smap = {}
     iselected = 0
-    for ipar in xrange(problem.ncombined):
+    for ipar in range(problem.ncombined):
         par = problem.combined[ipar]
         if exclude and par.name in exclude or \
                 include and par.name not in include:
@@ -426,9 +426,9 @@ def draw_jointpar_figures(
     nfig = (nselected - 2) / neach + 1
 
     figs = []
-    for ifig in xrange(nfig):
+    for ifig in range(nfig):
         figs_row = []
-        for jfig in xrange(nfig):
+        for jfig in range(nfig):
             if ifig >= jfig:
                 figs_row.append(plt.figure(figsize=figsize))
             else:
@@ -436,10 +436,10 @@ def draw_jointpar_figures(
 
         figs.append(figs_row)
 
-    for iselected in xrange(nselected):
+    for iselected in range(nselected):
         ipar = smap[iselected]
         ypar = problem.combined[ipar]
-        for jselected in xrange(iselected):
+        for jselected in range(iselected):
             jpar = smap[jselected]
             xpar = problem.combined[jpar]
 
@@ -819,7 +819,7 @@ def draw_bootstrap_figure(model, plt):
     gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
     ibests = []
-    for ibootstrap in xrange(problem.nbootstrap):
+    for ibootstrap in range(problem.nbootstrap):
         bms = problem.bootstrap_misfits(model.misfits, ibootstrap)
         isort_bms = num.argsort(bms)[::-1]
 
@@ -862,7 +862,7 @@ def gather(l, key, sort=None, filter=None):
         d[k].append(x)
 
     if sort is not None:
-        for v in d.itervalues():
+        for v in d.values():
             v.sort(key=sort)
 
     return d
@@ -1266,8 +1266,8 @@ def draw_fits_figures(ds, model, plt):
             frame_to_target[iy, ix] = target
 
         figures = {}
-        for iy in xrange(ny):
-            for ix in xrange(nx):
+        for iy in range(ny):
+            for ix in range(nx):
                 if (iy, ix) not in frame_to_target:
                     continue
 
@@ -1457,7 +1457,7 @@ def draw_fits_figures(ds, model, plt):
                 dist = source.distance_to(target)
                 azi = source.azibazi_to(target)[0]
                 infos.append(str_dist(dist))
-                infos.append(u'%.0f\u00B0' % azi)
+                infos.append('%.0f\u00B0' % azi)
                 infos.append('%.3g' % ws[itarget])
                 infos.append('%.3g' % gcms[itarget])
                 axes2.annotate(
@@ -1471,7 +1471,7 @@ def draw_fits_figures(ds, model, plt):
                     fontsize=fontsize,
                     fontstyle='normal')
 
-        for (iyy, ixx), fig in figures.iteritems():
+        for (iyy, ixx), fig in figures.items():
             title = '.'.join(x for x in cg if x)
             if len(figures) > 1:
                 title += ' (%i/%i, %i/%i)' % (iyy + 1, nyy, ixx + 1, nxx)
@@ -1724,7 +1724,7 @@ def available_plotnames():
 def plot_result(dirname, plotnames_want,
                 save=False, formats=('pdf',), dpi=None):
 
-    if isinstance(formats, basestring):
+    if isinstance(formats, str):
         formats = formats.split(',')
 
     plotnames_want = set(plotnames_want)
@@ -1910,7 +1910,7 @@ class SolverPlot(object):
 
             p = num.zeros((ny, nx))
 
-            for j in [jchoice]:  # xrange(self.problem.nbootstrap+1):
+            for j in [jchoice]:  # range(self.problem.nbootstrap+1):
                 ps = core.excentricity_compensated_probabilities(
                     xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
@@ -1922,7 +1922,7 @@ class SolverPlot(object):
                 y = num.linspace(
                     bounds[self.iypar][0], bounds[self.iypar][1], ny)
 
-                for ichoice in xrange(chains_i.shape[1]):
+                for ichoice in range(chains_i.shape[1]):
                     iiter = chains_i[j, ichoice]
                     vx = xhist[iiter, self.ixpar]
                     vy = xhist[iiter, self.iypar]
@@ -1946,7 +1946,7 @@ class SolverPlot(object):
             color='black',
             s=msize * 0.15, alpha=0.2, edgecolors='none')
 
-        for ibootstrap in xrange(self.problem.nbootstrap + 1):
+        for ibootstrap in range(self.problem.nbootstrap + 1):
 
             iiters = chains_i[ibootstrap, :]
             fx = self.problem.extract(xhist[iiters, :], self.ixpar)

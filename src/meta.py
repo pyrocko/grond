@@ -73,13 +73,13 @@ class Parameter(Object):
         Object.__init__(self, **kwargs)
 
     def get_label(self, with_unit=True):
-        l = [self.label or self.name]
+        lbl = [self.label or self.name]
         if with_unit:
             unit = self.get_unit_label()
             if unit:
-                l.append('[%s]' % unit)
+                lbl.append('[%s]' % unit)
 
-        return ' '.join(l)
+        return ' '.join(lbl)
 
     def set_groups(self, groups):
         if not isinstance(groups, list):
@@ -176,7 +176,7 @@ class HasPaths(Object):
 
         if path is None:
             return None
-        elif isinstance(path, basestring):
+        elif isinstance(path, str):
             return extra(
                 op.normpath(xjoin(self._basepath, xjoin(path_prefix, path))))
         else:

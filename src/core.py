@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import sys
 import logging
@@ -269,7 +271,7 @@ def bootstrap_outliers(problem, misfits, std_factor=1.0):
     gms = problem.global_misfits(misfits)
 
     ibests = []
-    for ibootstrap in xrange(problem.nbootstrap):
+    for ibootstrap in range(problem.nbootstrap):
         bms = problem.bootstrap_misfits(misfits, ibootstrap)
         ibests.append(num.argmin(bms))
 
@@ -366,7 +368,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     ibests_list.append(isort[:nbest])
 
     if weed != 3:
-        for ibootstrap in xrange(config.solver_config.nbootstrap):
+        for ibootstrap in range(config.solver_config.nbootstrap):
             bms = problem.bootstrap_misfits(misfits, ibootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
@@ -453,7 +455,7 @@ def check(
                 results_list.append(results)
 
             else:
-                for i in xrange(n_random_synthetics):
+                for i in range(n_random_synthetics):
                     x = problem.random_uniform(xbounds)
                     sources.append(problem.get_source(x))
                     ms, ns, results = problem.evaluate(x, result_mode='full')
@@ -519,7 +521,7 @@ def check(
                                 backazimuth=target.
                                 get_backazimuth_for_waveform(),
                                 debug=True)
-                    except NotFound, e:
+                    except NotFound as e:
                         logger.warn(str(e))
                         continue
 
@@ -643,7 +645,7 @@ def check(
                     logger.info('%-40s %s' % (
                         (target.string_id() + ':', sok)))
 
-        except GrondError, e:
+        except GrondError as e:
             logger.error('event %i, %s: %s' % (
                 ievent,
                 event.name or util.time_to_str(event.time),
@@ -666,7 +668,7 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
     for x in parimap.parimap(
             process_event,
-            xrange(nevents),
+            range(nevents),
             [id(g_data)] * nevents,
             nprocs=nparallel):
 
@@ -856,13 +858,13 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         type = 'event'
 
     if shortform:
-        print >>out, '#', ' '.join('%16s' % x for x in pnames)
+        print('#', ' '.join(['%16s' % x for x in pnames]), file=out)
 
     def dump(x, gm, indices):
         if type == 'vector':
-            print >>out, ' ', ' '.join(
-                '%16.7g' % problem.extract(x, i) for i in indices), \
-                '%16.7g' % gm
+            print(' ', ' '.join(
+                '%16.7g' % problem.extract(x, i) for i in indices),
+                '%16.7g' % gm, file=out)
 
         elif type == 'source':
             source = problem.get_source(x)
@@ -896,7 +898,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
                 '%16s' % x for x in pnames_take + extra)
 
             if type == 'vector' and header != new_header:
-                print >>out, new_header
+                print(new_header, file=out)
 
             header = new_header
         else:
@@ -919,9 +921,9 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         elif what == 'stats':
             rs = make_stats(problem, xs, misfits, pnames_clean)
             if shortform:
-                print >>out, ' ', format_stats(rs, pnames)
+                print(' ', format_stats(rs, pnames), file=out)
             else:
-                print >>out, rs
+                print(rs, file=out)
 
         else:
             raise GrondError('invalid argument: what=%s' % repr(what))

@@ -172,7 +172,7 @@ class Dataset(object):
             clippings[nsl].append(marker.tmin)
             clippings[nslc].append(marker.tmin)
 
-        for k, times in clippings.iteritems():
+        for k, times in clippings.items():
             atimes = num.array(times, dtype=num.float)
             if k not in self.clippings:
                 self.clippings[k] = atimes
@@ -188,7 +188,7 @@ class Dataset(object):
                     blacklist.extend(s.strip() for s in f.read().splitlines())
 
         for x in blacklist:
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 x = tuple(x.split('.'))
             self.blacklist.add(x)
 
@@ -206,7 +206,7 @@ class Dataset(object):
             self.whitelist_nsl_xx = set()
 
         for x in whitelist:
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 x = tuple(x.split('.'))
             assert len(x) in (3, 4)
             if len(x) == 4:
@@ -388,7 +388,7 @@ class Dataset(object):
                         timespan=(tmin, tmax),
                         fake_input_units='M'))
 
-            except fs.NoResponseInformation, fs.MultipleResponseInformation:
+            except (fs.NoResponseInformation, fs.MultipleResponseInformation):
                 pass
 
         if len(candidates) == 1:
@@ -689,7 +689,7 @@ class Dataset(object):
             raise NotFound(
                 'waveform not available', station.nsl() + (channel,))
 
-        except NotFound, e:
+        except NotFound as e:
             if cache is not None:
                 cache[nslc, tmin, tmax] = e
             raise
