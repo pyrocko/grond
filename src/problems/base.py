@@ -188,7 +188,7 @@ class Problem(Object):
         ntargets = self.ntargets
         ws = num.zeros((nbootstrap, ntargets))
         rstate = num.random.RandomState(23)
-        for ibootstrap in xrange(nbootstrap):
+        for ibootstrap in range(nbootstrap):
             if type == 'classic':
                 ii = rstate.randint(0, ntargets, size=self.ntargets)
                 ws[ibootstrap, :] = num.histogram(
@@ -230,7 +230,7 @@ class Problem(Object):
         group, ngroups = self.get_group_mask()
 
         ws = num.zeros(self.ntargets)
-        for igroup in xrange(ngroups):
+        for igroup in range(ngroups):
             mask = group == igroup
             ws[mask] = 1.0 / root(num.nansum(exp(ns[mask])))
 
@@ -241,7 +241,7 @@ class Problem(Object):
 
         group, ngroups = self.get_group_mask()
         ws = num.zeros(ns.shape)
-        for igroup in xrange(ngroups):
+        for igroup in range(ngroups):
             mask = group == igroup
             ws[:, mask] = (1.0 / root(
                 num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]

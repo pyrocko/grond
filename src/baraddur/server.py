@@ -164,10 +164,10 @@ class SmoothColumnDataSource(ColumnDataSource):
 
     def stream(self, data, **kwargs):
         sigma = self._gaussian_kw['sigma']
-        if data.keys() == self.data.keys():
+        if list(data.keys()) == list(self.data.keys()):
             raise AttributeError('streaming data must represent'
                                  ' existing column')
-        for key, arr in data.iteritems():
+        for key, arr in data.items():
             if arr.ndim > 1 or not isinstance(arr, num.ndarray):
                 raise AttributeError('data is not numpy.ndarray of 1d')
 
@@ -508,17 +508,17 @@ class Baraddur(BokehServer):
             if handler_docs is None:
                 continue
 
-            for url, bokeh_handler in handler_docs.iteritems():
+            for url, bokeh_handler in handler_docs.items():
                 bokeh_apps['/plots/%s' % url] = Application(bokeh_handler(
                     self.config))
         return bokeh_apps
 
     def get_tornado_handlers(self):
-        return [(r'/', pages.values()[0],
+        return [(r'/', list(pages.values())[0],
                  {'config': self.config})] +\
                [(r'/%s' % title, handler,
                  {'config': self.config})
-                for title, handler in pages.iteritems()] +\
+                for title, handler in pages.items()] +\
                [(r'/res/(.*)', StaticFileHandler,
                 {'path': op.join(op.dirname(__file__), 'res')})]
 

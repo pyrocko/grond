@@ -38,7 +38,7 @@ class CursesListener(object):
             parameter_names = ['Parameters'] + state.parameters
             col = 0
 
-            for icol in xrange(len(state.values) + 1):
+            for icol in range(len(state.values) + 1):
                 row = 0
 
                 if icol == 0:

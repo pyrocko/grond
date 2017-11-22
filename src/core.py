@@ -176,7 +176,7 @@ def load_problem_data(dirname, problem, skip_models=0):
             count=nmodels * problem.nparameters)\
             .astype(num.float)
 
-    nmodels = data1.size/problem.nparameters - skip_models
+    nmodels = data1.size//problem.nparameters - skip_models
     xs = data1.reshape((nmodels, problem.nparameters))
 
     fn = op.join(dirname, 'misfits')

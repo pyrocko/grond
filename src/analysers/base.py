@@ -1,4 +1,3 @@
-
 import copy
 import numpy as num
 from pyrocko.guts import Object, Int
@@ -40,10 +39,10 @@ class Analyser(object):
         notifier.emit('progress_start', 'analysing problem', self.niter)
 
         isbad_mask = None
-        for iiter in xrange(self.niter):
+        for iiter in range(self.niter):
             while True:
                 x = []
-                for ipar in xrange(npar):
+                for ipar in range(npar):
                     v = rstate.uniform(xbounds[ipar, 0], xbounds[ipar, 1])
                     x.append(v)
 
@@ -70,7 +69,7 @@ class Analyser(object):
         weights = 1. / mean_ms
         groups, ngroups = wproblem.get_group_mask()
 
-        for igroup in xrange(ngroups):
+        for igroup in range(ngroups):
             weights[groups == igroup] /= (
                 num.nansum(weights[groups == igroup]) /
                 num.nansum(num.isfinite(weights[groups == igroup])))

@@ -365,7 +365,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
             return mr
 
-        except NotFound, e:
+        except NotFound as e:
             logger.debug(str(e))
             raise gf.SeismosizerError('no waveform data, %s' % str(e))
 
@@ -419,7 +419,7 @@ tautoshift**2 / tautoshift_max**2``
             m, n = trace.Lx_norm(a, b, norm=exponent)
         else:
             mns = []
-            for ishift in xrange(-nshift_max, nshift_max+1):
+            for ishift in range(-nshift_max, nshift_max+1):
                 if ishift < 0:
                     a_cut = a[-ishift:]
                     b_cut = b[:ishift]

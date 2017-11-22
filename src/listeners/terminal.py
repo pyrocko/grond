@@ -41,40 +41,39 @@ class TerminalListener(Listener):
         lines = []
         self.current_state = state
 
-        def l(t):
-            lines.append(t)
+        ladd = lines.append
 
         def fmt(s):
-            return util.gform(s, significant_digits=(self.col_width-1-6)/2)
+            return util.gform(s, significant_digits=(self.col_width-1-6)//2)
 
         out_ln = self.row_name +\
             ''.join([self.parameter_fmt] * len(state.parameter_sets))
         col_param_width = max([len(p) for p in state.parameter_names]) + 2
 
-        l('Problem name: {s.problem_name}'
-          '\t({s.runtime:s} - remaining {s.runtime_remaining}'
-          ' @ {s.iter_per_second:.1f} iter/s)'
-            .format(s=state))
-        l('Iteration {s.iiter} / {s.niter}'
-          .format(s=state))
+        ladd('Problem name: {s.problem_name}'
+             '\t({s.runtime.seconds} - remaining {s.runtime_remaining}'
+             ' @ {s.iter_per_second:.1f} iter/s)'
+             .format(s=state))
+        ladd('Iteration {s.iiter} / {s.niter}'
+             .format(s=state))
 
-        l(out_ln.format(
-            *['Parameter'] + state.parameter_sets.keys(),
+        ladd(out_ln.format(
+            *['Parameter'] + list(state.parameter_sets.keys()),
             col_param_width=col_param_width,
             col_width=self.col_width,
             type='s'))
 
         for ip, parameter_name in enumerate(state.parameter_names):
-            l(out_ln.format(
-                parameter_name,
-                *[fmt(v[ip]) for v in state.parameter_sets.values()],
-                col_param_width=col_param_width,
-                col_width=self.col_width))
+            ladd(out_ln.format(
+                 parameter_name,
+                 *[fmt(v[ip]) for v in state.parameter_sets.values()],
+                 col_param_width=col_param_width,
+                 col_width=self.col_width))
 
-        l(state.extra_text.format(
+        ladd(state.extra_text.format(
             col_param_width=col_param_width,
             col_width=self.col_width,))
 
         lines[0:0] = ['\033[2J']
-        l('')
-        print '\n'.join(lines)
+        ladd('')
+        print('\n'.join(lines))

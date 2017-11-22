@@ -217,8 +217,8 @@ def solve(problem,
                     if sampler_distribution == 'normal':
                         ncandidates = 1
                         xcandidates = num.zeros((ncandidates, npar))
-                        for icandidate in xrange(ncandidates):
-                            for ipar in xrange(npar):
+                        for icandidate in range(ncandidates):
+                            for ipar in range(npar):
                                 ntry = 0
                                 while True:
                                     if local_sxs[ibootstrap_choice][ipar] > 0.:
@@ -300,7 +300,7 @@ def solve(problem,
 
         nlinks += 1
 
-        for ichain in xrange(chains_m.shape[0]):
+        for ichain in range(chains_m.shape[0]):
             isort = num.argsort(chains_m[ichain, :nlinks])
             chains_m[ichain, :nlinks] = chains_m[ichain, isort]
             chains_i[ichain, :nlinks] = chains_i[ichain, isort]
@@ -342,7 +342,7 @@ def solve(problem,
             mxs = []
             local_sxs = []
 
-            for i in xrange(1 + nbootstrap):
+            for i in range(1 + nbootstrap):
                 xs = xhist[chains_i[i, :nlinks], :]
                 mx = num.mean(xs, axis=0)
                 cov = num.cov(xs.T)
@@ -386,7 +386,7 @@ def solve(problem,
             matrix = (chains_i[:, :30] % 94 + 32).T
             for row in matrix[::-1]:
                 lines.append(''.join(chr(xxx) for xxx in row))
-            print '\n'.join(lines)
+            print('\n'.join(lines))
 
         if plot and plot.want_to_update(iiter):
             plot.update(

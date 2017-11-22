@@ -11,15 +11,13 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.solver')
 
 
-class SimpleTimedelta(timedelta):
-    def __str__(self):
-        return timedelta.__str__(self).split('.')[0]
-
-
 class RingBuffer(num.ndarray):
+    def __new__(cls, *args, **kwargs):
+        cls = num.ndarray.__new__(cls, *args, **kwargs)
+        cls.fill(0.)
+        return cls
+
     def __init__(self, *args, **kwargs):
-        num.ndarray.__init__(self, *args, **kwargs)
-        self.fill(0.)
         self.pos = 0
 
     def put(self, value):
@@ -58,14 +56,14 @@ class SolverState(object):
 
     @property
     def runtime(self):
-        return SimpleTimedelta(seconds=time.time() - self.starttime)
+        return timedelta(seconds=time.time() - self.starttime)
 
     @property
     def runtime_remaining(self):
         if self.iter_per_second == 0.:
-            return SimpleTimedelta()
-        return SimpleTimedelta(seconds=(self.niter - self.iiter)
-                               / self.iter_per_second)
+            return timedelta()
+        return timedelta(seconds=(self.niter - self.iiter)
+                         / self.iter_per_second)
 
     @property
     def nparameters(self):

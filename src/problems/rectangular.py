@@ -92,7 +92,7 @@ class RectangularProblem(Problem):
 
     def random_uniform(self, xbounds):
         x = num.zeros(self.nparameters)
-        for i in xrange(self.nparameters):
+        for i in range(self.nparameters):
             x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
 
         return x.tolist()
