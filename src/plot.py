@@ -200,7 +200,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     bounds = problem.get_parameter_bounds()
 
     if ndep > 0:
-        bounds += problem.get_dependant_bounds()
+        bounds = num.concatenate((bounds, problem.get_dependant_bounds()))
 
     xref = problem.get_xref()
 
@@ -361,13 +361,16 @@ def draw_jointpar_figures(
     msize = 1.5
 
     problem = model.problem
-    solver = model.solver
+    solver = model.config.solver_config
     if not problem:
         return []
 
     xs = model.xs
 
-    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
+    bounds = num.concatenate((
+        problem.get_parameter_bounds(),
+        problem.get_dependant_bounds()))
+
     for ipar in range(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
@@ -1606,7 +1609,9 @@ def draw_location_figure(model, plt):
     axes_dn = fig.add_subplot(2, 2, 2)
     axes_ed = fig.add_subplot(2, 2, 3)
 
-    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
+    bounds = num.concatenate((
+        problem.get_parameter_bounds(),
+        problem.get_dependant_bounds()))
 
     gms = problem.global_misfits(model.misfits)
 
@@ -1876,8 +1881,9 @@ class SolverPlot(object):
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
 
-        bounds = self.problem.get_parameter_bounds()\
-            + self.problem.get_dependant_bounds()
+        bounds = num.concatenate((
+            problem.get_parameter_bounds(),
+            problem.get_dependant_bounds()))
 
         self.xlim = fixlim(*xpar.scaled(bounds[ixpar]))
         self.ylim = fixlim(*ypar.scaled(bounds[iypar]))
@@ -1931,8 +1937,9 @@ class SolverPlot(object):
                 ps = core.excentricity_compensated_probabilities(
                     xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
-                bounds = self.problem.get_parameter_bounds() + \
-                    self.problem.get_dependant_bounds()
+                bounds = num.concatenate((
+                    self.problem.get_parameter_bounds(),
+                    self.problem.get_dependant_bounds()))
 
                 x = num.linspace(
                     bounds[self.ixpar][0], bounds[self.ixpar][1], nx)

@@ -269,6 +269,8 @@ def bootstrap_outliers(problem, misfits, std_factor=1.0):
     Identify bootstrap configurations performing bad in global configuration
     '''
 
+    raise Exception('this function is broken')
+
     gms = problem.global_misfits(misfits)
 
     ibests = []
@@ -371,7 +373,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     if weed != 3:
         for ibootstrap in range(config.solver_config.nbootstrap):
             bms = problem.bootstrap_misfits(
-                misfits, ibootstrap, config.solver_config.nbootstrap)
+                misfits, config.solver_config.nbootstrap, ibootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])

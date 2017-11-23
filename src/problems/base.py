@@ -302,7 +302,7 @@ class Problem(Object):
         exp, root = self.get_norm_functions()
 
         w = self.get_bootstrap_weights(
-                nbootstraps, ibootstrap)[num.newaxis, :] * \
+                nbootstrap, ibootstrap)[num.newaxis, :] * \
             self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
 
