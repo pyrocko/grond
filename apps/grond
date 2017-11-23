@@ -248,7 +248,7 @@ def command_init(args):
     solver_config = grond.HighScoreSolverConfig()
 
     config = grond.Config(
-        rundir_template=op.join(op.abspath(op.curdir), 'rundir'),
+        rundir_template=op.join('rundir', '${problem_name}.grun'),
         dataset_config=dataset_config,
         target_groups=target_groups,
         problem_config=problem_config,
