@@ -19,7 +19,8 @@ from .solvers.base import SolverConfig
 from .targets.base import TargetGroup
 from .analysers.base import AnalyserConfig
 from .listeners import TerminalListener
-from .meta import Path, HasPaths, expand_template, xjoin, GrondError, Notifier
+from .meta import Path, HasPaths, expand_template, xjoin, GrondError, \
+    Notifier, Forbidden
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
@@ -463,7 +464,7 @@ def check(
                             x = problem.preconstrain(x)
                             break
 
-                        except Exception:
+                        except Forbidden:
                             pass
 
                     sources.append(problem.get_source(x))
