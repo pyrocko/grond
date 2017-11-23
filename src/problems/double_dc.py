@@ -66,7 +66,6 @@ class DoubleDCProblem(Problem):
 
     dependants = []
     distance_min = Float.T(default=0.0)
-    nbootstrap = Int.T(default=100)
 
     def get_source(self, x):
         d = self.get_parameter_dict(x)

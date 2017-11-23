@@ -292,7 +292,7 @@ def solve(problem,
             return
 
         gm = problem.global_misfit(ms, ns)
-        bms = problem.bootstrap_misfit(ms, ns)
+        bms = problem.bootstrap_misfit(ms, ns, nbootstrap)
 
         chains_m[0, nlinks] = gm
         chains_m[1:, nlinks] = bms

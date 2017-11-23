@@ -361,6 +361,7 @@ def draw_jointpar_figures(
     msize = 1.5
 
     problem = model.problem
+    solver = model.solver
     if not problem:
         return []
 
@@ -379,7 +380,8 @@ def draw_jointpar_figures(
     xref = problem.get_xref()
 
     if ibootstrap is not None:
-        gms = problem.bootstrap_misfits(model.misfits, ibootstrap)
+        gms = problem.bootstrap_misfits(
+            model.misfits, solver.nbootstrap, ibootstrap)
     else:
         gms = problem.global_misfits(model.misfits)
 
@@ -826,7 +828,7 @@ def draw_bootstrap_figure(model, plt):
     ibests = []
     for ibootstrap in range(solver.nbootstrap):
         bms = problem.bootstrap_misfits(
-            model.misfits, ibootstrap, solver.nbootstrap)
+            model.misfits, solver.nbootstrap, ibootstrap)
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])

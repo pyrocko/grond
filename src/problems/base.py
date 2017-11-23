@@ -286,8 +286,7 @@ class Problem(Object):
         else:
             self.raise_invalid_norm_exponent()
 
-    def bootstrap_misfit(self, ms, ns, ibootstrap=None, nbootstraps=None):
-        # Should this be nbootstrap?
+    def bootstrap_misfit(self, ms, ns, nbootstrap, ibootstrap=None):
         exp, root = self.get_norm_functions()
 
         w = self.get_target_weights() * self.inter_group_weights(ns)
@@ -296,10 +295,10 @@ class Problem(Object):
                 num.nansum(exp(w*ms[num.newaxis, :]), axis=1) /
                 num.nansum(exp(w*ns[num.newaxis, :]), axis=1))
 
-        w *= self.get_bootstrap_weights(ibootstrap)
+        w *= self.get_bootstrap_weights(nbootstrap, ibootstrap)
         return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
 
-    def bootstrap_misfits(self, misfits, ibootstrap, nbootstraps):
+    def bootstrap_misfits(self, misfits, nbootstrap, ibootstrap=None):
         exp, root = self.get_norm_functions()
 
         w = self.get_bootstrap_weights(
