@@ -218,7 +218,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         nmisfits = 1
 
     def string_id(self):
-        return '.'.join(x for x in (self.path) + self.codes if x)
+        return '.'.join(x for x in (self.path,) + self.codes if x)
 
     @property
     def id(self):

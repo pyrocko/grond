@@ -456,7 +456,15 @@ def check(
 
             else:
                 for i in range(n_random_synthetics):
-                    x = problem.random_uniform(xbounds)
+                    while True:
+                        x = problem.random_uniform(xbounds)
+                        try:
+                            x = problem.preconstrain(x)
+                            break
+
+                        except Forbidden:
+                            pass
+
                     sources.append(problem.get_source(x))
                     ms, ns, results = problem.evaluate(x, result_mode='full')
                     results_list.append(results)
