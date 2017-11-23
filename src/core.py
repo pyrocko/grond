@@ -369,7 +369,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     if weed != 3:
         for ibootstrap in range(config.solver_config.nbootstrap):
-            bms = problem.bootstrap_misfits(misfits, ibootstrap)
+            bms = problem.bootstrap_misfits(
+                misfits, ibootstrap, config.solver_config.nbootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
@@ -462,7 +463,7 @@ def check(
                             x = problem.preconstrain(x)
                             break
 
-                        except Forbidden:
+                        except Exception:
                             pass
 
                     sources.append(problem.get_source(x))

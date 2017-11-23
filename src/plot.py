@@ -112,10 +112,14 @@ class GrondModel(object):
 
     def __init__(self, **kwargs):
         self.listeners = []
+        self.set_config(None)
         self.set_problem(None)
 
     def add_listener(self, listener):
         self.listeners.append(listener)
+
+    def set_config(self, config):
+        self.config = config
 
     def set_problem(self, problem):
 
@@ -810,6 +814,7 @@ def draw_bootstrap_figure(model, plt):
     fig = plt.figure()
 
     problem = model.problem
+    solver = model.config.solver_config
     gms = problem.global_misfits(model.misfits)
 
     imodels = num.arange(model.nmodels)
@@ -819,8 +824,9 @@ def draw_bootstrap_figure(model, plt):
     gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
     ibests = []
-    for ibootstrap in range(problem.nbootstrap):
-        bms = problem.bootstrap_misfits(model.misfits, ibootstrap)
+    for ibootstrap in range(solver.nbootstrap):
+        bms = problem.bootstrap_misfits(
+            model.misfits, ibootstrap, solver.nbootstrap)
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])
@@ -1750,6 +1756,12 @@ def plot_result(dirname, plotnames_want,
         model.set_problem(problem)
         model.append(xs, misfits)
 
+        config = guts.load(filename=op.join(dirname, 'config.yaml'))
+        config.set_basepath(dirname)
+        config.setup_modelling_environment(problem)
+
+        model.set_config(config)
+
         for plotname in ['bootstrap', 'sequence', 'contributions']:
             if plotname in plotnames_want:
                 figs = plot_dispatch[plotname](model, plt)
@@ -1772,13 +1784,16 @@ def plot_result(dirname, plotnames_want,
         model.set_problem(problem)
         model.append(xs, misfits)
 
+        config = guts.load(filename=op.join(dirname, 'config.yaml'))
+        config.set_basepath(dirname)
+        config.setup_modelling_environment(problem)
+
+        model.set_config(config)
+
         for plotname in ['fits', 'fits_statics']:
             if plotname in plotnames_want:
-                config = guts.load(filename=op.join(dirname, 'config.yaml'))
-                config.set_basepath(dirname)
-                config.setup_modelling_environment(problem)
                 event_name = problem.base_source.name
-                ds = config.get_dataset(event_name)
+                ds = model.config.get_dataset(event_name)
                 figs = plot_dispatch[plotname](ds, model, plt)
                 if save:
                     fns.extend(
