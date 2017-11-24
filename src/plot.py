@@ -200,7 +200,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     bounds = problem.get_parameter_bounds()
 
     if ndep > 0:
-        bounds += problem.get_dependant_bounds()
+        bounds = num.vstack((bounds, problem.get_dependant_bounds()))
 
     xref = problem.get_xref()
 
@@ -1210,7 +1210,7 @@ def draw_fits_figures(ds, model, plt):
         nframes = len(targets)
 
         nx = int(math.ceil(math.sqrt(nframes)))
-        ny = (nframes - 1) / nx + 1
+        ny = int((nframes - 1) // nx + 1)
 
         nxmax = 4
         nymax = 4
