@@ -366,7 +366,8 @@ def draw_jointpar_figures(
 
     xs = model.xs
 
-    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
+    bounds = num.vstack(
+        (problem.get_parameter_bounds(), problem.get_dependant_bounds()))
     for ipar in range(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
@@ -1604,7 +1605,8 @@ def draw_location_figure(model, plt):
     axes_dn = fig.add_subplot(2, 2, 2)
     axes_ed = fig.add_subplot(2, 2, 3)
 
-    bounds = problem.get_parameter_bounds() + problem.get_dependant_bounds()
+    bounds = num.vstack(
+        (problem.get_parameter_bounds(), problem.get_dependant_bounds()))
 
     gms = problem.global_misfits(model.misfits)
 
