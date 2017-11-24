@@ -200,7 +200,7 @@ def draw_sequence_figures(model, plt, misfit_cutoff=None, sort_by='misfit'):
     bounds = problem.get_parameter_bounds()
 
     if ndep > 0:
-        bounds = num.vstack((bounds, problem.get_dependant_bounds()))
+        bounds = num.concatenate((bounds, problem.get_dependant_bounds()))
 
     xref = problem.get_xref()
 
@@ -361,13 +361,16 @@ def draw_jointpar_figures(
     msize = 1.5
 
     problem = model.problem
+    solver = model.config.solver_config
     if not problem:
         return []
 
     xs = model.xs
 
-    bounds = num.vstack(
-        (problem.get_parameter_bounds(), problem.get_dependant_bounds()))
+    bounds = num.concatenate((
+        problem.get_parameter_bounds(),
+        problem.get_dependant_bounds()))
+
     for ipar in range(problem.ncombined):
         par = problem.combined[ipar]
         lo, hi = bounds[ipar]
@@ -380,7 +383,8 @@ def draw_jointpar_figures(
     xref = problem.get_xref()
 
     if ibootstrap is not None:
-        gms = problem.bootstrap_misfits(model.misfits, ibootstrap)
+        gms = problem.bootstrap_misfits(
+            model.misfits, solver.nbootstrap, ibootstrap)
     else:
         gms = problem.global_misfits(model.misfits)
 
@@ -827,7 +831,7 @@ def draw_bootstrap_figure(model, plt):
     ibests = []
     for ibootstrap in range(solver.nbootstrap):
         bms = problem.bootstrap_misfits(
-            model.misfits, ibootstrap, solver.nbootstrap)
+            model.misfits, solver.nbootstrap, ibootstrap)
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])
@@ -1211,7 +1215,7 @@ def draw_fits_figures(ds, model, plt):
         nframes = len(targets)
 
         nx = int(math.ceil(math.sqrt(nframes)))
-        ny = int((nframes - 1) // nx + 1)
+        ny = (nframes - 1) / nx + 1
 
         nxmax = 4
         nymax = 4
@@ -1605,8 +1609,9 @@ def draw_location_figure(model, plt):
     axes_dn = fig.add_subplot(2, 2, 2)
     axes_ed = fig.add_subplot(2, 2, 3)
 
-    bounds = num.vstack(
-        (problem.get_parameter_bounds(), problem.get_dependant_bounds()))
+    bounds = num.concatenate((
+        problem.get_parameter_bounds(),
+        problem.get_dependant_bounds()))
 
     gms = problem.global_misfits(model.misfits)
 
@@ -1876,8 +1881,9 @@ class SolverPlot(object):
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
 
-        bounds = self.problem.get_parameter_bounds()\
-            + self.problem.get_dependant_bounds()
+        bounds = num.concatenate((
+            problem.get_parameter_bounds(),
+            problem.get_dependant_bounds()))
 
         self.xlim = fixlim(*xpar.scaled(bounds[ixpar]))
         self.ylim = fixlim(*ypar.scaled(bounds[iypar]))
@@ -1931,8 +1937,9 @@ class SolverPlot(object):
                 ps = core.excentricity_compensated_probabilities(
                     xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
 
-                bounds = self.problem.get_parameter_bounds() + \
-                    self.problem.get_dependant_bounds()
+                bounds = num.concatenate((
+                    self.problem.get_parameter_bounds(),
+                    self.problem.get_dependant_bounds()))
 
                 x = num.linspace(
                     bounds[self.ixpar][0], bounds[self.ixpar][1], nx)
