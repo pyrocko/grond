@@ -7,10 +7,10 @@ from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
                           Timestamp, List)
 from pyrocko.guts_array import Array
 
-from .base import (MisfitConfig, MisfitTarget, TargetGroup,
-                   MisfitResult, TargetAnalysisResult)
+from grond.dataset import NotFound
 
-from ..dataset import NotFound
+from ..base import (MisfitConfig, MisfitTarget, TargetGroup,
+                    MisfitResult, TargetAnalysisResult)
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.target').getChild('waveform')

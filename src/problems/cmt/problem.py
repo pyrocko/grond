@@ -5,8 +5,9 @@ import logging
 from pyrocko import gf, util, moment_tensor as mtm
 from pyrocko.guts import String, Float, Dict, StringChoice
 
-from .base import Problem, ProblemConfig
-from ..meta import Forbidden, expand_template, Parameter
+from grond.meta import Forbidden, expand_template, Parameter
+
+from ..base import Problem, ProblemConfig
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems').getChild('cmt')

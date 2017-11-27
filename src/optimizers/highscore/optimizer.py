@@ -9,9 +9,11 @@ import numpy as num
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
 
-from ..meta import GrondError, Forbidden
-from .base import Optimizer, OptimizerConfig, BadProblem
-from ..problems.base import ModelHistory
+from grond.meta import GrondError, Forbidden
+
+from ..base import Optimizer, OptimizerConfig, BadProblem
+
+from grond.problems.base import ModelHistory
 
 guts_prefix = 'grond'
 
@@ -374,7 +376,10 @@ class HighScoreOptimizer(Optimizer):
 
 class HighScoreOptimizerConfig(OptimizerConfig):
 
-    sampler_phases = List.T(SamplerPhase.T())
+    sampler_phases = List.T(
+        SamplerPhase.T(),
+        default=[UniformSamplerPhase(niterations=1000),
+                 DirectedSamplerPhase(niterations=5000)])
     chain_length_factor = Float.T(default=8.)
     nbootstrap = Int.T(default=10)
 

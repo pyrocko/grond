@@ -4,8 +4,9 @@ import logging
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Float, Dict, Int
 
-from .base import Problem, ProblemConfig
-from ..meta import expand_template, Parameter
+from grond.meta import expand_template, Parameter
+
+from ..base import Problem, ProblemConfig
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems').getChild('rectangular')

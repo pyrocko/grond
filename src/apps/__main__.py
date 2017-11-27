@@ -81,6 +81,32 @@ To get further help and a list of available options for any subcommand run:
 ''' % usage_tdata
 
 
+def main(args=None):
+    if not args:
+        args = sys.argv
+
+    args = list(sys.argv)
+    if len(args) < 2:
+        sys.exit('Usage: %s' % usage)
+
+    args.pop(0)
+    command = args.pop(0)
+
+    if command in subcommands:
+        globals()['command_' + d2u(command)](args)
+
+    elif command in ('--help', '-h', 'help'):
+        if command == 'help' and args:
+            acommand = args[0]
+            if acommand in subcommands:
+                globals()['command_' + acommand](['--help'])
+
+        sys.exit('Usage: %s' % usage)
+
+    else:
+        die('no such subcommand: %s' % command)
+
+
 def add_common_options(parser):
     parser.add_option(
         '--loglevel',
@@ -206,7 +232,8 @@ def command_init(args):
     elif options.static:
         config_type = 'static'
 
-        sub_dirs += ['scenes']
+        sub_dirs += ['scenes', 'gnss']
+
         dataset_config = grond.DatasetConfig(
             events_path='events.txt',
             kite_scene_paths=['scenes'],
@@ -245,14 +272,14 @@ def command_init(args):
     engine_config = grond.EngineConfig(
         gf_store_superdirs=['.'])
 
-    solver_config = grond.HighScoreSolverConfig()
+    optimizer_config = grond.HighScoreOptimizerConfig()
 
     config = grond.Config(
         rundir_template=op.join('rundir', '${problem_name}.grun'),
         dataset_config=dataset_config,
         target_groups=target_groups,
         problem_config=problem_config,
-        solver_config=solver_config,
+        optimizer_config=optimizer_config,
         engine_config=engine_config)
 
     events = '''name = 2011-myanmar
@@ -706,24 +733,4 @@ def command_qc_polarization(args):
 
 
 if __name__ == '__main__':
-
-    if len(sys.argv) < 2:
-        sys.exit('Usage: %s' % usage)
-
-    args = list(sys.argv)
-    args.pop(0)
-    command = args.pop(0)
-
-    if command in subcommands:
-        globals()['command_' + d2u(command)](args)
-
-    elif command in ('--help', '-h', 'help'):
-        if command == 'help' and args:
-            acommand = args[0]
-            if acommand in subcommands:
-                globals()['command_' + acommand](['--help'])
-
-        sys.exit('Usage: %s' % usage)
-
-    else:
-        die('no such subcommand: %s' % command)
+    main()

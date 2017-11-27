@@ -4,8 +4,9 @@ import numpy as num
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
 
-from .base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
-from ..meta import Parameter
+from grond.meta import Parameter
+
+from ..base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.target').getChild('satellite')
@@ -138,10 +139,10 @@ class SatelliteMisfitTarget(MisfitTarget, gf.SatelliteTarget):
     def get_combined_weight(self, apply_balancing_weights=False):
         return self.manual_weight
 
+
 __all__ = '''
     SatelliteTargetGroup
     SatelliteMisfitConfig
     SatelliteMisfitTarget
     SatelliteMisfitResult
 '''.split()
-

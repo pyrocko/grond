@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from distutils.core import setup
+from setuptools import setup
 
 
 def grond_completion():
@@ -12,13 +12,31 @@ def grond_completion():
 setup(
     name='grond',
     description='What do you want to bust today?!',
-    version='0.1',
+    version='0.2',
     author='Sebastian Heimann',
     author_email='sebastian.heimann@gfz-potsdam.de',
-    packages=['grond', 'grond.baraddur', 'grond.problems', 'grond.optimizers',
-              'grond.analysers', 'grond.listeners', 'grond.targets'],
+    packages=[
+        'grond',
+        'grond.apps',
+        'grond.baraddur',
+        'grond.targets',
+        'grond.targets.waveform',
+        'grond.targets.satellite',
+        'grond.problems',
+        'grond.problems.cmt',
+        'grond.problems.double_dc',
+        'grond.problems.rectangular',
+        'grond.optimizers',
+        'grond.optimizers.highscore',
+        'grond.analysers',
+        'grond.listeners',
+    ],
     python_requires='>=3.5',
-    scripts=['apps/grond'],
+    entry_points={
+        'console_scripts': [
+            'grond = grond.apps.__main__:main',
+        ]
+    },
     package_dir={'grond': 'src'},
     package_data={'grond': ['baraddur/templates/*.html',
                             'baraddur/res/*']},

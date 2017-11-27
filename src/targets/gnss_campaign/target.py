@@ -2,7 +2,7 @@ import logging
 
 from pyrocko import gf
 
-from .base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
+from ..base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.target').getChild('gnss')

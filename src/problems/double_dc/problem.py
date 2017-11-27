@@ -4,8 +4,9 @@ import logging
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict
 
-from .base import Problem, ProblemConfig
-from ..meta import Forbidden, expand_template, Parameter
+from grond.meta import Forbidden, expand_template, Parameter
+
+from ..base import Problem, ProblemConfig
 
 
 guts_prefix = 'grond'
