@@ -1,6 +1,8 @@
 import copy
 import numpy as num
+from pyrocko import util
 from pyrocko.guts import Object, Int
+
 from ..targets import TargetAnalysisResult
 from ..meta import Forbidden
 
@@ -12,8 +14,9 @@ class Analyser(object):
 
     def __init__(self, niter):
         self.niter = niter
+        self.pbar = util.progressbar('analysing problem', niter)
 
-    def analyse(self, problem, notifier):
+    def analyse(self, problem):
         if self.niter == 0:
             return
 
@@ -36,10 +39,11 @@ class Analyser(object):
         mss = num.zeros((self.niter, wproblem.ntargets))
         rstate = num.random.RandomState(123)
 
-        notifier.emit('progress_start', 'analysing problem', self.niter)
-
         isbad_mask = None
+
+        self.pbar.start()
         for iiter in range(self.niter):
+            self.pbar.update(iiter)
             while True:
                 x = []
                 for ipar in range(npar):
@@ -61,9 +65,7 @@ class Analyser(object):
             mss[iiter, :] = ms
 
             isbad_mask = num.isnan(ms)
-            notifier.emit('progress_update', 'analysing problem', iiter)
-
-        notifier.emit('progress_finish', 'analysing problem')
+        self.pbar.finish()
 
         mean_ms = num.mean(mss, axis=0)
         weights = 1. / mean_ms

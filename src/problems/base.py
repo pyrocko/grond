@@ -4,6 +4,7 @@ import copy
 import logging
 import os.path as op
 import os
+import time
 
 from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, Bool, List, Dict, Int
@@ -407,11 +408,24 @@ class Problem(Object):
         return results
 
 
-class ModelHistory(object):
+class InvalidRundir(Exception):
+    pass
 
+
+class ModelHistory(object):
     nmodels_capacity_min = 1024
 
     def __init__(self, problem, path=None, mode='r'):
+        '''Model History lets you write, read and follow new models
+
+        :param problem: The Problem
+        :type problem: :class:`grond.Problem`
+        :param path: Rundir to use, defaults to None
+        :type path: str, optional
+        :param mode: Mode to use, defaults to 'r'.
+            'r': Read, 'w': Write
+        :type mode: str, optional
+        '''
         self.problem = problem
         self.path = path
         self._models_buffer = None
@@ -421,10 +435,42 @@ class ModelHistory(object):
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
         self.mode = mode
+        self.optimizer = load_optimizer_info(path)
 
         if mode == 'r':
+            self.verify_rundir(self.path)
             models, misfits = load_problem_data(path, problem)
             self.extend(models, misfits)
+
+    @staticmethod
+    def verify_rundir(rundir):
+        _rundir_files = ['config.yaml', 'optimizer.yaml', 'misfits', 'models']
+
+        if not op.exists(rundir):
+            raise OSError('Rundir %s does not exist!' % rundir)
+        for f in _rundir_files:
+            if not op.exists(op.join(rundir, f)):
+                raise InvalidRundir('File %s not found!' % f)
+
+    @classmethod
+    def follow(cls, path, wait=20.):
+        '''Start following a rundir
+
+        :param path: The path to follow, a grond rundir
+        :type path: str, optional
+        :param wait: Wait time until the folder become alive, defaults to 10.
+        :type wait: number in seconds, optional
+        :returns: A ModelHistory instance
+        :rtype: :class:`grond.core.ModelHistory`
+        '''
+        start_watch = time.time()
+        while (time.time() - start_watch) < wait:
+            try:
+                cls.verify_rundir(path)
+                problem = load_problem_info(path)
+                return cls(problem, path, mode='r')
+            except InvalidRundir:
+                time.sleep(.25)
 
     @property
     def nmodels(self):
@@ -473,7 +519,6 @@ class ModelHistory(object):
         self.nmodels_capacity = self.nmodels_capacity_min
 
     def extend(self, models, misfits):
-
         nmodels = self.nmodels
 
         n = models.shape[0]
@@ -491,14 +536,13 @@ class ModelHistory(object):
         self.misfits = self._misfits_buffer[:nmodels+n, :, :]
 
         if self.path and self.mode == 'w':
-            for i in xrange(n):
+            for i in range(n):
                 self.problem.dump_problem_data(
                         self.path, models[i, :], misfits[i, :, :])
 
         self.emit('extend', nmodels, n, models, misfits)
 
     def append(self, model, misfits):
-
         nmodels = self.nmodels
 
         nmodels_capacity_want = max(
@@ -521,18 +565,41 @@ class ModelHistory(object):
             'extend', nmodels, 1,
             model[num.newaxis, :], misfits[num.newaxis, :, :])
 
+    def update(self):
+        ''' Update history from path '''
+        nmodels_available = get_nmodels(self.path, self.problem)
+        if self.nmodels == nmodels_available:
+            return
+        new_models, new_misfits = load_problem_data(
+            self.path, self.problem, skip_models=self.nmodels)
+
+        self.extend(new_models, new_misfits)
+
     def add_listener(self, listener):
         self.listeners.append(listener)
 
     def emit(self, event_name, *args, **kwargs):
         for listener in self.listeners:
-            getattr(listener, event_name)(*args, **kwargs)
+            slot = getattr(listener, event_name, None)
+            if callable(slot):
+                slot(*args, **kwargs)
+
+
+def get_nmodels(dirname, problem):
+    fn = op.join(dirname, 'models')
+    with open(fn, 'r') as f:
+        return os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
 
 
 def load_problem_info_and_data(dirname, subset=None):
     problem = load_problem_info(dirname)
-    xs, misfits = load_problem_data(xjoin(dirname, subset), problem)
-    return problem, xs, misfits
+    models, misfits = load_problem_data(xjoin(dirname, subset), problem)
+    return problem, models, misfits
+
+
+def load_optimizer_info(dirname):
+    fn = op.join(dirname, 'optimizer.yaml')
+    return guts.load(filename=fn)
 
 
 def load_problem_info(dirname):
@@ -540,29 +607,35 @@ def load_problem_info(dirname):
     return guts.load(filename=fn)
 
 
-def load_problem_data(dirname, problem, skip_models=0):
+def load_problem_data(dirname, problem, skip_models=None):
+    if skip_models is None:
+        skip_models = 0
+    nmodels = get_nmodels(dirname, problem)
+
     fn = op.join(dirname, 'models')
     with open(fn, 'r') as f:
         nmodels = os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
         nmodels -= skip_models
         f.seek(skip_models * problem.nparameters * 8)
-        data1 = num.fromfile(
-            f, dtype='<f8',
-            count=nmodels * problem.nparameters)\
+        models = num.fromfile(
+                f, dtype='<f8',
+                count=nmodels * problem.nparameters)\
             .astype(num.float)
 
-    nmodels = data1.size // problem.nparameters - skip_models
-    xs = data1.reshape((nmodels, problem.nparameters))
+    nmodels = models.size // problem.nparameters
+    models = models.reshape((nmodels, problem.nparameters))
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
         f.seek(skip_models * problem.ntargets * 2 * 8)
         misfits = num.fromfile(
-            f, dtype='<f8', count=nmodels*problem.ntargets*2).astype(num.float)
+                f, dtype='<f8',
+                count=nmodels*problem.ntargets*2)\
+            .astype(num.float)
 
     misfits = misfits.reshape((nmodels, problem.ntargets, 2))
 
-    return xs, misfits
+    return models, misfits
 
 
 __all__ = '''

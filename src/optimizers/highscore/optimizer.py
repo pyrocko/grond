@@ -373,6 +373,10 @@ class HighScoreOptimizer(Optimizer):
 
             iiter += 1
 
+    @property
+    def niterations(self):
+        return sum([ph.niterations for ph in self.sampler_phases])
+
 
 class HighScoreOptimizerConfig(OptimizerConfig):
 

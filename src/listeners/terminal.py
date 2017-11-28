@@ -1,5 +1,29 @@
+import time
+import logging
+import numpy as num
+from datetime import timedelta
+
 from pyrocko import util
+from grond.problems import ModelHistory
 from .base import Listener
+
+
+logger = logging.getLogger('TerminalListener')
+
+
+class RingBuffer(num.ndarray):
+    def __new__(cls, *args, **kwargs):
+        cls = num.ndarray.__new__(cls, *args, **kwargs)
+        cls.fill(0.)
+        return cls
+
+    def __init__(self, *args, **kwargs):
+        self.pos = 0
+
+    def put(self, value):
+        self[self.pos] = value
+        self.pos += 1
+        self.pos %= self.size
 
 
 class color:
@@ -21,58 +45,91 @@ class TerminalListener(Listener):
     row_name = color.BOLD + '{:<{col_param_width}s}' + color.END
     parameter_fmt = '{:{col_width}s}'
 
-    def __init__(self):
-        self.current_state = None
-        self.pbars = {}
+    def __init__(self, rundir):
+        Listener.__init__(self)
+        self.rundir = rundir
+        self._iiter = 0
+        self.iter_per_second = 0
+        self._iter_buffer = RingBuffer(20)
 
-    def progress_start(self, name, niter):
-        pbar = util.progressbar('analysing problem', niter)
-        self.pbars[name] = pbar
-        pbar.start()
+    def run(self):
+        logger.info('Waiting to follow %s' % self.rundir)
 
-    def progress_update(self, name, iiter):
-        self.pbars[name].update(iiter)
+        self.history = ModelHistory.follow(self.rundir)
+        self.problem = self.history.problem
+        self.niter = self.history.optimizer.niterations
 
-    def progress_finish(self, name):
-        self.pbars[name].finish()
-        del self.pbars[name]
+        self.starttime = time.time()
+        self.last_update = self.starttime
 
-    def state(self, state):
+        self.history.add_listener(self)
+        self.start_watch()
+
+    def start_watch(self):
+        while True:
+            self.history.update()
+            time.sleep(.1)
+
+    @property
+    def runtime(self):
+        return timedelta(seconds=time.time() - self.starttime)
+
+    @property
+    def iiter(self):
+        return self._iiter
+
+    @iiter.setter
+    def iiter(self, iiter):
+        dt = time.time() - self.last_update
+        self._iter_buffer.put(float((iiter - self.iiter) / dt))
+        self.iter_per_second = float(self._iter_buffer.mean())
+        self._iiter = iiter
+        self.last_update = time.time()
+
+    @property
+    def runtime_remaining(self):
+        if self.iter_per_second == 0.:
+            return timedelta()
+        return timedelta(seconds=(self.niter - self.iiter)
+                         / self.iter_per_second)
+
+    def extend(self, *args):
+        self.iiter = self.history.nmodels
+        problem = self.history.problem
+
         lines = []
-        self.current_state = state
-
         ladd = lines.append
 
         def fmt(s):
             return util.gform(s, significant_digits=(self.col_width-1-6)//2)
 
-        out_ln = self.row_name +\
-            ''.join([self.parameter_fmt] * len(state.parameter_sets))
-        col_param_width = max([len(p) for p in state.parameter_names]) + 2
-
-        ladd('Problem name: {s.problem_name}'
-             '\t({s.runtime.seconds} - remaining {s.runtime_remaining}'
+        ladd('Problem name: {p.name}'
+             '\t({s.runtime} - remaining {s.runtime_remaining}'
              ' @ {s.iter_per_second:.1f} iter/s)'
-             .format(s=state))
+             .format(s=self, p=problem))
         ladd('Iteration {s.iiter} / {s.niter}'
-             .format(s=state))
+             .format(s=self))
+
+        out_ln = self.row_name +\
+            ''.join([self.parameter_fmt] * len(problem.parameter_names))
+        col_param_width = max([len(p) for p in problem.parameter_names]) + 2
 
         ladd(out_ln.format(
-            *['Parameter'] + list(state.parameter_sets.keys()),
+            *['Parameter'] + list(problem.parameter_names),
             col_param_width=col_param_width,
             col_width=self.col_width,
             type='s'))
 
-        for ip, parameter_name in enumerate(state.parameter_names):
-            ladd(out_ln.format(
-                 parameter_name,
-                 *[fmt(v[ip]) for v in state.parameter_sets.values()],
-                 col_param_width=col_param_width,
-                 col_width=self.col_width))
+        # for ip, parameter_name in enumerate(problem.parameter_names):
+        #     ladd(out_ln.format(
+        #          parameter_name,
+        #          *[fmt(v[ip]) for v in problem.parameter_sets.values()],
+        #          col_param_width=col_param_width,
+        #          col_width=self.col_width))
 
-        ladd(state.extra_text.format(
-            col_param_width=col_param_width,
-            col_width=self.col_width,))
+        # ladd(problem.extra_text.format(
+        #     col_param_width=col_param_width,
+        #     col_width=self.col_width,))
 
         lines[0:0] = ['\033[2J']
         ladd('')

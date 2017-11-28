@@ -1,4 +1,10 @@
-class Listener(object):
+from threading import Thread
+
+
+class Listener(Thread):
+
+    def __init__(self):
+        Thread.__init__(self)
 
     def progress_start(self, name, niter):
         raise NotImplementedError()

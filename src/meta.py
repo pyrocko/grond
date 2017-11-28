@@ -184,23 +184,3 @@ class HasPaths(Object):
                 extra(
                     op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
                 for p in path]
-
-
-class Notifier(object):
-    def __init__(self):
-        self._listeners = []
-
-    def add_listener(self, listener):
-        self._listeners.append(listener)
-
-    def remove_listener(self, listener):
-        self._listeners.remove(listener)
-
-    def emit(self, signal_name, *args, **kwargs):
-        for listener in self._listeners:
-            if not hasattr(listener, signal_name):
-                logger.warn(
-                    'signal name \'%s\' not implemented in listener %s'
-                    % (signal_name, type(listener)))
-                continue
-            getattr(listener, signal_name)(*args, **kwargs)

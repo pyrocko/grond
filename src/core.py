@@ -20,12 +20,25 @@ from .problems.base import ProblemConfig, Problem, \
 from .optimizers.base import OptimizerConfig, BadProblem
 from .targets.base import TargetGroup
 from .analysers.base import AnalyserConfig
-from .listeners import TerminalListener
-from .meta import Path, HasPaths, expand_template, GrondError, Notifier, \
-    Forbidden
+from .meta import Path, HasPaths, expand_template, GrondError, Forbidden
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
+
+
+class RingBuffer(num.ndarray):
+    def __new__(cls, *args, **kwargs):
+        cls = num.ndarray.__new__(cls, *args, **kwargs)
+        cls.fill(0.)
+        return cls
+
+    def __init__(self, *args, **kwargs):
+        self.pos = 0
+
+    def put(self, value):
+        self[self.pos] = value
+        self.pos += 1
+        self.pos %= self.size
 
 
 def mahalanobis_distance(xs, mx, cov):
@@ -633,11 +646,8 @@ def process_event(ievent, g_data_id):
     logger.info(
         'start %i / %i' % (ievent+1, nevents))
 
-    notifier = Notifier()
-    notifier.add_listener(TerminalListener())
-
     analyser = config.analyser_config.get_analyser()
-    analyser.analyse(problem, notifier=notifier)
+    analyser.analyse(problem)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -659,11 +669,19 @@ def process_event(ievent, g_data_id):
     #     update_every=10,
     #     movie_filename='grond_opt_time_magnitude.mp4')
 
+    def startThreads():
+        from .listeners import terminal
+        term = terminal.TerminalListener(rundir)
+        term.start()
+        return term
+
+    term = startThreads()
+
     try:
         optimizer = config.optimizer_config.get_optimizer()
         if xs_inject is not None:
             from .optimizers import highscore
-            if not isinstance(optimizer, highscore.HighScoreOptimizer()):
+            if not isinstance(optimizer, highscore.HighScoreOptimizer):
                 raise GrondError(
                     'optimizer does not support injections')
 
@@ -678,6 +696,8 @@ def process_event(ievent, g_data_id):
 
     except BadProblem as e:
         logger.error(str(e))
+    finally:
+        term.join()
 
     tstop = time.time()
     logger.info(
