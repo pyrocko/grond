@@ -308,6 +308,14 @@ class Problem(Object):
             self.raise_invalid_norm_exponent()
 
     def bootstrap_misfit(self, misfits, nbootstrap, ibootstrap=None):
+        '''
+        :param misifts: 2D array with target misfits ``misfits[itarget, 0]``
+            and normalization factors ``misfits[itarget, 1]``
+
+        :returns: 1D array ``misfits[ibootstrap]`` if ``ibootstrap`` is
+            ``None``
+        '''
+
         exp, root = self.get_norm_functions()
 
         ms = misfits[:, 0]
@@ -324,6 +332,12 @@ class Problem(Object):
         return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
 
     def bootstrap_misfits(self, misfits, nbootstrap, ibootstrap=None):
+        '''
+        :param misifts: 3D array with target misfits
+            ``misfits[imodel, itarget, 0]`` and normalization factors
+            ``misfits[imodel, itarget, 1]``
+        :returns: 2D array ``misfits[imodel, ibootstrap]``
+        '''
         exp, root = self.get_norm_functions()
 
         w = self.get_bootstrap_weights(
@@ -334,17 +348,14 @@ class Problem(Object):
         bms = root(num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
                    num.nansum(exp(w*misfits[:, :, 1]), axis=1))
 
-        # From Henriette
-        # w = self.get_target_weights()[num.newaxis, :] * \
-        #     self.inter_group_weights2(misfits[:, :, 1])
-        # #w = self.get_bootstrap_weights(ibootstrap)[num.newaxis, :] * \
-        # #    self.get_target_weights()[num.newaxis, :] * \
-        # #    self.inter_group_weights2(misfits[:, :, 1])
-
-        # bms = num.sqrt(num.nansum((w*misfits[:, :, 0])**2, axis=1))
         return bms
 
     def global_misfit(self, misfits):
+        '''
+        :param misifts: 2D array with target misfits ``misfits[itarget, 0]``
+            and normalization factors ``misfits[itarget, 1]``
+        :returns: scalar global misfit
+        '''
         exp, root = self.get_norm_functions()
 
         ws = self.get_target_weights() * \
@@ -354,6 +365,12 @@ class Problem(Object):
                     num.nansum(exp(ws*misfits[:, 1])))
 
     def global_misfits(self, misfits):
+        '''
+        :param misifts: 3D array with target misfits
+            ``misfits[imodel, itarget, 0]`` and normalization factors
+            ``misfits[imodel, itarget, 1]``
+        :returns: 1D array ``global_misfits[imodel]``
+        '''
         exp, root = self.get_norm_functions()
         ws = self.get_target_weights()[num.newaxis, :] * \
             self.inter_group_weights2(misfits[:, :, 1])
