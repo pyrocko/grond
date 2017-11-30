@@ -222,24 +222,26 @@ class DirectedSamplerPhase(SamplerPhase):
 
 
 class Chains(object):
-    def __init__(self, problem, history, nchains, nlinks_cap):
+    def __init__(self, optimizer, problem, history, nlinks_cap):
 
+        self.optimizer = optimizer
         self.problem = problem
         self.history = history
-        self.nchains = nchains
+        self.nchains = optimizer.nbootstrap + 1
         self.nlinks_cap = nlinks_cap
         self.chains_m = num.zeros(
-            (nchains, nlinks_cap), num.float)
+            (self.nchains, nlinks_cap), num.float)
         self.chains_i = num.zeros(
-            (nchains, nlinks_cap), num.int)
+            (self.nchains, nlinks_cap), num.int)
         self.nlinks = 0
-        self.accept_sum = num.zeros(nchains, dtype=num.int)
+        self.accept_sum = num.zeros(self.nchains, dtype=num.int)
         history.add_listener(self)
 
     def append(self, iiter, model, misfits):
 
-        gm = self.problem.global_misfit(misfits)
-        bms = self.problem.bootstrap_misfit(misfits, self.nchains - 1)
+        gm = self.optimizer.global_misfit(self.problem, misfits)
+        bms = self.optimizer.bootstrap_misfit(
+            self.problem, misfits, self.nchains - 1)
         gbms = num.concatenate(([gm], bms))
 
         self.chains_m[:, self.nlinks] = gbms
@@ -308,6 +310,121 @@ class HighScoreOptimizer(Optimizer):
     chain_length_factor = Float.T(default=8.)
     nbootstrap = Int.T(default=10)
 
+    def __init__(self, **kwargs):
+        Optimizer.__init__(self, **kwargs)
+        self._bootstrap_weights = None
+
+    def make_bootstrap_weights(self, problem, nbootstrap, type='classic'):
+        ntargets = problem.ntargets
+        ws = num.zeros((nbootstrap, ntargets))
+        rstate = num.random.RandomState(23)
+        for ibootstrap in range(nbootstrap):
+            if type == 'classic':
+                ii = rstate.randint(0, ntargets, size=problem.ntargets)
+                ws[ibootstrap, :] = num.histogram(
+                    ii, ntargets, (-0.5, ntargets - 0.5))[0]
+            elif type == 'bayesian':
+                f = rstate.uniform(0., 1., size=problem.ntargets+1)
+                f[0] = 0.
+                f[-1] = 1.
+                f = num.sort(f)
+                g = f[1:] - f[:-1]
+                ws[ibootstrap, :] = g * ntargets
+            else:
+                assert False
+
+        return ws
+
+    def get_bootstrap_weights(self, problem, nbootstrap, ibootstrap=None):
+        if self._bootstrap_weights is None:
+            self._bootstrap_weights = self.make_bootstrap_weights(
+                problem, nbootstrap, type='bayesian')
+
+        if ibootstrap is None:
+            return self._bootstrap_weights
+        else:
+            return self._bootstrap_weights[ibootstrap, :]
+
+    def bootstrap_misfit(self, problem, misfits, nbootstrap, ibootstrap=None):
+        '''
+        :param misifts: 2D array with target misfits ``misfits[itarget, 0]``
+            and normalization factors ``misfits[itarget, 1]``
+
+        :returns: 1D array ``misfits[ibootstrap]`` if ``ibootstrap`` is
+            ``None``
+        '''
+
+        exp, root = problem.get_norm_functions()
+
+        ms = misfits[:, 0]
+        ns = misfits[:, 1]
+
+        w = self.get_bootstrap_weights(problem, nbootstrap, ibootstrap) * \
+            problem.get_target_weights() * problem.inter_group_weights(ns)
+
+        if ibootstrap is None:
+            return root(
+                num.nansum(exp(w*ms[num.newaxis, :]), axis=1) /
+                num.nansum(exp(w*ns[num.newaxis, :]), axis=1))
+
+        return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
+
+    def bootstrap_misfits(self, problem, misfits, nbootstrap, ibootstrap=None):
+        '''
+        :param misifts: 3D array with target misfits
+            ``misfits[imodel, itarget, 0]`` and normalization factors
+            ``misfits[imodel, itarget, 1]``
+        :returns: 2D array ``misfits[imodel, ibootstrap]``
+        '''
+        exp, root = problem.get_norm_functions()
+
+        w = self.get_bootstrap_weights(
+                nbootstrap, ibootstrap)[num.newaxis, :] * \
+            problem.get_target_weights()[num.newaxis, :] * \
+            problem.inter_group_weights2(misfits[:, :, 1])
+
+        bms = root(num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
+                   num.nansum(exp(w*misfits[:, :, 1]), axis=1))
+
+        return bms
+
+    def global_misfit(self, problem, misfits):
+        '''
+        :param misifts: 2D array with target misfits ``misfits[itarget, 0]``
+            and normalization factors ``misfits[itarget, 1]``
+        :returns: scalar global misfit
+        '''
+        exp, root = problem.get_norm_functions()
+
+        ws = problem.get_target_weights() * \
+            problem.inter_group_weights(misfits[:, 1])
+
+        return root(num.nansum(exp(ws*misfits[:, 0])) /
+                    num.nansum(exp(ws*misfits[:, 1])))
+
+    def global_misfits(self, problem, misfits):
+        '''
+        :param misifts: 3D array with target misfits
+            ``misfits[imodel, itarget, 0]`` and normalization factors
+            ``misfits[imodel, itarget, 1]``
+        :returns: 1D array ``global_misfits[imodel]``
+        '''
+        exp, root = problem.get_norm_functions()
+        ws = problem.get_target_weights()[num.newaxis, :] * \
+            problem.inter_group_weights2(misfits[:, :, 1])
+        return root(num.nansum(exp(ws*misfits[:, :, 0]), axis=1) /
+                    num.nansum(exp(ws*misfits[:, :, 1]), axis=1))
+
+    def global_contributions(self, problem, misfits):
+        exp, root = problem.get_norm_functions()
+        ws = problem.get_target_weights()[num.newaxis, :] * \
+            problem.inter_group_weights2(misfits[:, :, 1])
+
+        gcms = exp(ws*misfits[:, :, 0]) / \
+            num.nansum(exp(ws*misfits[:, :, 1]), axis=1)[:, num.newaxis]
+
+        return gcms
+
     def optimize(self, problem, rundir=None):
 
         if rundir is not None:
@@ -323,7 +440,7 @@ class HighScoreOptimizer(Optimizer):
             self.chain_length_factor * problem.nparameters + 1))
 
         history = ModelHistory(problem, path=rundir, mode='w')
-        chains = Chains(problem, history, self.nbootstrap+1, nlinks_cap)
+        chains = Chains(self, problem, history, nlinks_cap)
 
         phases = list(self.sampler_phases)
         phase = phases.pop(0)
