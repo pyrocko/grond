@@ -1,6 +1,8 @@
-build
+/build
 *.pyc
 *.aux
 *.log
+/dist
+/*.egg-info
 
 docs/_build
