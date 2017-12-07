@@ -512,6 +512,7 @@ def command_plot(args):
         'hudson',
         'fits',
         'fits_statics',
+        'fits_ensemble',
         'solution',
         'location']
 
@@ -630,12 +631,19 @@ def command_qc_polarization(args):
 
     def setup(parser):
         parser.add_option(
-            '--time-factor', dest='time_factor', type=float,
+            '--time-factor-pre', dest='time_factor_pre', type=float,
             metavar='NUMBER',
             default=0.5,
-            help='set duration to extract before and after synthetic P phase '
-                 'arrival, relative to 1/fmin. fmin is taken from the '
-                 'selected target group in the config file (default=%default)')
+            help='set duration to extract before synthetic P phase arrival, '
+                 'relative to 1/fmin. fmin is taken from the selected target '
+                 'group in the config file (default=%default)')
+        parser.add_option(
+            '--time-factor-post', dest='time_factor_post', type=float,
+            metavar='NUMBER',
+            default=0.5,
+            help='set duration to extract after synthetic P phase arrival, '
+                 'relative to 1/fmin. fmin is taken from the selected target '
+                 'group in the config file (default=%default)')
         parser.add_option(
             '--distance-min', dest='distance_min', type=float,
             metavar='NUMBER',
@@ -715,7 +723,8 @@ def command_qc_polarization(args):
 
             grond.qc.polarization(
                 ds, store, timing, fmin=fmin, fmax=fmax, ffactor=ffactor,
-                time_factor=options.time_factor,
+                time_factor_pre=options.time_factor_pre,
+                time_factor_post=options.time_factor_post,
                 distance_min=options.distance_min,
                 distance_max=options.distance_max,
                 depth_min=options.depth_min,

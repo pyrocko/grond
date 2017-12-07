@@ -4,6 +4,7 @@ import random
 import logging
 import os
 import os.path as op
+from collections import defaultdict
 import numpy as num
 from scipy import signal
 
@@ -286,7 +287,6 @@ def draw_jointpar_figures(
     figsize = (8, 8)
     # cmap = cm.YlOrRd
     # cmap = cm.jet
-    cmap = cm.coolwarm
     msize = 1.5
 
     problem = history.problem
@@ -329,15 +329,20 @@ def draw_jointpar_figures(
         mx = num.mean(models, axis=0)
         cov = num.cov(models.T)
         mdists = core.mahalanobis_distance(models, mx, cov)
-        color = ordersort(mdists)
+        icolor = ordersort(mdists)
 
     elif color == 'misfit':
         iorder = num.arange(nmodels)
-        color = iorder
+        icolor = iorder
 
     elif color in problem.parameter_names:
         ind = problem.name_to_index(color)
-        color = ordersort(problem.extract(models, ind))
+        icolor = problem.extract(models, ind)
+
+    from matplotlib import colors
+    cmap = cm.ScalarMappable(
+        norm=colors.Normalize(vmin=num.min(icolor), vmax=num.max(icolor)),
+        cmap=plt.get_cmap('coolwarm'))
 
     smap = {}
     iselected = 0
@@ -1004,6 +1009,380 @@ def draw_fits_figures_statics(ds, history, optimizer, plt):
     return figures
 
 
+def draw_fits_ensemble_figures(
+        ds, history, optimizer, plt,
+        misfit_cutoff=None, color='depth'):
+
+    fontsize = 8
+    fontsize_title = 10
+
+    problem = history.problem
+
+    target_index = dict(
+        (target, i) for (i, target) in enumerate(problem.targets))
+
+    gms = problem.global_misfits(history.misfits)
+    isort = num.argsort(gms)[::-1]
+    gms = gms[isort]
+    models = history.models[isort, :]
+
+    if misfit_cutoff is not None:
+        ibest = gms < misfit_cutoff
+        gms = gms[ibest]
+        models = models[ibest]
+
+    gms = gms[::10]
+    models = models[::10]
+
+    nmodels = models.shape[0]
+    if color == 'dist':
+        mx = num.mean(models, axis=0)
+        cov = num.cov(models.T)
+        mdists = core.mahalanobis_distance(models, mx, cov)
+        icolor = ordersort(mdists)
+
+    elif color == 'misfit':
+        iorder = num.arange(nmodels)
+        icolor = iorder
+
+    elif color in problem.parameter_names:
+        ind = problem.name_to_index(color)
+        icolor = problem.extract(models, ind)
+
+    target_to_results = defaultdict(list)
+    all_syn_trs = []
+
+    dtraces = []
+    for imodel in xrange(nmodels):
+        x = models[imodel, :]
+
+        source = problem.unpack(x)
+        ms, ns, results = problem.evaluate(x, result_mode='full')
+
+        dtraces.append([])
+
+        for target, result in zip(problem.targets, results):
+            if isinstance(result, gf.SeismosizerError):
+                dtraces[-1].append(None)
+                continue
+
+            itarget = target_index[target]
+            w = target.get_combined_weight(problem.apply_balancing_weights)
+
+            if target.misfit_config.domain == 'cc_max_norm':
+                tref = (
+                    result.filtered_obs.tmin + result.filtered_obs.tmax) * 0.5
+                for tr_filt, tr_proc, tshift in (
+                        (result.filtered_obs,
+                         result.processed_obs,
+                         0.),
+                        (result.filtered_syn,
+                         result.processed_syn,
+                         result.tshift)):
+
+                    norm = num.sum(num.abs(tr_proc.ydata)) / tr_proc.data_len()
+                    tr_filt.ydata /= norm
+                    tr_proc.ydata /= norm
+
+                    tr_filt.shift(tshift)
+                    tr_proc.shift(tshift)
+
+                ctr = result.cc
+                ctr.shift(tref)
+
+                dtrace = ctr
+
+            else:
+                for tr in (
+                        result.filtered_obs,
+                        result.filtered_syn,
+                        result.processed_obs,
+                        result.processed_syn):
+
+                    tr.ydata *= w
+
+                if result.tshift is not None and result.tshift != 0.0:
+                    # result.filtered_syn.shift(result.tshift)
+                    result.processed_syn.shift(result.tshift)
+
+                dtrace = make_norm_trace(
+                    result.processed_syn, result.processed_obs,
+                    problem.norm_exponent)
+
+            target_to_results[target].append(result)
+
+            dtrace.meta = dict(
+                super_group=target.super_group, group=target.group)
+
+            dtraces[-1].append(dtrace)
+
+            result.processed_syn.meta = dict(
+                super_group=target.super_group, group=target.group)
+
+            all_syn_trs.append(result.processed_syn)
+
+    if not all_syn_trs:
+        logger.warn('no traces to show')
+        return []
+
+    def skey(tr):
+        return tr.meta['super_group'], tr.meta['group']
+
+    trace_minmaxs = trace.minmax(all_syn_trs, skey)
+
+    dtraces_all = []
+    for dtraces_group in dtraces:
+        dtraces_all.extend(dtraces_group)
+
+    dminmaxs = trace.minmax([
+        dtrace_ for dtrace_ in dtraces_all if dtrace_ is not None], skey)
+
+    for tr in dtraces_all:
+        if tr:
+            dmin, dmax = dminmaxs[skey(tr)]
+            tr.ydata /= max(abs(dmin), abs(dmax))
+
+    cg_to_targets = gather(
+        problem.targets,
+        lambda t: (t.super_group, t.group, t.codes[3]),
+        filter=lambda t: t in target_to_results)
+
+    cgs = sorted(cg_to_targets.keys())
+
+    from matplotlib import colors
+    cmap = cm.ScalarMappable(
+        norm=colors.Normalize(vmin=num.min(icolor), vmax=num.max(icolor)),
+        cmap=plt.get_cmap('coolwarm'))
+
+    imodel_to_color = []
+    for imodel in xrange(nmodels):
+        imodel_to_color.append(cmap.to_rgba(icolor[imodel]))
+
+    figs = []
+    for cg in cgs:
+        targets = cg_to_targets[cg]
+        nframes = len(targets)
+
+        nx = int(math.ceil(math.sqrt(nframes)))
+        ny = (nframes-1)/nx+1
+
+        nxmax = 4
+        nymax = 4
+
+        nxx = (nx-1) / nxmax + 1
+        nyy = (ny-1) / nymax + 1
+
+        # nz = nxx * nyy
+
+        xs = num.arange(nx) / ((max(2, nx) - 1.0) / 2.)
+        ys = num.arange(ny) / ((max(2, ny) - 1.0) / 2.)
+
+        xs -= num.mean(xs)
+        ys -= num.mean(ys)
+
+        fxs = num.tile(xs, ny)
+        fys = num.repeat(ys, nx)
+
+        data = []
+
+        for target in targets:
+            azi = source.azibazi_to(target)[0]
+            dist = source.distance_to(target)
+            x = dist*num.sin(num.deg2rad(azi))
+            y = dist*num.cos(num.deg2rad(azi))
+            data.append((x, y, dist))
+
+        gxs, gys, dists = num.array(data, dtype=num.float).T
+
+        iorder = num.argsort(dists)
+
+        gxs = gxs[iorder]
+        gys = gys[iorder]
+        targets_sorted = [targets[ii] for ii in iorder]
+
+        gxs -= num.mean(gxs)
+        gys -= num.mean(gys)
+
+        gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
+        if gmax == 0.:
+            gmax = 1.
+
+        gxs /= gmax
+        gys /= gmax
+
+        dists = num.sqrt(
+            (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
+            (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
+
+        distmax = num.max(dists)
+
+        availmask = num.ones(dists.shape[1], dtype=num.bool)
+        frame_to_target = {}
+        for itarget, target in enumerate(targets_sorted):
+            iframe = num.argmin(
+                num.where(availmask, dists[itarget], distmax + 1.))
+            availmask[iframe] = False
+            iy, ix = num.unravel_index(iframe, (ny, nx))
+            frame_to_target[iy, ix] = target
+
+        figures = {}
+        for iy in xrange(ny):
+            for ix in xrange(nx):
+                if (iy, ix) not in frame_to_target:
+                    continue
+
+                ixx = ix/nxmax
+                iyy = iy/nymax
+                if (iyy, ixx) not in figures:
+                    figures[iyy, ixx] = plt.figure(
+                        figsize=mpl_papersize('a4', 'landscape'))
+
+                    figures[iyy, ixx].subplots_adjust(
+                        left=0.03,
+                        right=1.0 - 0.03,
+                        bottom=0.03,
+                        top=1.0 - 0.06,
+                        wspace=0.2,
+                        hspace=0.2)
+
+                    figs.append(figures[iyy, ixx])
+
+                fig = figures[iyy, ixx]
+
+                target = frame_to_target[iy, ix]
+
+                amin, amax = trace_minmaxs[target.super_group, target.group]
+                absmax = max(abs(amin), abs(amax))
+
+                ny_this = nymax  # min(ny, nymax)
+                nx_this = nxmax  # min(nx, nxmax)
+                i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
+
+                axes2 = fig.add_subplot(ny_this, nx_this, i_this)
+
+                space = 0.5
+                space_factor = 1.0 + space
+                axes2.set_axis_off()
+                axes2.set_ylim(-1.05 * space_factor, 1.05)
+
+                axes = axes2.twinx()
+                axes.set_axis_off()
+
+                if target.misfit_config.domain == 'cc_max_norm':
+                    axes.set_ylim(-10. * space_factor, 10.)
+                else:
+                    axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
+
+                itarget = target_index[target]
+                print len(dtraces)
+                for imodel, result in enumerate(target_to_results[target]):
+
+                    syn_color = imodel_to_color[imodel]
+
+                    dtrace = dtraces[imodel][itarget]
+
+                    tap_color_annot = (0.35, 0.35, 0.25)
+                    tap_color_edge = (0.85, 0.85, 0.80)
+                    tap_color_fill = (0.95, 0.95, 0.90)
+
+                    plot_taper(
+                        axes2, result.processed_obs.get_xdata(), result.taper,
+                        fc=tap_color_fill, ec=tap_color_edge, alpha=0.2)
+
+                    obs_color = mpl_color('aluminium5')
+                    obs_color_light = light(obs_color, 0.5)
+
+                    plot_dtrace(
+                        axes2, dtrace, space, 0., 1.,
+                        fc='none',
+                        ec=syn_color)
+
+                    # plot_trace(
+                    #     axes, result.filtered_syn,
+                    #     color=syn_color_light, lw=1.0)
+
+                    if imodel == 0:
+                        plot_trace(
+                            axes, result.filtered_obs,
+                            color=obs_color_light, lw=0.75)
+
+                    plot_trace(
+                        axes, result.processed_syn,
+                        color=syn_color, lw=1.0, alpha=0.3)
+
+                    plot_trace(
+                        axes, result.processed_obs,
+                        color=obs_color, lw=0.75, alpha=0.3)
+
+                    if imodel != 0:
+                        continue
+                    xdata = result.filtered_obs.get_xdata()
+                    axes.set_xlim(xdata[0], xdata[-1])
+
+                    tmarks = [
+                        result.processed_obs.tmin,
+                        result.processed_obs.tmax]
+
+                    for tmark in tmarks:
+                        axes2.plot(
+                            [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
+
+                    for tmark, text, ha in [
+                            (tmarks[0],
+                             '$\,$ ' + str_duration(tmarks[0] - source.time),
+                             'right'),
+                            (tmarks[1],
+                             '$\Delta$ ' + str_duration(tmarks[1] - tmarks[0]),
+                             'left')]:
+
+                        axes2.annotate(
+                            text,
+                            xy=(tmark, -0.9),
+                            xycoords='data',
+                            xytext=(
+                                fontsize*0.4 * [-1, 1][ha == 'left'],
+                                fontsize*0.2),
+                            textcoords='offset points',
+                            ha=ha,
+                            va='bottom',
+                            color=tap_color_annot,
+                            fontsize=fontsize)
+
+                scale_string = None
+
+                if target.misfit_config.domain == 'cc_max_norm':
+                    scale_string = 'Syn/obs scales differ!'
+
+                infos = []
+                if scale_string:
+                    infos.append(scale_string)
+
+                infos.append('.'.join(x for x in target.codes if x))
+                dist = source.distance_to(target)
+                azi = source.azibazi_to(target)[0]
+                infos.append(str_dist(dist))
+                infos.append(u'%.0f\u00B0' % azi)
+                axes2.annotate(
+                    '\n'.join(infos),
+                    xy=(0., 1.),
+                    xycoords='axes fraction',
+                    xytext=(2., 2.),
+                    textcoords='offset points',
+                    ha='left',
+                    va='top',
+                    fontsize=fontsize,
+                    fontstyle='normal')
+
+        for (iyy, ixx), fig in figures.iteritems():
+            title = '.'.join(x for x in cg if x)
+            if len(figures) > 1:
+                title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
+
+            fig.suptitle(title, fontsize=fontsize_title)
+
+    return figs
+
+
 def draw_fits_figures(ds, history, optimizer, plt):
     fontsize = 8
     fontsize_title = 10
@@ -1627,6 +2006,7 @@ plot_dispatch = {
     'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
     'fits_statics': draw_fits_figures_statics,
+    'fits_ensemble': draw_fits_ensemble_figures,
     'solution': draw_solution_figure,
     'location': draw_location_figure}
 
@@ -1701,6 +2081,7 @@ def plot_result(dirname, plotnames_want,
     if 6 != len({
             'fits',
             'fits_statics',
+            'fits_ensemble',
             'jointpar',
             'hudson',
             'solution',
@@ -1709,7 +2090,7 @@ def plot_result(dirname, plotnames_want,
         problem = load_problem_info(dirname)
         history = ModelHistory(problem, path=xjoin(dirname, 'harvest'))
 
-        for plotname in ['fits', 'fits_statics']:
+        for plotname in ['fits', 'fits_ensemble', 'fits_statics']:
             if plotname in plotnames_want:
                 event_name = problem.base_source.name
 
@@ -1748,21 +2129,22 @@ class SolverPlot(object):
         self.movie_filename = movie_filename
         self.show = show
         self.update_every = update_every
+        self.fontsize = 10
 
     def want_to_update(self, iiter):
         return iiter % self.update_every == 0
 
     def start(self, problem):
-        fontsize = 8.
         nfx = 1
         nfy = 1
 
         ixpar = problem.name_to_index(self.xpar_name)
         iypar = problem.name_to_index(self.ypar_name)
 
-        fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+        mpl_init(fontsize=self.fontsize)
+        fig = plt.figure(figsize=(9.6, 5.4))
         labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
-                               hspace=2., units=fontsize)
+                               hspace=2., units=self.fontsize)
 
         xpar = problem.parameters[ixpar]
         ypar = problem.parameters[iypar]
@@ -1799,6 +2181,7 @@ class SolverPlot(object):
             num.repeat(0.7, n))).T
 
         self.bcolors = colors.hsv_to_rgb(hsv[num.newaxis, :, :])[0, :, :]
+        self.bcolors[0, :] = [0., 0., 0.]
 
         bounds = self.problem.get_combined_bounds()
 
@@ -1825,7 +2208,7 @@ class SolverPlot(object):
                 codec='libx264',
                 bitrate=200000)
 
-            self.writer.setup(self.fig, self.movie_filename, dpi=100)
+            self.writer.setup(self.fig, self.movie_filename, dpi=200)
 
         if self.show:
             plt.ion()
@@ -1835,8 +2218,12 @@ class SolverPlot(object):
         self.axes.set_xlim(*self.xlim)
         self.axes.set_ylim(*self.ylim)
 
-    def update(self, xhist, chains_i, ibase, jchoice, local_sxs, factor):
+    def update(self, xhist, chains_i, ibase, jchoice, local_sxs, factor, phase,
+               compensate_excentricity):
+
         msize = 15.
+
+        iiter_frame = len(xhist)
 
         self.axes.cla()
 
@@ -1850,9 +2237,13 @@ class SolverPlot(object):
 
             p = num.zeros((ny, nx))
 
-            for j in [jchoice]:  # range(self.problem.nbootstrap+1):
-                ps = core.excentricity_compensated_probabilities(
-                    xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
+            for j in [jchoice]:  # xrange(self.problem.nbootstrap+1):
+
+                if compensate_excentricity:
+                    ps = core.excentricity_compensated_probabilities(
+                            xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
+                else:
+                    ps = num.ones(chains_i.shape[1])
 
                 bounds = self.get_combined_bounds()
 
@@ -1903,16 +2294,16 @@ class SolverPlot(object):
                 color=self.bcolors[ibootstrap],
                 s=msizes, alpha=0.5, edgecolors='none')
 
-        if ibase is not None:
-            fx = self.problem.extract(
-                xhist[(ibase, -1), :], self.ixpar)
-            fy = self.problem.extract(
-                xhist[(ibase, -1), :], self.iypar)
+        # if ibase is not None:
+        #     fx = self.problem.extract(
+        #         xhist[(ibase, -1), :], self.ixpar)
+        #     fy = self.problem.extract(
+        #         xhist[(ibase, -1), :], self.iypar)
 
-            self.axes.plot(
-                self.xpar.scaled(fx),
-                self.ypar.scaled(fy),
-                color='black')
+        #     self.axes.plot(
+        #         self.xpar.scaled(fx),
+        #         self.ypar.scaled(fy),
+        #         color='black')
 
         fx = self.problem.extract(xhist[-1:, :], self.ixpar)
         fy = self.problem.extract(xhist[-1:, :], self.iypar)
@@ -1922,15 +2313,31 @@ class SolverPlot(object):
             self.ypar.scaled(fy),
             s=msize * 5.0,
             color='none',
-            edgecolors='black')
+            edgecolors=self.bcolors[ibootstrap])
+
+        self.axes.annotate(
+            '%i (%s)' % (iiter_frame, phase),
+            xy=(0., 1.),
+            xycoords='axes fraction',
+            xytext=(self.fontsize/2., -self.fontsize/2.),
+            textcoords='offset points',
+            ha='left',
+            va='top',
+            fontsize=self.fontsize,
+            fontstyle='normal')
 
         self.set_limits()
+
+        self.post_update()
 
         if self.writer:
             self.writer.grab_frame()
 
         if self.show:
             plt.draw()
+
+    def post_update(self):
+        pass
 
     def finish(self):
 

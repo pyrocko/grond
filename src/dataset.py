@@ -348,12 +348,17 @@ class Dataset(object):
                     return scene
         raise NotFound('No kite scene with id %s defined' % scene_id)
 
-    def get_response(self, obj):
+    def get_response(self, obj, quantity='displacement'):
         if (self.responses is None or len(self.responses) == 0) \
                 and (self.responses_stationxml is None
                      or len(self.responses_stationxml) == 0):
 
             raise NotFound('no response information available')
+
+        quantity_to_unit = {
+            'displacement': 'M',
+            'velocity': 'M/S',
+            'acceleration': 'M/S**2'}
 
         if self.is_blacklisted(obj):
             raise NotFound('response is blacklisted', self.get_nslc(obj))
@@ -377,7 +382,18 @@ class Dataset(object):
             if k in self.responses:
                 for x in self.responses[k]:
                     if x.tmin < tmin and (x.tmax is None or tmax < x.tmax):
-                        candidates.append(x.response)
+                        if quantity == 'displacement':
+                            candidates.append(x.response)
+                        elif quantity == 'velocity':
+                            candidates.append(trace.MultiplyResponse([
+                                x.response,
+                                tarce.DifferentiationResponse()]))
+                        elif quantity == 'acceleration':
+                            candidates.append(trace.MultiplyResponse([
+                                x.response,
+                                tarce.DifferentiationResponse(2)]))
+                        else:
+                            assert False
 
         for sx in self.responses_stationxml:
             try:
@@ -385,7 +401,7 @@ class Dataset(object):
                     sx.get_pyrocko_response(
                         (net, sta, loc, cha),
                         timespan=(tmin, tmax),
-                        fake_input_units='M'))
+                        fake_input_units=quantity_to_unit[quantity]))
 
             except (fs.NoResponseInformation, fs.MultipleResponseInformation):
                 pass
@@ -468,8 +484,6 @@ class Dataset(object):
             want_incomplete=False,
             extend_incomplete=False):
 
-        assert quantity == 'displacement'  # others not yet implemented
-
         trs_raw = self.get_waveform_raw(
             obj, tmin=tmin, tmax=tmax, tpad=tpad+tfade,
             toffset_noise_extract=toffset_noise_extract,
@@ -482,7 +496,7 @@ class Dataset(object):
                 tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
                 tr.deltat = deltat
 
-            resp = self.get_response(tr)
+            resp = self.get_response(tr, quantity=quantity)
             trs_restituted.append(
                 tr.transfer(
                     tfade=tfade, freqlimits=freqlimits,
@@ -537,7 +551,6 @@ class Dataset(object):
             debug=False):
 
         assert not debug or (debug and cache is None)
-        assert quantity == 'displacement'  # others not yet implemented
 
         if cache is True:
             cache = self._cache
@@ -622,6 +635,7 @@ class Dataset(object):
                         trs_restituted_this, trs_raw_this = \
                             self.get_waveform_restituted(
                                 station.nsl() + (cha,),
+                                quantity=quantity,
                                 tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
                                 toffset_noise_extract=toffset_noise_extract,
                                 tfade=tfade,

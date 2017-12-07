@@ -452,7 +452,6 @@ class ModelHistory(object):
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
         self.mode = mode
-        self.optimizer = load_optimizer_info(path)
 
         if mode == 'r':
             self.verify_rundir(self.path)
@@ -461,7 +460,7 @@ class ModelHistory(object):
 
     @staticmethod
     def verify_rundir(rundir):
-        _rundir_files = ['config.yaml', 'optimizer.yaml', 'misfits', 'models']
+        _rundir_files = ['misfits', 'models']
 
         if not op.exists(rundir):
             raise OSError('Rundir %s does not exist!' % rundir)
