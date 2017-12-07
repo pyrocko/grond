@@ -123,7 +123,7 @@ def make_norm_trace(a, b, exponent):
 
 
 def draw_sequence_figures(
-        history, optimizer, plt, misfit_cutoff=None, sort_by='misfit'):
+        history, optimizer, plt, misfit_cutoff=None, sort_by='iteration'):
 
     problem = history.problem
     npar = problem.nparameters
@@ -339,11 +339,6 @@ def draw_jointpar_figures(
         ind = problem.name_to_index(color)
         icolor = problem.extract(models, ind)
 
-    from matplotlib import colors
-    cmap = cm.ScalarMappable(
-        norm=colors.Normalize(vmin=num.min(icolor), vmax=num.max(icolor)),
-        cmap=plt.get_cmap('coolwarm'))
-
     smap = {}
     iselected = 0
     for ipar in range(problem.ncombined):
@@ -460,8 +455,8 @@ def draw_jointpar_figures(
             axes.scatter(
                 xpar.scaled(fx),
                 ypar.scaled(fy),
-                c=color,
-                s=msize, alpha=0.5, cmap=cmap, edgecolors='none')
+                c=icolor,
+                s=msize, alpha=0.5, cmap='coolwarm', edgecolors='none')
 
             if draw_ellipses:
                 cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
@@ -1018,6 +1013,9 @@ def draw_fits_ensemble_figures(
 
     problem = history.problem
 
+    for target in problem.targets:
+        target.set_dataset(ds)
+
     target_index = dict(
         (target, i) for (i, target) in enumerate(problem.targets))
 
@@ -1053,11 +1051,11 @@ def draw_fits_ensemble_figures(
     all_syn_trs = []
 
     dtraces = []
-    for imodel in xrange(nmodels):
-        x = models[imodel, :]
+    for imodel in range(nmodels):
+        model = models[imodel, :]
 
-        source = problem.unpack(x)
-        ms, ns, results = problem.evaluate(x, result_mode='full')
+        source = problem.get_source(model)
+        _, results = problem.evaluate(model, result_mode='full')
 
         dtraces.append([])
 
@@ -1112,12 +1110,14 @@ def draw_fits_ensemble_figures(
             target_to_results[target].append(result)
 
             dtrace.meta = dict(
-                super_group=target.super_group, group=target.group)
+                normalisation_family=target.normalisation_family,
+                path=target.path)
 
             dtraces[-1].append(dtrace)
 
             result.processed_syn.meta = dict(
-                super_group=target.super_group, group=target.group)
+                normalisation_family=target.normalisation_family,
+                path=target.path)
 
             all_syn_trs.append(result.processed_syn)
 
@@ -1126,7 +1126,7 @@ def draw_fits_ensemble_figures(
         return []
 
     def skey(tr):
-        return tr.meta['super_group'], tr.meta['group']
+        return tr.meta['normalisation_family'], tr.meta['path']
 
     trace_minmaxs = trace.minmax(all_syn_trs, skey)
 
@@ -1143,8 +1143,8 @@ def draw_fits_ensemble_figures(
             tr.ydata /= max(abs(dmin), abs(dmax))
 
     cg_to_targets = gather(
-        problem.targets,
-        lambda t: (t.super_group, t.group, t.codes[3]),
+        problem.waveform_targets,
+        lambda t: (t.normalisation_family, t.path, t.codes[3]),
         filter=lambda t: t in target_to_results)
 
     cgs = sorted(cg_to_targets.keys())
@@ -1155,7 +1155,7 @@ def draw_fits_ensemble_figures(
         cmap=plt.get_cmap('coolwarm'))
 
     imodel_to_color = []
-    for imodel in xrange(nmodels):
+    for imodel in range(nmodels):
         imodel_to_color.append(cmap.to_rgba(icolor[imodel]))
 
     figs = []
@@ -1164,13 +1164,13 @@ def draw_fits_ensemble_figures(
         nframes = len(targets)
 
         nx = int(math.ceil(math.sqrt(nframes)))
-        ny = (nframes-1)/nx+1
+        ny = (nframes-1) // nx+1
 
         nxmax = 4
         nymax = 4
 
-        nxx = (nx-1) / nxmax + 1
-        nyy = (ny-1) / nymax + 1
+        nxx = (nx-1) // nxmax + 1
+        nyy = (ny-1) // nymax + 1
 
         # nz = nxx * nyy
 
@@ -1226,13 +1226,13 @@ def draw_fits_ensemble_figures(
             frame_to_target[iy, ix] = target
 
         figures = {}
-        for iy in xrange(ny):
-            for ix in xrange(nx):
+        for iy in range(ny):
+            for ix in range(nx):
                 if (iy, ix) not in frame_to_target:
                     continue
 
-                ixx = ix/nxmax
-                iyy = iy/nymax
+                ixx = ix//nxmax
+                iyy = iy//nymax
                 if (iyy, ixx) not in figures:
                     figures[iyy, ixx] = plt.figure(
                         figsize=mpl_papersize('a4', 'landscape'))
@@ -1251,7 +1251,8 @@ def draw_fits_ensemble_figures(
 
                 target = frame_to_target[iy, ix]
 
-                amin, amax = trace_minmaxs[target.super_group, target.group]
+                amin, amax = trace_minmaxs[
+                    target.normalisation_family, target.path]
                 absmax = max(abs(amin), abs(amax))
 
                 ny_this = nymax  # min(ny, nymax)
@@ -1274,7 +1275,6 @@ def draw_fits_ensemble_figures(
                     axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
 
                 itarget = target_index[target]
-                print len(dtraces)
                 for imodel, result in enumerate(target_to_results[target]):
 
                     syn_color = imodel_to_color[imodel]
@@ -1373,7 +1373,7 @@ def draw_fits_ensemble_figures(
                     fontsize=fontsize,
                     fontstyle='normal')
 
-        for (iyy, ixx), fig in figures.iteritems():
+        for (iyy, ixx), fig in figures.items():
             title = '.'.join(x for x in cg if x)
             if len(figures) > 1:
                 title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
@@ -2078,7 +2078,7 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
-    if 6 != len({
+    if 7 != len({
             'fits',
             'fits_statics',
             'fits_ensemble',
@@ -2237,7 +2237,7 @@ class SolverPlot(object):
 
             p = num.zeros((ny, nx))
 
-            for j in [jchoice]:  # xrange(self.problem.nbootstrap+1):
+            for j in [jchoice]:  # range(self.problem.nbootstrap+1):
 
                 if compensate_excentricity:
                     ps = core.excentricity_compensated_probabilities(
