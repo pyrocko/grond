@@ -64,6 +64,10 @@ class SamplerStartingPointChoice(StringChoice):
     choices = ['excentricity_compensated', 'random', 'mean']
 
 
+class BootstrapTypeChoice(StringChoice):
+    choices = ['bayesian', 'classic']
+
+
 class SamplerPhase(Object):
     niterations = Int.T()
     ntries_preconstrain_limit = Int.T(default=1000)
@@ -221,8 +225,31 @@ class DirectedSamplerPhase(SamplerPhase):
         return x
 
 
+def make_bootstrap_weights(nbootstrap, ntargets, type='bayesian', seed=None):
+    ws = num.zeros((nbootstrap, ntargets))
+    rstate = num.random.RandomState(seed)
+    for ibootstrap in range(nbootstrap):
+        if type == 'classic':
+            ii = rstate.randint(0, ntargets, size=ntargets)
+            ws[ibootstrap, :] = num.histogram(
+                ii, ntargets, (-0.5, ntargets - 0.5))[0]
+        elif type == 'bayesian':
+            f = rstate.uniform(0., 1., size=ntargets+1)
+            f[0] = 0.
+            f[-1] = 1.
+            f = num.sort(f)
+            g = f[1:] - f[:-1]
+            ws[ibootstrap, :] = g * ntargets
+        else:
+            assert False
+
+    return ws
+
+
 class Chains(object):
-    def __init__(self, problem, history, nchains, nlinks_cap):
+    def __init__(
+            self, problem, history, nchains, nlinks_cap,
+            bootstrap_weights):
 
         self.problem = problem
         self.history = history
@@ -236,11 +263,12 @@ class Chains(object):
         self.accept_sum = num.zeros(nchains, dtype=num.int)
         history.add_listener(self)
 
-    def append(self, iiter, model, misfits):
+        self.bootstrap_weights = num.vstack((
+            num.ones((1, self.problem.ntargets)),
+            bootstrap_weights))
 
-        gm = self.problem.global_misfit(misfits)
-        bms = self.problem.bootstrap_misfit(misfits, self.nchains - 1)
-        gbms = num.concatenate(([gm], bms))
+    def append(self, iiter, model, misfits):
+        gbms = self.problem.combine_misfits(misfits, self.bootstrap_weights)
 
         self.chains_m[:, self.nlinks] = gbms
         self.chains_i[:, self.nlinks] = iiter
@@ -307,27 +335,61 @@ class HighScoreOptimizer(Optimizer):
     sampler_phases = List.T(SamplerPhase.T())
     chain_length_factor = Float.T(default=8.)
     nbootstrap = Int.T(default=10)
+    bootstrap_type = BootstrapTypeChoice.T(default='bayesian')
+    bootstrap_seed = Int.T(default=23)
+
+    def __init__(self, **kwargs):
+        Optimizer.__init__(self, **kwargs)
+        self._bootstrap_weights = {}
+
+    def get_bootstrap_weights(self, problem):
+        k = (problem,
+             self.nbootstrap,
+             self.bootstrap_type,
+             self.bootstrap_seed)
+
+        if k not in self._bootstrap_weights:
+            self._bootstrap_weights[k] = make_bootstrap_weights(
+                self.nbootstrap, problem.ntargets,
+                type=self.bootstrap_type,
+                seed=self.bootstrap_seed)
+
+        return self._bootstrap_weights[k]
+
+    def bootstrap_misfits(self, problem, misfits, ibootstrap):
+        bweights = self.get_bootstrap_weights(problem)
+        bms = problem.combine_misfits(
+            misfits,
+            extra_weights=bweights[ibootstrap:ibootstrap+1, :])[:, 0]
+
+        return bms
+
+    def setup_chains(self, problem, history):
+        bootstrap_weights = self.get_bootstrap_weights(problem)
+
+        nlinks_cap = int(round(
+            self.chain_length_factor * problem.nparameters + 1))
+
+        return Chains(
+            problem, history, self.nbootstrap+1, nlinks_cap,
+            bootstrap_weights=bootstrap_weights)
 
     def optimize(self, problem, rundir=None):
 
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimizer.yaml'))
 
-        niter = sum(phase.niterations for phase in self.sampler_phases)
-
-        iiter = 0
-
-        isbad_mask = None
-
-        nlinks_cap = int(round(
-            self.chain_length_factor * problem.nparameters + 1))
-
         history = ModelHistory(problem, path=rundir, mode='w')
-        chains = Chains(problem, history, self.nbootstrap+1, nlinks_cap)
+
+        chains = self.setup_chains(problem, history)
 
         phases = list(self.sampler_phases)
         phase = phases.pop(0)
+
+        niter = sum(phase.niterations for phase in self.sampler_phases)
+        isbad_mask = None
         iiter_phase_start = 0
+        iiter = 0
         while iiter < niter:
 
             if iiter - iiter_phase_start == phase.niterations:

@@ -105,7 +105,7 @@ class MisfitTarget(Object):
         raise NotImplementedError()
 
     def get_combined_weight(self, apply_balancing_weights=False):
-        raise NotImplementedError()
+        return 1.0
 
 
 __all__ = '''

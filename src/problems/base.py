@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as num
 import math
 import copy
@@ -45,7 +46,7 @@ class Problem(Object):
         self._bootstrap_weights = None
         self._target_weights = None
         self._engine = None
-        self._group_mask = None
+        self._family_mask = None
 
         if hasattr(self, 'problem_waveform_parameters') and self.has_waveforms:
             self.problem_parameters =\
@@ -188,7 +189,14 @@ class Problem(Object):
         self._engine = engine
 
     def random_uniform(self, xbounds):
-        raise NotImplementedError()
+        x = []
+        for i in xrange(self.nparameters):
+            x.append(num.random.uniform(xbounds[i, 0], xbounds[i, 1]))
+
+        return num.array(x, dtype=num.float)
+
+    def preconstrain(self, x):
+        return x
 
     def extract(self, xs, i):
         if xs.ndim == 1:
@@ -200,37 +208,6 @@ class Problem(Object):
             return self.make_dependant(
                 xs, self.dependants[i-self.nparameters].name)
 
-    def make_bootstrap_weights(self, nbootstrap, type='classic'):
-        ntargets = self.ntargets
-        ws = num.zeros((nbootstrap, ntargets))
-        rstate = num.random.RandomState(23)
-        for ibootstrap in range(nbootstrap):
-            if type == 'classic':
-                ii = rstate.randint(0, ntargets, size=self.ntargets)
-                ws[ibootstrap, :] = num.histogram(
-                    ii, ntargets, (-0.5, ntargets - 0.5))[0]
-            elif type == 'bayesian':
-                f = rstate.uniform(0., 1., size=self.ntargets+1)
-                f[0] = 0.
-                f[-1] = 1.
-                f = num.sort(f)
-                g = f[1:] - f[:-1]
-                ws[ibootstrap, :] = g * ntargets
-            else:
-                assert False
-
-        return ws
-
-    def get_bootstrap_weights(self, nbootstrap, ibootstrap=None):
-        if self._bootstrap_weights is None:
-            self._bootstrap_weights = self.make_bootstrap_weights(
-                nbootstrap, type='bayesian')
-
-        if ibootstrap is None:
-            return self._bootstrap_weights
-        else:
-            return self._bootstrap_weights[ibootstrap, :]
-
     def get_target_weights(self):
         if self._target_weights is None:
             self._target_weights = num.array(
@@ -240,25 +217,30 @@ class Problem(Object):
 
         return self._target_weights
 
-    def inter_group_weights(self, ns):
+    def inter_family_weights(self, ns):
         exp, root = self.get_norm_functions()
 
-        group, ngroups = self.get_group_mask()
+        family, nfamilies = self.get_family_mask()
 
         ws = num.zeros(self.ntargets)
-        for igroup in range(ngroups):
-            mask = group == igroup
+        for ifamily in range(nfamilies):
+            mask = family == ifamily
             ws[mask] = 1.0 / root(num.nansum(exp(ns[mask])))
 
         return ws
 
-    def inter_group_weights2(self, ns):
+    def inter_family_weights2(self, ns):
+        '''
+        :param ns: 2D array with normalization factors ``ns[imodel, itarget]``
+        :returns: 2D array ``weights[imodel, itarget]``
+        '''
+
         exp, root = self.get_norm_functions()
 
-        group, ngroups = self.get_group_mask()
+        family, nfamilies = self.get_family_mask()
         ws = num.zeros(ns.shape)
-        for igroup in range(ngroups):
-            mask = group == igroup
+        for ifamily in range(nfamilies):
+            mask = family == ifamily
             ws[:, mask] = (1.0 / root(
                 num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]
 
@@ -307,87 +289,46 @@ class Problem(Object):
         else:
             self.raise_invalid_norm_exponent()
 
-    def bootstrap_misfit(self, misfits, nbootstrap, ibootstrap=None):
-        '''
-        :param misifts: 2D array with target misfits ``misfits[itarget, 0]``
-            and normalization factors ``misfits[itarget, 1]``
-
-        :returns: 1D array ``misfits[ibootstrap]`` if ``ibootstrap`` is
-            ``None``
-        '''
+    def combine_misfits(
+            self, misfits,
+            extra_weights=None,
+            get_contributions=False):
 
         exp, root = self.get_norm_functions()
 
-        ms = misfits[:, 0]
-        ns = misfits[:, 1]
+        if misfits.ndim == 2:
+            misfits = misfits[num.newaxis, :, :]
+            return self.combine_misfits(misfits, extra_weights)[0, ...]
 
-        w = self.get_bootstrap_weights(nbootstrap, ibootstrap) * \
-            self.get_target_weights() * self.inter_group_weights(ns)
+        assert misfits.ndim == 3
+        assert extra_weights is None or extra_weights.ndim == 2
 
-        if ibootstrap is None:
+        if extra_weights is not None:
+            w = extra_weights[num.newaxis, :, :] \
+                * self.get_target_weights()[num.newaxis, num.newaxis, :] \
+                * self.inter_family_weights2(
+                    misfits[:, :, 1])[:, num.newaxis, :]
+
+            if get_contributions:
+                return exp(w*misfits[:, num.newaxis, :, 0]) \
+                    / num.nansum(exp(w*misfits[:, num.newaxis, :, 1]), axis=2)
+
             return root(
-                num.nansum(exp(w*ms[num.newaxis, :]), axis=1) /
-                num.nansum(exp(w*ns[num.newaxis, :]), axis=1))
+                num.nansum(exp(w*misfits[:, num.newaxis, :, 0]), axis=2) /
+                num.nansum(exp(w*misfits[:, num.newaxis, :, 1]), axis=2))
+        else:
+            w = self.get_target_weights()[num.newaxis, :] \
+                * self.inter_family_weights2(misfits[:, :, 1])
 
-        return root(num.nansum(exp(w*ms)) / num.nansum(exp(w*ns)))
+            if get_contributions:
+                return exp(w*misfits[:, :, 0]) \
+                    / num.nansum(exp(w*misfits[:, :, 1]), axis=1)
 
-    def bootstrap_misfits(self, misfits, nbootstrap, ibootstrap=None):
-        '''
-        :param misifts: 3D array with target misfits
-            ``misfits[imodel, itarget, 0]`` and normalization factors
-            ``misfits[imodel, itarget, 1]``
-        :returns: 2D array ``misfits[imodel, ibootstrap]``
-        '''
-        exp, root = self.get_norm_functions()
+            return root(
+                num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
+                num.nansum(exp(w*misfits[:, :, 1]), axis=1))
 
-        w = self.get_bootstrap_weights(
-                nbootstrap, ibootstrap)[num.newaxis, :] * \
-            self.get_target_weights()[num.newaxis, :] * \
-            self.inter_group_weights2(misfits[:, :, 1])
-
-        bms = root(num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
-                   num.nansum(exp(w*misfits[:, :, 1]), axis=1))
-
-        return bms
-
-    def global_misfit(self, misfits):
-        '''
-        :param misifts: 2D array with target misfits ``misfits[itarget, 0]``
-            and normalization factors ``misfits[itarget, 1]``
-        :returns: scalar global misfit
-        '''
-        exp, root = self.get_norm_functions()
-
-        ws = self.get_target_weights() * \
-            self.inter_group_weights(misfits[:, 1])
-
-        return root(num.nansum(exp(ws*misfits[:, 0])) /
-                    num.nansum(exp(ws*misfits[:, 1])))
-
-    def global_misfits(self, misfits):
-        '''
-        :param misifts: 3D array with target misfits
-            ``misfits[imodel, itarget, 0]`` and normalization factors
-            ``misfits[imodel, itarget, 1]``
-        :returns: 1D array ``global_misfits[imodel]``
-        '''
-        exp, root = self.get_norm_functions()
-        ws = self.get_target_weights()[num.newaxis, :] * \
-            self.inter_group_weights2(misfits[:, :, 1])
-        return root(num.nansum(exp(ws*misfits[:, :, 0]), axis=1) /
-                    num.nansum(exp(ws*misfits[:, :, 1]), axis=1))
-
-    def global_contributions(self, misfits):
-        exp, root = self.get_norm_functions()
-        ws = self.get_target_weights()[num.newaxis, :] * \
-            self.inter_group_weights2(misfits[:, :, 1])
-
-        gcms = exp(ws*misfits[:, :, 0]) / \
-            num.nansum(exp(ws*misfits[:, :, 1]), axis=1)[:, num.newaxis]
-
-        return gcms
-
-    def make_group_mask(self):
+    def make_family_mask(self):
         family_names = set()
         families = num.zeros(len(self.targets), dtype=num.int)
 
@@ -397,11 +338,11 @@ class Problem(Object):
 
         return families, len(family_names)
 
-    def get_group_mask(self):
-        if self._group_mask is None:
-            self._group_mask = self.make_group_mask()
+    def get_family_mask(self):
+        if self._family_mask is None:
+            self._family_mask = self.make_family_mask()
 
-        return self._group_mask
+        return self._family_mask
 
     def evaluate(self, x, dump_data=False):
         raise NotImplementedError()

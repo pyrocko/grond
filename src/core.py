@@ -144,18 +144,18 @@ def get_mean_x(xs):
 
 
 def get_mean_x_and_gm(problem, xs, misfits):
-    gms = problem.global_misfits(misfits)
+    gms = problem.combine_misfits(misfits)
     return num.mean(xs, axis=0), num.mean(gms)
 
 
 def get_best_x(problem, xs, misfits):
-    gms = problem.global_misfits(misfits)
+    gms = problem.combine_misfits(misfits)
     ibest = num.argmin(gms)
     return xs[ibest, :]
 
 
 def get_best_x_and_gm(problem, xs, misfits):
-    gms = problem.global_misfits(misfits)
+    gms = problem.combine_misfits(misfits)
     ibest = num.argmin(gms)
     return xs[ibest, :], gms[ibest]
 
@@ -220,7 +220,7 @@ def forward(rundir_or_config_path, event_names):
         problem, xs, misfits = load_problem_info_and_data(
             rundir, subset='harvest')
 
-        gms = problem.global_misfits(misfits)
+        gms = problem.combine_misfits(misfits)
         ibest = num.argmin(gms)
         xbest = xs[ibest, :]
 
@@ -276,7 +276,6 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     optimizer_fn = op.join(rundir, 'optimizer.yaml')
     optimizer = guts.load(filename=optimizer_fn)
-    nbootstrap = optimizer.nbootstrap
 
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
@@ -289,14 +288,14 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     ibests_list = []
     ibests = []
-    gms = problem.global_misfits(misfits)
+    gms = problem.combine_misfits(misfits)
     isort = num.argsort(gms)
 
     ibests_list.append(isort[:nbest])
 
     if weed != 3:
-        for ibootstrap in range(nbootstrap):
-            bms = problem.bootstrap_misfits(misfits, nbootstrap, ibootstrap)
+        for ibootstrap in range(optimizer.nbootstrap):
+            bms = optimizer.bootstrap_misfits(problem, misfits, ibootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
@@ -731,7 +730,7 @@ class ResultStats(Object):
 
 
 def make_stats(problem, xs, misfits, pnames=None):
-    gms = problem.global_misfits(misfits)
+    gms = problem.combine_misfits(misfits)
     ibest = num.argmin(gms)
     rs = ResultStats(problem=problem)
     if pnames is None:
@@ -854,7 +853,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
-            gms = problem.global_misfits(misfits)
+            gms = problem.combine_misfits(misfits)
             isort = num.argsort(gms)
             for i in isort:
                 dump(xs[i], gms[i], indices)

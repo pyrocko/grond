@@ -136,7 +136,7 @@ def draw_sequence_figures(
 
     models = history.models
 
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
     gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
 
     isort = num.argsort(gms)[::-1]
@@ -308,10 +308,10 @@ def draw_jointpar_figures(
     xref = problem.get_xref()
 
     if ibootstrap is not None:
-        gms = problem.bootstrap_misfits(
-            history.misfits, optimizer.nbootstrap, ibootstrap)
+        gms = optimizer.bootstrap_misfits(
+            problem, history.misfits, ibootstrap)
     else:
-        gms = problem.global_misfits(history.misfits)
+        gms = problem.combine_misfits(history.misfits)
 
     isort = num.argsort(gms)[::-1]
 
@@ -507,7 +507,7 @@ def draw_solution_figure(
         logger.warn('empty models vector')
         return []
 
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
     isort = num.argsort(gms)
     iorder = num.empty_like(isort)
     iorder[isort] = num.arange(iorder.size)[::-1]
@@ -645,7 +645,7 @@ def draw_contributions_figure(history, optimizer, plt):
 
     imodels = num.arange(history.nmodels)
 
-    gms = problem.global_misfits(history.misfits)**problem.norm_exponent
+    gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
 
     isort = num.argsort(gms)[::-1]
 
@@ -748,7 +748,7 @@ def draw_bootstrap_figure(history, optimizer, plt):
     fig = plt.figure()
 
     problem = history.problem
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
 
     imodels = num.arange(history.nmodels)
 
@@ -758,8 +758,9 @@ def draw_bootstrap_figure(history, optimizer, plt):
 
     ibests = []
     for ibootstrap in range(optimizer.nbootstrap):
-        bms = problem.bootstrap_misfits(
-            history.misfits, optimizer.nbootstrap, ibootstrap)
+        bms = optimizer.bootstrap_misfits(
+            problem, history.misfits, ibootstrap)
+
         isort_bms = num.argsort(bms)[::-1]
 
         ibests.append(isort_bms[-1])
@@ -891,7 +892,7 @@ def draw_fits_figures_statics(ds, history, optimizer, plt):
     for target in problem.targets:
         target.set_dataset(ds)
 
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
     isort = num.argsort(gms)
     gms = gms[isort]
     models = history.models[isort, :]
@@ -1019,7 +1020,7 @@ def draw_fits_ensemble_figures(
     target_index = dict(
         (target, i) for (i, target) in enumerate(problem.targets))
 
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
     isort = num.argsort(gms)[::-1]
     gms = gms[isort]
     models = history.models[isort, :]
@@ -1395,7 +1396,7 @@ def draw_fits_figures(ds, history, optimizer, plt):
     target_index = dict(
         (target, i) for (i, target) in enumerate(problem.waveform_targets))
 
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
     isort = num.argsort(gms)
     gms = gms[isort]
     models = history.models[isort, :]
@@ -1920,7 +1921,7 @@ def draw_location_figure(history, optimizer, plt):
 
     bounds = problem.get_combined_bounds()
 
-    gms = problem.global_misfits(history.misfits)
+    gms = problem.combine_misfits(history.misfits)
 
     isort = num.argsort(gms)[::-1]
 
