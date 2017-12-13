@@ -43,7 +43,6 @@ class Problem(Object):
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
 
-        self._bootstrap_weights = None
         self._target_weights = None
         self._engine = None
         self._family_mask = None
@@ -59,7 +58,6 @@ class Problem(Object):
 
     def copy(self):
         o = copy.copy(self)
-        o._bootstrap_weights = None
         o._target_weights = None
         return o
 
