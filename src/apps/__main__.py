@@ -11,6 +11,7 @@ from pyrocko import util, marker
 from pyrocko.gf import Range
 
 import grond
+import grond.toy
 
 logger = logging.getLogger('main')
 km = 1e3
@@ -31,6 +32,7 @@ subcommand_descriptions = {
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
     'plot': 'plot optimization result',
+    'movie': 'visualize optimizer evolution',
     'baraddur': 'start Barad-dur plotting, watching this directory',
     'export': 'export results',
     'qc-polarization': 'check sensor orientations with polarization analysis',
@@ -46,6 +48,7 @@ subcommand_usages = {
         'forward <configfile> <eventnames> ... [options]'),
     'harvest': 'harvest <rundir> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
+    'movie': 'movie <rundir> [options]',
     'baraddur': 'plot-server',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
@@ -70,6 +73,7 @@ Subcommands:
     forward         %(forward)s
     harvest         %(harvest)s
     plot            %(plot)s
+    movie           %(movie)s
     export          %(export)s
     qc-polarization %(qc_polarization)s
     baraddur        %(baraddur)s
@@ -543,6 +547,27 @@ selected by specifying a comma-separated list.''' % (
         plot.plot_result(
             dirname, plotnames,
             save=options.save, formats=formats, dpi=options.dpi)
+
+    except grond.GrondError as e:
+        die(str(e))
+
+
+def command_movie(args):
+
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('movie', args, setup)
+
+    if len(args) != 3:
+        help_and_die(parser, 'one argument required')
+
+    run_path, xpar_name, ypar_name = args
+
+    from grond import plot
+
+    try:
+        plot.make_movie(run_path, xpar_name, ypar_name)
 
     except grond.GrondError as e:
         die(str(e))

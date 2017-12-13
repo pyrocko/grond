@@ -439,6 +439,11 @@ class HighScoreOptimizer(Optimizer):
     def niterations(self):
         return sum([ph.niterations for ph in self.sampler_phases])
 
+    def get_movie_maker(self, problem, history, xpar_name, ypar_name):
+        from . import plot
+        return plot.HighScoreOptimizerPlot(
+            self, problem, history, xpar_name, ypar_name)
+
 
 class HighScoreOptimizerConfig(OptimizerConfig):
 
