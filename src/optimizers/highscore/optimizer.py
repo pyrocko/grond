@@ -251,10 +251,9 @@ class Chains(object):
             self, problem, history, nchains, nlinks_cap,
             bootstrap_weights):
 
-        self.optimizer = optimizer
         self.problem = problem
         self.history = history
-        self.nchains = optimizer.nbootstrap + 1
+        self.nchains = nchains
         self.nlinks_cap = nlinks_cap
         self.chains_m = num.zeros(
             (self.nchains, nlinks_cap), num.float)
@@ -262,6 +261,7 @@ class Chains(object):
             (self.nchains, nlinks_cap), num.int)
         self.nlinks = 0
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
+        self.extend(0, history.nmodels, history.models)
         history.add_listener(self)
 
         self.bootstrap_weights = num.vstack((

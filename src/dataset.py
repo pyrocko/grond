@@ -387,11 +387,11 @@ class Dataset(object):
                         elif quantity == 'velocity':
                             candidates.append(trace.MultiplyResponse([
                                 x.response,
-                                tarce.DifferentiationResponse()]))
+                                trace.DifferentiationResponse()]))
                         elif quantity == 'acceleration':
                             candidates.append(trace.MultiplyResponse([
                                 x.response,
-                                tarce.DifferentiationResponse(2)]))
+                                trace.DifferentiationResponse(2)]))
                         else:
                             assert False
 

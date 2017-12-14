@@ -188,7 +188,7 @@ class Problem(Object):
 
     def random_uniform(self, xbounds):
         x = []
-        for i in xrange(self.nparameters):
+        for i in range(self.nparameters):
             x.append(num.random.uniform(xbounds[i, 0], xbounds[i, 1]))
 
         return num.array(x, dtype=num.float)

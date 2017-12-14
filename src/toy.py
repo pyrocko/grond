@@ -137,7 +137,7 @@ def scenario(station_setup, noise_setup):
             east=float(easts[i]),
             depth=float(depths[i]),
             obs_distance=float(measured_distances[i]))
-        for i in xrange(n)]
+        for i in range(n)]
 
     return source, targets
 

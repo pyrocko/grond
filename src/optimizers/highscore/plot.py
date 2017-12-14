@@ -4,7 +4,7 @@ import numpy as num
 from matplotlib import pyplot as plt
 
 from pyrocko.plot import mpl_init, mpl_margins
-from grond import plot
+from grond import plot, core
 
 
 class HighScoreOptimizerPlot(object):
@@ -99,9 +99,9 @@ class HighScoreOptimizerPlot(object):
 
             self.writer.setup(self.fig, self.movie_filename, dpi=200)
 
-        #if self.show:
-            #plt.ion()
-            #plt.show()
+        # if self.show:
+        #    plt.ion()
+        #    plt.show()
 
     def set_limits(self):
         self.axes.set_xlim(*self.xlim)
@@ -248,11 +248,10 @@ class HighScoreOptimizerPlot(object):
 
         if self.show:
             plt.show()
-            #plt.ioff()
-
+            # plt.ioff()
 
     def render(self):
         self.start()
-        
+
         self.draw_frame(100)
         self.finish()
