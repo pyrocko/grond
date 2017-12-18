@@ -28,7 +28,7 @@ def excentricity_compensated_probabilities(xs, sbx, factor):
         ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
     probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
-    print(num.sort(num.sum(distances_sqr_all < 1.0, axis=1)))
+    # print(num.sort(num.sum(distances_sqr_all < 1.0, axis=1)))
     probabilities /= num.sum(probabilities)
     return probabilities
 
@@ -261,49 +261,62 @@ class Chains(object):
             (self.nchains, nlinks_cap), num.int)
         self.nlinks = 0
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
-        self.extend(0, history.nmodels, history.models)
+        self.nread = 0
         history.add_listener(self)
 
         self.bootstrap_weights = num.vstack((
             num.ones((1, self.problem.ntargets)),
             bootstrap_weights))
 
+    def goto(self, n=None):
+        if n is None:
+            n = self.history.nmodels
+
+        n = min(self.history.nmodels, n)
+
+        assert self.nread <= n
+
+        while self.nread < n:
+            misfits = self.history.misfits[self.nread, :]
+            gbms = self.problem.combine_misfits(
+                misfits, self.bootstrap_weights)
+
+            self.chains_m[:, self.nlinks] = gbms
+            self.chains_i[:, self.nlinks] = n-1
+
+            self.nlinks += 1
+            chains_m = self.chains_m
+            chains_i = self.chains_i
+
+            for ichain in range(chains_m.shape[0]):
+                isort = num.argsort(chains_m[ichain, :self.nlinks])
+                chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
+                chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
+
+            if self.nlinks == self.nlinks_cap:
+                accept = (
+                    chains_i[:, self.nlinks_cap-1] != n-1).astype(num.int)
+                self.nlinks -= 1
+            else:
+                accept = num.ones(self.nchains, dtype=num.int)
+
+            self.accept_sum += accept
+            self.nread += 1
+
     def append(self, iiter, model, misfits):
-        gbms = self.problem.combine_misfits(misfits, self.bootstrap_weights)
-
-        self.chains_m[:, self.nlinks] = gbms
-        self.chains_i[:, self.nlinks] = iiter
-
-        self.nlinks += 1
-        chains_m = self.chains_m
-        chains_i = self.chains_i
-
-        for ichain in range(chains_m.shape[0]):
-            isort = num.argsort(chains_m[ichain, :self.nlinks])
-            chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
-            chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
-
-        if self.nlinks == self.nlinks_cap:
-            accept = (chains_i[:, self.nlinks_cap-1] != iiter).astype(num.int)
-            self.nlinks -= 1
-        else:
-            accept = num.ones(self.nchains, dtype=num.int)
-
-        self.accept_sum += accept
-
-        return accept
+        self.goto(iiter)
 
     def extend(self, ioffset, n, models, misfits):
-        for i in range(ioffset, ioffset+n):
-            self.append(i, models[i-ioffset, :], misfits[i-ioffset, :, :])
+        self.goto(ioffset + n)
+
+    def indices(self, ichain):
+        if ichain is not None:
+            return self.chains_i[ichain, :self.nlinks]
+        else:
+            return self.chains_i[:, :self.nlinks].ravel()
 
     def models(self, ichain=None):
-        if ichain is not None:
-            return self.history.models[
-                self.chains_i[ichain, :self.nlinks], :]
-        else:
-            return self.history.models[
-                self.chains_i[:, :self.nlinks].ravel(), :]
+        return self.history.models[self.indices(ichain), :]
 
     def model(self, ichain, ilink):
         return self.history.models[self.chains_i[ichain, ilink], :]
@@ -365,7 +378,7 @@ class HighScoreOptimizer(Optimizer):
 
         return bms
 
-    def setup_chains(self, problem, history):
+    def chains(self, problem, history):
         bootstrap_weights = self.get_bootstrap_weights(problem)
 
         nlinks_cap = int(round(
@@ -375,30 +388,28 @@ class HighScoreOptimizer(Optimizer):
             problem, history, self.nbootstrap+1, nlinks_cap,
             bootstrap_weights=bootstrap_weights)
 
+    def get_sampler_phase(self, iiter):
+        niter = 0
+        for phase in self.sampler_phases:
+            if iiter < niter + phase.niterations:
+                return phase, iiter - niter
+
+            niter += phase.niterations
+
+        assert False, 'out of bounds'
+
     def optimize(self, problem, rundir=None):
 
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimizer.yaml'))
 
         history = ModelHistory(problem, path=rundir, mode='w')
+        chains = self.chains(problem, history)
 
-        chains = self.setup_chains(problem, history)
-
-        phases = list(self.sampler_phases)
-        phase = phases.pop(0)
-
-        niter = sum(phase.niterations for phase in self.sampler_phases)
+        niter = self.niterations
         isbad_mask = None
-        iiter_phase_start = 0
-        iiter = 0
-        while iiter < niter:
-
-            if iiter - iiter_phase_start == phase.niterations:
-                phase = phases.pop(0)
-                iiter_phase_start = iiter
-
-            iiter_phase = iiter - iiter_phase_start
-
+        for iiter in range(niter):
+            phase, iiter_phase = self.get_sampler_phase(iiter)
             x = phase.get_sample(problem, iiter_phase, chains)
 
             if isbad_mask is not None and num.any(isbad_mask):
@@ -434,16 +445,16 @@ class HighScoreOptimizer(Optimizer):
 
             history.append(x, misfits)
 
-            iiter += 1
-
     @property
     def niterations(self):
         return sum([ph.niterations for ph in self.sampler_phases])
 
-    def get_movie_maker(self, problem, history, xpar_name, ypar_name):
+    def get_movie_maker(
+            self, problem, history, xpar_name, ypar_name, movie_filename):
+
         from . import plot
         return plot.HighScoreOptimizerPlot(
-            self, problem, history, xpar_name, ypar_name)
+            self, problem, history, xpar_name, ypar_name, movie_filename)
 
 
 class HighScoreOptimizerConfig(OptimizerConfig):

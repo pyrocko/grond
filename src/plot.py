@@ -2118,12 +2118,12 @@ def plot_result(dirname, plotnames_want,
         plt.show()
 
 
-def make_movie(dirname, xpar_name, ypar_name):
+def make_movie(dirname, xpar_name, ypar_name, movie_filename):
     optimizer_fn = op.join(dirname, 'optimizer.yaml')
     optimizer = guts.load(filename=optimizer_fn)
     problem = load_problem_info(dirname)
     history = ModelHistory(problem, path=dirname)
     movie_maker = optimizer.get_movie_maker(
-        problem, history, xpar_name, ypar_name)
+        problem, history, xpar_name, ypar_name, movie_filename)
 
     movie_maker.render()

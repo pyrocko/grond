@@ -3,9 +3,51 @@ import numpy as num
 
 from pyrocko.guts import Object, Float, Dict, List, String
 from pyrocko import gf
-from grond import Problem, Parameter, MisfitTarget
+from grond import Problem, Parameter, MisfitTarget, HighScoreOptimizerPlot
 
 guts_prefix = 'grond.toy'
+
+
+class ToyOptimizerPlot(HighScoreOptimizerPlot):
+
+    def set_source(self, source):
+        self._source = source
+
+    def set_targets(self, targets):
+        self._targets = targets
+
+    def set_contour_data(self, contour_data):
+        self._contour_data = contour_data
+
+    def set_limits(self):
+        self.axes.set_xlim(-10., 10.)
+        self.axes.set_ylim(-10., 10.)
+
+    def start(self):
+        HighScoreOptimizerPlot.start(self)
+
+        x = [getattr(t, self.xpar_name) for t in self._targets]
+        y = [getattr(t, self.ypar_name) for t in self._targets]
+        self.axes.plot(x, y, '^', color='black')
+
+        for ibootstrap, (xc, yc, zc) in enumerate(
+                self._contour_data['east', 'depth']):
+
+            zmin = num.min(zc)
+
+            if self.optimizer.nbootstrap < 5:
+                alpha = 1.0
+            else:
+                alpha = 0.5
+
+            self.axes.contour(
+                xc, yc, zc, [zmin + 0.01],
+                colors=[self.bcolors[ibootstrap]], alpha=alpha)
+
+        self.axes.plot(
+            getattr(self._source, self.xpar_name),
+            getattr(self._source, self.ypar_name),
+            '*', color='black')
 
 
 class ToyTarget(MisfitTarget):

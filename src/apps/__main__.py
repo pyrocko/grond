@@ -559,15 +559,19 @@ def command_movie(args):
 
     parser, options, args = cl_parse('movie', args, setup)
 
-    if len(args) != 3:
+    if len(args) != 4:
         help_and_die(parser, 'one argument required')
 
-    run_path, xpar_name, ypar_name = args
+    run_path, xpar_name, ypar_name, movie_filename_template = args
 
     from grond import plot
 
+    movie_filename = movie_filename_template % {
+        'xpar': xpar_name,
+        'ypar': ypar_name}
+
     try:
-        plot.make_movie(run_path, xpar_name, ypar_name)
+        plot.make_movie(run_path, xpar_name, ypar_name, movie_filename)
 
     except grond.GrondError as e:
         die(str(e))

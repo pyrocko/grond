@@ -1,27 +1,36 @@
-import math
+from __future__ import print_function
+import logging
 import numpy as num
 
 from matplotlib import pyplot as plt
 
 from pyrocko.plot import mpl_init, mpl_margins
-from grond import plot, core
+from grond import plot
+
+logger = logging.getLogger('grond.optimizer.highscore.plot')
 
 
 class HighScoreOptimizerPlot(object):
 
-    def __init__(self, optimizer, problem, history, xpar_name, ypar_name):
+    def __init__(
+            self, optimizer, problem, history, xpar_name, ypar_name,
+            movie_filename):
+
         self.optimizer = optimizer
         self.problem = problem
+        self.chains = optimizer.chains(problem, history)
         self.history = history
         self.xpar_name = xpar_name
         self.ypar_name = ypar_name
         self.fontsize = 10.
-        self.movie_filename = None
-        self.show = True
-        self.iiter = None
+        self.movie_filename = movie_filename
+        self.show = False
+        self.iiter = 0
+        self.iiter_last_draw = 0
+        self._volatile = []
+        self._blocks_complete = set()
 
     def start(self):
-        self.iiter = 0
         nfx = 1
         nfy = 1
 
@@ -52,8 +61,8 @@ class HighScoreOptimizerPlot(object):
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
 
         xref = problem.get_xref()
-        axes.axhline(xpar.scaled(xref[ixpar]), color='black', alpha=0.3)
-        axes.axvline(ypar.scaled(xref[iypar]), color='black', alpha=0.3)
+        axes.axvline(xpar.scaled(xref[ixpar]), color='black', alpha=0.3)
+        axes.axhline(ypar.scaled(xref[iypar]), color='black', alpha=0.3)
 
         self.fig = fig
         self.problem = problem
@@ -95,131 +104,124 @@ class HighScoreOptimizerPlot(object):
                 fps=30,
                 metadata=metadata,
                 codec='libx264',
-                bitrate=200000)
+                bitrate=200000,
+                extra_args=[
+                    '-pix_fmt', 'yuv420p',
+                    '-profile:v', 'baseline',
+                    '-level', '3',
+                    '-an'])
 
             self.writer.setup(self.fig, self.movie_filename, dpi=200)
 
-        # if self.show:
-        #    plt.ion()
-        #    plt.show()
+        if self.show:
+            plt.ion()
+            plt.show()
 
     def set_limits(self):
+        self.axes.autoscale(False)
         self.axes.set_xlim(*self.xlim)
         self.axes.set_ylim(*self.ylim)
 
-    def draw_frame(self, iiter):
+    def draw_frame(self):
+
+        self.chains.goto(self.iiter+1)
         msize = 15.
 
-        self.axes.cla()
+        for artist in self._volatile:
+            artist.remove()
 
-        fx = self.problem.extract(self.history.models[:iiter], self.ixpar)
-        fy = self.problem.extract(self.history.models[:iiter], self.iypar)
+        self._volatile[:] = []
 
-        self.axes.scatter(
-            self.xpar.scaled(fx),
-            self.ypar.scaled(fy),
-            color='black',
-            s=msize * 0.15, alpha=0.2, edgecolors='none')
+        nblocks = self.iiter // 100 + 1
 
-    def update(self, xhist, chains_i, ibase, jchoice, local_sxs, factor, phase,
-               compensate_excentricity):
+        models = self.history.models[:self.iiter+1]
 
-        msize = 15.
+        for iblock in range(nblocks):
+            if iblock in self._blocks_complete:
+                continue
 
-        iiter_frame = len(xhist)
+            models_add = self.history.models[
+                iblock*100:min((iblock+1)*100, self.iiter+1)]
 
-        self.axes.cla()
+            fx = self.problem.extract(models_add, self.ixpar)
+            fy = self.problem.extract(models_add, self.iypar)
+            collection = self.axes.scatter(
+                    self.xpar.scaled(fx),
+                    self.ypar.scaled(fy),
+                    color='black',
+                    s=msize * 0.15, alpha=0.2, edgecolors='none')
 
-        if jchoice is not None and local_sxs is not None:
+            if models_add.shape[0] != 100:
+                self._volatile.append(collection)
+            else:
+                self._blocks_complete.add(iblock)
 
-            nx = 100
-            ny = 100
+        for ichain in range(self.chains.nchains):
 
-            sx = local_sxs[jchoice][self.ixpar] * factor
-            sy = local_sxs[jchoice][self.iypar] * factor
-
-            p = num.zeros((ny, nx))
-
-            for j in [jchoice]:  # range(self.problem.nbootstrap+1):
-
-                if compensate_excentricity:
-                    ps = core.excentricity_compensated_probabilities(
-                            xhist[chains_i[j, :], :], local_sxs[jchoice], 2.)
-                else:
-                    ps = num.ones(chains_i.shape[1])
-
-                bounds = self.get_combined_bounds()
-
-                x = num.linspace(
-                    bounds[self.ixpar][0], bounds[self.ixpar][1], nx)
-                y = num.linspace(
-                    bounds[self.iypar][0], bounds[self.iypar][1], ny)
-
-                for ichoice in range(chains_i.shape[1]):
-                    iiter = chains_i[j, ichoice]
-                    vx = xhist[iiter, self.ixpar]
-                    vy = xhist[iiter, self.iypar]
-                    pdfx = 1.0 / math.sqrt(2.0 * sx**2 * math.pi) * num.exp(
-                        -(x - vx)**2 / (2.0 * sx**2))
-
-                    pdfy = 1.0 / math.sqrt(2.0 * sy**2 * math.pi) * num.exp(
-                        -(y - vy)**2 / (2.0 * sy**2))
-
-                    p += ps[ichoice] * pdfx[num.newaxis, :] * \
-                        pdfy[:, num.newaxis]
-
-            self.axes.pcolormesh(x, y, p, cmap=self.cmap)
-
-        fx = self.problem.extract(xhist, self.ixpar)
-        fy = self.problem.extract(xhist, self.iypar)
-
-        self.axes.scatter(
-            self.xpar.scaled(fx),
-            self.ypar.scaled(fy),
-            color='black',
-            s=msize * 0.15, alpha=0.2, edgecolors='none')
-
-        for ibootstrap in range(self.optimizer.nbootstrap + 1):
-
-            iiters = chains_i[ibootstrap, :]
-            fx = self.problem.extract(xhist[iiters, :], self.ixpar)
-            fy = self.problem.extract(xhist[iiters, :], self.iypar)
+            iiters = self.chains.indices(ichain)
+            fx = self.problem.extract(models[iiters, :], self.ixpar)
+            fy = self.problem.extract(models[iiters, :], self.iypar)
 
             nfade = 20
-            factors = 1.0 + 5.0 * (num.maximum(
-                0.0, iiters - (xhist.shape[0] - nfade)) / nfade)**2
+            t1 = num.maximum(0.0, iiters - (models.shape[0] - nfade)) / nfade
+            factors = num.sqrt(1.0 - t1) * (1.0 + 15. * t1**2)
 
             msizes = msize * factors
 
-            self.axes.scatter(
+            paths = self.axes.scatter(
                 self.xpar.scaled(fx),
                 self.ypar.scaled(fy),
-                color=self.bcolors[ibootstrap],
+                color=self.bcolors[ichain],
                 s=msizes, alpha=0.5, edgecolors='none')
 
-        # if ibase is not None:
-        #     fx = self.problem.extract(
-        #         xhist[(ibase, -1), :], self.ixpar)
-        #     fy = self.problem.extract(
-        #         xhist[(ibase, -1), :], self.iypar)
+            self._volatile.append(paths)
 
-        #     self.axes.plot(
-        #         self.xpar.scaled(fx),
-        #         self.ypar.scaled(fy),
-        #         color='black')
+        phase, iiter_phase = self.optimizer.get_sampler_phase(self.iiter)
 
-        fx = self.problem.extract(xhist[-1:, :], self.ixpar)
-        fy = self.problem.extract(xhist[-1:, :], self.iypar)
+        np = 1000
+        models_prob = num.zeros((np, self.problem.nparameters))
+        for ip in range(np):
+            models_prob[ip, :] = phase.get_sample(
+                self.problem, iiter_phase, self.chains)
 
-        self.axes.scatter(
-            self.xpar.scaled(fx),
-            self.ypar.scaled(fy),
-            s=msize * 5.0,
-            color='none',
-            edgecolors=self.bcolors[ibootstrap])
+        fx = self.problem.extract(models_prob, self.ixpar)
+        fy = self.problem.extract(models_prob, self.iypar)
 
-        self.axes.annotate(
-            '%i (%s)' % (iiter_frame, phase),
+        if False:
+
+            bounds = self.problem.get_combined_bounds()
+
+            nx = 20
+            ny = 20
+            x_edges = num.linspace(
+                bounds[self.ixpar][0], bounds[self.ixpar][1], nx)
+            y_edges = num.linspace(
+                bounds[self.iypar][0], bounds[self.iypar][1], ny)
+
+            p, _, _ = num.histogram2d(fx, fy, bins=(x_edges, y_edges))
+            x, y = num.meshgrid(x_edges, y_edges)
+
+            artist = self.axes.pcolormesh(
+                self.xpar.scaled(x),
+                self.ypar.scaled(y),
+                p, cmap=self.cmap, zorder=-1)
+
+            self._volatile.append(artist)
+
+        else:
+            collection = self.axes.scatter(
+                    self.xpar.scaled(fx),
+                    self.ypar.scaled(fy),
+                    color='green',
+                    s=msize * 0.15, alpha=0.2, edgecolors='none')
+
+            self._volatile.append(collection)
+
+        if self.writer:
+            self.writer.grab_frame()
+
+        artist = self.axes.annotate(
+            '%i (%s)' % (self.iiter+1, phase.__class__.__name__),
             xy=(0., 1.),
             xycoords='axes fraction',
             xytext=(self.fontsize/2., -self.fontsize/2.),
@@ -229,18 +231,12 @@ class HighScoreOptimizerPlot(object):
             fontsize=self.fontsize,
             fontstyle='normal')
 
-        self.set_limits()
-
-        self.post_update()
-
-        if self.writer:
-            self.writer.grab_frame()
+        self._volatile.append(artist)
 
         if self.show:
             plt.draw()
 
-    def post_update(self):
-        pass
+        self.iiter_last_draw = self.iiter + 1
 
     def finish(self):
         if self.writer:
@@ -248,10 +244,19 @@ class HighScoreOptimizerPlot(object):
 
         if self.show:
             plt.show()
-            # plt.ioff()
+            plt.ioff()
 
     def render(self):
         self.start()
 
-        self.draw_frame(100)
+        while self.iiter < self.history.nmodels:
+            logger.info('rendering frame %i/%i' % (
+                self.iiter+1, self.history.nmodels))
+            self.draw_frame()
+            self.iiter += 1
+
         self.finish()
+
+
+__all__ = [
+    'HighScoreOptimizerPlot']
