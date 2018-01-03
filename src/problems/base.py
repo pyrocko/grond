@@ -526,7 +526,7 @@ class ModelHistory(object):
         if self.nmodels == nmodels_available:
             return
         new_models, new_misfits = load_problem_data(
-            self.path, self.problem, skip_models=self.nmodels)
+            self.path, self.problem, nmodels_skip=self.nmodels)
 
         self.extend(new_models, new_misfits)
 
@@ -543,7 +543,13 @@ class ModelHistory(object):
 def get_nmodels(dirname, problem):
     fn = op.join(dirname, 'models')
     with open(fn, 'r') as f:
-        return os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
+        nmodels1 = os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
+
+    fn = op.join(dirname, 'misfits')
+    with open(fn, 'r') as f:
+        nmodels2 = os.fstat(f.fileno()).st_size // (problem.ntargets * 2 * 8)
+
+    return min(nmodels1, nmodels2)
 
 
 def load_problem_info_and_data(dirname, subset=None):
@@ -562,27 +568,23 @@ def load_problem_info(dirname):
     return guts.load(filename=fn)
 
 
-def load_problem_data(dirname, problem, skip_models=None):
-    if skip_models is None:
-        skip_models = 0
-    nmodels = get_nmodels(dirname, problem)
+def load_problem_data(dirname, problem, nmodels_skip=0):
+
+    nmodels = get_nmodels(dirname, problem) - nmodels_skip
 
     fn = op.join(dirname, 'models')
     with open(fn, 'r') as f:
-        nmodels = os.fstat(f.fileno()).st_size // (problem.nparameters * 8)
-        nmodels -= skip_models
-        f.seek(skip_models * problem.nparameters * 8)
+        f.seek(nmodels_skip * problem.nparameters * 8)
         models = num.fromfile(
                 f, dtype='<f8',
                 count=nmodels * problem.nparameters)\
             .astype(num.float)
 
-    nmodels = models.size // problem.nparameters
     models = models.reshape((nmodels, problem.nparameters))
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
-        f.seek(skip_models * problem.ntargets * 2 * 8)
+        f.seek(nmodels_skip * problem.ntargets * 2 * 8)
         misfits = num.fromfile(
                 f, dtype='<f8',
                 count=nmodels*problem.ntargets*2)\

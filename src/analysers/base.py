@@ -69,12 +69,12 @@ class Analyser(object):
 
         mean_ms = num.mean(mss, axis=0)
         weights = 1. / mean_ms
-        groups, ngroups = wproblem.get_group_mask()
+        families, nfamilies = wproblem.get_family_mask()
 
-        for igroup in range(ngroups):
-            weights[groups == igroup] /= (
-                num.nansum(weights[groups == igroup]) /
-                num.nansum(num.isfinite(weights[groups == igroup])))
+        for ifamily in range(nfamilies):
+            weights[families == ifamily] /= (
+                num.nansum(weights[families == ifamily]) /
+                num.nansum(num.isfinite(weights[families == ifamily])))
 
         for weight, target in zip(weights, problem.waveform_targets):
             target.analysis_result = TargetAnalysisResult(

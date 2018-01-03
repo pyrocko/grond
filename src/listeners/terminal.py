@@ -1,9 +1,10 @@
 import time
 import logging
+import os.path as op
 import numpy as num
 from datetime import timedelta
 
-from pyrocko import util
+from pyrocko import util, guts
 from grond.problems import ModelHistory
 from .base import Listener
 
@@ -56,8 +57,12 @@ class TerminalListener(Listener):
         logger.info('Waiting to follow %s' % self.rundir)
 
         self.history = ModelHistory.follow(self.rundir)
+
+        optimizer_fn = op.join(self.rundir, 'optimizer.yaml')
+        self.optimizer = guts.load(filename=optimizer_fn)
+
         self.problem = self.history.problem
-        self.niter = self.history.optimizer.niterations
+        self.niter = self.optimizer.niterations
 
         self.starttime = time.time()
         self.last_update = self.starttime

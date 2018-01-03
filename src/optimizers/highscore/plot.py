@@ -5,7 +5,6 @@ import numpy as num
 from matplotlib import pyplot as plt
 
 from pyrocko.plot import mpl_init, mpl_margins
-from grond import plot
 
 logger = logging.getLogger('grond.optimizer.highscore.plot')
 
@@ -83,6 +82,7 @@ class HighScoreOptimizerPlot(object):
 
         bounds = self.problem.get_combined_bounds()
 
+        from grond import plot
         self.xlim = plot.fixlim(*xpar.scaled(bounds[ixpar]))
         self.ylim = plot.fixlim(*ypar.scaled(bounds[iypar]))
 
