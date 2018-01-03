@@ -1,3 +1,4 @@
+from __future__ import print_function
 import math
 import re
 import random
@@ -653,7 +654,9 @@ def draw_contributions_figure(history, optimizer, plt):
 
     gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
-    gcms = problem.global_contributions(history.misfits)
+    gcms = problem.combine_misfits(
+        history.misfits, get_contributions=True)
+
     gcms = gcms[isort, :]
 
     jsort = num.argsort(gcms[-1, :])[::-1]
@@ -1405,7 +1408,9 @@ def draw_fits_figures(ds, history, optimizer, plt):
     xbest = models[0, :]
 
     ws = problem.get_target_weights()
-    gcms = problem.global_contributions(misfits[:1])[0]
+
+    gcms = problem.combine_misfits(
+        misfits[:1, :, :], get_contributions=True)[0, :]
 
     w_max = num.nanmax(ws)
     gcm_max = num.nanmax(gcms)
@@ -1810,6 +1815,7 @@ def draw_hudson_figure(history, optimizer, plt):
     beachballsize = markersize
     beachballsize_small = beachballsize * 0.5
     width = 7.
+    beachball_type = 'dc'
     figsize = (width, width / (4. / 3.))
 
     problem = history.problem
@@ -1830,7 +1836,7 @@ def draw_hudson_figure(history, optimizer, plt):
             try:
                 beachball.plot_beachball_mpl(
                     mt, axes,
-                    beachball_type='dc',
+                    beachball_type=beachball_type,
                     position=(u, v),
                     size=beachballsize_small,
                     color_t=color,
@@ -1862,7 +1868,7 @@ def draw_hudson_figure(history, optimizer, plt):
     try:
         beachball.plot_beachball_mpl(
             mt, axes,
-            beachball_type='dc',
+            beachball_type=beachball_type,
             position=(u, v),
             size=beachballsize,
             color_t=color,
@@ -1888,7 +1894,7 @@ def draw_hudson_figure(history, optimizer, plt):
     try:
         beachball.plot_beachball_mpl(
             mt, axes,
-            beachball_type='dc',
+            beachball_type=beachball_type,
             position=(u, v),
             size=beachballsize,
             color_t='red',
@@ -1909,6 +1915,7 @@ def draw_location_figure(history, optimizer, plt):
     # markersize_small = markersize * 0.2
     beachballsize = markersize
     beachballsize_small = beachballsize * 0.5
+    beachball_type = 'dc'
     width = 7.
     figsize = (width, width / (4. / 3.))
 
@@ -1976,7 +1983,7 @@ def draw_location_figure(history, optimizer, plt):
             try:
                 beachball.plot_beachball_mpl(
                     mt, axes,
-                    beachball_type='dc',
+                    beachball_type=beachball_type,
                     position=(sx, sy),
                     size=beachballsize_small,
                     color_t=color,

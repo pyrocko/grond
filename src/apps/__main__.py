@@ -11,7 +11,6 @@ from pyrocko import util, marker
 from pyrocko.gf import Range
 
 import grond
-import grond.toy
 
 logger = logging.getLogger('main')
 km = 1e3
@@ -48,7 +47,7 @@ subcommand_usages = {
         'forward <configfile> <eventnames> ... [options]'),
     'harvest': 'harvest <rundir> [options]',
     'plot': 'plot <plotnames> <rundir> [options]',
-    'movie': 'movie <rundir> [options]',
+    'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'baraddur': 'plot-server',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
@@ -560,7 +559,7 @@ def command_movie(args):
     parser, options, args = cl_parse('movie', args, setup)
 
     if len(args) != 4:
-        help_and_die(parser, 'one argument required')
+        help_and_die(parser, 'four arguments required')
 
     run_path, xpar_name, ypar_name, movie_filename_template = args
 

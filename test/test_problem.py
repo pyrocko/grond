@@ -1,6 +1,9 @@
+from __future__ import print_function
 import nose.tools as t
 
 import numpy as num
+
+from numpy.testing import assert_almost_equal as assert_ae
 from pyrocko import gf
 from grond.toy import scenario, ToyProblem
 
@@ -32,11 +35,20 @@ def test_combine_misfits():
     misfitss = p.evaluate_many(xg)
     # misfitss[imodel, itarget, 0], misfitss[imodel, itarget, 1]
     gms = p.combine_misfits(misfitss)
+    gms_contrib = p.combine_misfits(misfitss, get_contributions=True)
+
     # gms[imodel]
+    # gms_contrib[imodel, itarget]
 
     bweights = num.ones((2, p.ntargets))
     gms_2 = p.combine_misfits(misfitss, extra_weights=bweights)
+    gms_2_contrib = p.combine_misfits(
+        misfitss,
+        extra_weights=bweights,
+        get_contributions=True)
+
     # gms_2[imodel, ibootstrap]
+    # gms_2_contrib[imodel, ibootstrap, itarget]
 
     for ix, x in enumerate(xg):
         misfits = p.evaluate(x)
@@ -44,8 +56,25 @@ def test_combine_misfits():
         gm = p.combine_misfits(misfits)
         # gm is scalar
         t.assert_equal(gm, gms[ix])
+
+        gm_contrib = p.combine_misfits(
+            misfits,
+            get_contributions=True)
+
+        assert_ae(gms_contrib[ix, :], gm_contrib)
+
         gm_2 = p.combine_misfits(misfits, extra_weights=bweights)
+
         assert gm_2[0] == gm
         assert gm_2[1] == gm
         assert gms_2[ix, 0] == gm
         assert gms_2[ix, 1] == gm
+
+        gm_2_contrib = p.combine_misfits(
+            misfits, extra_weights=bweights,
+            get_contributions=True)
+
+        assert_ae(gm_2_contrib[0, :], gm_contrib)
+        assert_ae(gm_2_contrib[1, :], gm_contrib)
+        assert_ae(gms_2_contrib[ix, 0, :], gm_contrib)
+        assert_ae(gms_2_contrib[ix, 1, :], gm_contrib)

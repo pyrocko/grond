@@ -296,7 +296,9 @@ class Problem(Object):
 
         if misfits.ndim == 2:
             misfits = misfits[num.newaxis, :, :]
-            return self.combine_misfits(misfits, extra_weights)[0, ...]
+            return self.combine_misfits(
+                misfits, extra_weights,
+                get_contributions=get_contributions)[0, ...]
 
         assert misfits.ndim == 3
         assert extra_weights is None or extra_weights.ndim == 2
@@ -309,7 +311,9 @@ class Problem(Object):
 
             if get_contributions:
                 return exp(w*misfits[:, num.newaxis, :, 0]) \
-                    / num.nansum(exp(w*misfits[:, num.newaxis, :, 1]), axis=2)
+                    / num.nansum(
+                        exp(w*misfits[:, num.newaxis, :, 1]),
+                        axis=2)[:, :, num.newaxis]
 
             return root(
                 num.nansum(exp(w*misfits[:, num.newaxis, :, 0]), axis=2) /
@@ -320,7 +324,9 @@ class Problem(Object):
 
             if get_contributions:
                 return exp(w*misfits[:, :, 0]) \
-                    / num.nansum(exp(w*misfits[:, :, 1]), axis=1)
+                    / num.nansum(
+                        exp(w*misfits[:, :, 1]),
+                        axis=1)[:, num.newaxis]
 
             return root(
                 num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
