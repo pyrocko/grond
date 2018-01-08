@@ -9,7 +9,7 @@ from grond.meta import expand_template, Parameter
 from ..base import Problem, ProblemConfig
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.problems').getChild('rectangular')
+logger = logging.getLogger('grond.problems.rectangular.problem')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 

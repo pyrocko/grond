@@ -10,7 +10,7 @@ from grond.meta import Forbidden, expand_template, Parameter
 from ..base import Problem, ProblemConfig
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.problems').getChild('cmt')
+logger = logging.getLogger('grond.problems.cmt.problem')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 

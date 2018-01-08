@@ -341,7 +341,7 @@ def check(
 
     if show_plot:
         from matplotlib import pyplot as plt
-        from grond.plot import colors
+        from pyrocko import plot
 
     markers = []
     for ievent, event_name in enumerate(event_names):
@@ -523,7 +523,7 @@ def check(
                             ydata = result.filtered_obs.get_ydata() / yabsmax
                             axes.plot(xdata, ydata*0.5 + 3.5, color='black')
 
-                            color = colors[ii % len(colors)]
+                            color = plot.mpl_graph_color(ii)
 
                             xdata = result.filtered_syn.get_xdata()
                             ydata = result.filtered_syn.get_ydata()
@@ -660,22 +660,6 @@ def process_event(ievent, g_data_id):
     if synt and synt.inject_solution:
         xs_inject = synt.get_x()[num.newaxis, :]
 
-    # from matplotlib import pyplot as plt
-    # from grond import plot
-    # splot = plot.SolverPlot(
-    #     plt, 'time', 'magnitude',
-    #     show=False,
-    #     update_every=10,
-    #     movie_filename='grond_opt_time_magnitude.mp4')
-
-    def startThreads():
-        from .listeners import terminal
-        term = terminal.TerminalListener(rundir)
-        term.start()
-        return term
-
-    term = startThreads()
-
     try:
         optimizer = config.optimizer_config.get_optimizer()
         if xs_inject is not None:
@@ -695,8 +679,6 @@ def process_event(ievent, g_data_id):
 
     except BadProblem as e:
         logger.error(str(e))
-    finally:
-        term.join()
 
     tstop = time.time()
     logger.info(

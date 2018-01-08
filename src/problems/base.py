@@ -15,7 +15,7 @@ from ..targets import WaveformMisfitTarget, SatelliteMisfitTarget
 
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond')
+logger = logging.getLogger('grond.problems.base')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 

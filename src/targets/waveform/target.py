@@ -13,7 +13,7 @@ from ..base import (MisfitConfig, MisfitTarget, TargetGroup,
                     MisfitResult, TargetAnalysisResult)
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.target').getChild('waveform')
+logger = logging.getLogger('grond.targets.waveform.target')
 
 
 class WaveformTargetGroup(TargetGroup):

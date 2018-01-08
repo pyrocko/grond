@@ -5,7 +5,7 @@ from grond.meta import GrondError
 
 guts_prefix = 'grond'
 
-logger = logging.getLogger('grond.solver')
+logger = logging.getLogger('grond.optimizers.base')
 
 
 class BadProblem(GrondError):

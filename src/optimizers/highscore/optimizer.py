@@ -3,6 +3,7 @@ import math
 import os.path as op
 import os
 import logging
+import time
 
 import numpy as num
 
@@ -17,7 +18,7 @@ from grond.problems.base import ModelHistory
 
 guts_prefix = 'grond'
 
-logger = logging.getLogger('grond.optimizers.highscore')
+logger = logging.getLogger('grond.optimizers.highscore.optimizer')
 
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
@@ -398,6 +399,20 @@ class HighScoreOptimizer(Optimizer):
 
         assert False, 'out of bounds'
 
+    def log_progress(self, problem, iiter, niter, phase, iiter_phase):
+        t = time.time()
+        if self._tlog_last < t - 10. \
+                or iiter_phase == 0 \
+                or iiter_phase == phase.niterations - 1:
+
+            logger.info(
+                '%s at %i/%i (%s, %i/%i)' % (
+                    problem.name,
+                    iiter, niter,
+                    phase.__class__.__name__, iiter_phase, phase.niterations))
+
+            self._tlog_last = t
+
     def optimize(self, problem, rundir=None):
 
         if rundir is not None:
@@ -408,8 +423,11 @@ class HighScoreOptimizer(Optimizer):
 
         niter = self.niterations
         isbad_mask = None
+        self._tlog_last = 0
         for iiter in range(niter):
             phase, iiter_phase = self.get_sampler_phase(iiter)
+            self.log_progress(problem, iiter, niter, phase, iiter_phase)
+
             x = phase.get_sample(problem, iiter_phase, chains)
 
             if isbad_mask is not None and num.any(isbad_mask):

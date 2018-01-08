@@ -5,7 +5,7 @@ from pyrocko import gf
 from ..base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.target').getChild('gnss')
+logger = logging.getLogger('grond.targets.gnss.target')
 
 
 class GNSSTargetGroup(TargetGroup):

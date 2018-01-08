@@ -9,7 +9,7 @@ from grond.meta import Parameter
 from ..base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.target').getChild('satellite')
+logger = logging.getLogger('grond.targets.satellite.target')
 
 
 class SatelliteTargetGroup(TargetGroup):

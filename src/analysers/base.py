@@ -1,10 +1,13 @@
 import copy
+import time
+import logging
 import numpy as num
-from pyrocko import util
 from pyrocko.guts import Object, Int
 
 from ..targets import TargetAnalysisResult
 from ..meta import Forbidden
+
+logger = logging.getLogger('grond.analysers.base')
 
 
 guts_prefix = 'grond'
@@ -14,7 +17,19 @@ class Analyser(object):
 
     def __init__(self, niter):
         self.niter = niter
-        self.pbar = util.progressbar('analysing problem', niter)
+
+    def log_progress(self, problem, iiter, niter):
+        t = time.time()
+        if self._tlog_last < t - 10. \
+                or iiter == 0 \
+                or iiter == niter - 1:
+
+            logger.info(
+                '%s at %i/%i (%s, %i/%i)' % (
+                    problem.name,
+                    iiter, niter))
+
+            self._tlog_last = t
 
     def analyse(self, problem):
         if self.niter == 0:
@@ -41,9 +56,9 @@ class Analyser(object):
 
         isbad_mask = None
 
-        self.pbar.start()
+        self._tlog_last = 0
         for iiter in range(self.niter):
-            self.pbar.update(iiter)
+            self.log_progress(iiter, self.niter)
             while True:
                 x = []
                 for ipar in range(npar):
@@ -65,7 +80,6 @@ class Analyser(object):
             mss[iiter, :] = ms
 
             isbad_mask = num.isnan(ms)
-        self.pbar.finish()
 
         mean_ms = num.mean(mss, axis=0)
         weights = 1. / mean_ms

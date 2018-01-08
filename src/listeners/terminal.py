@@ -9,7 +9,7 @@ from grond.problems import ModelHistory
 from .base import Listener
 
 
-logger = logging.getLogger('TerminalListener')
+logger = logging.getLogger('grond.listeners.terminal')
 
 
 class RingBuffer(num.ndarray):
@@ -77,7 +77,7 @@ class TerminalListener(Listener):
 
     @property
     def runtime(self):
-        return timedelta(seconds=time.time() - self.starttime)
+        return timedelta(seconds=round(time.time() - self.starttime))
 
     @property
     def iiter(self):
@@ -95,8 +95,8 @@ class TerminalListener(Listener):
     def runtime_remaining(self):
         if self.iter_per_second == 0.:
             return timedelta()
-        return timedelta(seconds=(self.niter - self.iiter)
-                         / self.iter_per_second)
+        return timedelta(seconds=round((self.niter - self.iiter)
+                         / self.iter_per_second))
 
     def extend(self, *args):
         self.iiter = self.history.nmodels
@@ -115,26 +115,31 @@ class TerminalListener(Listener):
         ladd('Iteration {s.iiter} / {s.niter}'
              .format(s=self))
 
-        out_ln = self.row_name +\
-            ''.join([self.parameter_fmt] * len(problem.parameter_names))
         col_param_width = max([len(p) for p in problem.parameter_names]) + 2
+        for parameter in problem.parameters:
 
-        ladd(out_ln.format(
-            *['Parameter'] + list(problem.parameter_names),
-            col_param_width=col_param_width,
-            col_width=self.col_width,
-            type='s'))
+            ladd(' {p.name} {values}'.format(p=parameter, values=values))
 
-        # for ip, parameter_name in enumerate(problem.parameter_names):
-        #     ladd(out_ln.format(
-        #          parameter_name,
-        #          *[fmt(v[ip]) for v in problem.parameter_sets.values()],
-        #          col_param_width=col_param_width,
-        #          col_width=self.col_width))
+        if False:
+            out_ln = self.row_name +\
+                ''.join([self.parameter_fmt] * len(problem.parameter_names))
 
-        # ladd(problem.extra_text.format(
-        #     col_param_width=col_param_width,
-        #     col_width=self.col_width,))
+            ladd(out_ln.format(
+                *['Parameter'] + list(problem.parameter_names),
+                col_param_width=col_param_width,
+                col_width=self.col_width,
+                type='s'))
+
+            for ip, parameter_name in enumerate(problem.parameter_names):
+                ladd(out_ln.format(
+                     parameter_name,
+                     *[fmt(v[ip]) for v in problem.parameter_sets.values()],
+                     col_param_width=col_param_width,
+                     col_width=self.col_width))
+
+            ladd(problem.extra_text.format(
+                col_param_width=col_param_width,
+                col_width=self.col_width,))
 
         lines[0:0] = ['\033[2J']
         ladd('')

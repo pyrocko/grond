@@ -12,7 +12,7 @@ from pyrocko.gf import Range
 
 import grond
 
-logger = logging.getLogger('main')
+logger = logging.getLogger('grond.main')
 km = 1e3
 
 

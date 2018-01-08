@@ -10,7 +10,7 @@ from ..base import Problem, ProblemConfig
 
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.problems').getChild('double_dc')
+logger = logging.getLogger('grond.problems.double_dc.problem')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
