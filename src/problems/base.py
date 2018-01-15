@@ -127,6 +127,10 @@ class Problem(Object):
         return [p.name for p in self.combined]
 
     @property
+    def dependants_names(self):
+        return [p.name for p in self.dependants]
+
+    @property
     def nparameters(self):
         return len(self.parameters)
 

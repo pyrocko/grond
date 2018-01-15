@@ -62,12 +62,22 @@ class CMTProblem(Problem):
         Parameter('duration', 's', label='Duration')]
 
     dependants = [
+        Parameter('strike1', 'deg', label='Strike 1'),
+        Parameter('dip1', 'deg', label='Dip 1'),
+        Parameter('rake1', 'deg', label='Rake 1'),
+        Parameter('strike2', 'deg', label='Strike 2'),
+        Parameter('dip2', 'deg', label='Dip 2'),
+        Parameter('rake2', 'deg', label='Rake 2'),
         Parameter('rel_moment_iso', label='$M_{0}^{ISO}/M_{0}$'),
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
     distance_min = Float.T(default=0.0)
     mt_type = StringChoice.T(
         default='full', choices=['full', 'deviatoric', 'dc'])
+
+    def __init__(self, **kwargs):
+        Problem.__init__(self, **kwargs)
+        self.deps_cache = {}
 
     def get_source(self, x):
         d = self.get_parameter_dict(x)
@@ -89,29 +99,45 @@ class CMTProblem(Problem):
         return source
 
     def make_dependant(self, xs, pname):
+        cache = self.deps_cache
         if xs.ndim == 1:
             return self.make_dependant(xs[num.newaxis, :], pname)[0]
 
-        if pname in ('rel_moment_iso', 'rel_moment_clvd'):
-            y = num.zeros(xs.shape[0])
-            for i, x in enumerate(xs):
-                source = self.get_source(x)
+        if pname not in self.dependant_names:
+            raise KeyError(pname)
+
+        mt = self.base_source.pyrocko_moment_tensor()
+
+        sdrs_ref = mt.both_strike_dip_rake()
+
+        y = num.zeros(xs.shape[0])
+        for i, x in enumerate(xs):
+            k = tuple(x.tolist())
+            if k not in cache:
+                source = self.unpack(x)
                 mt = source.pyrocko_moment_tensor()
                 res = mt.standard_decomposition()
+                sdrs = mt.both_strike_dip_rake()
+                if sdrs_ref:
+                    sdrs = mtm.order_like(sdrs, sdrs_ref)
 
-                if pname == 'rel_moment_iso':
-                    ratio_iso, m_iso = res[0][1:3]
-                    y[i] = ratio_iso * num.sign(m_iso[0, 0])
-                else:
-                    ratio_clvd, m_clvd = res[2][1:3]
-                    evals, evecs = mtm.eigh_check(m_clvd)
-                    ii = num.argmax(num.abs(evals))
-                    y[i] = ratio_clvd * num.sign(evals[ii])
+                cache[k] = mt, res, sdrs
 
-            return y
+            mt, res, sdrs = cache[k]
 
-        else:
-            raise KeyError(pname)
+            if pname == 'rel_moment_iso':
+                ratio_iso, m_iso = res[0][1:3]
+                y[i] = ratio_iso * num.sign(m_iso[0, 0])
+            elif pname == 'rel_moment_clvd':
+                ratio_clvd, m_clvd = res[2][1:3]
+                evals, evecs = mtm.eigh_check(m_clvd)
+                ii = num.argmax(num.abs(evals))
+                y[i] = ratio_clvd * num.sign(evals[ii])
+            else:
+                isdr = {'strike': 0, 'dip': 1, 'rake': 2}[pname[:-1]]
+                y[i] = sdrs[int(pname[-1])-1][isdr]
+
+        return y
 
     def pack(self, source):
         m6 = source.m6
@@ -169,6 +195,12 @@ class CMTProblem(Problem):
 
     def get_dependant_bounds(self):
         out = [
+            (0., 360.),
+            (0., 90.),
+            (-180., 180.),
+            (0., 360.),
+            (0., 90.),
+            (-180., 180.),
             (-1., 1.),
             (-1., 1.)]
 
