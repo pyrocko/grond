@@ -114,7 +114,7 @@ class CMTProblem(Problem):
         for i, x in enumerate(xs):
             k = tuple(x.tolist())
             if k not in cache:
-                source = self.unpack(x)
+                source = self.get_source(x)
                 mt = source.pyrocko_moment_tensor()
                 res = mt.standard_decomposition()
                 sdrs = mt.both_strike_dip_rake()

@@ -25,7 +25,7 @@ class Analyser(object):
                 or iiter == niter - 1:
 
             logger.info(
-                '%s at %i/%i (%s, %i/%i)' % (
+                '%s at %i/%i' % (
                     problem.name,
                     iiter, niter))
 
@@ -58,7 +58,7 @@ class Analyser(object):
 
         self._tlog_last = 0
         for iiter in range(self.niter):
-            self.log_progress(iiter, self.niter)
+            self.log_progress(problem, iiter, self.niter)
             while True:
                 x = []
                 for ipar in range(npar):
