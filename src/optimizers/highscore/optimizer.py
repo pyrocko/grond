@@ -442,8 +442,8 @@ class HighScoreOptimizer(Optimizer):
                     isbad_mask != isbad_mask_new):
 
                 errmess = [
-                    'problem %s: inconsistency in data availability' %
-                    problem.name]
+                    'problem %s: inconsistency in data availability at iteration %i' %
+                    (problem.name, iiter)]
 
                 for target, isbad_new, isbad in zip(
                         problem.targets, isbad_mask_new, isbad_mask):
@@ -452,7 +452,7 @@ class HighScoreOptimizer(Optimizer):
                         errmess.append('  %s, %s -> %s' % (
                             target.string_id(), isbad, isbad_new))
 
-                raise BadProblem(errmess)
+                raise BadProblem('\n'.join(errmess))
 
             isbad_mask = isbad_mask_new
 

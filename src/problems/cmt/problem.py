@@ -21,7 +21,7 @@ class CMTProblemConfig(ProblemConfig):
     distance_min = Float.T(default=0.0)
     mt_type = StringChoice.T(choices=['full', 'deviatoric'])
 
-    def get_problem(self, event, targets):
+    def get_problem(self, event, target_groups, targets):
         if event.depth is None:
             event.depth = 0.
 
@@ -36,6 +36,7 @@ class CMTProblemConfig(ProblemConfig):
             name=expand_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
+            target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
             distance_min=self.distance_min,
@@ -205,70 +206,6 @@ class CMTProblem(Problem):
             (-1., 1.)]
 
         return out
-
-    def evaluate(self, x, result_mode='sparse', mask=None):
-        source = self.get_source(x)
-        engine = self.get_engine()
-
-        for target in self.targets:
-            target.set_result_mode(result_mode)
-
-        if mask is not None:
-            assert len(mask) == len(self.targets)
-            targets_ok = [
-                target for (target, ok) in zip(self.targets, mask) if ok]
-        else:
-            targets_ok = self.targets
-
-        resp = engine.process(source, targets_ok)
-
-        if mask is not None:
-            ires_ok = 0
-            results = []
-            for target, ok in zip(self.targets, mask):
-                if ok:
-                    results.append(resp.results_list[0][ires_ok])
-                    ires_ok += 1
-                else:
-                    results.append(
-                        gf.SeismosizerError(
-                            'skipped because of previous failure'))
-        else:
-            results = list(resp.results_list[0])
-
-        data = []
-        for target, result in zip(self.targets, results):
-            if isinstance(result, gf.SeismosizerError):
-                logger.debug(
-                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
-
-                data.append((None, None))
-            else:
-                data.append((result.misfit_value, result.misfit_norm))
-
-        misfits = num.array(data, dtype=num.float)
-        if result_mode == 'full':
-            return misfits, results
-        else:
-            return misfits
-
-    def forward(self, x):
-        source = self.get_source(x)
-        engine = self.get_engine()
-        plain_targets = [target.get_plain_target() for target in self.targets]
-
-        resp = engine.process(source, plain_targets)
-        results = []
-        for target, result in zip(self.targets, resp.results_list[0]):
-            if isinstance(result, gf.SeismosizerError):
-                logger.debug(
-                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
-
-                results.append(None)
-            else:
-                results.append(result)
-
-        return results
 
 
 __all__ = '''

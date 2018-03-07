@@ -9,11 +9,71 @@ from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
 
-from ..base import (MisfitConfig, MisfitTarget, TargetGroup,
-                    MisfitResult, TargetAnalysisResult)
+from ..base import (
+    MisfitTarget, TargetGroup, MisfitResult, TargetAnalysisResult)
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
+
+
+class DomainChoice(StringChoice):
+    choices = [
+        'time_domain',
+        'frequency_domain',
+        'envelope',
+        'absolute',
+        'cc_max_norm']
+
+
+class Trace(Object):
+    pass
+
+
+class WaveformMisfitConfig(Object):
+    fmin = Float.T()
+    fmax = Float.T()
+    ffactor = Float.T(default=1.5)
+    tmin = gf.Timing.T(
+        optional=True,
+        help='Start of main time window used for waveform fitting.')
+    tmax = gf.Timing.T(
+        optional=True,
+        help='End of main time window used for waveform fitting.')
+    tfade = Float.T(
+        optional=True,
+        help='Decay time of taper prepended and appended to main time window '
+             'used for waveform fitting [s].')
+    pick_synthetic_traveltime = gf.Timing.T(
+        optional=True,
+        help='Synthetic phase arrival definition for alignment of observed '
+             'and synthetic traces.')
+    pick_phasename = String.T(
+        optional=True,
+        help='Name of picked phase for alignment of observed and synthetic '
+             'traces.')
+    domain = DomainChoice.T(
+        default='time_domain',
+        help='Type of data characteristic to be fitted.\n\nAvailable choices '
+             'are: %s' % ', '.join("``'%s'``" % s
+                                   for s in DomainChoice.choices))
+    norm_exponent = Int.T(
+        default=2,
+        help='Exponent to use in norm (1: L1-norm, 2: L2-norm)')
+    tautoshift_max = Float.T(
+        default=0.0,
+        help='If non-zero, allow synthetic and observed traces to be shifted '
+             'against each other by up to +/- the given value [s].')
+    autoshift_penalty_max = Float.T(
+        default=0.0,
+        help='If non-zero, a penalty misfit is added for non-zero shift '
+             'values.\n\nThe penalty value is computed as '
+             '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
+             '/ tautoshift_max**2``')
+
+    ranges = {}
+
+    def get_full_frequency_range(self):
+        return self.fmin / self.ffactor, self.fmax * self.ffactor
 
 
 class WaveformTargetGroup(TargetGroup):
@@ -25,6 +85,7 @@ class WaveformTargetGroup(TargetGroup):
     depth_max = Float.T(optional=True)
     limit = Int.T(optional=True)
     channels = List.T(String.T(), optional=True)
+    misfit_config = WaveformMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting waveform targets...')
@@ -35,11 +96,6 @@ class WaveformTargetGroup(TargetGroup):
             for cha in self.channels:
                 if ds.is_blacklisted((st.nsl() + (cha,))):
                     continue
-
-                if not isinstance(self.misfit_config,
-                                  WaveformMisfitConfig):
-                    raise AttributeError('misfit_config must be of'
-                                         ' type WaveformMisfitConfig')
 
                 target = WaveformMisfitTarget(
                     quantity='displacement',
@@ -117,19 +173,6 @@ class WaveformTargetGroup(TargetGroup):
         return targets_weeded, meandists_kept, deleted
 
 
-class DomainChoice(StringChoice):
-    choices = [
-        'time_domain',
-        'frequency_domain',
-        'envelope',
-        'absolute',
-        'cc_max_norm']
-
-
-class Trace(Object):
-    pass
-
-
 class TraceSpectrum(Object):
     network = String.T()
     station = String.T()
@@ -146,7 +189,9 @@ class TraceSpectrum(Object):
         return self.fmin + num.arange(self.ydata.size) * self.deltaf
 
 
-class WaveformMisfitResult(MisfitResult):
+class WaveformMisfitResult(gf.Result, MisfitResult):
+    misfit_value = Float.T()
+    misfit_norm = Float.T()
     processed_obs = Trace.T(optional=True)
     processed_syn = Trace.T(optional=True)
     filtered_obs = Trace.T(optional=True)
@@ -161,55 +206,9 @@ class WaveformMisfitResult(MisfitResult):
     cc = Trace.T(optional=True)
 
 
-class WaveformMisfitConfig(MisfitConfig):
-    fmin = Float.T()
-    fmax = Float.T()
-    ffactor = Float.T(default=1.5)
-    tmin = gf.Timing.T(
-        optional=True,
-        help='Start of main time window used for waveform fitting.')
-    tmax = gf.Timing.T(
-        optional=True,
-        help='End of main time window used for waveform fitting.')
-    tfade = Float.T(
-        optional=True,
-        help='Decay time of taper prepended and appended to main time window '
-             'used for waveform fitting [s].')
-    pick_synthetic_traveltime = gf.Timing.T(
-        optional=True,
-        help='Synthetic phase arrival definition for alignment of observed '
-             'and synthetic traces.')
-    pick_phasename = String.T(
-        optional=True,
-        help='Name of picked phase for alignment of observed and synthetic '
-             'traces.')
-    domain = DomainChoice.T(
-        default='time_domain',
-        help='Type of data characteristic to be fitted.\n\nAvailable choices '
-             'are: %s' % ', '.join("``'%s'``" % s
-                                   for s in DomainChoice.choices))
-    norm_exponent = Int.T(
-        default=2,
-        help='Exponent to use in norm (1: L1-norm, 2: L2-norm)')
-    tautoshift_max = Float.T(
-        default=0.0,
-        help='If non-zero, allow synthetic and observed traces to be shifted '
-             'against each other by up to +/- the given value [s].')
-    autoshift_penalty_max = Float.T(
-        default=0.0,
-        help='If non-zero, a penalty misfit is added for non-zero shift '
-             'values.\n\nThe penalty value is computed as '
-             '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
-             '/ tautoshift_max**2``')
-
-    ranges = {}
-
-    def get_full_frequency_range(self):
-        return self.fmin / self.ffactor, self.fmax * self.ffactor
-
-
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
+    misfit_config = WaveformMisfitConfig.T()
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
@@ -222,16 +221,16 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     def id(self):
         return '.'.join(self.codes)
 
-    def get_plain_target(self):
+    def get_plain_modelling_targets(self):
         d = dict(
             (k, getattr(self, k)) for k in gf.Target.T.propnames)
-        return gf.Target(**d)
+        return [gf.Target(**d)]
 
     def get_combined_weight(self, apply_balancing_weights):
         w = self.manual_weight
         if apply_balancing_weights:
             w *= self.get_balancing_weight()
-        return w
+        return num.array([w], dtype=num.float)
 
     def get_balancing_weight(self):
         if not self.analysis_result:
@@ -366,6 +365,20 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         except NotFound as e:
             logger.debug(str(e))
             raise gf.SeismosizerError('no waveform data, %s' % str(e))
+
+    def prepare_modelling(self):
+        return [self]
+
+    def finalize_modelling(self, results):
+        result = results[0]
+        if isinstance(result, gf.SeismosizerError):
+            misfits = num.array(
+                [[None, None]], dtype=num.float)
+        else:
+            misfits = num.array(
+                [[result.misfit_value, result.misfit_norm]], dtype=num.float)
+
+        return misfits, result
 
 
 def misfit(

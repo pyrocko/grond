@@ -11,7 +11,8 @@ from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, Bool, List, Dict, Int
 
 from ..meta import ADict, Parameter, GrondError, xjoin
-from ..targets import WaveformMisfitTarget, SatelliteMisfitTarget
+from ..targets import MisfitTarget, TargetGroup, WaveformMisfitTarget, \
+    SatelliteMisfitTarget
 
 
 guts_prefix = 'grond'
@@ -37,8 +38,8 @@ class Problem(Object):
     apply_balancing_weights = Bool.T(default=True)
     norm_exponent = Int.T(default=2)
     base_source = gf.Source.T(optional=True)
-
-    targets = List.T()
+    targets = List.T(MisfitTarget.T())
+    target_groups = List.T(TargetGroup.T())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -212,10 +213,10 @@ class Problem(Object):
 
     def get_target_weights(self):
         if self._target_weights is None:
-            self._target_weights = num.array(
+            self._target_weights = num.concatenate(
                 [target.get_combined_weight(
                     apply_balancing_weights=self.apply_balancing_weights)
-                 for target in self.targets], dtype=num.float)
+                 for target in self.targets])
 
         return self._target_weights
 
@@ -352,26 +353,47 @@ class Problem(Object):
 
         return self._family_mask
 
-    def evaluate(self, x, dump_data=False):
-        raise NotImplementedError()
-
-    def forward(self, x):
+    def evaluate(self, x, mask=None, result_mode='sparse'):
         source = self.get_source(x)
         engine = self.get_engine()
-        plain_targets = [target.get_plain_target() for target in self.targets]
 
-        resp = engine.process(source, plain_targets)
+        for target in self.targets:
+            target.set_result_mode(result_mode)
+
+        modelling_targets = []
+        t2m_map = {}
+        for itarget, target in enumerate(self.targets):
+            t2m_map[target] = target.prepare_modelling()
+            if mask is None or mask[itarget]:
+                modelling_targets.extend(t2m_map[target])
+
+        resp = engine.process(source, modelling_targets)
+        modelling_results = list(resp.results_list[0])
+
+        imt = 0
+        imisfit = 0
+        misfits = num.zeros((self.nmisfits, 2))
+        misfits.fill(None)
         results = []
-        for target, result in zip(self.targets, resp.results_list[0]):
-            if isinstance(result, gf.SeismosizerError):
-                logger.debug(
-                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
+        for itarget, target in enumerate(self.targets):
+            nmt_this = len(t2m_map[target])
+            if mask is None or mask[itarget]:
+                misfits[imisfit:imisfit+target.nmisfits, :], result = \
+                    target.finalize_modelling(
+                        modelling_results[imt:imt+nmt_this])
 
-                results.append(None)
+                imt += nmt_this
             else:
-                results.append(result)
+                result = gf.SeismosizerError(
+                    'target was excluded from modelling')
 
-        return results
+            results.append(result)
+            imisfit += target.nmisfits
+
+        if result_mode == 'full':
+            return misfits, results
+        else:
+            return misfits
 
 
 class InvalidRundir(Exception):

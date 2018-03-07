@@ -126,52 +126,6 @@ class DoubleDCProblem(Problem):
 
         return num.array(x, dtype=num.float)
 
-    def evaluate(self, x, result_mode='sparse'):
-        source = self.get_source(x)
-        engine = self.get_engine()
-
-        for target in self.targets:
-            target.set_result_mode(result_mode)
-
-        resp = engine.process(source, self.targets)
-
-        data = []
-        results = []
-        for target, result in zip(self.targets, resp.results_list[0]):
-            if isinstance(result, gf.SeismosizerError):
-                logger.debug(
-                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
-
-                data.append((None, None))
-                results.append(result)
-            else:
-                data.append((result.misfit_value, result.misfit_norm))
-                results.append(result)
-
-        ms, ns = num.array(data, dtype=num.float).T
-        if result_mode == 'full':
-            return ms, ns, results
-        else:
-            return ms, ns
-
-    def forward(self, x):
-        source = self.get_source(x)
-        engine = self.get_engine()
-        plain_targets = [target.get_plain_target() for target in self.targets]
-
-        resp = engine.process(source, plain_targets)
-        results = []
-        for target, result in zip(self.targets, resp.results_list[0]):
-            if isinstance(result, gf.SeismosizerError):
-                logger.debug(
-                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
-
-                results.append(None)
-            else:
-                results.append(result)
-
-        return results
-
 
 __all__ = '''
     DoubleDCProblem

@@ -2086,6 +2086,10 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
+                    for fig in figs:
+                        plt.close(fig)
+
+
     if 7 != len({
             'fits',
             'fits_statics',
@@ -2114,12 +2118,18 @@ def plot_result(dirname, plotnames_want,
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
+                    for fig in figs:
+                        plt.close(fig)
+
         for plotname in ['jointpar', 'hudson', 'solution', 'location']:
             if plotname in plotnames_want:
                 figs = plot_dispatch[plotname](history, optimizer, plt)
                 if save:
                     fns.extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
+
+                    for fig in figs:
+                        plt.close(fig)
 
     if not save:
         plt.show()

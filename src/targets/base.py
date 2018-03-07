@@ -1,5 +1,7 @@
 import copy
 
+import numpy as num
+
 from pyrocko import gf
 from pyrocko.guts import Object, Float
 
@@ -7,16 +9,10 @@ from pyrocko.guts import Object, Float
 guts_prefix = 'grond'
 
 
-class MisfitConfig(Object):
-    pass
-
-
 class TargetGroup(Object):
     normalisation_family = gf.StringID.T(optional=True)
     path = gf.StringID.T(optional=True)
     weight = Float.T(default=1.0)
-
-    misfit_config = MisfitConfig.T(optional=True)
 
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T(optional=True)
@@ -32,9 +28,8 @@ class TargetAnalysisResult(Object):
     balancing_weight = Float.T()
 
 
-class MisfitResult(gf.Result):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
+class MisfitResult(Object):
+    pass
 
 
 class MisfitTarget(Object):
@@ -44,19 +39,15 @@ class MisfitTarget(Object):
         help='Relative weight of this target')
     analysis_result = TargetAnalysisResult.T(
         optional=True)
-    misfit_config = MisfitConfig.T(
-        optional=True,
-        help='Configuration object how the misfit is calculated.')
     normalisation_family = gf.StringID.T(
         optional=True,
-        help='Normalisation family of this misfitTarget')
+        help='Normalisation family of this misfit target')
     path = gf.StringID.T(
         help='A path identifier used for plotting')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
         self.parameters = []
-        self.nmisfits = 0
 
         self._ds = None
         self._result_mode = 'sparse'
@@ -69,6 +60,10 @@ class MisfitTarget(Object):
 
     def get_dataset(self):
         return self._ds
+
+    @property
+    def nmisfits(self):
+        return 1
 
     @property
     def nparameters(self):
@@ -84,12 +79,7 @@ class MisfitTarget(Object):
 
     @property
     def target_ranges(self):
-        if self._target_ranges is None:
-            self._target_ranges = self.misfit_config.ranges.copy()
-            for k in self._target_ranges.keys():
-                self._target_ranges['%s:%s' % (self.id, k)] =\
-                    self._target_ranges.pop(k)
-        return self._target_ranges
+        return {}
 
     def set_parameter_values(self, model):
         for i, p in enumerate(self.parameters):
@@ -105,12 +95,17 @@ class MisfitTarget(Object):
         raise NotImplementedError()
 
     def get_combined_weight(self, apply_balancing_weights=False):
-        return 1.0
+        return num.ones(1, dtype=num.float)
+
+    def init_modelling(self):
+        return []
+
+    def finalize_modelling(self, results):
+        raise NotImplemented('must be overloaded in subclass')
 
 
 __all__ = '''
     TargetGroup
-    MisfitConfig
     MisfitTarget
     MisfitResult
     TargetAnalysisResult

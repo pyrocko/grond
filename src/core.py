@@ -19,6 +19,7 @@ from .problems.base import ProblemConfig, Problem, \
 
 from .optimizers.base import OptimizerConfig, BadProblem
 from .targets.base import TargetGroup
+from .targets.waveform.target import WaveformMisfitResult
 from .analysers.base import AnalyserConfig
 from .meta import Path, HasPaths, expand_template, GrondError, Forbidden
 
@@ -130,7 +131,8 @@ class Config(HasPaths):
 
     def get_problem(self, event):
         targets = self.get_targets(event)
-        problem = self.problem_config.get_problem(event, targets)
+        problem = self.problem_config.get_problem(
+            event, self.target_groups, targets)
         self.setup_modelling_environment(problem)
         return problem
 
@@ -254,7 +256,7 @@ def forward(rundir_or_config_path, event_names):
         events.append(event)
 
         for result in results:
-            if not isinstance(result, gf.SeismosizerError):
+            if isinstance(result, WaveformMisfitResult):
                 result.filtered_obs.set_codes(location='ob')
                 result.filtered_syn.set_codes(location='sy')
                 all_trs.append(result.filtered_obs)
@@ -452,6 +454,7 @@ def check(
                                 backazimuth=target.
                                 get_backazimuth_for_waveform(),
                                 debug=True)
+
                     except NotFound as e:
                         logger.warn(str(e))
                         continue
@@ -498,7 +501,7 @@ def check(
                     yabsmaxs = []
                     for results in results_list:
                         result = results[itarget]
-                        if not isinstance(result, gf.SeismosizerError):
+                        if isinstance(result, WaveformMisfitResult):
                             yabsmaxs.append(
                                 num.max(num.abs(
                                     result.filtered_obs.get_ydata())))
@@ -512,7 +515,7 @@ def check(
                     ii = 0
                     for results in results_list:
                         result = results[itarget]
-                        if not isinstance(result, gf.SeismosizerError):
+                        if isinstance(result, WaveformMisfitResult):
                             if fig is None:
                                 fig = plt.figure()
                                 axes = fig.add_subplot(1, 1, 1)
@@ -521,7 +524,8 @@ def check(
 
                             xdata = result.filtered_obs.get_xdata()
                             ydata = result.filtered_obs.get_ydata() / yabsmax
-                            axes.plot(xdata, ydata*0.5 + 3.5, color='black')
+                            axes.plot(
+                                xdata, ydata*0.5 + 3.5, color='black')
 
                             color = plot.mpl_graph_color(ii)
 

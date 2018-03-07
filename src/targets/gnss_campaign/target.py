@@ -1,8 +1,9 @@
 import logging
 
 from pyrocko import gf
+from pyrocko.guts import Object
 
-from ..base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
+from ..base import MisfitTarget, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.gnss.target')
@@ -16,7 +17,7 @@ class GNSSMisfitResult(MisfitResult):
     pass
 
 
-class GNSSMisfitConfig(MisfitConfig):
+class GNSSMisfitConfig(Object):
     pass
 
 

@@ -2,18 +2,28 @@ import logging
 import numpy as num
 
 from pyrocko import gf
-from pyrocko.guts import String, Bool, Dict, List
+from pyrocko.guts import String, Bool, Dict, List, Object, Float
 
 from grond.meta import Parameter
 
-from ..base import MisfitTarget, MisfitConfig, MisfitResult, TargetGroup
+from ..base import MisfitTarget, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.satellite.target')
 
 
+class SatelliteMisfitConfig(Object):
+    use_weight_focal = Bool.T(default=False)
+    optimize_orbital_ramp = Bool.T(default=True)
+    ranges = Dict.T(String.T(), gf.Range.T(),
+                    default={'offset': '-0.5 .. 0.5',
+                             'ramp_north': '-1e-4 .. 1e-4',
+                             'ramp_east': '-1e-4 .. 1e-4'})
+
+
 class SatelliteTargetGroup(TargetGroup):
     kite_scenes = List.T(optional=True)
+    misfit_config = SatelliteMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting satellite targets...')
@@ -23,11 +33,6 @@ class SatelliteTargetGroup(TargetGroup):
             if scene.meta.scene_id not in self.kite_scenes and\
                '*all' not in self.kite_scenes:
                 continue
-
-            if not isinstance(self.misfit_config,
-                              SatelliteMisfitConfig):
-                raise AttributeError('misfit_config must be of type'
-                                     ' SatelliteMisfitConfig')
 
             qt = scene.quadtree
 
@@ -61,27 +66,21 @@ class SatelliteTargetGroup(TargetGroup):
         return targets
 
 
-class SatelliteMisfitResult(MisfitResult):
+class SatelliteMisfitResult(gf.Result, MisfitResult):
+    misfit_value = Float.T()
+    misfit_norm = Float.T()
     statics_syn = Dict.T(optional=True)
     statics_obs = Dict.T(optional=True)
 
 
-class SatelliteMisfitConfig(MisfitConfig):
-    use_weight_focal = Bool.T(default=False)
-    optimize_orbital_ramp = Bool.T(default=True)
-    ranges = Dict.T(String.T(), gf.Range.T(),
-                    default={'offset': '-0.5 .. 0.5',
-                             'ramp_north': '-1e-4 .. 1e-4',
-                             'ramp_east': '-1e-4 .. 1e-4'})
-
-
-class SatelliteMisfitTarget(MisfitTarget, gf.SatelliteTarget):
+class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     scene_id = String.T()
     available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
         Parameter('ramp_east', 'm/m'),
         ]
+    misfit_config = SatelliteMisfitConfig.T()
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
@@ -92,6 +91,15 @@ class SatelliteMisfitTarget(MisfitTarget, gf.SatelliteTarget):
             self.parameters = self.available_parameters
 
         self.parameter_values = {}
+
+    @property
+    def target_ranges(self):
+        if self._target_ranges is None:
+            self._target_ranges = self.misfit_config.ranges.copy()
+            for k in self._target_ranges.keys():
+                self._target_ranges['%s:%s' % (self.id, k)] =\
+                    self._target_ranges.pop(k)
+        return self._target_ranges
 
     @property
     def id(self):
@@ -137,7 +145,7 @@ class SatelliteMisfitTarget(MisfitTarget, gf.SatelliteTarget):
         return result
 
     def get_combined_weight(self, apply_balancing_weights=False):
-        return self.manual_weight
+        return num.array([self.manual_weight], dtype=num.float)
 
 
 __all__ = '''
