@@ -606,9 +606,9 @@ def command_export(args):
     def setup(parser):
         parser.add_option(
             '--type', dest='type', metavar='TYPE',
-            choices=('event', 'source', 'vector'),
+            choices=('event', 'event-yaml', 'source', 'vector'),
             help='select type of objects to be exported. Choices: '
-                 '"event" (default), "source", "vector".')
+                 '"event" (default), "event-yaml", "source", "vector".')
 
         parser.add_option(
             '--parameters', dest='parameters', metavar='PLIST',
