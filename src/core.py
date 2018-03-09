@@ -250,7 +250,7 @@ def forward(rundir_or_config_path, event_names):
     events = []
     for (problem, x) in payload:
         ds.empty_cache()
-        _, results = problem.evaluate(x, result_mode='full')
+        results = problem.evaluate(x)
 
         event = problem.get_source(x).pyrocko_event()
         events.append(event)
@@ -376,7 +376,7 @@ def check(
             if n_random_synthetics == 0:
                 x = problem.pack(problem.base_source)
                 sources.append(problem.base_source)
-                _, results = problem.evaluate(x, result_mode='full')
+                results = problem.evaluate(x)
                 results_list.append(results)
 
             else:
@@ -391,7 +391,7 @@ def check(
                             pass
 
                     sources.append(problem.get_source(x))
-                    _, results = problem.evaluate(x, result_mode='full')
+                    results = problem.evaluate(x)
                     results_list.append(results)
 
             if show_waveforms:

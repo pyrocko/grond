@@ -3,6 +3,7 @@ import copy
 import numpy as num
 
 from pyrocko import gf
+from pyrocko.guts_array import Array
 from pyrocko.guts import Object, Float
 
 
@@ -29,7 +30,9 @@ class TargetAnalysisResult(Object):
 
 
 class MisfitResult(Object):
-    pass
+    misfits = Array.T(
+        shape=(None, 2),
+        dtype=num.float)
 
 
 class MisfitTarget(Object):
@@ -100,7 +103,7 @@ class MisfitTarget(Object):
     def init_modelling(self):
         return []
 
-    def finalize_modelling(self, results):
+    def finalize_modelling(self, modelling_results):
         raise NotImplemented('must be overloaded in subclass')
 
 

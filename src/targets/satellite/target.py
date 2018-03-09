@@ -2,7 +2,7 @@ import logging
 import numpy as num
 
 from pyrocko import gf
-from pyrocko.guts import String, Bool, Dict, List, Object, Float
+from pyrocko.guts import String, Bool, Dict, List, Object
 
 from grond.meta import Parameter
 
@@ -67,8 +67,6 @@ class SatelliteTargetGroup(TargetGroup):
 
 
 class SatelliteMisfitResult(gf.Result, MisfitResult):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
     statics_syn = Dict.T(optional=True)
     statics_obs = Dict.T(optional=True)
 
@@ -101,8 +99,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
                     self._target_ranges.pop(k)
         return self._target_ranges
 
-    @property
-    def id(self):
+    def string_id(self):
         return self.scene_id
 
     def set_dataset(self, ds):
@@ -135,8 +132,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
             num.sum((stat_obs * scene.covariance.weight_vector)**2))
 
         result = SatelliteMisfitResult(
-            misfit_value=misfit_value,
-            misfit_norm=misfit_norm)
+            misfits=num.array([[misfit_value, misfit_norm]], dtype=num.float))
 
         if self._result_mode == 'full':
             result.statics_syn = statics

@@ -11,8 +11,8 @@ from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, Bool, List, Dict, Int
 
 from ..meta import ADict, Parameter, GrondError, xjoin
-from ..targets import MisfitTarget, TargetGroup, WaveformMisfitTarget, \
-    SatelliteMisfitTarget
+from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
+    WaveformMisfitTarget, SatelliteMisfitTarget
 
 
 guts_prefix = 'grond'
@@ -353,7 +353,7 @@ class Problem(Object):
 
         return self._family_mask
 
-    def evaluate(self, x, mask=None, result_mode='sparse'):
+    def evaluate(self, x, mask=None, result_mode='full'):
         source = self.get_source(x)
         engine = self.get_engine()
 
@@ -371,16 +371,12 @@ class Problem(Object):
         modelling_results = list(resp.results_list[0])
 
         imt = 0
-        imisfit = 0
-        misfits = num.zeros((self.nmisfits, 2))
-        misfits.fill(None)
         results = []
         for itarget, target in enumerate(self.targets):
             nmt_this = len(t2m_map[target])
             if mask is None or mask[itarget]:
-                misfits[imisfit:imisfit+target.nmisfits, :], result = \
-                    target.finalize_modelling(
-                        modelling_results[imt:imt+nmt_this])
+                result = target.finalize_modelling(
+                    modelling_results[imt:imt+nmt_this])
 
                 imt += nmt_this
             else:
@@ -388,12 +384,21 @@ class Problem(Object):
                     'target was excluded from modelling')
 
             results.append(result)
+
+        return results
+
+    def misfits(self, x, mask=None):
+        results = self.evaluate(x, mask=mask, result_mode='sparse')
+        imisfit = 0
+        misfits = num.zeros((self.nmisfits, 2))
+        misfits.fill(None)
+        for target, result in zip(self.targets, results):
+            if isinstance(result, MisfitResult):
+                misfits[imisfit:imisfit+target.nmisfits, :] = result.misfits
+
             imisfit += target.nmisfits
 
-        if result_mode == 'full':
-            return misfits, results
-        else:
-            return misfits
+        return misfits
 
 
 class InvalidRundir(Exception):

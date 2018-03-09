@@ -93,7 +93,7 @@ class ToyProblem(Problem):
                 [t.obs_distance for t in self.targets],
                 dtype=num.float)
 
-    def evaluate(self, x, mask=None):
+    def misfits(self, x, mask=None):
         self._setup_modelling()
         distances = num.sqrt(
             num.sum((x[num.newaxis, :]-self._xtargets)**2, axis=1))
@@ -104,7 +104,7 @@ class ToyProblem(Problem):
             * num.mean(num.abs(self._obs_distances))
         return misfits
 
-    def evaluate_many(self, xs):
+    def misfits_many(self, xs):
         self._setup_modelling()
         distances = num.sqrt(
             num.sum(

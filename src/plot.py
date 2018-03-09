@@ -903,7 +903,7 @@ def draw_fits_figures_statics(ds, history, optimizer, plt):
 
     source = problem.get_source(xbest)
 
-    _, results = problem.evaluate(xbest, result_mode='full')
+    results = problem.evaluate(xbest)
 
     figures = []
 
@@ -1059,7 +1059,7 @@ def draw_fits_ensemble_figures(
         model = models[imodel, :]
 
         source = problem.get_source(model)
-        _, results = problem.evaluate(model, result_mode='full')
+        results = problem.evaluate(model)
 
         dtraces.append([])
 
@@ -1420,7 +1420,7 @@ def draw_fits_figures(ds, history, optimizer, plt):
     target_to_result = {}
     all_syn_trs = []
     all_syn_specs = []
-    _, results = problem.evaluate(xbest, result_mode='full')
+    results = problem.evaluate(xbest)
 
     dtraces = []
     for target, result in zip(problem.waveform_targets, results):

@@ -435,7 +435,7 @@ class HighScoreOptimizer(Optimizer):
             else:
                 isok_mask = None
 
-            misfits = problem.evaluate(x, mask=isok_mask)
+            misfits = problem.misfits(x, mask=isok_mask)
 
             isbad_mask_new = num.isnan(misfits[:, 0])
             if isbad_mask is not None and num.any(

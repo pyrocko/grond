@@ -76,7 +76,7 @@ class Analyser(object):
                 isok_mask = num.logical_not(isbad_mask)
             else:
                 isok_mask = None
-            ms = wproblem.evaluate(x, mask=isok_mask)[:, 1]
+            ms = wproblem.misfits(x, mask=isok_mask)[:, 1]
             mss[iiter, :] = ms
 
             isbad_mask = num.isnan(ms)

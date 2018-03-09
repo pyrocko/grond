@@ -149,28 +149,9 @@ class WaveformTargetGroup(TargetGroup):
                 targets.append(target)
 
         if self.limit:
-            return self.weed(origin, targets, self.limit)[0]
+            return weed(origin, targets, self.limit)[0]
         else:
             return targets
-
-    @staticmethod
-    def weed(origin, targets, limit, neighborhood=3):
-        azimuths = num.zeros(len(targets))
-        dists = num.zeros(len(targets))
-        for i, target in enumerate(targets):
-            _, azimuths[i] = target.azibazi_to(origin)
-            dists[i] = target.distance_to(origin)
-
-        badnesses = num.ones(len(targets), dtype=float)
-        deleted, meandists_kept = weeding.weed(
-            azimuths, dists, badnesses,
-            nwanted=limit,
-            neighborhood=neighborhood)
-
-        targets_weeded = [
-            target for (delete, target) in zip(deleted, targets) if not delete]
-
-        return targets_weeded, meandists_kept, deleted
 
 
 class TraceSpectrum(Object):
@@ -190,8 +171,6 @@ class TraceSpectrum(Object):
 
 
 class WaveformMisfitResult(gf.Result, MisfitResult):
-    misfit_value = Float.T()
-    misfit_norm = Float.T()
     processed_obs = Trace.T(optional=True)
     processed_syn = Trace.T(optional=True)
     filtered_obs = Trace.T(optional=True)
@@ -216,15 +195,6 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     def string_id(self):
         return '.'.join(x for x in (self.path,) + self.codes if x)
-
-    @property
-    def id(self):
-        return '.'.join(self.codes)
-
-    def get_plain_modelling_targets(self):
-        d = dict(
-            (k, getattr(self, k)) for k in gf.Target.T.propnames)
-        return [gf.Target(**d)]
 
     def get_combined_weight(self, apply_balancing_weights):
         w = self.manual_weight
@@ -369,16 +339,13 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     def prepare_modelling(self):
         return [self]
 
-    def finalize_modelling(self, results):
-        result = results[0]
-        if isinstance(result, gf.SeismosizerError):
-            misfits = num.array(
-                [[None, None]], dtype=num.float)
+    def finalize_modelling(self, modelling_results):
+        return modelling_results[0]
         else:
-            misfits = num.array(
-                [[result.misfit_value, result.misfit_norm]], dtype=num.float)
+            return targets
 
-        return misfits, result
+
+
 
 
 def misfit(
@@ -472,8 +439,7 @@ tautoshift**2 / tautoshift_max**2``
 
     if result_mode == 'full':
         result = WaveformMisfitResult(
-            misfit_value=float(m),
-            misfit_norm=float(n),
+            misfits=num.array([[m, n]], dtype=num.float),
             processed_obs=tr_proc_obs,
             processed_syn=tr_proc_syn,
             filtered_obs=tr_obs.copy(),
@@ -486,8 +452,7 @@ tautoshift**2 / tautoshift_max**2``
 
     elif result_mode == 'sparse':
         result = WaveformMisfitResult(
-            misfit_value=m,
-            misfit_norm=n)
+            misfits=num.array([[m, n]], dtype=num.float))
     else:
         assert False
 
@@ -566,6 +531,25 @@ def float_or_none(x):
         return x
     else:
         return float(x)
+
+
+def weed(origin, targets, limit, neighborhood=3):
+    azimuths = num.zeros(len(targets))
+    dists = num.zeros(len(targets))
+    for i, target in enumerate(targets):
+        _, azimuths[i] = target.azibazi_to(origin)
+        dists[i] = target.distance_to(origin)
+
+    badnesses = num.ones(len(targets), dtype=float)
+    deleted, meandists_kept = weeding.weed(
+        azimuths, dists, badnesses,
+        nwanted=limit,
+        neighborhood=neighborhood)
+
+    targets_weeded = [
+        target for (delete, target) in zip(deleted, targets) if not delete]
+
+    return targets_weeded, meandists_kept, deleted
 
 
 __all__ = '''
