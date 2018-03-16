@@ -253,14 +253,9 @@ problem_config: !grond.CMTProblemConfig
   norm_exponent: 1
 
 
-
-  nbootstrap: 100
-
-
 # -----------------------------------------------------------------------------
 # Configuration of the optimization procedure
 # -----------------------------------------------------------------------------
-
 
 # This configuration will run the BABO (Bayesian Bootstrap) optimization
 optimizer_config: !grond.HighScoreOptimizerConfig
