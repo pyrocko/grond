@@ -801,6 +801,10 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             ev = problem.get_source(x).pyrocko_event()
             model.dump_events([ev], stream=out)
 
+        elif type == 'event-yaml':
+            ev = problem.get_source(x).pyrocko_event()
+            guts.dump_all([ev], stream=out)
+
         else:
             raise GrondError('invalid argument: type=%s' % repr(type))
 
