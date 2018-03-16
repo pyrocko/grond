@@ -1,0 +1,41 @@
+<div class="container">
+    <h1>Report for run {{ path }}</h1>
+
+    <h2>Results</h2>
+
+    <table class="stats">
+        <tr>
+            <th>parameter</th>
+            <th>best</th>
+            <th>mean</th>
+            <th>std</th>
+            <th>min</th>
+            <th>5%</th>
+            <th>16%</th>
+            <th>84%</th>
+            <th>95%</th>
+            <th>max</th>
+        </tr>
+
+        <tr ng-repeat="pstats in stats.parameter_stats_list">
+            <td>{{ pstats.name }}</td>
+            <td><tt>{{ pstats.best | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.mean | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.std | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.minimum | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.percentile5 | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.percentile16 | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.percentile84 | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.percentile95 | eround:pstats.std | dotalign }}</tt></td>
+            <td><tt>{{ pstats.maximum | eround:pstats.std | dotalign }}</tt></td>
+        </tr>
+    </table>
+
+    <h2>Plots</h2>
+    <div ng-repeat="plot in plots">
+        <h3>Plot: {{ plot.name }}</h3>
+        <div ng-repeat="file_name in plot.file_names">
+            <img style="max-width: 100%;" src="{{ path }}/plots/{{ file_name }}" />
+        </div>
+    </div>
+</div>

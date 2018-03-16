@@ -30,6 +30,7 @@ setup(
         'grond.optimizers.highscore',
         'grond.analysers',
         'grond.listeners',
+        'grond.report',
     ],
     python_requires='>=3.5',
     entry_points={
@@ -39,6 +40,9 @@ setup(
     },
     package_dir={'grond': 'src'},
     package_data={'grond': ['baraddur/templates/*.html',
-                            'baraddur/res/*']},
+                            'baraddur/res/*',
+                            'report/app/css/*.css',
+                            'report/app/js/*.js',
+                            'report/app/*.html']},
     data_files=[] + grond_completion(),
     )

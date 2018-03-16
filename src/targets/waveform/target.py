@@ -341,11 +341,6 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     def finalize_modelling(self, modelling_results):
         return modelling_results[0]
-        else:
-            return targets
-
-
-
 
 
 def misfit(

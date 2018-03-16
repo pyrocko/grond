@@ -2089,7 +2089,6 @@ def plot_result(dirname, plotnames_want,
                     for fig in figs:
                         plt.close(fig)
 
-
     if 7 != len({
             'fits',
             'fits_statics',

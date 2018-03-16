@@ -34,6 +34,8 @@ subcommand_descriptions = {
     'movie': 'visualize optimizer evolution',
     'baraddur': 'start Barad-dur plotting, watching this directory',
     'export': 'export results',
+    'report': 'create result report',
+    'report-index': 'create report index',
     'qc-polarization': 'check sensor orientations with polarization analysis',
 }
 
@@ -50,6 +52,8 @@ subcommand_usages = {
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'baraddur': 'plot-server',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
+    'report': 'report <rundir> [options]',
+    'report-index': 'report <reportdir> [options]',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
                        '<targetconfigname> [options]',
 }
@@ -74,6 +78,8 @@ Subcommands:
     plot            %(plot)s
     movie           %(movie)s
     export          %(export)s
+    report          %(report)s
+    report-index    %(report_index)s
     qc-polarization %(qc_polarization)s
     baraddur        %(baraddur)s
 
@@ -400,10 +406,8 @@ def command_go(args):
         config_path = args[0]
         config = grond.read_config(config_path)
 
-        print('Available Events:')
         for event_name in grond.get_event_names(config):
-            print('* %s' % event_name)
-        print('\n')
+            print(event_name)
 
         help_and_die(parser, 'missing arguments')
 
@@ -650,6 +654,47 @@ def command_export(args):
             filename=options.filename,
             type=options.type,
             pnames=pnames)
+
+    except grond.GrondError as e:
+        die(str(e))
+
+
+def command_report(args):
+
+    import grond.report
+
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('report', args, setup)
+    if len(args) < 1:
+        help_and_die(parser, 'arguments required')
+
+    rundirs = args
+
+    try:
+        for rundir in rundirs:
+            grond.report.report(rundir)
+
+    except grond.GrondError as e:
+        die(str(e))
+
+
+def command_report_index(args):
+
+    import grond.report
+
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('report-index', args, setup)
+    if len(args) < 1:
+        help_and_die(parser, 'arguments required')
+
+    report_base_path = args[0]
+
+    try:
+        grond.report.report_index(report_base_path)
 
     except grond.GrondError as e:
         die(str(e))
