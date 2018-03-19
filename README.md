@@ -30,17 +30,17 @@ sudo python setup.py install
 Grond can be run as a command line tool or by calling Grond's library functions
 from a Python script. To get a brief description on available options of
 Grond's command line tool, run `grond --help` or `grond <subcommand> --help`.
-Once dataset and configuration are ready, the command `grond go <configfile>
-<eventname>` starts the optimization algorithm for a selected event. Before
-running the optimization, to debug problems with the dataset and configuration,
-use `grond check <configfile> <eventname>`. To get a list of event names
-available in a configured setup, run `grond events <configfile>`. During the
-optimization, results are aggregated in a directory, referred to in the
-configuration as `<rundir>`. To visualize the results run `grond plot
-<plotnames> <rundir>`. The results can be exported in various ways by running
-the subcommand `grond export <what> <rundir>`. Finally, you may run `grond
-report <rundir>` to aggregate results to a browsable summary, (by default)
-under the directory `reports`.
+Once dataset and configuration are ready, the command
+`grond go <configfile> <eventname>` starts the optimization algorithm for a
+selected event. Before running the optimization, to debug problems with the
+dataset and configuration, use `grond check <configfile> <eventname>`. To get a
+list of event names available in a configured setup, run
+`grond events <configfile>`. During the optimization, results are aggregated in
+a directory, referred to in the configuration as `<rundir>`. To visualize the
+results run `grond plot <plotnames> <rundir>`. The results can be exported in
+various ways by running the subcommand `grond export <what> <rundir>`. Finally,
+you may run `grond report <rundir>` to aggregate results to a browsable
+summary, (by default) under the directory `reports`.
 
 
 ## Example configuration file
@@ -143,18 +143,18 @@ target_groups:
     ffactor: 1.5
 
     # Time window to include in the data fitting. Times can be defined offset
-    # to given phase arrivals. E.g. '{stored:begin}-100' would mean 100 s 
-    # before arrival of the phase named 'begin', which must be defined in the 
+    # to given phase arrivals. E.g. '{stored:begin}-100' would mean 100 s
+    # before arrival of the phase named 'begin', which must be defined in the
     # travel time tables in the GF store.
 
     tmin: '{stored:anyP_no_Pdiff}'
     tmax: '{vel_surface:2.5}'
 
-    # Align traces by picks (will lose some control on origin time and 
-    # location). Define the synthetic phasename, for which a travel time table 
-    # must be available in the GF store, 
+    # Align traces by picks (will lose some control on origin time and
+    # location). Define the synthetic phasename, for which a travel time table
+    # must be available in the GF store,
     #pick_synthetic_traveltime: 'anyP_no_Pdiff'
-    # and the name of the picks to use in the picks file (defined in 
+    # and the name of the picks to use in the picks file (defined in
     # dataset_config)
     #pick_phasename: 'P'
 
@@ -172,7 +172,7 @@ target_groups:
     norm_exponent: 1
 
   # How to interpolate the Green's functions (available choices:
-  # 'nearest_neighbor', 'multilinear'). Note that the GFs have to be densely 
+  # 'nearest_neighbor', 'multilinear'). Note that the GFs have to be densely
   # sampled when using interpolation other than nearest_neighbor.
   interpolation: 'nearest_neighbor'
 
@@ -248,16 +248,16 @@ problem_config: !grond.CMTProblemConfig
   # spreading etc.
   apply_balancing_weights: true
 
-  # Under what norm to combine targets into the global misfit 
+  # Under what norm to combine targets into the global misfit
   # (exponent of norm, 1 or 2)
   norm_exponent: 1
 
 
 # -----------------------------------------------------------------------------
-# Configuration of the optimization procedure
+# Configuration of the optimization procedure. The following example setup will
+# run a Bayesian bootstrap optimization (BABO).
 # -----------------------------------------------------------------------------
 
-# This configuration will run the BABO (Bayesian Bootstrap) optimization
 optimizer_config: !grond.HighScoreOptimizerConfig
 
   # Number of bootstrap realizations to be tracked simultaneously in the
@@ -276,10 +276,10 @@ optimizer_config: !grond.HighScoreOptimizerConfig
       # Number of iterations to operate in 'directed' phase
       niterations: 10000
 
-      # Multiplicator for width of sampler distribution at end of this phase 
+      # Multiplicator for width of sampler distribution to start with
       scatter_scale_begin: 2.0
 
-      # Multiplicator for width of sampler distribution at end of this phase 
+      # Multiplicator for width of sampler distribution at end of this phase
       scatter_scale_end: 0.5
 
 
