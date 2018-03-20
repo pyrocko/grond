@@ -628,32 +628,37 @@ class Dataset(object):
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
 
-                trs_restituted_group = []
-                trs_raw_group = []
-                if channel in deps:
-                    for cha in deps[channel]:
-                        trs_restituted_this, trs_raw_this = \
-                            self.get_waveform_restituted(
-                                station.nsl() + (cha,),
-                                quantity=quantity,
-                                tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
-                                toffset_noise_extract=toffset_noise_extract,
-                                tfade=tfade,
-                                freqlimits=freqlimits,
-                                deltat=deltat,
-                                want_incomplete=debug,
-                                extend_incomplete=self.extend_incomplete)
 
-                        trs_restituted_group.extend(trs_restituted_this)
-                        trs_raw_group.extend(trs_raw_this)
+                try:
+                    trs_restituted_group = []
+                    trs_raw_group = []
+                    if channel in deps:
+                        for cha in deps[channel]:
+                            trs_restituted_this, trs_raw_this = \
+                                self.get_waveform_restituted(
+                                    station.nsl() + (cha,),
+                                    quantity=quantity,
+                                    tmin=tmin, tmax=tmax, tpad=tpad+abs_delay_max,
+                                    toffset_noise_extract=toffset_noise_extract,
+                                    tfade=tfade,
+                                    freqlimits=freqlimits,
+                                    deltat=deltat,
+                                    want_incomplete=debug,
+                                    extend_incomplete=self.extend_incomplete)
 
-                    trs_projected.extend(
-                        trace.project(
-                            trs_restituted_group, matrix,
-                            in_channels, out_channels))
+                            trs_restituted_group.extend(trs_restituted_this)
+                            trs_raw_group.extend(trs_raw_this)
 
-                    trs_restituted.extend(trs_restituted_group)
-                    trs_raw.extend(trs_raw_group)
+                        trs_projected.extend(
+                            trace.project(
+                                trs_restituted_group, matrix,
+                                in_channels, out_channels))
+
+                        trs_restituted.extend(trs_restituted_group)
+                        trs_raw.extend(trs_raw_group)
+
+                except NotFound:
+                    pass
 
             for tr in trs_projected:
                 sc = self.station_corrections.get(tr.nslc_id, None)
