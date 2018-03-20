@@ -21,6 +21,7 @@ var yaml_type_map = [
     ['!grond.ResultStats', Dummy],
     ['!grond.WaveformMisfitTarget', Dummy],
     ['!grond.WaveformMisfitConfig', Dummy],
+    ['!grond.WaveformTargetGroup', Dummy],
     ['!grond.CMTProblem', Dummy],
     ['!pf.MTSource', Dummy],
     ['!pf.HalfSinusoidSTF', Dummy],
