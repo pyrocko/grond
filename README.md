@@ -6,7 +6,7 @@ earthquake source parameter estimation problems.
 
 ## Installation
 
-First, install [Pyrocko](http://pyrocko.org/current/install.html),
+First, install [Pyrocko](http://pyrocko.org/docs/current/install/),
 then install Grond:
 
 ```bash
