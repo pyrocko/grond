@@ -342,6 +342,11 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     def finalize_modelling(self, modelling_results):
         return modelling_results[0]
 
+    def get_plain_targets(self):
+        d = dict(
+            (k, getattr(self, k)) for k in gf.Target.T.propnames)
+        return [gf.Target(**d)]
+
 
 def misfit(
         tr_obs, tr_syn, taper, domain, exponent, tautoshift_max,

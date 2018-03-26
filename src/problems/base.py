@@ -400,6 +400,26 @@ class Problem(Object):
 
         return misfits
 
+    def forward(self, x):
+        source = self.get_source(x)
+        engine = self.get_engine()
+
+        plain_targets = []
+        for target in self.targets:
+            plain_targets.extend(target.get_plain_targets())
+
+        resp = engine.process(source, plain_targets)
+
+        results = []
+        for target, result in zip(self.targets, resp.results_list[0]):
+            if isinstance(result, gf.SeismosizerError):
+                logger.debug(
+                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
+            else:
+                results.append(result)
+
+        return results
+
 
 class InvalidRundir(Exception):
     pass
