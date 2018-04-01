@@ -1,3 +1,3 @@
-from .waveform.target import *  # noqa
-from .satellite.target import *  # noqa
+from .waveform import *  # noqa
+from .satellite import *  # noqa
 from .base import *  # noqa

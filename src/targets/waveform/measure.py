@@ -3,6 +3,8 @@ from pyrocko import gf, trace
 from pyrocko.guts import Object, Float, StringChoice, List, String
 from pyrocko.gui import marker
 
+from . import base
+
 guts_prefix = 'grond'
 
 
@@ -83,14 +85,49 @@ class FeatureMeasure(Object):
     quantity = WaveformQuantity.T(default='displacement')
     method = FeatureMethod.T(default='peak_component')
 
+    def get_nmodelling_targets(self):
+        return len(self.channels)
+
+    def get_modelling_targets(
+            self, codes, lat, lon, depth, store_id, backazimuth):
+
+        mtargets = []
+        for channel in self.channels:
+            target = gf.Target(
+                quantity='displacement',
+                codes=codes + (channel, ),
+                lat=lat,
+                lon=lon,
+                depth=depth,
+                store_id=store_id)
+
+            if channel == 'R':
+                target.azimuth = backazimuth - 180.
+                target.dip = 0.
+            elif channel == 'T':
+                target.azimuth = backazimuth - 90.
+                target.dip = 0.
+            elif channel == 'Z':
+                target.azimuth = 0.
+                target.dip = -90.
+
+            mtargets.append(target)
+
+        return mtargets
+
     def evaluate(
-            self, engine, source, targets, ds,
+            self, engine, source, targets,
+            dataset=None,
+            trs=None,
             extra_responses=[],
             debug=False):
 
         trs_processed = []
         trs_orig = []
-        for target in targets:
+        for itarget, target in enumerate(targets):
+            if target.codes[-1] not in self.channels:
+                continue
+
             store = engine.get_store(target.store_id)
 
             tmin = source.time + store.t(self.timing_tmin, source, target)
@@ -108,13 +145,32 @@ class FeatureMeasure(Object):
                 freqlimits = None
                 tfade = 0.0
 
-            tr = ds.get_waveform(
-                target.codes,
-                quantity=self.quantity,
-                tmin=tmin,
-                tmax=tmax,
-                freqlimits=freqlimits,
-                tfade=tfade)
+            if dataset is not None:
+                bazi = base.backazimuth_for_waveform(
+                    target.azimuth, target.codes)
+
+                tr = dataset.get_waveform(
+                    target.codes,
+                    quantity=self.quantity,
+                    tmin=tmin,
+                    tmax=tmax,
+                    freqlimits=freqlimits,
+                    tfade=tfade,
+                    deltat=store.config.deltat,
+                    cache=True,
+                    backazimuth=bazi)
+
+            else:
+                tr = trs[itarget]
+
+                tr.extend(
+                    tmin - tfade,
+                    tmax + tfade,
+                    fillmethod='repeat')
+
+                tr = tr.transfer(
+                    freqlimits=freqlimits,
+                    tfade=tfade)
 
             trs_orig.append(tr)
 
@@ -148,12 +204,6 @@ class FeatureMeasure(Object):
                 except trace.TraceTooShort:
                     raise FeatureMeasurementFailed(
                         'transfer: trace too short')
-
-            if self.fmin is not None:
-                tr.highpass(4, self.fmin, demean=False)
-
-            if self.fmax is not None:
-                tr.lowpass(4, self.fmax, demean=False)
 
             if tmin is None or tmax is None:
                 raise FeatureMeasurementFailed(

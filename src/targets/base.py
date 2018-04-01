@@ -77,7 +77,7 @@ class MisfitTarget(Object):
         if self._target_parameters is None:
             self._target_parameters = copy.deepcopy(self.parameters)
             for p in self._target_parameters:
-                p.set_groups([self.id])
+                p.set_groups([self.string_id()])
         return self._target_parameters
 
     @property
@@ -91,19 +91,18 @@ class MisfitTarget(Object):
     def set_result_mode(self, result_mode):
         self._result_mode = result_mode
 
-    def string_id(self):
-        return '.'.join([self.path, self.id])
-
     def post_process(self, engine, source, statics):
         raise NotImplementedError()
 
     def get_combined_weight(self, apply_balancing_weights=False):
         return num.ones(1, dtype=num.float)
 
-    def init_modelling(self):
+    def prepare_modelling(self, engine, source):
         return []
 
-    def finalize_modelling(self, modelling_results):
+    def finalize_modelling(
+            self, engine, source, modelling_targets, modelling_results):
+
         raise NotImplemented('must be overloaded in subclass')
 
 

@@ -20,7 +20,7 @@ class DoubleDCProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
 
-    def get_problem(self, event, targets):
+    def get_problem(self, event, target_groups, targets):
         if event.depth is None:
             event.depth = 0.
 
@@ -35,6 +35,7 @@ class DoubleDCProblemConfig(ProblemConfig):
             name=expand_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
+            target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
             distance_min=self.distance_min,
@@ -89,6 +90,9 @@ class DoubleDCProblem(Problem):
         raise KeyError(pname)
 
     def pack(self, source):
+
+        dur1 = source.stf1.duration if source.stf1 else 0.0
+        dur2 = source.stf2.duration if source.stf2 else 0.0
         x = num.array([
             source.time - self.base_source.time,
             source.north_shift,
@@ -106,8 +110,8 @@ class DoubleDCProblem(Problem):
             source.azimuth,
             source.distance,
             source.mix,
-            source.stf1.duration,
-            source.stf2.duration], dtype=num.float)
+            dur1,
+            dur2], dtype=num.float)
 
         return x
 

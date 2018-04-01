@@ -336,11 +336,18 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             logger.debug(str(e))
             raise gf.SeismosizerError('no waveform data, %s' % str(e))
 
-    def prepare_modelling(self):
+    def prepare_modelling(self, engine, source):
         return [self]
 
-    def finalize_modelling(self, modelling_results):
+    def finalize_modelling(
+            self, engine, source, modelling_targets, modelling_results):
+
         return modelling_results[0]
+
+    def get_plain_targets(self, engine, source):
+        d = dict(
+            (k, getattr(self, k)) for k in gf.Target.T.propnames)
+        return [gf.Target(**d)]
 
 
 def misfit(

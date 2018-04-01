@@ -1,0 +1,76 @@
+
+table.have-op-icons tr span.op-icon,
+table.have-op-icons tr span.op-icon-sec {
+    visibility: hidden;
+}
+
+table.have-op-icons tr:hover span.op-icon,
+table.have-op-icons tr:hover span.op-icon-sec {
+    visibility: visible;
+}
+
+table.have-op-icons span.op-icon-sec {
+    color: #999;
+}
+
+table.have-op-icons td:hover span.op-icon-sec {
+    color: black;
+}
+
+textarea.code {
+    font-family: monospace;
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+div.section-menu {
+    float: right;
+}
+
+tr.no-hover:hover th,
+tr.no-hover:hover td {
+    background-color: white;
+}
+
+span.author-and-date {
+    font-size: small;
+    color: #999;
+}
+
+.spacedrow {
+    margin: 5px;
+}
+
+.lightgray {
+    background-color: #999;
+}
+
+.lightgray:hover {
+    background-color: #555;
+}
+
+.pagination {
+    margin: 0px;
+}
+
+.droptoggle {
+    margin-right: 5px;
+}
+
+del {
+    background-color: #efcbcb;
+}
+
+ins {
+    background-color: #cae7ca;
+}
+
+tr.has-manual-comments {
+    font-weight: bold;
+}
+
+table.stats tt {
+    white-space: pre;
+}

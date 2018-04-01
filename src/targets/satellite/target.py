@@ -100,7 +100,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return self._target_ranges
 
     def string_id(self):
-        return self.scene_id
+        return '.'.join([self.path, self.scene_id])
 
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)

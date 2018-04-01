@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import glob
 import sys
 import logging
 import time
@@ -15,11 +16,11 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import DatasetConfig, NotFound
 from .problems.base import ProblemConfig, Problem, \
-    load_problem_info_and_data, load_problem_data
+    load_problem_info_and_data, load_problem_data, load_problem_info
 
 from .optimizers.base import OptimizerConfig, BadProblem
 from .targets.base import TargetGroup
-from .targets.waveform.target import WaveformMisfitResult
+from .targets.waveform.base import WaveformMisfitResult
 from .analysers.base import AnalyserConfig
 from .meta import Path, HasPaths, expand_template, GrondError, Forbidden
 
@@ -213,7 +214,7 @@ def forward(rundir_or_config_path, event_names):
     if not event_names:
         return
 
-    if os.path.isdir(rundir_or_config_path):
+    if op.isdir(rundir_or_config_path):
         rundir = rundir_or_config_path
         config = guts.load(
             filename=op.join(rundir, 'config.yaml'))
@@ -800,6 +801,10 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             ev = problem.get_source(x).pyrocko_event()
             model.dump_events([ev], stream=out)
 
+        elif type == 'event-yaml':
+            ev = problem.get_source(x).pyrocko_event()
+            guts.dump_all([ev], stream=out)
+
         else:
             raise GrondError('invalid argument: type=%s' % repr(type))
 
@@ -856,7 +861,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     if out is not sys.stdout:
         out.close()
-
+        
 
 __all__ = '''
     EngineConfig

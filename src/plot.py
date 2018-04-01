@@ -21,6 +21,7 @@ from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
 from . import core
 from .meta import xjoin
 from .problems.base import ModelHistory, load_problem_info
+from .targets.waveform import base as wb
 
 
 logger = logging.getLogger('grond.plot')
@@ -1068,6 +1069,10 @@ def draw_fits_ensemble_figures(
                 dtraces[-1].append(None)
                 continue
 
+            if not isinstance(target, wb.WaveformMisfitTarget):
+                dtraces[-1].append(None)
+                continue
+
             itarget = target_index[target]
             w = target.get_combined_weight(problem.apply_balancing_weights)
 
@@ -1393,7 +1398,7 @@ def draw_fits_figures(ds, history, optimizer, plt):
 
     problem = history.problem
 
-    for target in problem.waveform_targets:
+    for target in problem.targets:
         target.set_dataset(ds)
 
     target_index = dict(
@@ -1423,8 +1428,12 @@ def draw_fits_figures(ds, history, optimizer, plt):
     results = problem.evaluate(xbest)
 
     dtraces = []
-    for target, result in zip(problem.waveform_targets, results):
+    for target, result in zip(problem.targets, results):
         if isinstance(result, gf.SeismosizerError):
+            dtraces.append(None)
+            continue
+
+        if not isinstance(target, wb.WaveformMisfitTarget):
             dtraces.append(None)
             continue
 
@@ -2088,7 +2097,6 @@ def plot_result(dirname, plotnames_want,
 
                     for fig in figs:
                         plt.close(fig)
-
 
     if 7 != len({
             'fits',

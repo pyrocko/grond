@@ -363,7 +363,7 @@ class Problem(Object):
         modelling_targets = []
         t2m_map = {}
         for itarget, target in enumerate(self.targets):
-            t2m_map[target] = target.prepare_modelling()
+            t2m_map[target] = target.prepare_modelling(engine, source)
             if mask is None or mask[itarget]:
                 modelling_targets.extend(t2m_map[target])
 
@@ -376,6 +376,8 @@ class Problem(Object):
             nmt_this = len(t2m_map[target])
             if mask is None or mask[itarget]:
                 result = target.finalize_modelling(
+                    engine, source,
+                    t2m_map[target],
                     modelling_results[imt:imt+nmt_this])
 
                 imt += nmt_this
@@ -399,6 +401,26 @@ class Problem(Object):
             imisfit += target.nmisfits
 
         return misfits
+
+    def forward(self, x):
+        source = self.get_source(x)
+        engine = self.get_engine()
+
+        plain_targets = []
+        for target in self.targets:
+            plain_targets.extend(target.get_plain_targets(engine, source))
+
+        resp = engine.process(source, plain_targets)
+
+        results = []
+        for target, result in zip(plain_targets, resp.results_list[0]):
+            if isinstance(result, gf.SeismosizerError):
+                logger.debug(
+                    '%s.%s.%s.%s: %s' % (target.codes + (str(result),)))
+            else:
+                results.append(result)
+
+        return results
 
 
 class InvalidRundir(Exception):

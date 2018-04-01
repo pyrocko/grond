@@ -6,7 +6,7 @@ earthquake source parameter estimation problems.
 
 ## Installation
 
-First, install [Pyrocko](http://pyrocko.org/current/install.html),
+First, install [Pyrocko](http://pyrocko.org/docs/current/install/),
 then install Grond:
 
 ```bash
@@ -19,7 +19,7 @@ sudo python setup.py install
 ## Updating an existing installation
 
 ```bash
-cd grond  # change to the directory where you cloned grond to initially
+cd grond  # change to the directory to where you cloned grond initially
 git pull origin master
 sudo python setup.py install
 ```
@@ -33,13 +33,14 @@ Grond's command line tool, run `grond --help` or `grond <subcommand> --help`.
 Once dataset and configuration are ready, the command
 `grond go <configfile> <eventname>` starts the optimization algorithm for a
 selected event. Before running the optimization, to debug problems with the
-dataset and configuration, use `grond check <configfile> <eventname>`. To get
-a list of event names available in a configured setup, run 
-`grond events <configfile>`.
-During the optimization, results are aggregated in a directory,
-referred to in the configuration as `<rundir>`. To visualize the results run
-`grond plot <plotnames> <rundir>`. The results can be exported in various way
-by running the subcommand `grond export <what> <rundir>`.
+dataset and configuration, use `grond check <configfile> <eventname>`. To get a
+list of event names available in a configured setup, run
+`grond events <configfile>`. During the optimization, results are aggregated in
+a directory, referred to in the configuration as `<rundir>`. To visualize the
+results run `grond plot <plotnames> <rundir>`. The results can be exported in
+various ways by running the subcommand `grond export <what> <rundir>`. Finally,
+you may run `grond report <rundir>` to aggregate results to a browsable
+summary, (by default) under the directory `reports`.
 
 
 ## Example configuration file
@@ -51,7 +52,6 @@ by running the subcommand `grond export <what> <rundir>`.
 # Path, where to store output (run-directories)
 rundir_template: 'gruns/${problem_name}.run'
 
-
 # -----------------------------------------------------------------------------
 # Configuration section for dataset (input data)
 # -----------------------------------------------------------------------------
@@ -60,22 +60,31 @@ dataset_config: !grond.DatasetConfig
 
   # List of files with station coordinates
   stations_stationxml_paths:
-  - 'events/${event_name}/responses.stationxml'
+  - 'events/${event_name}/responses-geofon.stationxml'
+  - 'events/${event_name}/responses-iris.stationxml'
 
   # File with hypocenter information and possibly reference solution
-  events_path: 'events/${event_name}/event.txt'
+  events_path: 'events/${event_name}/prepared/event.txt'
 
   # List of directories with raw waveform data
   waveform_paths:
-  - 'data/${event_name}/raw'
+  - 'events/${event_name}/raw'
 
   # List of files with instrument response information
   responses_stationxml_paths:
-  - 'meta/${event_name}/responses.stationxml'
+  - 'events/${event_name}/responses-geofon.stationxml'
+  - 'events/${event_name}/responses-iris.stationxml'
 
   # List with station/channel codes to exclude
-  blacklist: [OTAV, RCBR, PTGA, AXAS2, SNAA, PAYG, RAR, SDV, VAL, XMAS, ODZ,
-              Z51A, MSVF, SHEL, SUR, ROSA, 'IU.PTCN.00.T', 'C1.VA02..T', RPN]
+  #blacklist: ['STA','NET.STA', 'NET.STA.LOC', 'NET.STA.LOC.CHA']
+
+  # Same but using a file, one exclusion entry per line
+  blacklist_paths:
+  - 'events/${event_name}/blacklist.txt'
+
+  # Make available picks for forced trace alignment, file must be in Pyrocko's
+  # marker file format
+  #picks_paths: ['events/${event_name}/picks.markers']
 
 
 # -----------------------------------------------------------------------------
@@ -100,21 +109,21 @@ engine_config: !grond.EngineConfig
 # represented by a !grond.TargetConfig section.
 # -----------------------------------------------------------------------------
 
-target_configs:
+target_groups:
 
-- !grond.TargetConfig
+- !grond.WaveformTargetGroup
 
-  # Name of the super-group to which this contribution belongs
-  super_group: 'time_domain'
+  # misfits are normalized within each normalization_family separately
+  normalization_family: 'td'
 
   # Name of the group to which this contribution belongs
-  group: 'rayleigh'
+  path: 'td.rayleigh'
 
   # Minimum distance of stations to be considered
-  distance_min: 1000e3
+  distance_min: 0e3
 
   # Maximum distance of stations to be considered
-  distance_max: 10000e3
+  distance_max: 1000e3
 
   # List with names of channels to be considered
   channels: ['Z']
@@ -123,52 +132,75 @@ target_configs:
   weight: 1.0
 
   # Subsection on how to fit the traces
-  inner_misfit_config: !grond.InnerMisfitConfig
+  misfit_config: !grond.WaveformMisfitConfig
 
     # Frequency band [Hz] of acausal filter (flat part of frequency taper)
-    fmin: 0.002
-    fmax: 0.008
+    fmin: 0.01
+    fmax: 0.05
 
     # Factor defining fall-off of frequency taper
     # (zero at fmin/ffactor, fmax*ffactor)
     ffactor: 1.5
 
     # Time window to include in the data fitting. Times can be defined offset
-    # to given phase arrivals. E.g. 'begin-100' would mean 100 s before arrival
-    # of the phase named 'begin', which must be defined in the travel time
-    # tables in the GF store.
-    tmin: '{stored:begin}-100'
-    tmax: '{stored:end}+100'
+    # to given phase arrivals. E.g. '{stored:begin}-100' would mean 100 s
+    # before arrival of the phase named 'begin', which must be defined in the
+    # travel time tables in the GF store.
+
+    tmin: '{stored:anyP_no_Pdiff}'
+    tmax: '{vel_surface:2.5}'
+
+    # Align traces by picks (will lose some control on origin time and
+    # location). Define the synthetic phasename, for which a travel time table
+    # must be available in the GF store,
+    #pick_synthetic_traveltime: 'anyP_no_Pdiff'
+    # and the name of the picks to use in the picks file (defined in
+    # dataset_config)
+    #pick_phasename: 'P'
 
     # How to fit the data (available choices: 'time_domain',
     # 'frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
     domain: 'time_domain'
 
+    # allow for some time-shifting of individual traces, maximum shift [s]
+    tautoshift_max: 4.0
+
+    # whether to penalise time-shifting (0.0 for no penalty)
+    autoshift_penalty_max: 0.0
+
+    # exponent of the norm used when comparing traces, 1 or 2
+    norm_exponent: 1
+
   # How to interpolate the Green's functions (available choices:
-  # 'nearest_neighbor', 'multilinear')
+  # 'nearest_neighbor', 'multilinear'). Note that the GFs have to be densely
+  # sampled when using interpolation other than nearest_neighbor.
   interpolation: 'nearest_neighbor'
 
   # Name of GF store to use
-  store_id: 'global_20s_shallow'
+  store_id: 'global_2s'
 
 
 # A second contribution to the misfit function (for descriptions, see above)
-- !grond.TargetConfig
-  super_group: 'time_domain'
-  group: 'love'
-  distance_min: 1000e3
-  distance_max: 10000e3
-  channels: ['T']
+- !grond.WaveformTargetGroup
+  normalisation_family: 'td'
+  path: 'td.love'
+  distance_min: 0e3
+  distance_max: 1000e3
+  channels: [T]
   weight: 1.0
-  inner_misfit_config: !grond.InnerMisfitConfig
-    fmin: 0.002
-    fmax: 0.008
+  #limit: 20
+  misfit_config: !grond.WaveformMisfitConfig
+    fmin: 0.01
+    fmax: 0.05
     ffactor: 1.5
-    tmin: '{stored:begin}-100'
-    tmax: '{stored:end}+100'
-    domain: 'time_domain'
-  interpolation: 'nearest_neighbor'
-  store_id: 'global_20s_shallow'
+    tmin: 'stored:anyP_no_Pdiff'
+    tmax: 'vel_surface:2.5'
+    domain: time_domain
+    tautoshift_max: 4.0
+    autoshift_penalty_max: 0.0
+    norm_exponent: 1
+  interpolation: nearest_neighbor
+  store_id: 'global_2s'
 
 
 # -----------------------------------------------------------------------------
@@ -179,20 +211,20 @@ target_configs:
 problem_config: !grond.CMTProblemConfig
 
   # Name used when creating output directory
-  name_template: 'cmt_surface_wave_${event_name}'
+  name_template: 'timedomain_${event_name}'
 
   # Definition of model parameter space to be searched in the optimization
   ranges:
     # Time relative to hypocenter origin time [s]
-    time: '-100 .. 100 | add'
+    time: '-10 .. 10 | add'
 
     # Centroid location with respect to hypocenter origin [m]
-    north_shift: '-200e3 .. 200e3'
-    east_shift: '-200e3 .. 200e3'
+    north_shift: '-40e3 .. 40e3'
+    east_shift: '-40e3 .. 40e3'
     depth: '0 .. 50e3'
 
     # Range of magnitudes to allow
-    magnitude: '7.0 .. 9.0'
+    magnitude: '4.0 .. 7.0'
 
     # Relative moment tensor component ranges (don't touch)
     rmnn: '-1.41421 .. 1.41421'
@@ -203,15 +235,11 @@ problem_config: !grond.CMTProblemConfig
     rmed: '-1 .. 1'
 
     # Source duration range [s]
-    duration: '30. .. 120.'
+    duration: '0. .. 0.'
 
   # Clearance distance around stations (no models with origin closer than this
   # distance to any station are produced by the sampler)
   distance_min: 0.
-
-  # Number of bootstrap realizations to be tracked simultaneously in the
-  # optimization
-  nbootstrap: 100
 
   # Type of moment tensor to restrict to (choices: 'full', 'deviatoric')
   mt_type: 'deviatoric'
@@ -220,38 +248,39 @@ problem_config: !grond.CMTProblemConfig
   # spreading etc.
   apply_balancing_weights: true
 
+  # Under what norm to combine targets into the global misfit
+  # (exponent of norm, 1 or 2)
+  norm_exponent: 1
+
 
 # -----------------------------------------------------------------------------
-# Configuration of the optimization procedure
+# Configuration of the optimization procedure. The following example setup will
+# run a Bayesian bootstrap optimization (BABO).
 # -----------------------------------------------------------------------------
 
-solver_config: !grond.SolverConfig
+optimizer_config: !grond.HighScoreOptimizerConfig
 
-  # Distribution used when drawing new candidate models (choices: 'normal',
-  # 'multivariate_normal') (used in 'transition', 'explorative', and
-  # 'non_explorative' phase)
-  sampler_distribution: 'normal'
+  # Number of bootstrap realizations to be tracked simultaneously in the
+  # optimization
+  nbootstrap: 100
 
-  # Number of iterations to operate in 'uniform' mode
-  niter_uniform: 1000
+  sampler_phases:
 
-  # Number of iterations to operate in 'transition' mode
-  niter_transition: 2000
+  - !grond.UniformSamplerPhase
 
-  # Number of iterations to operate in 'explorative' mode
-  niter_explorative: 2000
+      # Number of iterations to operate in 'uniform' phase
+      niterations: 1000
 
-  # Number of iterations to operate in 'non_explorative' mode
-  niter_non_explorative: 0
+  - !grond.DirectedSamplerPhase
 
-  # Multiplicator for width of sampler distribution in 'explorative' and
-  # 'non-explorative' phases
-  scatter_scale: 0.25
+      # Number of iterations to operate in 'directed' phase
+      niterations: 10000
 
-  # Multiplicator for width of sampler distribution at start of 'transition'
-  # phase. (From there, it exponentially decreases to the value defined in
-  # 'scatter_scale' during the 'transition' phase).
-  scatter_scale_transition: 2.
+      # Multiplicator for width of sampler distribution to start with
+      scatter_scale_begin: 2.0
+
+      # Multiplicator for width of sampler distribution at end of this phase
+      scatter_scale_end: 0.5
 
 
 # -----------------------------------------------------------------------------
@@ -263,5 +292,5 @@ analyser_config: !grond.AnalyserConfig
 
   # Number of iterations (number of models to forward model in the analysis,
   # larger number -> better statistics)
-  niter: 1000
+  niterations: 1000
 ```

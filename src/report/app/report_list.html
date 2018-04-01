@@ -1,0 +1,8 @@
+<div class="container">
+    <h1>Reports</h1>
+    <div ng-repeat="report_entry in report_entries">
+        <p>
+            <a href="#/reports/{{ report_entry.path }}/">{{ report_entry.path }}</a>
+        </p>
+    </div>
+</div>

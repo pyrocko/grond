@@ -1,8 +1,10 @@
 import numpy as num
+import logging
 
 from pyrocko import trace
 from pyrocko.guts import (Object, Dict, String, Float, Bool, Int)
 
+logger = logging.getLogger('grond.synthetic_tests')
 
 guts_prefix = 'grond'
 
@@ -95,9 +97,11 @@ class SyntheticTest(Object):
 
     def get_waveform(self, nslc, tmin, tmax, tfade=0., freqlimits=None):
         synthetics = self.get_synthetics()
-
         if nslc not in synthetics:
-            return None
+            s = 'no synthetics for %s available' % '.'.join(nslc)
+            logger.warn(s)
+            from grond.dataset import NotFound
+            raise NotFound(s)
 
         tr = synthetics[nslc]
         tr.extend(tmin - tfade * 2.0, tmax + tfade * 2.0)
