@@ -76,6 +76,11 @@ class WaveformMisfitConfig(Object):
         return self.fmin / self.ffactor, self.fmax * self.ffactor
 
 
+def log_exclude(target, reason):
+    logger.debug('excluding potential target %s: %s' % (
+        target.string_id(), reason))
+
+
 class WaveformTargetGroup(TargetGroup):
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
@@ -94,12 +99,12 @@ class WaveformTargetGroup(TargetGroup):
 
         for st in ds.get_stations():
             for cha in self.channels:
-                if ds.is_blacklisted((st.nsl() + (cha,))):
-                    continue
+
+                nslc = st.nsl() + (cha,)
 
                 target = WaveformMisfitTarget(
                     quantity='displacement',
-                    codes=st.nsl() + (cha,),
+                    codes=nslc,
                     lat=st.lat,
                     lon=st.lon,
                     depth=st.depth,
@@ -110,28 +115,38 @@ class WaveformTargetGroup(TargetGroup):
                     normalisation_family=self.normalisation_family,
                     path=self.path or default_path)
 
+                if ds.is_blacklisted((st.nsl() + (cha,))):
+                    log_exclude(target, 'blacklisted')
+                    continue
+
                 if self.distance_min is not None and \
                    target.distance_to(origin) < self.distance_min:
+                    log_exclude(target, 'distance < distance_min')
                     continue
 
                 if self.distance_max is not None and \
                    target.distance_to(origin) > self.distance_max:
+                    log_exclude(target, 'distance > distance_max')
                     continue
 
                 if self.distance_3d_min is not None and \
                    target.distance_3d_to(origin) < self.distance_3d_min:
+                    log_exclude(target, 'distance_3d < distance_3d_min')
                     continue
 
                 if self.distance_3d_max is not None and \
                    target.distance_3d_to(origin) > self.distance_3d_max:
+                    log_exclude(target, 'distance_3d > distance_3d_max')
                     continue
 
                 if self.depth_min is not None and \
                    target.depth < self.depth_min:
+                    log_exclude(target, 'depth < depth_min')
                     continue
 
                 if self.depth_max is not None and \
                    target.depth > self.depth_max:
+                    log_exclude(target, 'depth > depth_max')
                     continue
 
                 azi, _ = target.azibazi_to(origin)

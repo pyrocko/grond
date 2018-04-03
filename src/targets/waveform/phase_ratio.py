@@ -14,6 +14,11 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.phase_ratio')
 
 
+def log_exclude(target, reason):
+    logger.debug('excluding potential target %s: %s' % (
+        target.string_id(), reason))
+
+
 class PhaseRatioTargetGroup(TargetGroup):
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
@@ -30,14 +35,11 @@ class PhaseRatioTargetGroup(TargetGroup):
         targets = []
 
         for st in ds.get_stations():
-            exclude = False
+            blacklisted = False
             for measure in [self.measure_a, self.measure_b]:
                 for cha in measure.channels:
                     if ds.is_blacklisted((st.nsl() + (cha,))):
-                        exclude = True
-
-            if exclude:
-                continue
+                        blacklisted = True
 
             target = PhaseRatioTarget(
                 codes=st.nsl(),
@@ -53,28 +55,38 @@ class PhaseRatioTargetGroup(TargetGroup):
                 path=self.path or default_path,
                 backazimuth=0.0)
 
+            if blacklisted:
+                log_exclude(target, 'blacklisted')
+                continue
+
             if self.distance_min is not None and \
                target.distance_to(origin) < self.distance_min:
+                log_exclude(target, 'distance < distance_min')
                 continue
 
             if self.distance_max is not None and \
                target.distance_to(origin) > self.distance_max:
+                log_exclude(target, 'distance > distance_max')
                 continue
 
             if self.distance_3d_min is not None and \
                target.distance_3d_to(origin) < self.distance_3d_min:
+                log_exclude(target, 'distance_3d < distance_3d_min')
                 continue
 
             if self.distance_3d_max is not None and \
                target.distance_3d_to(origin) > self.distance_3d_max:
+                log_exclude(target, 'distance_3d > distance_3d_max')
                 continue
 
             if self.depth_min is not None and \
                target.depth < self.depth_min:
+                log_exclude(target, 'depth < depth_min')
                 continue
 
             if self.depth_max is not None and \
                target.depth > self.depth_max:
+                log_exclude(target, 'depth > depth_max')
                 continue
 
             bazi, _ = target.azibazi_to(origin)
