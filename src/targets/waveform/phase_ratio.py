@@ -30,7 +30,7 @@ class PhaseRatioTargetGroup(TargetGroup):
     measure_b = fm.FeatureMeasure.T()
 
     def get_targets(self, ds, event, default_path):
-        logger.debug('Selecting waveform targets...')
+        logger.debug('Selecting phase ratio targets...')
         origin = event
         targets = []
 
