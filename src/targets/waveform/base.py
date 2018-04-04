@@ -316,8 +316,9 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         try:
             tr_obs = ds.get_waveform(
                 nslc,
-                tmin=tmin_obs,
-                tmax=tmax_obs,
+                tinc_cache=1.0/config.fmin,
+                tmin=tmin_fit+tobs_shift-tfade,
+                tmax=tmax_fit+tobs_shift+tfade,
                 tfade=tfade,
                 freqlimits=freqlimits,
                 deltat=tr_syn.deltat,

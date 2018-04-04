@@ -151,6 +151,7 @@ class FeatureMeasure(Object):
 
                 tr = dataset.get_waveform(
                     target.codes,
+                    tinc_cache=1.0/self.fmin,
                     quantity=self.quantity,
                     tmin=tmin,
                     tmax=tmax,

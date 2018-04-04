@@ -1,6 +1,7 @@
 import glob
 import copy
 import logging
+import math
 import numpy as num
 
 from collections import defaultdict
@@ -540,7 +541,7 @@ class Dataset(object):
 
         return projections
 
-    def get_waveform(
+    def _get_waveform(
             self,
             obj, quantity='displacement',
             tmin=None, tmax=None, tpad=0.,
@@ -568,14 +569,18 @@ class Dataset(object):
             raise NotFound(
                 'waveform is not on whitelist', nslc)
 
-        if tmin is not None:
-            tmin = float(tmin)
+        assert tmin is not None
+        assert tmax is not None
 
-        if tmax is not None:
-            tmax = float(tmax)
+        tmin = float(tmin)
+        tmax = float(tmax)
 
-        if cache is not None and (nslc, tmin, tmax) in cache:
-            obj = cache[nslc, tmin, tmax]
+        nslc = tuple(nslc)
+
+        cache_k = nslc + (
+            tmin, tmax, tuple(freqlimits), tfade, deltat, tpad, quantity)
+        if cache is not None and (nslc + cache_k) in cache:
+            obj = cache[nslc + cache_k]
             if isinstance(obj, Exception):
                 raise obj
             else:
@@ -596,7 +601,7 @@ class Dataset(object):
                     freqlimits=freqlimits)
 
                 if cache is not None:
-                    cache[tr.nslc_id, tmin, tmax] = tr
+                    cache[tr.nslc_id + cache_k] = tr
 
                 if debug:
                     return [], [], []
@@ -695,7 +700,7 @@ class Dataset(object):
 
             if cache is not None:
                 for tr in trs_projected:
-                    cache[tr.nslc_id, tmin, tmax] = tr
+                    cache[tr.nslc_id + cache_k] = tr
 
             if debug:
                 return trs_projected, trs_restituted, trs_raw
@@ -709,8 +714,22 @@ class Dataset(object):
 
         except NotFound as e:
             if cache is not None:
-                cache[nslc, tmin, tmax] = e
+                cache[nslc + cache_k] = e
             raise
+
+    def get_waveform(self, obj, tinc_cache, **kwargs):
+        tmin = kwargs['tmin']
+        tmax = kwargs['tmax']
+        tmin_r = (math.floor(tmin / tinc_cache) - 1.0) * tinc_cache
+        tmax_r = (math.ceil(tmax / tinc_cache) + 1.0) * tinc_cache
+        kwargs['tmin'] = tmin_r
+        kwargs['tmax'] = tmax_r
+
+        if kwargs.get('debug', None):
+            return self._get_waveform(obj, **kwargs)
+        else:
+            tr = self._get_waveform(obj, **kwargs)
+            return tr.chop(tmin, tmax, inplace=False)
 
     def get_events(self, magmin=None, event_names=None):
         evs = []
