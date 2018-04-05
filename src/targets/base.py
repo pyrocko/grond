@@ -105,6 +105,10 @@ class MisfitTarget(Object):
 
         raise NotImplemented('must be overloaded in subclass')
 
+    def get_plotter_class(self):
+        from grond import plot
+        raise plot.NoPlotterClassAvailable()
+
 
 __all__ = '''
     TargetGroup

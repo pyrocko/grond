@@ -63,12 +63,12 @@ class CMTProblem(Problem):
         Parameter('duration', 's', label='Duration')]
 
     dependants = [
-        Parameter('strike1', 'deg', label='Strike 1'),
-        Parameter('dip1', 'deg', label='Dip 1'),
-        Parameter('rake1', 'deg', label='Rake 1'),
-        Parameter('strike2', 'deg', label='Strike 2'),
-        Parameter('dip2', 'deg', label='Dip 2'),
-        Parameter('rake2', 'deg', label='Rake 2'),
+        Parameter('strike1', u'\u00b0', label='Strike 1'),
+        Parameter('dip1', u'\u00b0', label='Dip 1'),
+        Parameter('rake1', u'\u00b0', label='Rake 1'),
+        Parameter('strike2', u'\u00b0', label='Strike 2'),
+        Parameter('dip2', u'\u00b0', label='Dip 2'),
+        Parameter('rake2', u'\u00b0', label='Rake 2'),
         Parameter('rel_moment_iso', label='$M_{0}^{ISO}/M_{0}$'),
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 

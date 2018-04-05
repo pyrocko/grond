@@ -365,6 +365,10 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             (k, getattr(self, k)) for k in gf.Target.T.propnames)
         return [gf.Target(**d)]
 
+    def get_plotter_class(self):
+        from . import plot
+        return plot.WaveformPlotter
+
 
 def misfit(
         tr_obs, tr_syn, taper, domain, exponent, tautoshift_max,

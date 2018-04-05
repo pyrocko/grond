@@ -1,13 +1,12 @@
 from __future__ import print_function
 
-import os
-import glob
 import sys
 import logging
 import time
 import copy
 import shutil
 import os.path as op
+from collections import defaultdict
 import numpy as num
 
 from pyrocko.guts import load, Object, String, Float, Bool, List
@@ -16,7 +15,7 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import DatasetConfig, NotFound
 from .problems.base import ProblemConfig, Problem, \
-    load_problem_info_and_data, load_problem_data, load_problem_info
+    load_problem_info_and_data, load_problem_data
 
 from .optimizers.base import OptimizerConfig, BadProblem
 from .targets.base import TargetGroup
@@ -339,13 +338,17 @@ def check(
         event_names=None,
         target_string_ids=None,
         show_plot=False,
+        save_plot_path=None,
         show_waveforms=False,
         n_random_synthetics=10):
 
-    if show_plot:
-        from matplotlib import pyplot as plt
-        from pyrocko import plot
+    plot = show_plot or save_plot_path
 
+    if plot:
+        from matplotlib import pyplot as plt
+        import grond.plot
+
+    fns = defaultdict(list)
     markers = []
     for ievent, event_name in enumerate(event_names):
         ds = config.get_dataset(event_name)
@@ -497,70 +500,24 @@ def check(
                         tmin=tcut[0]-tobs_shift, tmax=tcut[1]-tobs_shift,
                         kind=1))
 
-            if show_plot:
+            if plot:
+                plot_dirname = save_plot_path % {'event_name': event_name}
                 for itarget, target in enumerate(problem.targets):
-                    yabsmaxs = []
-                    for results in results_list:
-                        result = results[itarget]
-                        if isinstance(result, WaveformMisfitResult):
-                            yabsmaxs.append(
-                                num.max(num.abs(
-                                    result.filtered_obs.get_ydata())))
+                    results = [r_[itarget] for r_ in results_list]
+                    figs = grond.plot.draw_target_check_figures(
+                        sources, target, results)
 
-                    if yabsmaxs:
-                        yabsmax = max(yabsmaxs) or 1.0
-                    else:
-                        yabsmax = None
+                    if save_plot_path:
+                        plotname = 'target_check.%s' % target.string_id()
+                        fns['target_check'].extend(grond.plot.save_figs(
+                            figs, plot_dirname, plotname,
+                            formats=['png'], dpi=None))
 
-                    fig = None
-                    ii = 0
-                    for results in results_list:
-                        result = results[itarget]
-                        if isinstance(result, WaveformMisfitResult):
-                            if fig is None:
-                                fig = plt.figure()
-                                axes = fig.add_subplot(1, 1, 1)
-                                axes.set_ylim(0., 4.)
-                                axes.set_title('%s' % target.string_id())
-
-                            xdata = result.filtered_obs.get_xdata()
-                            ydata = result.filtered_obs.get_ydata() / yabsmax
-                            axes.plot(
-                                xdata, ydata*0.5 + 3.5, color='black')
-
-                            color = plot.mpl_graph_color(ii)
-
-                            xdata = result.filtered_syn.get_xdata()
-                            ydata = result.filtered_syn.get_ydata()
-                            ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
-
-                            axes.plot(xdata, ydata*0.5 + 2.5, color=color)
-
-                            xdata = result.processed_syn.get_xdata()
-                            ydata = result.processed_syn.get_ydata()
-                            ydata = ydata / (num.max(num.abs(ydata)) or 1.0)
-
-                            axes.plot(xdata, ydata*0.5 + 1.5, color=color)
-                            if result.tsyn_pick:
-                                axes.axvline(
-                                    result.tsyn_pick,
-                                    color=(0.7, 0.7, 0.7),
-                                    zorder=2)
-
-                            t = result.processed_syn.get_xdata()
-                            taper = result.taper
-
-                            y = num.ones(t.size) * 0.9
-                            taper(y, t[0], t[1] - t[0])
-                            y2 = num.concatenate((y, -y[::-1]))
-                            t2 = num.concatenate((t, t[::-1]))
-                            axes.plot(t2, y2 * 0.5 + 0.5, color='gray')
-                            ii += 1
-                        else:
-                            logger.info(str(result))
-
-                    if fig:
+                    if show_plot:
                         plt.show()
+
+                    for fig in figs:
+                        plt.close(fig)
 
             else:
                 for itarget, target in enumerate(problem.targets):
@@ -589,6 +546,8 @@ def check(
 
         if show_waveforms:
             trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
+
+    return fns
 
 
 g_state = {}
@@ -861,7 +820,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     if out is not sys.stdout:
         out.close()
-        
+
 
 __all__ = '''
     EngineConfig

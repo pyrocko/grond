@@ -52,7 +52,9 @@ subcommand_usages = {
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'baraddur': 'plot-server',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
-    'report': 'report <rundir> [options]',
+    'report': (
+        'report <rundir> ... [options]',
+        'report <configfile> <eventnames> ...'),
     'report-index': 'report <reportdir> [options]',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
                        '<targetconfigname> [options]',
@@ -516,6 +518,7 @@ def command_plot(args):
         'sequence',
         'contributions',
         'jointpar',
+        'histogram',
         'hudson',
         'fits',
         'fits_statics',
@@ -670,14 +673,29 @@ def command_report(args):
     if len(args) < 1:
         help_and_die(parser, 'arguments required')
 
-    rundirs = args
+    if all(op.isdir(rundir) for rundir in args):
+        rundirs = args
+        try:
+            for rundir in rundirs:
+                grond.report.report(rundir)
 
-    try:
-        for rundir in rundirs:
-            grond.report.report(rundir)
+        except grond.GrondError as e:
+            die(str(e))
 
-    except grond.GrondError as e:
-        die(str(e))
+    else:
+        if len(args) < 2:
+            help_and_die(parser, 'arguments required')
+
+        config_path = args[0]
+        event_names = args[1:]
+
+        try:
+            config = grond.read_config(config_path)
+            for event_name in event_names:
+                grond.report.report(config_and_event_name=(config, event_name))
+
+        except grond.GrondError as e:
+            die(str(e))
 
 
 def command_report_index(args):

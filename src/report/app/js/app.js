@@ -162,7 +162,7 @@ angular.module('reportApp', ['ngRoute'])
     .filter('eround', function() {
         return function(input, std) {
             if (std > 0) {
-                var ndig = - Math.floor(Math.log10(std)) + 2;
+                var ndig = - Math.floor(Math.log10(std)) + 1;
                 var factor = Math.pow(10, ndig);
                 return Math.round(input * factor) / factor;
             } else {

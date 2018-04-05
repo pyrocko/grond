@@ -29,6 +29,14 @@ logger = logging.getLogger('grond.plot')
 km = 1000.
 
 
+class Plotter(object):
+    pass
+
+
+class NoPlotterClassAvailable(Exception):
+    pass
+
+
 def light(color, factor=0.5):
     return tuple(1-(1-c)*factor for c in color)
 
@@ -406,7 +414,7 @@ def draw_jointpar_figures(
             if ix == 0 or jselected + 1 == iselected:
                 for (xpos, xoff, x) in [(0.0, 10., xmin), (1.0, -10., xmax)]:
                     axes.annotate(
-                        '%.2g%s' % (x, xpar.get_unit_suffix()),
+                        '%.3g%s' % (x, xpar.get_unit_suffix()),
                         xy=(xpos, 1.05),
                         xycoords='axes fraction',
                         xytext=(xoff, 5.),
@@ -418,7 +426,7 @@ def draw_jointpar_figures(
             if iy == neach - 1 or jselected + 1 == iselected:
                 for (ypos, yoff, y) in [(0., 10., ymin), (1.0, -10., ymax)]:
                     axes.annotate(
-                        '%.2g%s' % (y, ypar.get_unit_suffix()),
+                        '%.3g%s' % (y, ypar.get_unit_suffix()),
                         xy=(1.0, ypos),
                         xycoords='axes fraction',
                         xytext=(5., yoff),
@@ -487,6 +495,113 @@ def draw_jointpar_figures(
         figs_flat.extend(fig for fig in figs_row if fig is not None)
 
     return figs_flat
+
+
+def draw_histogram_figures(history, optimizer, plt):
+
+    import scipy.stats
+    from grond.core import make_stats
+
+    exclude = None
+    include = None
+    figsize = (5, 3)
+    fontsize = 10
+    method = 'gaussian_kde'
+    ref_color = mpl_color('aluminium6')
+    stats_color = mpl_color('scarletred2')
+
+    problem = history.problem
+    misfits = history.misfits
+    if not problem:
+        return []
+
+    models = history.models
+
+    bounds = problem.get_combined_bounds()
+    for ipar in range(problem.ncombined):
+        par = problem.combined[ipar]
+        vmin, vmax = bounds[ipar]
+        if vmin == vmax:
+            if exclude is None:
+                exclude = []
+
+            exclude.append(par.name)
+
+    xref = problem.get_xref()
+
+    smap = {}
+    iselected = 0
+    for ipar in range(problem.ncombined):
+        par = problem.combined[ipar]
+        if exclude and par.name in exclude or \
+                include and par.name not in include:
+            continue
+
+        smap[iselected] = ipar
+        iselected += 1
+
+    nselected = iselected
+
+    pnames = [
+        problem.combined[smap[iselected]].name
+        for iselected in range(nselected)]
+
+    rstats = make_stats(problem, models, misfits, pnames=pnames)
+
+    figs = []
+    for iselected in range(nselected):
+        ipar = smap[iselected]
+        par = problem.combined[ipar]
+        vs = problem.extract(models, ipar)
+        vmin, vmax = bounds[ipar]
+
+        fig = plt.figure(figsize=figsize)
+        labelpos = mpl_margins(
+            fig, nw=1, nh=1, w=7., bottom=5., top=1, units=fontsize)
+
+        axes = fig.add_subplot(1, 1, 1)
+        labelpos(axes, 2.5, 2.0)
+        axes.set_xlabel(par.get_label())
+        axes.set_ylabel('PDF')
+        axes.set_xlim(*fixlim(*par.scaled((vmin, vmax))))
+
+        if method == 'gaussian_kde':
+            kde = scipy.stats.gaussian_kde(vs)
+            vps = num.linspace(vmin, vmax, 600)
+            pps = kde(vps)
+
+        elif method == 'histogram':
+            pps, edges = num.histogram(vs, density=True)
+            vps = 0.5 * (edges[:-1] + edges[1:])
+
+        axes.plot(par.scaled(vps), par.inv_scaled(pps))
+
+        pstats = rstats.parameter_stats_list[iselected]
+
+        axes.axvspan(
+            par.scaled(pstats.minimum), par.scaled(pstats.maximum), 
+            color=stats_color, alpha=0.1)
+        axes.axvspan(
+            par.scaled(pstats.percentile16), par.scaled(pstats.percentile84),
+            color=stats_color, alpha=0.1)
+        axes.axvspan(
+            par.scaled(pstats.percentile5), par.scaled(pstats.percentile95),
+            color=stats_color, alpha=0.1)
+
+        axes.axvline(
+            par.scaled(pstats.median),
+            color=stats_color, alpha=0.5)
+        axes.axvline(
+            par.scaled(pstats.mean),
+            color=stats_color, ls=':', alpha=0.5)
+
+        axes.axvline(
+            par.scaled(problem.extract(xref, ipar)),
+            color=ref_color)
+
+        figs.append(fig)
+
+    return figs
 
 
 def draw_solution_figure(
@@ -1153,7 +1268,7 @@ def draw_fits_ensemble_figures(
 
     cg_to_targets = gather(
         problem.waveform_targets,
-        lambda t: (t.normalisation_family, t.path, t.codes[3]),
+        lambda t: (t.path, t.codes[3]),
         filter=lambda t: t in target_to_results)
 
     cgs = sorted(cg_to_targets.keys())
@@ -1526,7 +1641,7 @@ def draw_fits_figures(ds, history, optimizer, plt):
 
     cg_to_targets = gather(
         problem.waveform_targets,
-        lambda t: (t.normalisation_family, t.path, t.codes[3]),
+        lambda t: (t.path, t.codes[3]),
         filter=lambda t: t in target_to_result)
 
     cgs = sorted(cg_to_targets.keys())
@@ -2020,6 +2135,7 @@ plot_dispatch = {
     'sequence': draw_sequence_figures,
     'contributions': draw_contributions_figure,
     'jointpar': draw_jointpar_figures,
+    'histogram': draw_histogram_figures,
     'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
     'fits_statics': draw_fits_figures_statics,
@@ -2033,10 +2149,11 @@ def save_figs(figs, plot_dirname, plotname, formats, dpi):
         if fmt not in ['pdf', 'png']:
             raise core.GrondError('unavailable output format: %s' % fmt)
 
-    assert re.match(r'^[a-z_]+$', plotname)
+    assert re.match(r'^[a-zA-Z0-9_.]+$', plotname)
 
     # remove files from previous runs
-    pat = re.compile(r'^%s-[0-9]+\.(%s)$' % (plotname, '|'.join(formats)))
+    pat = re.compile(r'^%s-[0-9]+\.(%s)$' % (
+        re.escape(plotname), '|'.join(formats)))
     if op.exists(plot_dirname):
         for entry in os.listdir(plot_dirname):
             if pat.match(entry):
@@ -2060,7 +2177,7 @@ def available_plotnames():
 
 
 def plot_result(dirname, plotnames_want,
-                save=False, formats=('pdf',), dpi=None):
+                save=False, save_path=None, formats=('pdf',), dpi=None):
 
     if isinstance(formats, str):
         formats = formats.split(',')
@@ -2068,7 +2185,11 @@ def plot_result(dirname, plotnames_want,
     plotnames_want = set(plotnames_want)
     plotnames_avail = set(plot_dispatch.keys())
 
-    plot_dirname = op.join(dirname, 'plots')
+    if save_path is None:
+        plot_dirname = op.join(dirname, 'plots')
+    else:
+        plot_dirname = save_path
+        save = True
 
     unavailable = plotnames_want - plotnames_avail
     if unavailable:
@@ -2078,7 +2199,7 @@ def plot_result(dirname, plotnames_want,
     fontsize = 10.0
 
     mpl_init(fontsize=fontsize)
-    fns = []
+    fns = defaultdict(list)
     config = None
 
     optimizer_fn = op.join(dirname, 'optimizer.yaml')
@@ -2092,17 +2213,18 @@ def plot_result(dirname, plotnames_want,
             if plotname in plotnames_want:
                 figs = plot_dispatch[plotname](history, optimizer, plt)
                 if save:
-                    fns.extend(
+                    fns[plotname].extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
                     for fig in figs:
                         plt.close(fig)
 
-    if 7 != len({
+    if 8 != len({
             'fits',
             'fits_statics',
             'fits_ensemble',
             'jointpar',
+            'histogram',
             'hudson',
             'solution',
             'location'} - plotnames_want):
@@ -2123,17 +2245,23 @@ def plot_result(dirname, plotnames_want,
                 ds = config.get_dataset(event_name)
                 figs = plot_dispatch[plotname](ds, history, optimizer, plt)
                 if save:
-                    fns.extend(
+                    fns[plotname].extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
                     for fig in figs:
                         plt.close(fig)
 
-        for plotname in ['jointpar', 'hudson', 'solution', 'location']:
+        for plotname in [
+                'jointpar',
+                'histogram',
+                'hudson',
+                'solution',
+                'location']:
+
             if plotname in plotnames_want:
                 figs = plot_dispatch[plotname](history, optimizer, plt)
                 if save:
-                    fns.extend(
+                    fns[plotname].extend(
                         save_figs(figs, plot_dirname, plotname, formats, dpi))
 
                     for fig in figs:
@@ -2141,6 +2269,8 @@ def plot_result(dirname, plotnames_want,
 
     if not save:
         plt.show()
+
+    return fns
 
 
 def make_movie(dirname, xpar_name, ypar_name, movie_filename):
@@ -2152,3 +2282,11 @@ def make_movie(dirname, xpar_name, ypar_name, movie_filename):
         problem, history, xpar_name, ypar_name, movie_filename)
 
     movie_maker.render()
+
+
+def draw_target_check_figures(sources, target, results):
+    try:
+        plotter_class = target.get_plotter_class()
+        return plotter_class.draw_check_figures(sources, target, results)
+    except NoPlotterClassAvailable:
+        return []

@@ -1,7 +1,12 @@
 import logging
 import os.path as op
 from string import Template
-from pyrocko.guts import Object, String, Float
+from pyrocko.guts import Object, String, Float, Unicode
+
+try:
+    newstr = unicode
+except NameError:
+    newstr = str
 
 
 logger = logging.getLogger('grond.meta')
@@ -56,16 +61,16 @@ class ADict(dict):
 
 class Parameter(Object):
     name__ = String.T()
-    unit = String.T(optional=True)
+    unit = Unicode.T(optional=True)
     scale_factor = Float.T(default=1., optional=True)
-    scale_unit = String.T(optional=True)
-    label = String.T(optional=True)
+    scale_unit = Unicode.T(optional=True)
+    label = Unicode.T(optional=True)
 
     def __init__(self, *args, **kwargs):
         if len(args) >= 1:
             kwargs['name'] = args[0]
         if len(args) >= 2:
-            kwargs['unit'] = args[1]
+            kwargs['unit'] = newstr(args[1])
 
         self.groups = [None]
         self._name = None
@@ -127,6 +132,14 @@ class Parameter(Object):
             return list(v/self.scale_factor for v in x)
         else:
             return x/self.scale_factor
+
+    def inv_scaled(self, x):
+        if isinstance(x, tuple):
+            return tuple(v*self.scale_factor for v in x)
+        if isinstance(x, list):
+            return list(v*self.scale_factor for v in x)
+        else:
+            return x*self.scale_factor
 
 
 class HasPaths(Object):

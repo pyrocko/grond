@@ -1,5 +1,4 @@
 import os.path as op
-import glob
 import shutil
 import os
 
@@ -19,8 +18,9 @@ class ReportConfig(Object):
         default='reports/${event_name}/${problem_name}')
     plot_names = List.T(
         String.T(),
-        default=['solution', 'fits', 'jointpar', 'hudson', 'sequence',
-                 'fits_ensemble', 'contributions', 'bootstrap'])
+        default=['solution', 'fits', 'histogram', 'jointpar', 'hudson', 
+                 'sequence', 'fits_ensemble', 'contributions', 'bootstrap',
+                 'target_check'])
 
 
 class ReportPlot(Object):
@@ -32,38 +32,68 @@ class ReportPlots(Object):
     plots = List.T(ReportPlot.T())
 
 
-def report(rundir, report_config=None):
+def report(
+        rundir=None, config_and_event_name=None, report_config=None,
+        skip_plotting=False):
 
     if report_config is None:
         report_config = ReportConfig()
 
-    config = guts.load(
-        filename=op.join(rundir, 'config.yaml'))
+    from grond.core import read_config, check
+    from grond.plot import plot_result, available_plotnames
 
-    config.set_basepath(rundir)
+    if config_and_event_name is None:
+        config = read_config(op.join(rundir, 'config.yaml'))
+        problem = load_problem_info(rundir)
+        event_name = problem.base_source.name
 
-    problem = load_problem_info(rundir)
+    else:
+        config, event_name = config_and_event_name
+        ds = config.get_dataset(event_name)
+        event = ds.get_event()
+        problem = config.get_problem(event)
 
     reportdir = expand_template(
         report_config.reportdir_template,
         dict(
-            event_name=problem.base_source.name,
+            event_name=event_name,
             problem_name=problem.name))
 
-    util.ensuredir(reportdir)
-    core.export('stats', [rundir], filename=op.join(reportdir, 'stats.yaml'))
+    if op.exists(reportdir):
+        shutil.rmtree(reportdir)
 
+    problem.dump_problem_info(reportdir)
+
+    util.ensuredir(reportdir)
     plots_dir_out = op.join(reportdir, 'plots')
     util.ensuredir(plots_dir_out)
+
+    fns = {}
+    if 'target_check' in report_config.plot_names:
+        fns.update(check(
+            config,
+            event_names=[event_name],
+            save_plot_path=op.join(plots_dir_out)))
+
+    if rundir:
+        core.export(
+            'stats', [rundir], filename=op.join(reportdir, 'stats.yaml'))
+
+        avail = available_plotnames()
+        fns.update(plot_result(
+            rundir,
+            [name for name in report_config.plot_names if name in avail],
+            save_path=plots_dir_out, formats=('png',)))
+
     rps = []
-    for plot_name in report_config.plot_names:
-        plot_path_pat = op.join(rundir, 'plots', plot_name + '-*.png')
-        plot_paths = sorted(glob.glob(plot_path_pat))
+    for plot_name in sorted(
+            fns.keys(),
+            key=lambda x: report_config.plot_names.index(x)):
+
+        plot_paths = fns.get(plot_name, [])
         plot_basenames = []
         for plot_path in plot_paths:
             plot_basename = op.basename(plot_path)
-            plot_path_out = op.join(plots_dir_out, plot_basename)
-            shutil.copy(plot_path, plot_path_out)
             plot_basenames.append(plot_basename)
 
         rp = ReportPlot(
@@ -79,7 +109,7 @@ def iter_report_dirs(report_base_path):
     for path, dirnames, filenames in os.walk(report_base_path):
         for dirname in dirnames:
             dirpath = op.join(path, dirname)
-            stats_path = op.join(dirpath, 'stats.yaml')
+            stats_path = op.join(dirpath, 'problem.yaml')
             if op.exists(stats_path):
                 yield dirpath
 
