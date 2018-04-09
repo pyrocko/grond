@@ -35,7 +35,7 @@ setup(
     python_requires='>=3.5',
     entry_points={
         'console_scripts': [
-            'grond = grond.apps.__main__:main',
+            'grond = grond.apps.grond:main',
         ]
     },
     package_dir={'grond': 'src'},

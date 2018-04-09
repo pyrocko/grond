@@ -2,9 +2,10 @@
 
 import math
 import sys
-import logging
+import shutil
 import os
 import os.path as op
+import logging
 from optparse import OptionParser
 
 from pyrocko import util, marker
@@ -83,7 +84,6 @@ Subcommands:
     report          %(report)s
     report-index    %(report_index)s
     qc-polarization %(qc_polarization)s
-    baraddur        %(baraddur)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -179,48 +179,64 @@ def command_init(args):
 
     def setup(parser):
         parser.add_option(
-            '--waveform', dest='waveform', action='store_true', default=True,
-            help='Create an example configuration for waveform inversion. '
+            '--waveforms', dest='waveforms', action='store_true',
+            help='Add waveform configuration. '
                  '(default)')
         parser.add_option(
-            '--static', dest='static', action='store_true',
-            help='Create an example configuration for static displacements'
-                 ' using kite scene containers.')
+            '--insar', dest='insar', action='store_true',
+            help='Add InSAR displacement scenes using kite containers. '
+                 '(https://pyrocko.org')
+        parser.add_option(
+            '--force', dest='force', action='store_true',
+            help='Overwrite existing project folder.')
 
     parser, options, args = cl_parse('init', args, setup)
 
     project_dir = None
     if len(args) == 1:
         project_dir = op.join(op.curdir, args[0])
-        if op.exists(project_dir):
-            raise EnvironmentError('Directory %s already exists' % args[0])
+        if op.exists(project_dir) and not options.force:
+            raise EnvironmentError(
+                'Directory %s already exists! Use --force to overwrite'
+                % args[0])
+        elif op.exists(project_dir) and options.force:
+            logger.info('Overwriting directory %s.' % project_dir)
+            shutil.rmtree(project_dir)
+
+    if not options.insar and not options.waveforms:
+        options.waveforms = True
+
+    config_types = []
 
     sub_dirs = ['gf_store']
     empty_files = []
 
-    if options.waveform and not options.static:
-        config_type = 'waveform'
+    dataset_config = grond.DatasetConfig(events_path='events.txt')
+    target_groups = []
+
+    if options.waveforms:
+        config_types.append('seismic waveforms')
 
         sub_dirs += ['data']
+        dataset_config.waveform_paths = ['data']
+
         empty_files += ['stations.xml']
-        dataset_config = grond.DatasetConfig(
-            stations_path='stations.txt',
-            events_path='events.txt',
-            waveform_paths=['data'])
+        dataset_config.stations_path = 'stations.txt'
 
-        target_groups = [grond.WaveformTargetGroup(
-            normalisation_family='time_domain',
-            path='all',
-            distance_min=10*km,
-            distance_max=1000*km,
-            channels=['Z', 'R', 'T'],
-            interpolation='multilinear',
-            store_id='gf_store',
-            misfit_config=grond.WaveformMisfitConfig(
-                fmin=0.01,
-                fmax=0.1))]
+        target_groups.append(
+            grond.WaveformTargetGroup(
+                normalisation_family='time_domain',
+                path='all',
+                distance_min=10*km,
+                distance_max=1000*km,
+                channels=['Z', 'R', 'T'],
+                interpolation='multilinear',
+                store_id='gf_store',
+                misfit_config=grond.WaveformMisfitConfig(
+                    fmin=0.01,
+                    fmax=0.1)))
 
-        s2 = math.sqrt(2.0)
+        pi2 = math.pi/2
         problem_config = grond.CMTProblemConfig(
             name_template='cmt_%(event_name)s',
             distance_min=2.*km,
@@ -231,17 +247,17 @@ def command_init(args):
                 east_shift=Range(-16*km, 16*km),
                 depth=Range(1*km, 11*km),
                 magnitude=Range(4.0, 6.0),
-                rmnn=Range(-s2, s2),
-                rmee=Range(-s2, s2),
-                rmdd=Range(-s2, s2),
+                rmnn=Range(-pi2, pi2),
+                rmee=Range(-pi2, pi2),
+                rmdd=Range(-pi2, pi2),
                 rmne=Range(-1.0, 1.0),
                 rmnd=Range(-1.0, 1.0),
                 rmed=Range(-1.0, 1.0),
                 duration=Range(1.0, 15.0))
             )
 
-    elif options.static:
-        config_type = 'static'
+    if options.insar:
+        config_types.append('InSAR')
 
         sub_dirs += ['scenes', 'gnss']
 
@@ -250,21 +266,22 @@ def command_init(args):
             kite_scene_paths=['scenes'],
             )
 
-        target_groups = [grond.SatelliteTargetGroup(
-            normalisation_family='insar_target',
-            path='all',
-            interpolation='multilinear',
-            store_id='gf_store',
-            kite_scenes=['*all'],
-            misfit_config=grond.SatelliteMisfitConfig(
-                use_weight_focal=False,
-                optimize_orbital_ramp=True,
-                ranges={
-                    'offset': '-0.5 .. 0.5',
-                    'ramp_north': '-1e-4 .. 1e-4',
-                    'ramp_east': '-1e-4 .. 1e-4'
-                    }
-                ))]
+        target_groups.append(
+            grond.SatelliteTargetGroup(
+                normalisation_family='insar_target',
+                path='all',
+                interpolation='multilinear',
+                store_id='gf_store',
+                kite_scenes=['*all'],
+                misfit_config=grond.SatelliteMisfitConfig(
+                    use_weight_focal=False,
+                    optimize_orbital_ramp=True,
+                    ranges={
+                        'offset': '-0.5 .. 0.5',
+                        'ramp_north': '-1e-4 .. 1e-4',
+                        'ramp_east': '-1e-4 .. 1e-4'
+                        }
+                    )))
 
         problem_config = grond.RectangularProblemConfig(
             name_template='rect_source',
@@ -304,8 +321,8 @@ region = Myanmar
 --------------------------------------------'''
 
     if project_dir is not None:
-        logger.info('Creating empty %s project in folder %s'
-                    % (config_type, args[0]))
+        logger.info('Creating empty project for %s in folder %s'
+                    % (' and '.join(config_types), args[0]))
 
         def p(fn):
             return op.join(project_dir, fn)
@@ -397,10 +414,6 @@ def command_go(args):
         parser.add_option(
             '--parallel', dest='nparallel', type='int', default=1,
             help='set number of events to process in parallel')
-        parser.add_option(
-            '--baraddur', dest='baraddur', default=False,
-            action='store_true',
-            help='start the Barad-dur plotting server')
 
     parser, options, args = cl_parse('go', args, setup)
 
@@ -581,31 +594,6 @@ def command_movie(args):
 
     except grond.GrondError as e:
         die(str(e))
-
-
-def command_baraddur(args):
-    from grond.baraddur import Baraddur, BaraddurConfig
-    import signal
-
-    def setup(parser):
-        parser.add_option(
-            '--address', dest='address', default='*',
-            help='Address listening on, default all \'*\'')
-        parser.add_option(
-            '--port', dest='port', type='int', default=8080,
-            help='Port to listen on, default 8080')
-
-    parser, options, args = cl_parse('baraddur', args, setup)
-
-    config = BaraddurConfig(
-        project_dir=op.abspath(op.curdir),
-        hosts=options.address,
-        port=options.port)
-
-    baraddur = Baraddur(config=config)
-    signal.signal(signal.SIGINT, baraddur.stop)
-
-    baraddur.start()
 
 
 def command_export(args):
