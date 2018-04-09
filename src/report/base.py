@@ -18,7 +18,7 @@ class ReportConfig(Object):
         default='reports/${event_name}/${problem_name}')
     plot_names = List.T(
         String.T(),
-        default=['solution', 'fits', 'histogram', 'jointpar', 'hudson', 
+        default=['solution', 'fits', 'histogram', 'jointpar', 'hudson',
                  'sequence', 'fits_ensemble', 'contributions', 'bootstrap',
                  'target_check'])
 

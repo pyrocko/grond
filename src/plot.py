@@ -10,27 +10,203 @@ import numpy as num
 from scipy import signal
 
 from matplotlib import pyplot as plt
-from matplotlib import cm, patches, gridspec
+from matplotlib import cm, patches
 
-from pyrocko import beachball, guts, trace, util, gf
+from pyrocko import beachball, guts, util, gf
 from pyrocko import hudson
+
+from pyrocko.guts import Object, Float, Int, List, Tuple, String, Unicode, Dict
 
 from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
     mpl_graph_color, mpl_color
 
-from . import core
-from .meta import xjoin
-from .problems.base import ModelHistory, load_problem_info
-from .targets.waveform import base as wb
+from grond import meta, core
+from grond.problems.base import ModelHistory, load_problem_info
 
 
 logger = logging.getLogger('grond.plot')
 
-km = 1000.
+
+class StringID(gf.StringID):
+    pass
+
+
+class PlotFormat(Object):
+
+    @property
+    def extension(self):
+        return self.name
+
+    def get_dpi(self, size_cm):
+        return None
+
+
+class PNG(PlotFormat):
+    name = 'png'
+
+    dpi = Float.T(optional=True)
+    size_pixels = Int.T(optional=True)
+    width_pixels = Int.T(optional=True)
+    height_pixels = Int.T(optional=True)
+
+    @property
+    def extension(self):
+        if self.dpi is not None:
+            return 'd%i.png' % self.dpi
+        elif self.size_pixels is not None:
+            return 's%i.png' % self.size_pixels
+        elif self.width_pixels is not None:
+            return 'w%i.png' % self.width_pixels
+        elif self.height_pixels is not None:
+            return 'h%i.png' % self.height_pixels
+
+    def get_dpi(self, size_cm):
+        inch = 2.54
+        w_cm, h_cm = size_cm
+        w_inch, h_inch = w_cm/inch, h_cm/inch
+        if self.dpi:
+            return self.dpi
+        elif self.size_pixels is not None:
+            return min(self.size_pixels/w_inch, self.size_pixels/h_inch)
+        elif self.width_pixels is not None:
+            return self.width_pixels/w_inch
+        elif self.height_pixels is not None:
+            return self.height_pixels/h_inch
+
+
+class PDF(PlotFormat):
+    name = 'pdf'
+
+
+class PlotConfig(Object):
+    name = 'undefined'
+    formats = List.T(PlotFormat.T())
+    size_cm = Tuple.T(2, Float.T())
+
+
+class PlotPage(Object):
+    name = StringID.T()
+    attributes = Dict.T(StringID.T(), List.T(String.T()))
+
+
+class PlotBook(Object):
+    name = StringID.T()
+    variant = StringID.T()
+    description = Unicode.T(optional=True)
+    formats = List.T(PlotFormat.T())
+    size_cm = Tuple.T(2, Float.T())
+    pages = List.T(PlotPage.T())
+
+    def filename_image(self, page, format):
+        return '%s.%s.%s' % (
+            self.name,
+            self.variant,
+            page.name,
+            format.extension)
+
+
+class BookShelve(Object):
+    book_refs = List.T(Tuple.T(StringID.T(), StringID.T()))
+
+
+class PlotShelveManager(object):
+
+    def __init__(self, path):
+        self._path = path
+        self.load_shelve()
+
+    def load_shelve(self):
+        self._shelve = guts.load(filename=self.path_index())
+
+    def dump_shelve(self):
+        guts.dump(filename=self.path_index())
+
+    def path_shelve(self):
+        return op.join(self._path, 'plot_shelve.yaml')
+
+    def path_image(self, book, page, format):
+        return op.join(self._path, book.filename_image(page, format))
+
+    def path_book(self, book_ref=None, book=None):
+        if book_ref is not None:
+            book_name, book_variant = book_ref
+        else:
+            book_name = book.name
+            book_variant = book.variant
+
+        return op.join(
+            self._path, book_name, book_variant)
+
+    def create_book(self, config, iter_page_figure, **kwargs):
+        book = PlotBook(
+            formats=guts.clone(config.formats),
+            size_cm=config.size_cm,
+            name=config.plotname,
+            **kwargs)
+
+        path_book = self.path_book(book=book)
+        if os.path.exists(path_book):
+            self.remove_book(book.name, book.variant)
+
+        for page, fig in iter_page_figure:
+            book.pages.append(page)
+            for format in book.formats:
+                path = self.path_image(book, page, format)
+                util.ensuredirs(path)
+                fig.savefig(
+                    path,
+                    format=format.name,
+                    dpi=format.get_dpi(book.size_cm))
+
+                logger.info('figure saved: %s' % path)
+
+        book.dump(filename=path_book)
+        self.add(book)
+
+    def remove_book(self, book_name, book_variant):
+        book = guts.load(filename=self.path_book(book_name, book_variant))
+        for page in book.pages:
+            for format in book.formats:
+                path = self.path_image(book, page, format)
+                os.unlink(path)
+
+        path_book = self.path_book(book)
+        os.unlink(path_book)
+
+
+def save_figs(figs, plot_dirname, plotname, formats, dpi):
+    for fmt in formats:
+        if fmt not in ['pdf', 'png']:
+            raise core.GrondError('unavailable output format: %s' % fmt)
+
+    assert re.match(r'^[a-zA-Z0-9_.]+$', plotname)
+
+    # remove files from previous runs
+    pat = re.compile(r'^%s-[0-9]+\.(%s)$' % (
+        re.escape(plotname), '|'.join(formats)))
+    if op.exists(plot_dirname):
+        for entry in os.listdir(plot_dirname):
+            if pat.match(entry):
+                os.unlink(op.join(plot_dirname, entry))
+
+    fns = []
+    for ifig, fig in enumerate(figs):
+        for format in formats:
+            fn = op.join(plot_dirname, '%s-%02i.%s' % (plotname, ifig, format))
+            util.ensuredirs(fn)
+
+            fig.savefig(fn, format=format, dpi=dpi)
+            logger.info('figure saved: %s' % fn)
+            fns.append(fn)
+
+    return fns
 
 
 class Plotter(object):
-    pass
+
+    @classmethod
+    def draw_check_figures(cls, sources, target, results):
+        raise NotImplementedError('to be implemented in subclass')
 
 
 class NoPlotterClassAvailable(Exception):
@@ -45,30 +221,6 @@ def dark(color, factor=0.5):
     return tuple(c*factor for c in color)
 
 
-def amp_spec_max(spec_trs, key):
-    amaxs = {}
-    for spec_tr in spec_trs:
-        amax = num.max(num.abs(spec_tr.ydata))
-        k = key(spec_tr)
-        if k not in amaxs:
-            amaxs[k] = amax
-        else:
-            amaxs[k] = max(amaxs[k], amax)
-
-    return amaxs
-
-
-def ordersort(x):
-    isort = num.argsort(x)
-    iorder = num.empty(isort.size)
-    iorder[isort] = num.arange(isort.size)
-    return iorder
-
-
-def nextpow2(i):
-    return 2**int(math.ceil(math.log(i) / math.log(2.)))
-
-
 def fixlim(lo, hi):
     if lo == hi:
         return lo - 1.0, hi + 1.0
@@ -76,60 +228,10 @@ def fixlim(lo, hi):
         return lo, hi
 
 
-def str_dist(dist):
-    if dist < 10.0:
-        return '%g m' % dist
-    elif 10. <= dist < 1. * km:
-        return '%.0f m' % dist
-    elif 1. * km <= dist < 10. * km:
-        return '%.1f km' % (dist / km)
-    else:
-        return '%.0f km' % (dist / km)
-
-
-def str_duration(t):
-    s = ''
-    if t < 0.:
-        s = '-'
-
-    t = abs(t)
-
-    if t < 10.0:
-        return s + '%.2g s' % t
-    elif 10.0 <= t < 3600.:
-        return s + util.time_to_str(t, format='%M:%S min')
-    elif 3600. <= t < 24 * 3600.:
-        return s + util.time_to_str(t, format='%H:%M h')
-    else:
-        return s + '%.1f d' % (t / (24. * 3600.))
-
-
-def scale_axes(ax, scale):
-    from matplotlib.ticker import ScalarFormatter
-
-    class FormatScaled(ScalarFormatter):
-
-        @staticmethod
-        def __call__(value, pos):
-            return '%d' % (value * scale)
-
-    ax.get_xaxis().set_major_formatter(FormatScaled())
-    ax.get_yaxis().set_major_formatter(FormatScaled())
-
-
 def eigh_sorted(mat):
     evals, evecs = num.linalg.eigh(mat)
     iorder = num.argsort(evals)
     return evals[iorder], evecs[:, iorder]
-
-
-def make_norm_trace(a, b, exponent):
-    tmin = max(a.tmin, b.tmin)
-    tmax = min(a.tmax, b.tmax)
-    c = a.chop(tmin, tmax, inplace=False)
-    bc = b.chop(tmin, tmax, inplace=False)
-    c.set_ydata(num.abs(c.get_ydata() - bc.get_ydata())**exponent)
-    return c
 
 
 def draw_sequence_figures(
@@ -339,7 +441,7 @@ def draw_jointpar_figures(
         mx = num.mean(models, axis=0)
         cov = num.cov(models.T)
         mdists = core.mahalanobis_distance(models, mx, cov)
-        icolor = ordersort(mdists)
+        icolor = meta.ordersort(mdists)
 
     elif color == 'misfit':
         iorder = num.arange(nmodels)
@@ -565,21 +667,22 @@ def draw_histogram_figures(history, optimizer, plt):
         axes.set_ylabel('PDF')
         axes.set_xlim(*fixlim(*par.scaled((vmin, vmax))))
 
-        if method == 'gaussian_kde':
-            kde = scipy.stats.gaussian_kde(vs)
-            vps = num.linspace(vmin, vmax, 600)
-            pps = kde(vps)
+        for method in 'gaussian_kde', 'histogram':
+            if method == 'gaussian_kde':
+                kde = scipy.stats.gaussian_kde(vs)
+                vps = num.linspace(vmin, vmax, 600)
+                pps = kde(vps)
 
-        elif method == 'histogram':
-            pps, edges = num.histogram(vs, density=True)
-            vps = 0.5 * (edges[:-1] + edges[1:])
+            elif method == 'histogram':
+                pps, edges = num.histogram(vs, density=True)
+                vps = 0.5 * (edges[:-1] + edges[1:])
 
-        axes.plot(par.scaled(vps), par.inv_scaled(pps))
+            axes.plot(par.scaled(vps), par.inv_scaled(pps), color=stats_color)
 
         pstats = rstats.parameter_stats_list[iselected]
 
         axes.axvspan(
-            par.scaled(pstats.minimum), par.scaled(pstats.maximum), 
+            par.scaled(pstats.minimum), par.scaled(pstats.maximum),
             color=stats_color, alpha=0.1)
         axes.axvspan(
             par.scaled(pstats.percentile16), par.scaled(pstats.percentile84),
@@ -908,1028 +1011,6 @@ def draw_bootstrap_figure(history, optimizer, plt):
     return [fig]
 
 
-def gather(l, key, sort=None, filter=None):
-    d = {}
-    for x in l:
-        if filter is not None and not filter(x):
-            continue
-
-        k = key(x)
-        if k not in d:
-            d[k] = []
-
-        d[k].append(x)
-
-    if sort is not None:
-        for v in d.values():
-            v.sort(key=sort)
-
-    return d
-
-
-def plot_trace(axes, tr, **kwargs):
-    return axes.plot(tr.get_xdata(), tr.get_ydata(), **kwargs)
-
-
-def plot_taper(axes, t, taper, **kwargs):
-    y = num.ones(t.size) * 0.9
-    taper(y, t[0], t[1] - t[0])
-    y2 = num.concatenate((y, -y[::-1]))
-    t2 = num.concatenate((t, t[::-1]))
-    axes.fill(t2, y2, **kwargs)
-
-
-def plot_dtrace(axes, tr, space, mi, ma, **kwargs):
-    t = tr.get_xdata()
-    y = tr.get_ydata()
-    y2 = (num.concatenate((y, num.zeros(y.size))) - mi) / \
-        (ma - mi) * space - (1.0 + space)
-    t2 = num.concatenate((t, t[::-1]))
-    axes.fill(
-        t2, y2,
-        clip_on=False,
-        **kwargs)
-
-
-def plot_spectrum(
-        axes, spec_syn, spec_obs, fmin, fmax, space, mi, ma,
-        syn_color='red', obs_color='black',
-        syn_lw=1.5, obs_lw=1.0, color_vline='gray', fontsize=9.):
-
-    fpad = (fmax - fmin) / 6.
-
-    for spec, color, lw in [
-            (spec_syn, syn_color, syn_lw),
-            (spec_obs, obs_color, obs_lw)]:
-
-        f = spec.get_xdata()
-        mask = num.logical_and(fmin - fpad <= f, f <= fmax + fpad)
-
-        f = f[mask]
-        y = num.abs(spec.get_ydata())[mask]
-
-        y2 = (num.concatenate((y, num.zeros(y.size))) - mi) / \
-            (ma - mi) * space - (1.0 + space)
-        f2 = num.concatenate((f, f[::-1]))
-        axes2 = axes.twiny()
-        axes2.set_axis_off()
-
-        axes2.set_xlim(fmin - fpad * 5, fmax + fpad * 5)
-
-        axes2.plot(f2, y2, clip_on=False, color=color, lw=lw)
-        axes2.fill(f2, y2, alpha=0.1, clip_on=False, color=color)
-
-    axes2.plot([fmin, fmin], [-1.0 - space, -1.0], color=color_vline)
-    axes2.plot([fmax, fmax], [-1.0 - space, -1.0], color=color_vline)
-
-    for (text, fx, ha) in [
-            ('%.3g Hz' % fmin, fmin, 'right'),
-            ('%.3g Hz' % fmax, fmax, 'left')]:
-
-        axes2.annotate(
-            text,
-            xy=(fx, -1.0),
-            xycoords='data',
-            xytext=(
-                fontsize * 0.4 * [-1, 1][ha == 'left'],
-                -fontsize * 0.2),
-            textcoords='offset points',
-            ha=ha,
-            va='top',
-            color=color_vline,
-            fontsize=fontsize)
-
-
-def plot_dtrace_vline(axes, t, space, **kwargs):
-    axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
-
-
-def draw_fits_figures_statics(ds, history, optimizer, plt):
-    from pyrocko.orthodrome import latlon_to_ne_numpy
-    problem = history.problem
-
-    for target in problem.targets:
-        target.set_dataset(ds)
-
-    gms = problem.combine_misfits(history.misfits)
-    isort = num.argsort(gms)
-    gms = gms[isort]
-    models = history.models[isort, :]
-    xbest = models[0, :]
-
-    source = problem.get_source(xbest)
-
-    results = problem.evaluate(xbest)
-
-    figures = []
-
-    def decorateAxes(ax, title):
-        ax.set_title(title)
-        ax.set_xlabel('[km]')
-        scale_axes(ax, 1. / km)
-        ax.set_aspect('equal')
-
-    def drawRectangularOutline(ax):
-        source.regularize()
-        fn, fe = source.outline(cs='xy').T
-        offset_n, offset_e = latlon_to_ne_numpy(
-            sat_target.lats[0], sat_target.lons[0],
-            source.lat, source.lon)
-        fn += offset_n
-        fe += offset_e
-        ax.plot(offset_e, offset_n, marker='o')
-        ax.plot(fe, fn, marker='o')
-        # ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
-        # ax.plot(fe[:2], fn[:2], linewidth=2., color='black', alpha=0.5)
-
-    def mapDisplacementGrid(displacements, scene):
-        qt = scene.quadtree
-        array = num.empty_like(scene.displacement)
-        array.fill(num.nan)
-        for syn_v, l in zip(displacements, qt.leaves):
-            array[l._slice_rows, l._slice_cols] = syn_v
-
-        array[scene.displacement_mask] = num.nan
-        return array
-
-    def drawTiles(ax, scene):
-        rect = scene.quadtree.getMPLRectangles()
-        for r in rect:
-            r.set_edgecolor((.4, .4, .4))
-            r.set_linewidth(.5)
-            r.set_facecolor('none')
-        map(ax.add_artist, rect)
-
-        ax.scatter(scene.quadtree.leaf_coordinates[:, 0],
-                   scene.quadtree.leaf_coordinates[:, 1],
-                   s=.25, c='black', alpha=.1)
-
-    for sat_target, result in zip(problem.satellite_targets, results):
-        fig = plt.figure()
-        fig.set_size_inches(16, 4)
-        axes = []
-        gs = gridspec.GridSpec(1, 3,
-                               hspace=.0001, left=.06, bottom=.1,
-                               right=.9)
-        axes.append(plt.subplot(gs[0, 0]))
-        axes.append(plt.subplot(gs[0, 1]))
-        axes.append(plt.subplot(gs[0, 2]))
-
-        scene = ds.get_kite_scene(sat_target.scene_id)
-
-        stat_obs = result.statics_obs
-        cmw = cm.ScalarMappable(cmap='coolwarm')
-        cmw.set_array(stat_obs)
-        cmap = cmw.get_cmap()
-        norm = cmw.norm
-
-        stat_syn = result.statics_syn['displacement.los']
-        res = (stat_obs - stat_syn)
-        im_extent = (scene.frame.E.min(), scene.frame.E.max(),
-                     scene.frame.N.min(), scene.frame.N.max())
-
-        ax = axes[0]
-        ax.imshow(mapDisplacementGrid(stat_obs, scene),
-                  extent=im_extent, cmap=cmap,
-                  origin='lower', norm=norm)
-        drawTiles(ax, scene)
-        drawRectangularOutline(ax)
-        decorateAxes(ax, 'Data')
-        ax.set_ylabel('[km]')
-
-        ax = axes[1]
-        ax.imshow(mapDisplacementGrid(stat_syn, scene),
-                  extent=im_extent, cmap=cmap,
-                  origin='lower', norm=norm)
-        drawTiles(ax, scene)
-        drawRectangularOutline(ax)
-        decorateAxes(ax, 'Model')
-        ax.get_yaxis().set_visible(False)
-
-        ax = axes[2]
-        ax.imshow(mapDisplacementGrid(res, scene),
-                  extent=im_extent, cmap=cmap,
-                  origin='lower', norm=norm)
-        drawTiles(ax, scene)
-        drawRectangularOutline(ax)
-        decorateAxes(ax, 'Residual')
-        ax.get_yaxis().set_visible(False)
-
-        pos = ax.get_position()
-        cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.02, pos.y1 - pos.y0])
-        cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
-        cbar.set_label('[m]')
-        figures.append(fig)
-
-    return figures
-
-
-def draw_fits_ensemble_figures(
-        ds, history, optimizer, plt,
-        misfit_cutoff=None, color='depth'):
-
-    fontsize = 8
-    fontsize_title = 10
-
-    problem = history.problem
-
-    for target in problem.targets:
-        target.set_dataset(ds)
-
-    target_index = dict(
-        (target, i) for (i, target) in enumerate(problem.targets))
-
-    gms = problem.combine_misfits(history.misfits)
-    isort = num.argsort(gms)[::-1]
-    gms = gms[isort]
-    models = history.models[isort, :]
-
-    if misfit_cutoff is not None:
-        ibest = gms < misfit_cutoff
-        gms = gms[ibest]
-        models = models[ibest]
-
-    gms = gms[::10]
-    models = models[::10]
-
-    nmodels = models.shape[0]
-    if color == 'dist':
-        mx = num.mean(models, axis=0)
-        cov = num.cov(models.T)
-        mdists = core.mahalanobis_distance(models, mx, cov)
-        icolor = ordersort(mdists)
-
-    elif color == 'misfit':
-        iorder = num.arange(nmodels)
-        icolor = iorder
-
-    elif color in problem.parameter_names:
-        ind = problem.name_to_index(color)
-        icolor = problem.extract(models, ind)
-
-    target_to_results = defaultdict(list)
-    all_syn_trs = []
-
-    dtraces = []
-    for imodel in range(nmodels):
-        model = models[imodel, :]
-
-        source = problem.get_source(model)
-        results = problem.evaluate(model)
-
-        dtraces.append([])
-
-        for target, result in zip(problem.targets, results):
-            if isinstance(result, gf.SeismosizerError):
-                dtraces[-1].append(None)
-                continue
-
-            if not isinstance(target, wb.WaveformMisfitTarget):
-                dtraces[-1].append(None)
-                continue
-
-            itarget = target_index[target]
-            w = target.get_combined_weight(problem.apply_balancing_weights)
-
-            if target.misfit_config.domain == 'cc_max_norm':
-                tref = (
-                    result.filtered_obs.tmin + result.filtered_obs.tmax) * 0.5
-                for tr_filt, tr_proc, tshift in (
-                        (result.filtered_obs,
-                         result.processed_obs,
-                         0.),
-                        (result.filtered_syn,
-                         result.processed_syn,
-                         result.tshift)):
-
-                    norm = num.sum(num.abs(tr_proc.ydata)) / tr_proc.data_len()
-                    tr_filt.ydata /= norm
-                    tr_proc.ydata /= norm
-
-                    tr_filt.shift(tshift)
-                    tr_proc.shift(tshift)
-
-                ctr = result.cc
-                ctr.shift(tref)
-
-                dtrace = ctr
-
-            else:
-                for tr in (
-                        result.filtered_obs,
-                        result.filtered_syn,
-                        result.processed_obs,
-                        result.processed_syn):
-
-                    tr.ydata *= w
-
-                if result.tshift is not None and result.tshift != 0.0:
-                    # result.filtered_syn.shift(result.tshift)
-                    result.processed_syn.shift(result.tshift)
-
-                dtrace = make_norm_trace(
-                    result.processed_syn, result.processed_obs,
-                    problem.norm_exponent)
-
-            target_to_results[target].append(result)
-
-            dtrace.meta = dict(
-                normalisation_family=target.normalisation_family,
-                path=target.path)
-
-            dtraces[-1].append(dtrace)
-
-            result.processed_syn.meta = dict(
-                normalisation_family=target.normalisation_family,
-                path=target.path)
-
-            all_syn_trs.append(result.processed_syn)
-
-    if not all_syn_trs:
-        logger.warn('no traces to show')
-        return []
-
-    def skey(tr):
-        return tr.meta['normalisation_family'], tr.meta['path']
-
-    trace_minmaxs = trace.minmax(all_syn_trs, skey)
-
-    dtraces_all = []
-    for dtraces_group in dtraces:
-        dtraces_all.extend(dtraces_group)
-
-    dminmaxs = trace.minmax([
-        dtrace_ for dtrace_ in dtraces_all if dtrace_ is not None], skey)
-
-    for tr in dtraces_all:
-        if tr:
-            dmin, dmax = dminmaxs[skey(tr)]
-            tr.ydata /= max(abs(dmin), abs(dmax))
-
-    cg_to_targets = gather(
-        problem.waveform_targets,
-        lambda t: (t.path, t.codes[3]),
-        filter=lambda t: t in target_to_results)
-
-    cgs = sorted(cg_to_targets.keys())
-
-    from matplotlib import colors
-    cmap = cm.ScalarMappable(
-        norm=colors.Normalize(vmin=num.min(icolor), vmax=num.max(icolor)),
-        cmap=plt.get_cmap('coolwarm'))
-
-    imodel_to_color = []
-    for imodel in range(nmodels):
-        imodel_to_color.append(cmap.to_rgba(icolor[imodel]))
-
-    figs = []
-    for cg in cgs:
-        targets = cg_to_targets[cg]
-        nframes = len(targets)
-
-        nx = int(math.ceil(math.sqrt(nframes)))
-        ny = (nframes-1) // nx+1
-
-        nxmax = 4
-        nymax = 4
-
-        nxx = (nx-1) // nxmax + 1
-        nyy = (ny-1) // nymax + 1
-
-        # nz = nxx * nyy
-
-        xs = num.arange(nx) / ((max(2, nx) - 1.0) / 2.)
-        ys = num.arange(ny) / ((max(2, ny) - 1.0) / 2.)
-
-        xs -= num.mean(xs)
-        ys -= num.mean(ys)
-
-        fxs = num.tile(xs, ny)
-        fys = num.repeat(ys, nx)
-
-        data = []
-
-        for target in targets:
-            azi = source.azibazi_to(target)[0]
-            dist = source.distance_to(target)
-            x = dist*num.sin(num.deg2rad(azi))
-            y = dist*num.cos(num.deg2rad(azi))
-            data.append((x, y, dist))
-
-        gxs, gys, dists = num.array(data, dtype=num.float).T
-
-        iorder = num.argsort(dists)
-
-        gxs = gxs[iorder]
-        gys = gys[iorder]
-        targets_sorted = [targets[ii] for ii in iorder]
-
-        gxs -= num.mean(gxs)
-        gys -= num.mean(gys)
-
-        gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
-        if gmax == 0.:
-            gmax = 1.
-
-        gxs /= gmax
-        gys /= gmax
-
-        dists = num.sqrt(
-            (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
-            (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
-
-        distmax = num.max(dists)
-
-        availmask = num.ones(dists.shape[1], dtype=num.bool)
-        frame_to_target = {}
-        for itarget, target in enumerate(targets_sorted):
-            iframe = num.argmin(
-                num.where(availmask, dists[itarget], distmax + 1.))
-            availmask[iframe] = False
-            iy, ix = num.unravel_index(iframe, (ny, nx))
-            frame_to_target[iy, ix] = target
-
-        figures = {}
-        for iy in range(ny):
-            for ix in range(nx):
-                if (iy, ix) not in frame_to_target:
-                    continue
-
-                ixx = ix//nxmax
-                iyy = iy//nymax
-                if (iyy, ixx) not in figures:
-                    figures[iyy, ixx] = plt.figure(
-                        figsize=mpl_papersize('a4', 'landscape'))
-
-                    figures[iyy, ixx].subplots_adjust(
-                        left=0.03,
-                        right=1.0 - 0.03,
-                        bottom=0.03,
-                        top=1.0 - 0.06,
-                        wspace=0.2,
-                        hspace=0.2)
-
-                    figs.append(figures[iyy, ixx])
-
-                fig = figures[iyy, ixx]
-
-                target = frame_to_target[iy, ix]
-
-                amin, amax = trace_minmaxs[
-                    target.normalisation_family, target.path]
-                absmax = max(abs(amin), abs(amax))
-
-                ny_this = nymax  # min(ny, nymax)
-                nx_this = nxmax  # min(nx, nxmax)
-                i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
-
-                axes2 = fig.add_subplot(ny_this, nx_this, i_this)
-
-                space = 0.5
-                space_factor = 1.0 + space
-                axes2.set_axis_off()
-                axes2.set_ylim(-1.05 * space_factor, 1.05)
-
-                axes = axes2.twinx()
-                axes.set_axis_off()
-
-                if target.misfit_config.domain == 'cc_max_norm':
-                    axes.set_ylim(-10. * space_factor, 10.)
-                else:
-                    axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
-
-                itarget = target_index[target]
-                for imodel, result in enumerate(target_to_results[target]):
-
-                    syn_color = imodel_to_color[imodel]
-
-                    dtrace = dtraces[imodel][itarget]
-
-                    tap_color_annot = (0.35, 0.35, 0.25)
-                    tap_color_edge = (0.85, 0.85, 0.80)
-                    tap_color_fill = (0.95, 0.95, 0.90)
-
-                    plot_taper(
-                        axes2, result.processed_obs.get_xdata(), result.taper,
-                        fc=tap_color_fill, ec=tap_color_edge, alpha=0.2)
-
-                    obs_color = mpl_color('aluminium5')
-                    obs_color_light = light(obs_color, 0.5)
-
-                    plot_dtrace(
-                        axes2, dtrace, space, 0., 1.,
-                        fc='none',
-                        ec=syn_color)
-
-                    # plot_trace(
-                    #     axes, result.filtered_syn,
-                    #     color=syn_color_light, lw=1.0)
-
-                    if imodel == 0:
-                        plot_trace(
-                            axes, result.filtered_obs,
-                            color=obs_color_light, lw=0.75)
-
-                    plot_trace(
-                        axes, result.processed_syn,
-                        color=syn_color, lw=1.0, alpha=0.3)
-
-                    plot_trace(
-                        axes, result.processed_obs,
-                        color=obs_color, lw=0.75, alpha=0.3)
-
-                    if imodel != 0:
-                        continue
-                    xdata = result.filtered_obs.get_xdata()
-                    axes.set_xlim(xdata[0], xdata[-1])
-
-                    tmarks = [
-                        result.processed_obs.tmin,
-                        result.processed_obs.tmax]
-
-                    for tmark in tmarks:
-                        axes2.plot(
-                            [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
-
-                    for tmark, text, ha in [
-                            (tmarks[0],
-                             '$\,$ ' + str_duration(tmarks[0] - source.time),
-                             'right'),
-                            (tmarks[1],
-                             '$\Delta$ ' + str_duration(tmarks[1] - tmarks[0]),
-                             'left')]:
-
-                        axes2.annotate(
-                            text,
-                            xy=(tmark, -0.9),
-                            xycoords='data',
-                            xytext=(
-                                fontsize*0.4 * [-1, 1][ha == 'left'],
-                                fontsize*0.2),
-                            textcoords='offset points',
-                            ha=ha,
-                            va='bottom',
-                            color=tap_color_annot,
-                            fontsize=fontsize)
-
-                scale_string = None
-
-                if target.misfit_config.domain == 'cc_max_norm':
-                    scale_string = 'Syn/obs scales differ!'
-
-                infos = []
-                if scale_string:
-                    infos.append(scale_string)
-
-                infos.append('.'.join(x for x in target.codes if x))
-                dist = source.distance_to(target)
-                azi = source.azibazi_to(target)[0]
-                infos.append(str_dist(dist))
-                infos.append(u'%.0f\u00B0' % azi)
-                axes2.annotate(
-                    '\n'.join(infos),
-                    xy=(0., 1.),
-                    xycoords='axes fraction',
-                    xytext=(2., 2.),
-                    textcoords='offset points',
-                    ha='left',
-                    va='top',
-                    fontsize=fontsize,
-                    fontstyle='normal')
-
-        for (iyy, ixx), fig in figures.items():
-            title = '.'.join(x for x in cg if x)
-            if len(figures) > 1:
-                title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
-
-            fig.suptitle(title, fontsize=fontsize_title)
-
-    return figs
-
-
-def draw_fits_figures(ds, history, optimizer, plt):
-    fontsize = 8
-    fontsize_title = 10
-
-    problem = history.problem
-
-    for target in problem.targets:
-        target.set_dataset(ds)
-
-    target_index = dict(
-        (target, i) for (i, target) in enumerate(problem.waveform_targets))
-
-    gms = problem.combine_misfits(history.misfits)
-    isort = num.argsort(gms)
-    gms = gms[isort]
-    models = history.models[isort, :]
-    misfits = history.misfits[isort, :]
-
-    xbest = models[0, :]
-
-    ws = problem.get_target_weights()
-
-    gcms = problem.combine_misfits(
-        misfits[:1, :, :], get_contributions=True)[0, :]
-
-    w_max = num.nanmax(ws)
-    gcm_max = num.nanmax(gcms)
-
-    source = problem.get_source(xbest)
-
-    target_to_result = {}
-    all_syn_trs = []
-    all_syn_specs = []
-    results = problem.evaluate(xbest)
-
-    dtraces = []
-    for target, result in zip(problem.targets, results):
-        if isinstance(result, gf.SeismosizerError):
-            dtraces.append(None)
-            continue
-
-        if not isinstance(target, wb.WaveformMisfitTarget):
-            dtraces.append(None)
-            continue
-
-        itarget = target_index[target]
-        w = target.get_combined_weight(problem.apply_balancing_weights)
-
-        if target.misfit_config.domain == 'cc_max_norm':
-            tref = (result.filtered_obs.tmin + result.filtered_obs.tmax) * 0.5
-            for tr_filt, tr_proc, tshift in (
-                    (result.filtered_obs,
-                     result.processed_obs,
-                     0.),
-                    (result.filtered_syn,
-                     result.processed_syn,
-                     result.tshift)):
-
-                norm = num.sum(num.abs(tr_proc.ydata)) / tr_proc.data_len()
-                tr_filt.ydata /= norm
-                tr_proc.ydata /= norm
-
-                tr_filt.shift(tshift)
-                tr_proc.shift(tshift)
-
-            ctr = result.cc
-            ctr.shift(tref)
-
-            dtrace = ctr
-
-        else:
-            for tr in (
-                    result.filtered_obs,
-                    result.filtered_syn,
-                    result.processed_obs,
-                    result.processed_syn):
-
-                tr.ydata *= w
-
-            for spec in (
-                    result.spectrum_obs,
-                    result.spectrum_syn):
-
-                if spec is not None:
-                    spec.ydata *= w
-
-            if result.tshift is not None and result.tshift != 0.0:
-                # result.filtered_syn.shift(result.tshift)
-                result.processed_syn.shift(result.tshift)
-
-            dtrace = make_norm_trace(
-                result.processed_syn, result.processed_obs,
-                problem.norm_exponent)
-
-        target_to_result[target] = result
-
-        dtrace.meta = dict(
-            normalisation_family=target.normalisation_family,
-            path=target.path)
-        dtraces.append(dtrace)
-
-        result.processed_syn.meta = dict(
-            normalisation_family=target.normalisation_family,
-            path=target.path)
-
-        all_syn_trs.append(result.processed_syn)
-
-        if result.spectrum_syn:
-            result.spectrum_syn.meta = dict(
-                normalisation_family=target.normalisation_family,
-                path=target.path)
-
-            all_syn_specs.append(result.spectrum_syn)
-
-    if not all_syn_trs:
-        logger.warn('no traces to show')
-        return []
-
-    def skey(tr):
-        return tr.meta['normalisation_family'], tr.meta['path']
-
-    trace_minmaxs = trace.minmax(all_syn_trs, skey)
-
-    amp_spec_maxs = amp_spec_max(all_syn_specs, skey)
-
-    dminmaxs = trace.minmax([x for x in dtraces if x is not None], skey)
-
-    for tr in dtraces:
-        if tr:
-            dmin, dmax = dminmaxs[skey(tr)]
-            tr.ydata /= max(abs(dmin), abs(dmax))
-
-    cg_to_targets = gather(
-        problem.waveform_targets,
-        lambda t: (t.path, t.codes[3]),
-        filter=lambda t: t in target_to_result)
-
-    cgs = sorted(cg_to_targets.keys())
-
-    figs = []
-    for cg in cgs:
-        targets = cg_to_targets[cg]
-        nframes = len(targets)
-
-        nx = int(math.ceil(math.sqrt(nframes)))
-        ny = (nframes - 1) // nx + 1
-
-        nxmax = 4
-        nymax = 4
-
-        nxx = (nx - 1) // nxmax + 1
-        nyy = (ny - 1) // nymax + 1
-
-        # nz = nxx * nyy
-
-        xs = num.arange(nx) // ((max(2, nx) - 1.0) / 2.)
-        ys = num.arange(ny) // ((max(2, ny) - 1.0) / 2.)
-
-        xs -= num.mean(xs)
-        ys -= num.mean(ys)
-
-        fxs = num.tile(xs, ny)
-        fys = num.repeat(ys, nx)
-
-        data = []
-
-        for target in targets:
-            azi = source.azibazi_to(target)[0]
-            dist = source.distance_to(target)
-            x = dist * num.sin(num.deg2rad(azi))
-            y = dist * num.cos(num.deg2rad(azi))
-            data.append((x, y, dist))
-
-        gxs, gys, dists = num.array(data, dtype=num.float).T
-
-        iorder = num.argsort(dists)
-
-        gxs = gxs[iorder]
-        gys = gys[iorder]
-        targets_sorted = [targets[ii] for ii in iorder]
-
-        gxs -= num.mean(gxs)
-        gys -= num.mean(gys)
-
-        gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
-        if gmax == 0.:
-            gmax = 1.
-
-        gxs /= gmax
-        gys /= gmax
-
-        dists = num.sqrt(
-            (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
-            (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
-
-        distmax = num.max(dists)
-
-        availmask = num.ones(dists.shape[1], dtype=num.bool)
-        frame_to_target = {}
-        for itarget, target in enumerate(targets_sorted):
-            iframe = num.argmin(
-                num.where(availmask, dists[itarget], distmax + 1.))
-            availmask[iframe] = False
-            iy, ix = num.unravel_index(iframe, (ny, nx))
-            frame_to_target[iy, ix] = target
-
-        figures = {}
-        for iy in range(ny):
-            for ix in range(nx):
-                if (iy, ix) not in frame_to_target:
-                    continue
-
-                ixx = ix // nxmax
-                iyy = iy // nymax
-                if (iyy, ixx) not in figures:
-                    figures[iyy, ixx] = plt.figure(
-                        figsize=mpl_papersize('a4', 'landscape'))
-
-                    figures[iyy, ixx].subplots_adjust(
-                        left=0.03,
-                        right=1.0 - 0.03,
-                        bottom=0.03,
-                        top=1.0 - 0.06,
-                        wspace=0.2,
-                        hspace=0.2)
-
-                    figs.append(figures[iyy, ixx])
-
-                fig = figures[iyy, ixx]
-
-                target = frame_to_target[iy, ix]
-
-                amin, amax = trace_minmaxs[
-                    target.normalisation_family, target.path]
-                absmax = max(abs(amin), abs(amax))
-
-                ny_this = nymax  # min(ny, nymax)
-                nx_this = nxmax  # min(nx, nxmax)
-                i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
-
-                axes2 = fig.add_subplot(ny_this, nx_this, i_this)
-
-                space = 0.5
-                space_factor = 1.0 + space
-                axes2.set_axis_off()
-                axes2.set_ylim(-1.05 * space_factor, 1.05)
-
-                axes = axes2.twinx()
-                axes.set_axis_off()
-
-                if target.misfit_config.domain == 'cc_max_norm':
-                    axes.set_ylim(-10. * space_factor, 10.)
-                else:
-                    axes.set_ylim(-absmax * 1.33 * space_factor, absmax * 1.33)
-
-                itarget = target_index[target]
-                result = target_to_result[target]
-
-                dtrace = dtraces[itarget]
-
-                tap_color_annot = (0.35, 0.35, 0.25)
-                tap_color_edge = (0.85, 0.85, 0.80)
-                tap_color_fill = (0.95, 0.95, 0.90)
-
-                plot_taper(
-                    axes2, result.processed_obs.get_xdata(), result.taper,
-                    fc=tap_color_fill, ec=tap_color_edge)
-
-                obs_color = mpl_color('aluminium5')
-                obs_color_light = light(obs_color, 0.5)
-
-                syn_color = mpl_color('scarletred2')
-                syn_color_light = light(syn_color, 0.5)
-
-                misfit_color = mpl_color('scarletred2')
-                weight_color = mpl_color('chocolate2')
-
-                cc_color = mpl_color('aluminium5')
-
-                if target.misfit_config.domain == 'cc_max_norm':
-                    tref = (result.filtered_obs.tmin +
-                            result.filtered_obs.tmax) * 0.5
-
-                    plot_dtrace(
-                        axes2, dtrace, space, -1., 1.,
-                        fc=light(cc_color, 0.5),
-                        ec=cc_color)
-
-                    plot_dtrace_vline(
-                        axes2, tref, space, color=tap_color_annot)
-
-                elif target.misfit_config.domain == 'frequency_domain':
-
-                    asmax = amp_spec_maxs[
-                        target.normalisation_family, target.path]
-                    fmin, fmax = \
-                        target.misfit_config.get_full_frequency_range()
-
-                    plot_spectrum(
-                        axes2,
-                        result.spectrum_syn,
-                        result.spectrum_obs,
-                        fmin, fmax,
-                        space, 0., asmax,
-                        syn_color=syn_color,
-                        obs_color=obs_color,
-                        syn_lw=1.0,
-                        obs_lw=0.75,
-                        color_vline=tap_color_annot,
-                        fontsize=fontsize)
-
-                else:
-                    plot_dtrace(
-                        axes2, dtrace, space, 0., 1.,
-                        fc=light(misfit_color, 0.3),
-                        ec=misfit_color)
-
-                plot_trace(
-                    axes, result.filtered_syn,
-                    color=syn_color_light, lw=1.0)
-
-                plot_trace(
-                    axes, result.filtered_obs,
-                    color=obs_color_light, lw=0.75)
-
-                plot_trace(
-                    axes, result.processed_syn,
-                    color=syn_color, lw=1.0)
-
-                plot_trace(
-                    axes, result.processed_obs,
-                    color=obs_color, lw=0.75)
-
-                xdata = result.filtered_obs.get_xdata()
-                axes.set_xlim(xdata[0], xdata[-1])
-
-                tmarks = [
-                    result.processed_obs.tmin,
-                    result.processed_obs.tmax]
-
-                for tmark in tmarks:
-                    axes2.plot(
-                        [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
-
-                for tmark, text, ha in [
-                        (tmarks[0],
-                         '$\,$ ' + str_duration(tmarks[0] - source.time),
-                         'right'),
-                        (tmarks[1],
-                         '$\Delta$ ' + str_duration(tmarks[1] - tmarks[0]),
-                         'left')]:
-
-                    axes2.annotate(
-                        text,
-                        xy=(tmark, -0.9),
-                        xycoords='data',
-                        xytext=(
-                            fontsize * 0.4 * [-1, 1][ha == 'left'],
-                            fontsize * 0.2),
-                        textcoords='offset points',
-                        ha=ha,
-                        va='bottom',
-                        color=tap_color_annot,
-                        fontsize=fontsize)
-
-                rel_w = ws[itarget] / w_max
-                rel_c = gcms[itarget] / gcm_max
-
-                sw = 0.25
-                sh = 0.1
-                ph = 0.01
-
-                for (ih, rw, facecolor, edgecolor) in [
-                        (0, rel_w, light(weight_color, 0.5), weight_color),
-                        (1, rel_c, light(misfit_color, 0.5), misfit_color)]:
-
-                    bar = patches.Rectangle(
-                        (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph),
-                        rw * sw,
-                        sh - 2 * ph,
-                        facecolor=facecolor, edgecolor=edgecolor,
-                        zorder=10,
-                        transform=axes.transAxes, clip_on=False)
-
-                    axes.add_patch(bar)
-
-                scale_string = None
-
-                if target.misfit_config.domain == 'cc_max_norm':
-                    scale_string = 'Syn/obs scales differ!'
-
-                infos = []
-                if scale_string:
-                    infos.append(scale_string)
-
-                infos.append('.'.join(x for x in target.codes if x))
-                dist = source.distance_to(target)
-                azi = source.azibazi_to(target)[0]
-                infos.append(str_dist(dist))
-                infos.append('%.0f\u00B0' % azi)
-                infos.append('%.3g' % ws[itarget])
-                infos.append('%.3g' % gcms[itarget])
-                axes2.annotate(
-                    '\n'.join(infos),
-                    xy=(0., 1.),
-                    xycoords='axes fraction',
-                    xytext=(2., 2.),
-                    textcoords='offset points',
-                    ha='left',
-                    va='top',
-                    fontsize=fontsize,
-                    fontstyle='normal')
-
-        for (iyy, ixx), fig in figures.items():
-            title = '.'.join(x for x in cg if x)
-            if len(figures) > 1:
-                title += ' (%i/%i, %i/%i)' % (iyy + 1, nyy, ixx + 1, nxx)
-
-            fig.suptitle(title, fontsize=fontsize_title)
-
-    return figs
-
-
 def draw_hudson_figure(history, optimizer, plt):
 
     color = 'black'
@@ -2138,38 +1219,10 @@ plot_dispatch = {
     'histogram': draw_histogram_figures,
     'hudson': draw_hudson_figure,
     'fits': draw_fits_figures,
-    'fits_statics': draw_fits_figures_statics,
     'fits_ensemble': draw_fits_ensemble_figures,
+    'fits_statics': draw_fits_figures_statics,
     'solution': draw_solution_figure,
     'location': draw_location_figure}
-
-
-def save_figs(figs, plot_dirname, plotname, formats, dpi):
-    for fmt in formats:
-        if fmt not in ['pdf', 'png']:
-            raise core.GrondError('unavailable output format: %s' % fmt)
-
-    assert re.match(r'^[a-zA-Z0-9_.]+$', plotname)
-
-    # remove files from previous runs
-    pat = re.compile(r'^%s-[0-9]+\.(%s)$' % (
-        re.escape(plotname), '|'.join(formats)))
-    if op.exists(plot_dirname):
-        for entry in os.listdir(plot_dirname):
-            if pat.match(entry):
-                os.unlink(op.join(plot_dirname, entry))
-
-    fns = []
-    for ifig, fig in enumerate(figs):
-        for format in formats:
-            fn = op.join(plot_dirname, '%s-%02i.%s' % (plotname, ifig, format))
-            util.ensuredirs(fn)
-
-            fig.savefig(fn, format=format, dpi=dpi)
-            logger.info('figure saved: %s' % fn)
-            fns.append(fn)
-
-    return fns
 
 
 def available_plotnames():
@@ -2230,7 +1283,7 @@ def plot_result(dirname, plotnames_want,
             'location'} - plotnames_want):
 
         problem = load_problem_info(dirname)
-        history = ModelHistory(problem, path=xjoin(dirname, 'harvest'))
+        history = ModelHistory(problem, path=meta.xjoin(dirname, 'harvest'))
 
         for plotname in ['fits', 'fits_ensemble', 'fits_statics']:
             if plotname in plotnames_want:

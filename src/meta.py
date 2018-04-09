@@ -1,6 +1,8 @@
 import logging
+import math
 import os.path as op
 from string import Template
+import numpy as num
 from pyrocko.guts import Object, String, Float, Unicode
 
 try:
@@ -26,6 +28,64 @@ def xrelpath(path, start):
         return path
     else:
         return op.relpath(path, start)
+
+
+def ordersort(x):
+    isort = num.argsort(x)
+    iorder = num.empty(isort.size)
+    iorder[isort] = num.arange(isort.size)
+    return iorder
+
+
+def nextpow2(i):
+    return 2**int(math.ceil(math.log(i) / math.log(2.)))
+
+
+def gather(l, key, sort=None, filter=None):
+    d = {}
+    for x in l:
+        if filter is not None and not filter(x):
+            continue
+
+        k = key(x)
+        if k not in d:
+            d[k] = []
+
+        d[k].append(x)
+
+    if sort is not None:
+        for v in d.values():
+            v.sort(key=sort)
+
+    return d
+
+
+def str_dist(dist):
+    if dist < 10.0:
+        return '%g m' % dist
+    elif 10. <= dist < 1. * km:
+        return '%.0f m' % dist
+    elif 1. * km <= dist < 10. * km:
+        return '%.1f km' % (dist / km)
+    else:
+        return '%.0f km' % (dist / km)
+
+
+def str_duration(t):
+    s = ''
+    if t < 0.:
+        s = '-'
+
+    t = abs(t)
+
+    if t < 10.0:
+        return s + '%.2g s' % t
+    elif 10.0 <= t < 3600.:
+        return s + util.time_to_str(t, format='%M:%S min')
+    elif 3600. <= t < 24 * 3600.:
+        return s + util.time_to_str(t, format='%H:%M h')
+    else:
+        return s + '%.1f d' % (t / (24. * 3600.))
 
 
 class Forbidden(Exception):
