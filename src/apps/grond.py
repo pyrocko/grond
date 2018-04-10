@@ -25,7 +25,7 @@ def d2u(d):
 
 
 subcommand_descriptions = {
-    'example': 'create an example project',
+    'scenario': 'create an scenario project',
     'init': 'create project structure or print example configuration',
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
@@ -41,7 +41,7 @@ subcommand_descriptions = {
 }
 
 subcommand_usages = {
-    'example': 'example [options] <project_dir>',
+    'scenario': 'scenario [options] <project_dir>',
     'init': 'init [options] <project_dir>',
     'events': 'events <configfile>',
     'check': 'check <configfile> <eventnames> ... [options]',
@@ -72,7 +72,7 @@ usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
 
 Subcommands:
 
-    example         %(example)s
+    scenario         %(scenario)s
     init            %(init)s
     events          %(events)s
     check           %(check)s
@@ -176,7 +176,7 @@ def help_and_die(parser, message):
     die(message)
 
 
-def command_example(args):
+def command_scenario(args):
 
     STORE_STATIC = 'ak135_static'
     STORE_WAVEFORMS = 'global_2s'
@@ -240,8 +240,6 @@ def command_example(args):
         parser.print_help()
         sys.exit(1)
 
-    util.ensuredir(project_dir)
-
     if not options.insar and not options.waveforms:
         options.waveforms = True
 
@@ -250,10 +248,11 @@ def command_example(args):
 
     cfg = config.config()
     if len(cfg.gf_store_superdirs) == 0:
-        store_dir = op.join(config.pyrocko_dir_tmpl, 'gf_stores')
+        store_dir = op.expanduser(
+            op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
         logger.debug('Creating default gf_store_superdirs: %s' % store_dir)
 
-        os.makedirs(store_dir)
+        util.ensuredir(store_dir)
         cfg.gf_store_superdirs = [store_dir]
         config.write_config(cfg)
 
@@ -270,14 +269,15 @@ def command_example(args):
     if download_stores:
         from pyrocko.gf import ws
 
-        print('To create the example project we need to'
-              ' download missing Green\'s function stores: %s\n'
-              'The stores will be downloaded into a Pyrocko\'s global cache.\n'
-              % ', '.join(download_stores))
+        print('\nTo create the example project we need to'
+              ' download missing Green\'s function stores:\n'
+              ' %s'
+              'The stores will be downloaded into Pyrocko\'s global cache.\n'
+              % '\n '.join(download_stores))
         for idr, dr in enumerate(cfg.gf_store_superdirs):
             print(' %d. %s' % ((idr+1), dr))
-        s = input('\nIn which directory shall the GF store be downloaded to? '
-                  'Default 1, (C)ancel: ')
+        s = input('\nIn which cache directory shall the GF store'
+                  ' be downloaded to? Default 1, (C)ancel: ')
         if s in ['c', 'C']:
             print('Canceled!')
             sys.exit(1)
@@ -292,12 +292,13 @@ def command_example(args):
             sys.exit(1)
 
         download_dir = cfg.gf_store_superdirs[s-1]
-        print('Downloading to %s' % download_dir)
+        print('Downloading Green\'s functions stores to %s' % download_dir)
 
         for store in download_stores:
             os.chdir(download_dir)
             ws.download_gf_store(site='kinherd', store_id=store)
 
+    util.ensuredir(project_dir)
     util.ensuredir(op.join(project_dir, 'gf_stores'))
     for store_id in stores_want:
         store = engine.get_store(store_id)
