@@ -226,225 +226,41 @@ def command_scenario(args):
 
     parser, options, args = cl_parse('init', args, setup)
 
-    project_dir = None
     if len(args) == 1:
         project_dir = op.join(op.curdir, args[0])
-        if op.exists(project_dir) and not options.force:
-            raise EnvironmentError(
-                'Directory %s already exists! Use --force to overwrite'
-                % args[0])
-        elif op.exists(project_dir) and options.force:
-            logger.info('Overwriting directory %s.' % project_dir)
-            shutil.rmtree(project_dir)
     else:
         parser.print_help()
         sys.exit(1)
 
-    if not options.insar and not options.waveforms:
+    from grond import scenario as grond_scenario
+    scenario = grond_scenario.GrondScenario(
+        project_dir,
+        center_lat=options.lat, center_lon=options.lon,
+        radius=options.radius*km)
+
+    if not options.waveforms and not options.insar:
         options.waveforms = True
 
-    from pyrocko import gf, config, scenario
-    logger.info('Using pyrocko.scenario to forward-modell an example project.')
-
-    cfg = config.config()
-    if len(cfg.gf_store_superdirs) == 0:
-        store_dir = op.expanduser(
-            op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
-        logger.debug('Creating default gf_store_superdirs: %s' % store_dir)
-
-        util.ensuredir(store_dir)
-        cfg.gf_store_superdirs = [store_dir]
-        config.write_config(cfg)
-
-    engine = gf.LocalEngine(use_config=True)
-
-    stores_want = []
     if options.waveforms:
-        stores_want.append(options.store_waveforms)
-    if options.insar:
-        stores_want.append(options.store_statics)
-    download_stores = [st for st in stores_want
-                       if st not in engine.get_store_ids()]
-
-    if download_stores:
-        from pyrocko.gf import ws
-
-        print('\nTo create the example project we need to'
-              ' download missing Green\'s function stores:\n'
-              ' %s'
-              'The stores will be downloaded into Pyrocko\'s global cache.\n'
-              % '\n '.join(download_stores))
-        for idr, dr in enumerate(cfg.gf_store_superdirs):
-            print(' %d. %s' % ((idr+1), dr))
-        s = input('\nIn which cache directory shall the GF store'
-                  ' be downloaded to? Default 1, (C)ancel: ')
-        if s in ['c', 'C']:
-            print('Canceled!')
-            sys.exit(1)
-        elif s == '':
-            s = 0
-        try:
-            s = int(s)
-            if s > len(cfg.gf_store_superdirs):
-                raise ValueError
-        except ValueError:
-            print('Invalid selection: %s' % s)
-            sys.exit(1)
-
-        download_dir = cfg.gf_store_superdirs[s-1]
-        print('Downloading Green\'s functions stores to %s' % download_dir)
-
-        for store in download_stores:
-            os.chdir(download_dir)
-            ws.download_gf_store(site='kinherd', store_id=store)
-
-    util.ensuredir(project_dir)
-    util.ensuredir(op.join(project_dir, 'gf_stores'))
-    for store_id in stores_want:
-        store = engine.get_store(store_id)
-        os.symlink(store.store_dir,
-                   op.join(project_dir, 'gf_stores', store_id))
-
-    target_types = []
-    target_generators = []
-    target_groups = []
-
-    dataset_config = grond.DatasetConfig(
-        events_path='data/event.txt')
-    ds_conf = dataset_config
-
-    if options.waveforms:
-        target_types.append('seismic waveforms')
-
-        target_generators.append(
-            scenario.targets.WaveformGenerator(
-                station_generator=scenario.targets.RandomStationGenerator(
-                    nstations=options.nstations),
-                store_id=STORE_WAVEFORMS,
-                seismogram_quantity='displacement'))
-
-        target_groups.append(
-            grond.WaveformTargetGroup(
-                normalisation_family='time_domain',
-                path='all',
-                distance_min=10*km,
-                distance_max=1000*km,
-                channels=['Z', 'R', 'T'],
-                interpolation='multilinear',
-                store_id=options.store_waveforms,
-                misfit_config=grond.WaveformMisfitConfig(
-                    fmin=0.01,
-                    fmax=0.1)))
-
-        ds_conf.waveform_path = 'data/waveforms'
-        ds_conf.stations_path = 'data/meta/stations.txt'
-        ds_conf.responses_stationxml_paths = ['data/meta/stations.xml']
+        obs = grond_scenario.WaveformObservation(
+            nstations=options.nstations,
+            store_id=options.store_waveforms)
+        scenario.add_observation(obs)
 
     if options.insar:
-        target_types.append('InSAR')
-
-        target_generators.append(
-            scenario.targets.InSARGenerator(
-                store_id=STORE_STATIC))
-
-        target_groups.append(
-            grond.SatelliteTargetGroup(
-                normalisation_family='insar_target',
-                path='all',
-                interpolation='multilinear',
-                store_id=options.store_statics,
-                kite_scenes=['*all'],
-                misfit_config=grond.SatelliteMisfitConfig(
-                    use_weight_focal=False,
-                    optimize_orbital_ramp=True,
-                    ranges={
-                        'offset': '-0.5 .. 0.5',
-                        'ramp_north': '-1e-4 .. 1e-4',
-                        'ramp_east': '-1e-4 .. 1e-4'
-                        }
-                    )
-                ))
-
-        ds_conf.kite_scene_paths = ['data/insar']
+        obs = grond_scenario.InSARObservation(
+            store_id=options.store_statics)
+        scenario.add_observation(obs)
 
     if options.source == 'dc':
-        source_generator = scenario.sources.DCSourceGenerator(
+        problem = grond_scenario.DCSourceProblem(
             nevents=options.nevents)
-
-        pi2 = math.pi/2
-        problem_config = grond.CMTProblemConfig(
-            name_template='cmt_%(event_name)s',
-            distance_min=2.*km,
-            mt_type='deviatoric',
-            ranges=dict(
-                time=Range(0, 10.0, relative='add'),
-                north_shift=Range(-16*km, 16*km),
-                east_shift=Range(-16*km, 16*km),
-                depth=Range(1*km, 11*km),
-                magnitude=Range(4.0, 6.0),
-                rmnn=Range(-pi2, pi2),
-                rmee=Range(-pi2, pi2),
-                rmdd=Range(-pi2, pi2),
-                rmne=Range(-1.0, 1.0),
-                rmnd=Range(-1.0, 1.0),
-                rmed=Range(-1.0, 1.0),
-                duration=Range(1.0, 15.0))
-            )
-
     elif options.source == 'rectangular':
-        source_generator = scenario.sources.RectangularSourceGenerator(
+        problem = grond_scenario.RectangularSourceProblem(
             nevents=options.nevents)
+    scenario.set_problem(problem)
 
-        problem_config = grond.RectangularProblemConfig(
-            name_template='rect_source',
-            ranges=dict(
-                north_shift=Range(-20*km, 20*km),
-                east_shift=Range(-20*km, 20*km),
-                depth=Range(0*km, 10*km),
-                length=Range(20*km, 40*km),
-                width=Range(5*km, 12*km),
-                dip=Range(20, 70),
-                strike=Range(0, 180),
-                rake=Range(0, 90),
-                slip=Range(1, 3))
-            )
-
-    scenario = scenario.ScenarioGenerator(
-        center_lat=options.lat,
-        center_lon=options.lon,
-        radius=options.radius,
-        target_generators=target_generators,
-        source_generator=source_generator)
-    scenario.dump(filename=op.join(project_dir, 'scenario.yml'))
-
-    data_dir = op.join(project_dir, 'data')
-    util.ensuredir(data_dir)
-
-    scenario.init_modelling(engine=engine)
-    scenario.dump_data(path=data_dir)
-    scenario.make_map(op.join(data_dir, 'scenario_map.pdf'))
-
-    shutil.move(op.join(data_dir, 'sources.yml'),
-                op.join(data_dir, 'scenario_sources.yml'))
-
-    logger.info('Creating grond configuration for %s'
-                % ' and '.join(target_types))
-
-    engine_config = grond.EngineConfig(
-        gf_store_superdirs=['gf_stores'])
-
-    optimizer_config = grond.HighScoreOptimizerConfig()
-
-    config = grond.Config(
-        rundir_template=op.join('rundir', '${problem_name}.grun'),
-        dataset_config=dataset_config,
-        target_groups=target_groups,
-        problem_config=problem_config,
-        optimizer_config=optimizer_config,
-        engine_config=engine_config)
-
-    with open(op.join(project_dir, 'config.yml'), 'w') as cf:
-        cf.write(str(config))
+    scenario.build(force=options.force, interactive=True)
 
 
 def command_init(args):
@@ -707,22 +523,12 @@ def command_go(args):
     else:
         status = tuple(options.status.split(','))
 
-    if options.baraddur:
-        from grond.baraddur import BaraddurProcess
-        baraddur = BaraddurProcess(project_dir=op.abspath(op.curdir))
-        baraddur.start()
-
     grond.go(
         config,
         event_names=event_names,
         force=options.force,
         status=status,
         nparallel=options.nparallel)
-
-    if options.baraddur:
-        logger.info('Grond finished processing %d events. '
-                    'Ctrl+C to kill Barad-dur')
-        baraddur.join()
 
 
 def command_forward(args):
