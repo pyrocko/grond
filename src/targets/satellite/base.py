@@ -41,8 +41,19 @@ class SatelliteTargetGroup(TargetGroup):
             lats.fill(qt.frame.llLat)
             lons.fill(qt.frame.llLon)
 
-            north_shifts = qt.leaf_focal_points[:, 1]
-            east_shifts = qt.leaf_focal_points[:, 0]
+            if qt.frame.isDegree():
+                logger.debug('Target %s is referenced in degree'
+                             % scene.meta.scene_id)
+                lons += qt.leaf_focal_points[:, 0]
+                lats += qt.leaf_focal_points[:, 1]
+                east_shifts = num.zeros_like(lats)
+                north_shifts = num.zeros_like(lats)
+            elif qt.frame.isDegree():
+                logger.debug('Target %s is referenced in meter'
+                             % scene.meta.scene_id)
+                east_shifts = qt.leaf_focal_points[:, 0]
+                north_shifts = qt.leaf_focal_points[:, 0]
+            print(qt.leaf_thetas)
 
             sat_target = SatelliteMisfitTarget(
                 quantity='displacement',
@@ -76,13 +87,13 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
-        Parameter('ramp_east', 'm/m'),
+        Parameter('ramp_east', 'm/m')
         ]
     misfit_config = SatelliteMisfitConfig.T()
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
-        MisfitTarget.__init__(self)
+        MisfitTarget.__init__(self, **kwargs)
         if not self.misfit_config.optimize_orbital_ramp:
             self.parameters = []
         else:
@@ -104,8 +115,6 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
-        scene = self._ds.get_kite_scene(self.scene_id)
-        self.nmisfits = scene.quadtree.nleaves
 
     def post_process(self, engine, source, statics):
         scene = self._ds.get_kite_scene(self.scene_id)
@@ -142,6 +151,13 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def get_combined_weight(self, apply_balancing_weights=False):
         return num.array([self.manual_weight], dtype=num.float)
+
+    def prepare_modelling(self, engine, source):
+        return [self]
+
+    def finalize_modelling(
+            self, engine, source, modelling_targets, modelling_results):
+        return modelling_results[0]
 
 
 __all__ = '''

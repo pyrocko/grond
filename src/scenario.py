@@ -150,13 +150,14 @@ class GrondScenario(object):
         util.ensuredir(data_dir)
 
         scenario.dump_data(path=data_dir)
-        scenario.make_map(op.join(data_dir, 'scenario_map.pdf'))
+        scenario.make_map(op.join(self.project_dir, 'scenario_map.pdf'))
 
         shutil.move(op.join(data_dir, 'sources.yml'),
                     op.join(data_dir, 'scenario_sources.yml'))
 
     def get_grond_config(self):
         engine_config = grond.EngineConfig(
+            gf_stores_from_pyrocko_config=False,
             gf_store_superdirs=['gf_stores'])
 
         optimizer_config = grond.HighScoreOptimizerConfig()

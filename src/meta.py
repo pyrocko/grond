@@ -12,6 +12,7 @@ except NameError:
 
 
 logger = logging.getLogger('grond.meta')
+km = 1e3
 
 
 def xjoin(basepath, path):
