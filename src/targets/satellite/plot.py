@@ -23,7 +23,7 @@ def scale_axes(ax, scale):
 class SatelliteTargetPlotter(Plotter):
 
     @classmethod
-    def draw_fits_figures_statics(cls, ds, history, optimizer, plt):
+    def draw_result_figures(cls, ds, history, optimizer, plt):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
 
@@ -37,10 +37,7 @@ class SatelliteTargetPlotter(Plotter):
         xbest = models[0, :]
 
         source = problem.get_source(xbest)
-
         results = problem.evaluate(xbest)
-
-        figures = []
 
         def decorateAxes(ax, title):
             ax.set_title(title)
@@ -138,6 +135,5 @@ class SatelliteTargetPlotter(Plotter):
             cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.02, pos.y1 - pos.y0])
             cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
             cbar.set_label('[m]')
-            figures.append(fig)
 
-        return figures
+            yield fig
