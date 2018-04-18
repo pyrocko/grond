@@ -811,21 +811,37 @@ class Dataset(object):
 
 class DatasetConfig(HasPaths):
 
-    stations_path = Path.T(optional=True)
-    stations_stationxml_paths = List.T(Path.T(), optional=True)
-    events_path = Path.T(optional=True)
-    waveform_paths = List.T(Path.T(), optional=True)
-    clippings_path = Path.T(optional=True)
-    responses_sacpz_path = Path.T(optional=True)
-    responses_stationxml_paths = List.T(Path.T(), optional=True)
-    station_corrections_path = Path.T(optional=True)
-    apply_correction_factors = Bool.T(optional=True,
-                                      default=True)
-    apply_correction_delays = Bool.T(optional=True,
-                                     default=True)
-    extend_incomplete = Bool.T(default=False)
-    picks_paths = List.T(Path.T())
-    blacklist_paths = List.T(Path.T())
+    stations_path = Path.T(
+        optional=True)
+    stations_stationxml_paths = List.T(
+        Path.T(),
+        optional=True)
+    events_path = Path.T(
+        optional=True)
+    waveform_paths = List.T(
+        Path.T(),
+        optional=True)
+    clippings_path = Path.T(
+        optional=True)
+    responses_sacpz_path = Path.T(
+        optional=True)
+    responses_stationxml_paths = List.T(
+        Path.T(),
+        optional=True)
+    station_corrections_path = Path.T(
+        optional=True)
+    apply_correction_factors = Bool.T(
+        optional=True,
+        default=True)
+    apply_correction_delays = Bool.T(
+        optional=True,
+        default=True)
+    extend_incomplete = Bool.T(
+        default=False)
+    picks_paths = List.T(
+        Path.T())
+    blacklist_paths = List.T(
+        Path.T())
     blacklist = List.T(
         String.T(),
         help='stations/components to be excluded according to their STA, '
@@ -838,8 +854,16 @@ class DatasetConfig(HasPaths):
              'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
              'Note: ''when whitelisting on channel level, both, the raw and '
              'the processed channel codes have to be listed.')
-    synthetic_test = SyntheticTest.T(optional=True)
-    kite_scene_paths = List.T(Path.T(), optional=True)
+    synthetic_test = SyntheticTest.T(
+        optional=True)
+
+    kite_scene_paths = List.T(
+        Path.T(),
+        optional=True)
+
+    gnss_campaign_paths = List.T(
+        Path.T(), 
+        optional=True)
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
@@ -887,6 +911,12 @@ class DatasetConfig(HasPaths):
                 if not ds.kite_scenes:
                     logger.warning('Could not find any kite scenes at %s' %
                                    self.kite_scene_paths)
+
+            if self.gnss_campaign_paths:
+                logger.info('Loading GNSS campaigns...')
+                for path in self.gnss_campaign_paths:
+                    for fn in glob.glob(xjoin(path, '*.yml')):
+                        ds.add_gnss_campaign(filename=fn)
 
             if self.clippings_path:
                 ds.add_clippings(markers_filename=fp(self.clippings_path))
