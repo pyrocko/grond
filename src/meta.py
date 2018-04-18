@@ -1,8 +1,8 @@
 import logging
 import math
+import numpy as num
 import os.path as op
 from string import Template
-import numpy as num
 from pyrocko.guts import Object, String, Float, Unicode
 
 try:

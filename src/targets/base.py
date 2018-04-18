@@ -77,6 +77,8 @@ class MisfitTarget(Object):
 
     @property
     def nparameters(self):
+        if self._target_parameters is None:
+            return 0
         return len(self._target_parameters)
 
     @property

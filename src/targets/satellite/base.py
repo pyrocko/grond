@@ -14,10 +14,12 @@ logger = logging.getLogger('grond.targets.satellite.target')
 class SatelliteMisfitConfig(MisfitConfig):
     use_weight_focal = Bool.T(default=False)
     optimize_orbital_ramp = Bool.T(default=True)
-    ranges = Dict.T(String.T(), gf.Range.T(),
-                    default={'offset': '-0.5 .. 0.5',
-                             'ramp_north': '-1e-4 .. 1e-4',
-                             'ramp_east': '-1e-4 .. 1e-4'})
+    ranges = Dict.T(
+        String.T(), gf.Range.T(),
+        default={'offset': '-0.5 .. 0.5',
+                 'ramp_east': '-1e-4 .. 1e-4',
+                 'ramp_north': '-1e-4 .. 1e-4'
+                 })
 
 
 class SatelliteTargetGroup(TargetGroup):
@@ -52,7 +54,6 @@ class SatelliteTargetGroup(TargetGroup):
                              % scene.meta.scene_id)
                 east_shifts = qt.leaf_focal_points[:, 0]
                 north_shifts = qt.leaf_focal_points[:, 0]
-            print(qt.leaf_thetas)
 
             sat_target = SatelliteMisfitTarget(
                 quantity='displacement',
@@ -102,12 +103,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     @property
     def target_ranges(self):
-        if self._target_ranges is None:
-            self._target_ranges = self.misfit_config.ranges.copy()
-            for k in self._target_ranges.keys():
-                self._target_ranges['%s:%s' % (self.id, k)] =\
-                    self._target_ranges.pop(k)
-        return self._target_ranges
+        return self.misfit_config.ranges
 
     def string_id(self):
         return '.'.join([self.path, self.scene_id])
