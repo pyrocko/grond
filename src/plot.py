@@ -205,7 +205,15 @@ def save_figs(figs, plot_dirname, plotname, formats, dpi):
 class Plotter(object):
 
     @classmethod
-    def draw_check_figures(cls, sources, target, results):
+    def draw_summary_figures(cls, sources, target, results, config):
+        raise NotImplementedError('to be implemented in subclass')
+
+    @classmethod
+    def draw_check_figures(cls, sources, target, results, config):
+        raise NotImplementedError('to be implemented in subclass')
+
+    @classmethod
+    def draw_result_figures(cls, sources, target, results, config):
         raise NotImplementedError('to be implemented in subclass')
 
 
