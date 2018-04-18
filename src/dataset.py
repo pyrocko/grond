@@ -933,7 +933,6 @@ class DatasetConfig(HasPaths):
                     logger.warning('Could not find any kite scenes at %s' %
                                    self.kite_scene_paths)
 
-            print(self.gnss_campaign_paths)
             if self.gnss_campaign_paths:
                 logger.info('Loading GNSS campaigns...')
                 for path in self.gnss_campaign_paths:

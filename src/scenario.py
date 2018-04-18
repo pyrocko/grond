@@ -366,7 +366,7 @@ class RectangularSourceProblem(SourceProblem):
 
     def get_grond_problem_config(self):
         return grond.RectangularProblemConfig(
-            name_template='rect_source',
+            name_template='rect_source_${event_name}',
             ranges=dict(
                 north_shift=gf.Range(-20*km, 20*km),
                 east_shift=gf.Range(-20*km, 20*km),
