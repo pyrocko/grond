@@ -9,8 +9,8 @@ from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
 
-from ..base import (
-    MisfitTarget, TargetGroup, MisfitResult, TargetAnalysisResult)
+from ..base import (MisfitConfig, MisfitTarget, MisfitResult,
+                    TargetGroup, TargetAnalysisResult)
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -29,7 +29,7 @@ class Trace(Object):
     pass
 
 
-class WaveformMisfitConfig(Object):
+class WaveformMisfitConfig(MisfitConfig):
     fmin = Float.T()
     fmax = Float.T()
     ffactor = Float.T(default=1.5)

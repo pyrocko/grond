@@ -83,6 +83,7 @@ class Dataset(object):
         self.extend_incomplete = False
         self.clip_handling = 'by_nsl'
         self.kite_scenes = []
+        self.gnss_campaigns = []
         self.synthetic_test = None
         self._picks = None
         self._cache = {}
@@ -225,6 +226,17 @@ class Dataset(object):
 
         self._picks = None
 
+    def add_gnss_campaign(self, filename):
+        try:
+            from pyrocko.model import gnss  # noqa
+        except ImportError:
+            raise ImportError('Module pyrocko.model.gnss not found,'
+                              ' please upgrade pyrocko!')
+        logger.debug('Loading GNSS campaign from %s' % filename)
+
+        campaign = load_all(filename=filename)
+        self.gnss_campaigns.append(campaign[0])
+
     def add_kite_scene(self, filename):
         try:
             from kite import Scene
@@ -348,6 +360,15 @@ class Dataset(object):
                 if scene.meta.scene_id == scene_id:
                     return scene
         raise NotFound('No kite scene with id %s defined' % scene_id)
+
+    def get_gnss_campaigns(self):
+        return self.gnss_campaigns
+
+    def get_gnss_campaign(self, name):
+        for camp in self.gnss_campaigns:
+            if camp.name == name:
+                return camp
+        raise NotFound('GNSS campaign %s not found!' % name)
 
     def get_response(self, obj, quantity='displacement'):
         if (self.responses is None or len(self.responses) == 0) \
@@ -862,7 +883,7 @@ class DatasetConfig(HasPaths):
         optional=True)
 
     gnss_campaign_paths = List.T(
-        Path.T(), 
+        Path.T(),
         optional=True)
 
     def __init__(self, *args, **kwargs):
@@ -912,6 +933,7 @@ class DatasetConfig(HasPaths):
                     logger.warning('Could not find any kite scenes at %s' %
                                    self.kite_scene_paths)
 
+            print(self.gnss_campaign_paths)
             if self.gnss_campaign_paths:
                 logger.info('Loading GNSS campaigns...')
                 for path in self.gnss_campaign_paths:

@@ -22,6 +22,7 @@ setup(
         'grond.targets',
         'grond.targets.waveform',
         'grond.targets.satellite',
+        'grond.targets.gnss_campaign',
         'grond.problems',
         'grond.problems.cmt',
         'grond.problems.double_dc',

@@ -2,17 +2,16 @@ import logging
 import numpy as num
 
 from pyrocko import gf
-from pyrocko.guts import String, Bool, Dict, List, Object
+from pyrocko.guts import String, Bool, Dict, List
 
 from grond.meta import Parameter
-
-from ..base import MisfitTarget, MisfitResult, TargetGroup
+from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.satellite.target')
 
 
-class SatelliteMisfitConfig(Object):
+class SatelliteMisfitConfig(MisfitConfig):
     use_weight_focal = Bool.T(default=False)
     optimize_orbital_ramp = Bool.T(default=True)
     ranges = Dict.T(String.T(), gf.Range.T(),

@@ -35,6 +35,10 @@ class MisfitResult(Object):
         dtype=num.float)
 
 
+class MisfitConfig(Object):
+    pass
+
+
 class MisfitTarget(Object):
 
     manual_weight = Float.T(
@@ -47,6 +51,9 @@ class MisfitTarget(Object):
         help='Normalisation family of this misfit target')
     path = gf.StringID.T(
         help='A path identifier used for plotting')
+    misfit_config = MisfitConfig.T(
+        default=MisfitConfig.D(),
+        help='Misfit configuration')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
