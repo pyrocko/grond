@@ -39,10 +39,5 @@ setup(
         ]
     },
     package_dir={'grond': 'src'},
-    package_data={'grond': ['baraddur/templates/*.html',
-                            'baraddur/res/*',
-                            'report/app/css/*.css',
-                            'report/app/js/*.js',
-                            'report/app/*.html']},
     data_files=[] + grond_completion(),
     )
