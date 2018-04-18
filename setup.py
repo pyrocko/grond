@@ -18,7 +18,6 @@ setup(
     packages=[
         'grond',
         'grond.apps',
-        'grond.baraddur',
         'grond.targets',
         'grond.targets.waveform',
         'grond.targets.satellite',
