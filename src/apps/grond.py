@@ -191,8 +191,16 @@ def command_scenario(args):
             help='Add InSAR displacement scenes using kite containers. '
                  '(see https://pyrocko.org)')
         parser.add_option(
+            '--gnss', dest='gnss', action='store_true',
+            help='Add GNSS campaign data using kite containers. '
+                 '(see https://pyrocko.org)')
+        parser.add_option(
             '--nstations', dest='nstations', type=int, default=20,
             help='Number of seismic stations to create (default: %default)')
+        parser.add_option(
+            '--gnss_nstations', dest='gnss_nstations', type=int, default=20,
+            help='Number of GNSS campaign stations to create'
+                 ' (default: %default)')
         parser.add_option(
             '--nevents', dest='nevents', type=int, default=1,
             help='Number of events to create (default: %default)')
@@ -238,7 +246,7 @@ def command_scenario(args):
         center_lat=options.lat, center_lon=options.lon,
         radius=options.radius*km)
 
-    if not options.waveforms and not options.insar:
+    if not options.waveforms and not options.insar and not options.gnss:
         options.waveforms = True
 
     if options.waveforms:
@@ -249,6 +257,12 @@ def command_scenario(args):
 
     if options.insar:
         obs = grond_scenario.InSARObservation(
+            store_id=options.store_statics)
+        scenario.add_observation(obs)
+
+    if options.gnss:
+        obs = grond_scenario.GNSSCampaignObservation(
+            nstations=options.gnss_nstations,
             store_id=options.store_statics)
         scenario.add_observation(obs)
 
@@ -326,7 +340,7 @@ def command_init(args):
 
         pi2 = math.pi/2
         problem_config = grond.CMTProblemConfig(
-            name_template='cmt_%(event_name)s',
+            name_template='cmt_${event_name}',
             distance_min=2.*km,
             mt_type='deviatoric',
             ranges=dict(

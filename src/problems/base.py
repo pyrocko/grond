@@ -30,6 +30,9 @@ class ProblemConfig(Object):
     apply_balancing_weights = Bool.T(default=True)
     norm_exponent = Int.T(default=2)
 
+    def get_problem(self, event, target_groups, targets):
+        raise NotImplementedError
+
 
 class Problem(Object):
     name = String.T()

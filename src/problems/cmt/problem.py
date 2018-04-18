@@ -188,9 +188,9 @@ class CMTProblem(Problem):
         x = self.get_parameter_array(d)
 
         source = self.get_source(x)
-        if any(self.distance_min > source.distance_to(t)
-               for t in self.targets):
-            raise Forbidden()
+        for t in self.targets:
+            if (self.distance_min > num.asarray(t.distance_to(source))).any():
+                raise Forbidden()
 
         return x
 

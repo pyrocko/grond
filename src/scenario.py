@@ -111,6 +111,7 @@ class GrondScenario(object):
                        op.join(self.project_dir, 'gf_stores', store_id))
 
     def add_observation(self, observation):
+        logger.info('Adding %s' % observation.__class__.__name__)
         self.observations.append(observation)
 
     def set_problem(self, problem):
@@ -280,6 +281,35 @@ class InSARObservation(Observation):
             )
 
 
+class GNSSCampaignObservation(Observation):
+
+    name = 'GNSS campaign'
+
+    def __init__(self, store_id=DEFAULT_STATIC_STORE, nstations=25):
+        self.store_id = store_id
+        self.nstations = nstations
+
+    def update_dataset_config(self, dataset_config):
+        dataset_config.gnss_campaign_paths = ['data/gnss']
+        return dataset_config
+
+    def get_scenario_target_generator(self):
+        return scenario.targets.GNSSCampaignGenerator(
+            station_generator=scenario.targets.RandomStationGenerator(
+                nstations=self.nstations),
+            store_id=self.store_id)
+
+    def get_grond_target_group(self):
+        return grond.GNSSCampaignTargetGroup(
+            gnss_campaigns=['*all'],
+            normalisation_family='gnss_target',
+            path='all',
+            interpolation='multilinear',
+            store_id=self.store_id,
+            misfit_config=grond.GNSSCampaignMisfitConfig()
+        )
+
+
 class SourceProblem(object):
 
     def __init__(self, magnitude_min=5, magnitude_max=6, nevents=1):
@@ -307,7 +337,7 @@ class DCSourceProblem(SourceProblem):
 
         pi2 = math.pi/2
         return grond.CMTProblemConfig(
-            name_template='cmt_%(event_name)s',
+            name_template='cmt_${event_name}',
             distance_min=2.*km,
             mt_type='deviatoric',
             ranges=dict(
