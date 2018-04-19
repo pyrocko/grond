@@ -337,7 +337,7 @@ class DCSourceProblem(SourceProblem):
 
         pi2 = math.pi/2
         return grond.CMTProblemConfig(
-            name_template='cmt_${event_name}',
+            name_template='cmt-${event_name}',
             distance_min=2.*km,
             mt_type='deviatoric',
             ranges=dict(
@@ -366,7 +366,8 @@ class RectangularSourceProblem(SourceProblem):
 
     def get_grond_problem_config(self):
         return grond.RectangularProblemConfig(
-            name_template='rect_source_${event_name}',
+            name_template='rect-source_${event_name}',
+            decimation_factor=8,
             ranges=dict(
                 north_shift=gf.Range(-20*km, 20*km),
                 east_shift=gf.Range(-20*km, 20*km),

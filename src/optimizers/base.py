@@ -21,6 +21,9 @@ class Optimizer(Object):
     def niterations(self):
         raise NotImplementedError()
 
+    def get_status(self, problem):
+        pass
+
 
 class OptimizerConfig(Object):
     pass

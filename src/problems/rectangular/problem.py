@@ -1,7 +1,7 @@
 import numpy as num
 import logging
 
-from pyrocko import gf
+from pyrocko import gf, util
 from pyrocko.guts import String, Bool, Float, Dict, Int
 
 from grond.meta import expand_template, Parameter
@@ -21,7 +21,7 @@ class RectangularProblemConfig(ProblemConfig):
     decimation_factor = Int.T(default=1)
     distance_min = Float.T(default=0.)
 
-    def get_problem(self, event, targets):
+    def get_problem(self, event, target_groups, targets):
         base_source = gf.RectangularSource(
             lat=event.lat,
             lon=event.lon,
@@ -31,11 +31,16 @@ class RectangularProblemConfig(ProblemConfig):
             decimation_factor=self.decimation_factor,
             )
 
+        subs = dict(
+            event_name=event.name,
+            event_time=util.time_to_str(event.time))
+
         problem = RectangularProblem(
-            name=expand_template(self.name_template, event.name),
+            name=expand_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
             distance_min=self.distance_min,
+            target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
             norm_exponent=self.norm_exponent)
@@ -90,7 +95,7 @@ class RectangularProblem(Problem):
         for i in range(self.nparameters):
             x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
 
-        return x.tolist()
+        return x
 
     def preconstrain(self, x):
         # source = self.get_source(x)
