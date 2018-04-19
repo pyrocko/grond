@@ -367,8 +367,8 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     @classmethod
     def get_plotter_class(cls):
-        from . import plot
-        return plot.WaveformTargetPlotter
+        from grond.plot import plotter
+        return plotter.WaveformTargetPlotter
 
 
 def misfit(

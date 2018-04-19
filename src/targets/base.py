@@ -65,6 +65,10 @@ class MisfitTarget(Object):
         self._target_parameters = None
         self._target_ranges = None
 
+    def get_plotter_class(self):
+        from grond.plot import plotter
+        raise plotter.NoPlotterClassAvailable()
+
     def set_dataset(self, ds):
         self._ds = ds
 
@@ -113,10 +117,6 @@ class MisfitTarget(Object):
             self, engine, source, modelling_targets, modelling_results):
 
         raise NotImplemented('must be overloaded in subclass')
-
-    def get_plotter_class(self):
-        from grond import plot
-        raise plot.NoPlotterClassAvailable()
 
 
 __all__ = '''

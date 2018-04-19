@@ -31,6 +31,7 @@ setup(
         'grond.analysers',
         'grond.listeners',
         'grond.report',
+        'grond.plot',
     ],
     python_requires='>=3.5',
     entry_points={
