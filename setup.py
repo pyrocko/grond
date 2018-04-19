@@ -18,10 +18,10 @@ setup(
     packages=[
         'grond',
         'grond.apps',
-        'grond.baraddur',
         'grond.targets',
         'grond.targets.waveform',
         'grond.targets.satellite',
+        'grond.targets.gnss_campaign',
         'grond.problems',
         'grond.problems.cmt',
         'grond.problems.double_dc',
@@ -36,14 +36,9 @@ setup(
     python_requires='>=3.5',
     entry_points={
         'console_scripts': [
-            'grond = grond.apps.__main__:main',
+            'grond = grond.apps.grond:main',
         ]
     },
     package_dir={'grond': 'src'},
-    package_data={'grond': ['baraddur/templates/*.html',
-                            'baraddur/res/*',
-                            'report/app/css/*.css',
-                            'report/app/js/*.js',
-                            'report/app/*.html']},
     data_files=[] + grond_completion(),
     )

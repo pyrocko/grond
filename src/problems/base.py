@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as num
 import math
 import copy
@@ -29,6 +28,9 @@ class ProblemConfig(Object):
     name_template = String.T()
     apply_balancing_weights = Bool.T(default=True)
     norm_exponent = Int.T(default=2)
+
+    def get_problem(self, event, target_groups, targets):
+        raise NotImplementedError
 
 
 class Problem(Object):
@@ -68,11 +70,10 @@ class Problem(Object):
         return o
 
     def set_target_parameter_values(self, x):
-        i = len(self.problem_parameters)
+        nprob = len(self.problem_parameters)
         for target in self.targets:
-            n = len(target.target_parameters)
-            target.set_parameter_values(x[i:i+n])
-            i += n
+            target.set_parameter_values(x[nprob:nprob+target.nparameters])
+            nprob += target.nparameters
 
     def get_parameter_dict(self, model, group=None):
         params = []
@@ -265,7 +266,7 @@ class Problem(Object):
 
         for target in self.targets:
             for p in target.target_parameters:
-                r = target.target_ranges[p.name]
+                r = target.target_ranges[p.name_nogroups]
                 out.append((r.start, r.stop))
 
         return num.array(out, dtype=num.float)
@@ -361,6 +362,8 @@ class Problem(Object):
     def evaluate(self, x, mask=None, result_mode='full'):
         source = self.get_source(x)
         engine = self.get_engine()
+
+        self.set_target_parameter_values(x)
 
         for target in self.targets:
             target.set_result_mode(result_mode)
