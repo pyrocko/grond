@@ -575,15 +575,11 @@ def process_event(ievent, g_data_id):
     config, force, status, nparallel, event_names = g_state[g_data_id]
 
     event_name = event_names[ievent]
-
-    ds = config.get_dataset(event_name)
-
     nevents = len(event_names)
-
     tstart = time.time()
 
+    ds = config.get_dataset(event_name)
     event = ds.get_event()
-
     problem = config.get_problem(event)
 
     synt = ds.synthetic_test
@@ -596,6 +592,9 @@ def process_event(ievent, g_data_id):
         config.rundir_template,
         dict(problem_name=problem.name))
 
+    from grond import monit
+    monit.GrondMonit.start(rundir)
+
     if op.exists(rundir):
         if force:
             shutil.rmtree(rundir)
@@ -607,7 +606,7 @@ def process_event(ievent, g_data_id):
     util.ensuredir(rundir)
 
     logger.info(
-        'start %i / %i' % (ievent+1, nevents))
+        'starting event %i / %i' % (ievent+1, nevents))
 
     analyser = config.analyser_config.get_analyser()
     analyser.analyse(problem)
