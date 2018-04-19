@@ -10,8 +10,12 @@ from matplotlib import cm, patches
 from pyrocko import plot, gf, trace
 from pyrocko.plot import mpl_papersize, mpl_color
 
-from grond import core, meta, plot as gp
+from grond import core, meta
 from .base import WaveformMisfitResult, WaveformMisfitTarget
+
+from grond.plot.config import PlotConfig
+from grond.plot.plotter import Plotter
+from grond.plot.common import light
 
 logger = logging.getLogger('targets.waveform.plot')
 
@@ -38,7 +42,7 @@ def amp_spec_max(spec_trs, key):
     return amaxs
 
 
-class WaveformTargetCheckPlotConfig(plot.PlotConfig):
+class WaveformTargetCheckPlotConfig(PlotConfig):
     name = 'waveform_target_check'
 
 
@@ -119,7 +123,7 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
-class WaveformTargetPlotter(gp.Plotter):
+class WaveformTargetPlotter(Plotter):
 
     @classmethod
     def draw_check_figures(cls, sources, target, results):
@@ -513,7 +517,7 @@ class WaveformTargetPlotter(gp.Plotter):
                             fc=tap_color_fill, ec=tap_color_edge, alpha=0.2)
 
                         obs_color = mpl_color('aluminium5')
-                        obs_color_light = gp.light(obs_color, 0.5)
+                        obs_color_light = light(obs_color, 0.5)
 
                         plot_dtrace(
                             axes2, dtrace, space, 0., 1.,
@@ -880,10 +884,10 @@ class WaveformTargetPlotter(gp.Plotter):
                         fc=tap_color_fill, ec=tap_color_edge)
 
                     obs_color = mpl_color('aluminium5')
-                    obs_color_light = gp.light(obs_color, 0.5)
+                    obs_color_light = light(obs_color, 0.5)
 
                     syn_color = mpl_color('scarletred2')
-                    syn_color_light = gp.light(syn_color, 0.5)
+                    syn_color_light = light(syn_color, 0.5)
 
                     misfit_color = mpl_color('scarletred2')
                     weight_color = mpl_color('chocolate2')
@@ -896,7 +900,7 @@ class WaveformTargetPlotter(gp.Plotter):
 
                         plot_dtrace(
                             axes2, dtrace, space, -1., 1.,
-                            fc=gp.light(cc_color, 0.5),
+                            fc=light(cc_color, 0.5),
                             ec=cc_color)
 
                         plot_dtrace_vline(
@@ -925,7 +929,7 @@ class WaveformTargetPlotter(gp.Plotter):
                     else:
                         plot_dtrace(
                             axes2, dtrace, space, 0., 1.,
-                            fc=gp.light(misfit_color, 0.3),
+                            fc=light(misfit_color, 0.3),
                             ec=misfit_color)
 
                     plot_trace(
@@ -986,9 +990,9 @@ class WaveformTargetPlotter(gp.Plotter):
                     ph = 0.01
 
                     for (ih, rw, facecolor, edgecolor) in [
-                            (0, rel_w, gp.light(weight_color, 0.5),
+                            (0, rel_w, light(weight_color, 0.5),
                              weight_color),
-                            (1, rel_c, gp.light(misfit_color, 0.5),
+                            (1, rel_c, light(misfit_color, 0.5),
                              misfit_color)]:
 
                         bar = patches.Rectangle(

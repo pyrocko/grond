@@ -2,7 +2,7 @@ import numpy as num
 
 from matplotlib import cm, gridspec
 
-from grond.plot import Plotter
+from grond.plot.plotter import Plotter
 
 km = 1000.
 

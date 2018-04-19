@@ -7,7 +7,7 @@ from matplotlib import cm
 
 from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color
 
-from grond.plot import Plotter
+from grond.plot.plotter import Plotter
 
 logger = logging.getLogger('grond.problem.plot')
 

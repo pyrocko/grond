@@ -1,4 +1,4 @@
-from grond.plot import Plotter
+from grond.plot.plotter import Plotter
 
 
 class GNSSTargetPlotter(Plotter):

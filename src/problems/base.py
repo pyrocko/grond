@@ -57,9 +57,9 @@ class Problem(Object):
         logger.name = self.__class__.__name__
 
     @classmethod
-    def get_plotter_class(cls):
-        from grond.ploblems.plot import ProblemPlotter
-        return ProblemPlotter
+    def get_plots(cls):
+        import .plot
+        return [plot.JointparPlot]
 
     def get_engine(self):
         return self._engine
