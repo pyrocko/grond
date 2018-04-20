@@ -39,7 +39,8 @@ def report(
     if report_config is None:
         report_config = ReportConfig()
 
-    from grond.core import read_config, check
+    from grond.config import read_config
+    from grond.core import check
     from grond.plot import plot_result, available_plotnames
 
     if config_and_event_name is None:

@@ -1,4 +1,5 @@
 from .core import *  # noqa
+from .config import *  # noqa
 from .dataset import *  # noqa
 from .problems import *  # noqa
 from .targets import *  # noqa
