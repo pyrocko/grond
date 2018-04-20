@@ -7,14 +7,17 @@ from matplotlib import cm, patches
 
 from pyrocko.guts import Tuple, Float, Int, String, List, Bool
 
-from pyrocko.plot import mpl_margins, mpl_color
+from pyrocko.plot import mpl_margins, mpl_color, mpl_init
 from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
+from grond.plot.collection import PlotItem
 from grond import meta, core
 from matplotlib import pyplot as plt
 
 logger = logging.getLogger('grond.problem.plot')
+
+guts_prefix = 'grond'
 
 
 def fixlim(lo, hi):
@@ -30,10 +33,9 @@ def eigh_sorted(mat):
     return evals[iorder], evecs[:, iorder]
 
 
-class JointparPlot(PlotConfig):
-    plot_name = 'jointpar'
-
-    size_cm = Tuple.T(2, Float.T(), default=(8., 8.))
+class GrondJointparPlot(PlotConfig):
+    name = 'jointpar'
+    size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)
     color_parameter = String.T(default='misfit')
@@ -42,11 +44,13 @@ class JointparPlot(PlotConfig):
     draw_ellipses = Bool.T(default=False)
     n_each = Int.T(default=6)
 
-    def make(self, mediator):
-        cm = mediator.get_plot_collection_manager()
-        history = mediator.get_history()
-        optimizer = mediator.get_optimizer()
-        cm.create_group(self, self.draw_figures(history, optimizer))
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
+        optimizer = environ.get_optimizer()
+
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history, optimizer))
 
     def draw_figures(self, history, optimizer):
 
@@ -136,9 +140,9 @@ class JointparPlot(PlotConfig):
             figs_row = []
             for jfig in range(nfig):
                 if ifig >= jfig:
-                    figs_row.append((
-                        plt.figure(figsize=figsize),
-                        PlotItem(name='%i_%i' % (ifig, jfig))))
+                    item = PlotItem(name='fig_%i_%i' % (ifig, jfig))
+                    item.attributes['targets'] = []
+                    figs_row.append((item, plt.figure(figsize=figsize)))
                 else:
                     figs_row.append(None)
 
@@ -162,7 +166,7 @@ class JointparPlot(PlotConfig):
 
                 aind = (neach, neach, (ix * neach) + iy + 1)
 
-                fig, item = figs[ifig][jfig][0]
+                item, fig = figs[ifig][jfig]
 
                 tlist = item.attributes['targets']
                 if xpar.name not in tlist:
@@ -271,7 +275,8 @@ class JointparPlot(PlotConfig):
 
         figs_flat = []
         for figs_row in figs:
-            figs_flat.extend(fig for fig in figs_row if fig is not None)
+            figs_flat.extend(
+                item_fig for item_fig in figs_row if item_fig is not None)
 
         return figs_flat
 

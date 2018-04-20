@@ -1,125 +1,63 @@
+import os.path as op
+from grond.environment import Environment
+from grond.plot.collection import PlotCollectionManager
+from grond.plot.config import PlotConfigCollection
 
-def discover(mediator):
-    plots = set() 
-    plots.update(mediator.get_problem())
-    return plots
+
+def get_plot_names(args):
+    env = Environment(*args)
+    plot_classes = env.get_plots()
+    return [plot_class.name for plot_class in plot_classes]
 
 
-def plot_result(dirname, plotnames_want,
-                save=False, save_path=None, formats=('pdf',), dpi=None):
+def get_plot_config_collection(args):
+    env = Environment(*args)
+    plot_classes = env.get_plots()
+    collection = PlotConfigCollection()
 
-    if isinstance(formats, str):
-        formats = formats.split(',')
+    for plot_class in plot_classes:
+        plot_config = plot_class()
+        collection.plot_configs.append(plot_config)
 
-    plotnames_want = set(plotnames_want)
-    plotnames_avail = set(plot_dispatch.keys())
+    return collection
 
-    if save_path is None:
-        plot_dirname = op.join(dirname, 'plots')
+
+def make_plots(plots, args, plots_path=None):
+    env = Environment(*args)
+    if isinstance(plots, PlotConfigCollection):
+        plots = plots.plot_configs
+
     else:
-        plot_dirname = save_path
-        save = True
+        plot_classes = env.get_plots()
+        for plot_class in plot_classes:
+            plots = [
+                plot_class()
+                for plot_class in plot_classes
+                if plot_class.name in plots]
 
-    unavailable = plotnames_want - plotnames_avail
-    if unavailable:
-        raise core.GrondError(
-            'unavailable plotname: %s' % ', '.join(unavailable))
+    if plots_path is None:
+        plots_path = op.join(env.get_rundir_path(), 'plots')
 
-    fontsize = 10.0
+    manager = PlotCollectionManager(plots_path)
+    env.set_plot_collection_manager(manager)
 
-    mpl_init(fontsize=fontsize)
-    fns = defaultdict(list)
-    config = None
-
-    optimizer_fn = op.join(dirname, 'optimizer.yaml')
-    optimizer = guts.load(filename=optimizer_fn)
-
-    if 3 != len({'bootstrap', 'sequence', 'contributions'} - plotnames_want):
-        problem = load_problem_info(dirname)
-        history = ModelHistory(problem, path=dirname)
-
-        for plotname in ['bootstrap', 'sequence', 'contributions']:
-            if plotname in plotnames_want:
-                figs = plot_dispatch[plotname](history, optimizer, plt)
-                if save:
-                    fns[plotname].extend(
-                        save_figs(figs, plot_dirname, plotname, formats, dpi))
-
-                    for fig in figs:
-                        plt.close(fig)
-
-    if 8 != len({
-            'fits',
-            'fits_statics',
-            'fits_ensemble',
-            'jointpar',
-            'histogram',
-            'hudson',
-            'solution',
-            'location'} - plotnames_want):
-
-        problem = load_problem_info(dirname)
-        history = ModelHistory(problem, path=meta.xjoin(dirname, 'harvest'))
-
-        for plotname in ['fits', 'fits_ensemble', 'fits_statics']:
-            if plotname in plotnames_want:
-                event_name = problem.base_source.name
-
-                if config is None:
-                    config = guts.load(
-                        filename=op.join(dirname, 'config.yaml'))
-                    config.set_basepath(dirname)
-                    config.setup_modelling_environment(problem)
-
-                ds = config.get_dataset(event_name)
-                figs = plot_dispatch[plotname](ds, history, optimizer, plt)
-                if save:
-                    fns[plotname].extend(
-                        save_figs(figs, plot_dirname, plotname, formats, dpi))
-
-                    for fig in figs:
-                        plt.close(fig)
-
-        for plotname in [
-                'jointpar',
-                'histogram',
-                'hudson',
-                'solution',
-                'location']:
-
-            if plotname in plotnames_want:
-                figs = plot_dispatch[plotname](history, optimizer, plt)
-                if save:
-                    fns[plotname].extend(
-                        save_figs(figs, plot_dirname, plotname, formats, dpi))
-
-                    for fig in figs:
-                        plt.close(fig)
-
-    if not save:
-        plt.show()
-
-    return fns
+    for plot in plots:
+        plot.make(env)
 
 
 def make_movie(dirname, xpar_name, ypar_name, movie_filename):
-    optimizer_fn = op.join(dirname, 'optimizer.yaml')
-    optimizer = guts.load(filename=optimizer_fn)
-    problem = load_problem_info(dirname)
-    history = ModelHistory(problem, path=dirname)
+    env = Environment(dirname)
+    optimizer = env.get_optimizer()
+    problem = env.get_problem()
+    history = env.get_history()
     movie_maker = optimizer.get_movie_maker(
         problem, history, xpar_name, ypar_name, movie_filename)
 
     movie_maker.render()
 
 
-def draw_target_check_figures(sources, target, results):
-    try:
-        plotter_class = target.get_plotter_class()
-        return plotter_class.draw_check_figures(sources, target, results)
-
-    except plotter.NoPlotterClassAvailable:
-        return []
-
-
-__all__ = []
+__all__ = [
+    'get_plot_names',
+    'get_plot_config_collection',
+    'make_plots',
+    'make_movie']

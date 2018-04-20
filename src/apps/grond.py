@@ -597,7 +597,7 @@ def command_harvest(args):
         weed=options.weed)
 
 
-def command_plot(args):
+def command_plot_old(args):
 
     def setup(parser):
         parser.add_option(
@@ -657,6 +657,49 @@ selected by specifying a comma-separated list.''' % (
 
     except grond.GrondError as e:
         die(str(e))
+
+
+def command_plot(args):
+
+    def setup(parser):
+        parser.add_option(
+            '--save', dest='save', action='store_true', default=False,
+            help='save figures to files')
+
+        parser.add_option(
+            '--format', '--formats', dest='formats', default='pdf',
+            help='comma-separated list of ouptut formats (default: pdf)')
+
+        parser.add_option(
+            '--dpi', '--dpi', dest='dpi', type=float, default=120.,
+            help='DPI setting for raster formats (default=120)')
+
+    details = '''Available <plotnames> can be listed with
+
+    `grond plot list ( <rundir> | <configfile> <eventname> )`
+'''
+
+    parser, options, args = cl_parse('plot', args, setup, details)
+
+    if len(args) not in (2, 3):
+        help_and_die(parser, 'two or three arguments required')
+
+    from grond import plot
+    if args[0] == 'list':
+        for plot_name in plot.get_plot_names(args[1:]):
+            print(plot_name)
+
+    elif args[0] == 'config':
+        plot_config_collection = plot.get_plot_config_collection(args[1:])
+        print(plot_config_collection)
+
+    elif op.exists(args[0]):
+        plots = plot.read_plot_config_collection(args[0])
+        plot.make_plots(plots, args[1:])
+
+    else:
+        plot_names = args[0].split(',')
+        plot.make_plots(plot_names, args[1:])
 
 
 def command_movie(args):

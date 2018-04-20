@@ -18,7 +18,7 @@ from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data, load_optimizer_info
 
 from .optimizers.base import BadProblem
-from .targets.waveform.base import WaveformMisfitResult
+from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError, Forbidden
 from .config import read_config
 

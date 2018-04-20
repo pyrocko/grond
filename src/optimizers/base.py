@@ -14,6 +14,10 @@ class BadProblem(GrondError):
 
 class Optimizer(Object):
 
+    @classmethod
+    def get_plots(cls):
+        return []
+
     def optimize(self, problem):
         raise NotImplemented()
 

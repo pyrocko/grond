@@ -59,7 +59,7 @@ class Problem(Object):
     @classmethod
     def get_plots(cls):
         from . import plot
-        return [plot.JointparPlot]
+        return [plot.GrondJointparPlot]
 
     def get_engine(self):
         return self._engine
