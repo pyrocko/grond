@@ -4,17 +4,16 @@ import os.path as op
 import os
 import logging
 import time
-
 import numpy as num
+from collections import OrderedDict
 
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
 
 from grond.meta import GrondError, Forbidden
-
-from ..base import Optimizer, OptimizerConfig, BadProblem
-
 from grond.problems.base import ModelHistory
+from grond.optimizers.base import Optimizer, OptimizerConfig, BadProblem, \
+    OptimizerStatus
 
 guts_prefix = 'grond'
 
@@ -322,12 +321,15 @@ class Chains(object):
     def model(self, ichain, ilink):
         return self.history.models[self.chains_i[ichain, ilink], :]
 
-    def mean_model(self, ichain):
+    def mean_model(self, ichain=None):
         xs = self.models(ichain)
         return num.mean(xs, axis=0)
 
-    def standard_deviation_models(self, ichain, estimator):
+    def best_model(self, ichain=0):
+        xs = self.models(ichain)
+        return xs[0]
 
+    def standard_deviation_models(self, ichain, estimator):
         if estimator == 'median_density_single_chain':
             xs = self.models(ichain)
             return local_std(xs)
@@ -356,6 +358,7 @@ class HighScoreOptimizer(Optimizer):
     def __init__(self, **kwargs):
         Optimizer.__init__(self, **kwargs)
         self._bootstrap_weights = {}
+        self._status_chains = None
 
     def get_bootstrap_weights(self, problem):
         k = (problem,
@@ -426,7 +429,7 @@ class HighScoreOptimizer(Optimizer):
         self._tlog_last = 0
         for iiter in range(niter):
             phase, iiter_phase = self.get_sampler_phase(iiter)
-            self.log_progress(problem, iiter, niter, phase, iiter_phase)
+            # self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
             x = phase.get_sample(problem, iiter_phase, chains)
 
@@ -469,15 +472,29 @@ class HighScoreOptimizer(Optimizer):
         return sum([ph.niterations for ph in self.sampler_phases])
 
     def get_status(self, history):
-        phase = self.get_sampler_phase(iiter=history.nmodels)
+        if self._status_chains is None:
+            self._status_chains = self.chains(history.problem, history)
 
-        return dict(
-            phase=phase.__class__.__name__,
-            niter=self.niterations,
-            iiter=history.nmodels,
-            best_model=history.get_best_model(),
-            mean_model=history.get_mean_model()
-        )
+        self._status_chains.goto(history.nmodels)
+        chains = self._status_chains
+
+        phase = self.get_sampler_phase(history.nmodels)[0]
+
+        bs_mean = chains.mean_model(ichain=None)
+        bs_std = chains.standard_deviation_models(
+            ichain=None, estimator='standard_deviation_all_chains')
+
+        glob_mean = chains.mean_model(ichain=0)
+        glob_std = chains.standard_deviation_models(
+            ichain=0, estimator='standard_deviation_single_chain')
+        glob_best = chains.best_model(ichain=0)
+
+        return OptimizerStatus(
+            columns=OrderedDict(
+                zip(['BS mean', 'BS std',
+                     'Glob mean', 'Glob std', 'Glob best'],
+                    [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
+            extra_text='Optimizer phase: %s' % phase.__class__.__name__)
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):

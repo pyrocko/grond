@@ -592,8 +592,8 @@ def process_event(ievent, g_data_id):
         config.rundir_template,
         dict(problem_name=problem.name))
 
-    from grond import monit
-    monit.GrondMonit.start(rundir)
+    from grond.monitor import GrondMonitor
+    GrondMonitor.watch(rundir)
 
     if op.exists(rundir):
         if force:

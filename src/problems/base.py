@@ -491,7 +491,7 @@ class ModelHistory(object):
                 cls.verify_rundir(path)
                 problem = load_problem_info(path)
                 return cls(problem, path, mode='r')
-            except InvalidRundir:
+            except (InvalidRundir, OSError):
                 time.sleep(.25)
 
     @property
@@ -596,17 +596,6 @@ class ModelHistory(object):
             self.path, self.problem, nmodels_skip=self.nmodels)
 
         self.extend(new_models, new_misfits)
-
-    def get_mean_model(self):
-        return num.mean(self.models, axis=0)
-
-    def get_best_model(self):
-        gms = self.problem.combine_misfits(self.misfits)
-        ibest = num.argmin(gms)
-        return self.models[ibest, :]
-
-    def get_best_source(self):
-        return self.problem.get_source(self.get_best_model())
 
     def add_listener(self, listener):
         self.listeners.append(listener)
