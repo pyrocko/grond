@@ -452,9 +452,8 @@ def command_events(args):
     config_path = args[0]
     config = grond.read_config(config_path)
 
-    print('Available Events:')
     for event_name in grond.get_event_names(config):
-        print('* %s' % event_name)
+        print(event_name)
 
 
 def command_check(args):
