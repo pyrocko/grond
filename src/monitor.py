@@ -47,8 +47,9 @@ class GrondMonitor(object):
 
     def __init__(self, rundir):
         self.rundir = rundir
-        self._iiter = 0
+
         self.iter_per_second = 0
+        self._iiter = 0
         self._iter_buffer = RingBuffer(20)
 
     def run(self):
@@ -143,7 +144,11 @@ class GrondMonitor(object):
     @classmethod
     def watch(cls, rundir):
         import threading
-        monit = cls(rundir)
-        monit_thread = threading.Thread(target=monit.run)
-        monit_thread.start()
-        return monit_thread
+        import signal
+
+        monitor = cls(rundir)
+
+        monitor_thread = threading.Thread(target=monitor.run)
+        monitor_thread.start()
+
+        return monitor_thread
