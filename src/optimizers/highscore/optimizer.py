@@ -468,6 +468,17 @@ class HighScoreOptimizer(Optimizer):
     def niterations(self):
         return sum([ph.niterations for ph in self.sampler_phases])
 
+    def get_status(self, history):
+        phase = self.get_sampler_phase(iiter=history.nmodels)
+
+        return dict(
+            phase=phase.__class__.__name__,
+            niter=self.niterations,
+            iiter=history.nmodels,
+            best_model=history.get_best_model(),
+            mean_model=history.get_mean_model()
+        )
+
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
 
