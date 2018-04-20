@@ -65,9 +65,9 @@ class MisfitTarget(Object):
         self._target_parameters = None
         self._target_ranges = None
 
-    def get_plotter_class(self):
-        from grond.plot import plotter
-        raise plotter.NoPlotterClassAvailable()
+    @classmethod
+    def get_plots(cls):
+        return []
 
     def set_dataset(self, ds):
         self._ds = ds

@@ -3,7 +3,7 @@ from pyrocko import gf, trace
 from pyrocko.guts import Object, Float, StringChoice, List, String
 from pyrocko.gui import marker
 
-from . import base
+from . import target as base
 
 guts_prefix = 'grond'
 

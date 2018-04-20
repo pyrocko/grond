@@ -9,19 +9,18 @@ import os.path as op
 from collections import defaultdict
 import numpy as num
 
-from pyrocko.guts import load, Object, String, Float, Bool, List
+from pyrocko.guts import Object, String, Float, List
 from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import DatasetConfig, NotFound
-from .problems.base import ProblemConfig, Problem, \
-    load_problem_info_and_data, load_problem_data
+from .dataset import NotFound
+from .problems.base import Problem, load_problem_info_and_data, \
+    load_problem_data, load_optimizer_info
 
-from .optimizers.base import OptimizerConfig, BadProblem
-from .targets.base import TargetGroup
-from .targets.waveform.base import WaveformMisfitResult
-from .analysers.base import AnalyserConfig
-from .meta import Path, HasPaths, expand_template, GrondError, Forbidden
+from .optimizers.base import BadProblem
+from .targets.waveform.target import WaveformMisfitResult
+from .meta import expand_template, GrondError, Forbidden
+from .config import read_config
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
@@ -71,70 +70,6 @@ def weed(origin, targets, limit, neighborhood=3):
         target for (delete, target) in zip(deleted, targets) if not delete]
 
     return targets_weeded, meandists_kept, deleted
-
-
-class EngineConfig(HasPaths):
-    gf_stores_from_pyrocko_config = Bool.T(default=True)
-    gf_store_superdirs = List.T(Path.T())
-    gf_store_dirs = List.T(Path.T())
-
-    def __init__(self, *args, **kwargs):
-        HasPaths.__init__(self, *args, **kwargs)
-        self._engine = None
-
-    def get_engine(self):
-        if self._engine is None:
-            fp = self.expand_path
-            self._engine = gf.LocalEngine(
-                use_config=self.gf_stores_from_pyrocko_config,
-                store_superdirs=fp(self.gf_store_superdirs),
-                store_dirs=fp(self.gf_store_dirs))
-
-        return self._engine
-
-
-class Config(HasPaths):
-    rundir_template = Path.T()
-    dataset_config = DatasetConfig.T()
-    target_groups = List.T(TargetGroup.T())
-    problem_config = ProblemConfig.T()
-    analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
-    optimizer_config = OptimizerConfig.T()
-    engine_config = EngineConfig.T(default=EngineConfig.D())
-
-    def __init__(self, *args, **kwargs):
-        HasPaths.__init__(self, *args, **kwargs)
-
-    def get_event_names(self):
-        return self.dataset_config.get_event_names()
-
-    def get_dataset(self, event_name):
-        return self.dataset_config.get_dataset(event_name)
-
-    def get_targets(self, event):
-        ds = self.get_dataset(event.name)
-
-        targets = []
-        for igroup, target_group in enumerate(self.target_groups):
-            targets.extend(target_group.get_targets(
-                ds, event, 'target.%i' % igroup))
-
-        return targets
-
-    def setup_modelling_environment(self, problem):
-        problem.set_engine(self.engine_config.get_engine())
-        ds = self.get_dataset(problem.base_source.name)
-        synt = ds.synthetic_test
-        if synt:
-            synt.set_problem(problem)
-            problem.base_source = problem.get_source(synt.get_x())
-
-    def get_problem(self, event):
-        targets = self.get_targets(event)
-        problem = self.problem_config.get_problem(
-            event, self.target_groups, targets)
-        self.setup_modelling_environment(problem)
-        return problem
 
 
 def sarr(a):
@@ -191,23 +126,6 @@ def stations_mean_latlondist(stations):
     return mean_latlondist(lats, lons)
 
 
-def read_config(path):
-    config = load(filename=path)
-    if not isinstance(config, Config):
-        raise GrondError('invalid Grond configuration in file "%s"' % path)
-
-    config.set_basepath(op.dirname(path) or '.')
-    return config
-
-
-def write_config(config, path):
-    basepath = config.get_basepath()
-    dirname = op.dirname(path) or '.'
-    config.change_basepath(dirname)
-    guts.dump(config, filename=path)
-    config.change_basepath(basepath)
-
-
 def forward(rundir_or_config_path, event_names):
 
     if not event_names:
@@ -215,10 +133,8 @@ def forward(rundir_or_config_path, event_names):
 
     if op.isdir(rundir_or_config_path):
         rundir = rundir_or_config_path
-        config = guts.load(
-            filename=op.join(rundir, 'config.yaml'))
+        config = read_config(op.join(rundir, 'config.yaml'))
 
-        config.set_basepath(rundir)
         problem, xs, misfits = load_problem_info_and_data(
             rundir, subset='harvest')
 
@@ -276,9 +192,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     else:
         xs, misfits = load_problem_data(rundir, problem)
 
-    optimizer_fn = op.join(rundir, 'optimizer.yaml')
-    optimizer = guts.load(filename=optimizer_fn)
-
+    optimizer = load_optimizer_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
         if force:
@@ -822,10 +736,6 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
 
 __all__ = '''
-    EngineConfig
-    Config
-    read_config
-    write_config
     forward
     harvest
     go
