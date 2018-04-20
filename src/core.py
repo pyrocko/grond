@@ -15,7 +15,7 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound
 from .problems.base import Problem, load_problem_info_and_data, \
-    load_problem_data
+    load_problem_data, load_optimizer_info
 
 from .optimizers.base import BadProblem
 from .targets.waveform.base import WaveformMisfitResult
@@ -133,10 +133,8 @@ def forward(rundir_or_config_path, event_names):
 
     if op.isdir(rundir_or_config_path):
         rundir = rundir_or_config_path
-        config = guts.load(
-            filename=op.join(rundir, 'config.yaml'))
+        config = read_config(op.join(rundir, 'config.yaml'))
 
-        config.set_basepath(rundir)
         problem, xs, misfits = load_problem_info_and_data(
             rundir, subset='harvest')
 
@@ -194,9 +192,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     else:
         xs, misfits = load_problem_data(rundir, problem)
 
-    optimizer_fn = op.join(rundir, 'optimizer.yaml')
-    optimizer = guts.load(filename=optimizer_fn)
-
+    optimizer = load_optimizer_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
         if force:
