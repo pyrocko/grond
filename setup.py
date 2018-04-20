@@ -29,7 +29,6 @@ setup(
         'grond.optimizers',
         'grond.optimizers.highscore',
         'grond.analysers',
-        'grond.listeners',
         'grond.report',
         'grond.plot',
     ],
