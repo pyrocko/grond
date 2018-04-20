@@ -1,5 +1,2 @@
-from grond.plot.plotter import Plotter
-
-
-class GNSSTargetPlotter(Plotter):
+class GNSSTargetPlotter(object):
     pass

@@ -2,8 +2,6 @@ import numpy as num
 
 from matplotlib import cm, gridspec
 
-from grond.plot.plotter import Plotter
-
 km = 1000.
 
 
@@ -20,7 +18,7 @@ def scale_axes(ax, scale):
     ax.get_yaxis().set_major_formatter(FormatScaled())
 
 
-class SatelliteTargetPlotter(Plotter):
+class SatelliteTargetPlotter(object):
 
     @classmethod
     def draw_result_figures(cls, ds, history, optimizer, plt):

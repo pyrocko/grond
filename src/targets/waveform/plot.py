@@ -14,7 +14,6 @@ from grond import core, meta
 from .base import WaveformMisfitResult, WaveformMisfitTarget
 
 from grond.plot.config import PlotConfig
-from grond.plot.plotter import Plotter
 from grond.plot.common import light
 
 logger = logging.getLogger('targets.waveform.plot')
@@ -123,7 +122,7 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
-class WaveformTargetPlotter(Plotter):
+class WaveformTargetPlotter(object):
 
     @classmethod
     def draw_check_figures(cls, sources, target, results):

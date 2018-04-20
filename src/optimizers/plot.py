@@ -1,13 +1,9 @@
-
 import logging
-
 import numpy as num
 from scipy import signal
+
 from matplotlib import cm
-
 from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color
-
-from grond.plot.plotter import Plotter
 
 logger = logging.getLogger('grond.problem.plot')
 
@@ -19,7 +15,7 @@ def fixlim(lo, hi):
         return lo, hi
 
 
-class OptimizerPlotter(Plotter):
+class OptimizerPlotter(object):
 
     @classmethod
     def draw_sequence_figures(
