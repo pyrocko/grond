@@ -29,11 +29,10 @@ def make_plots(plots, args, plots_path=None):
 
     else:
         plot_classes = env.get_plots()
-        for plot_class in plot_classes:
-            plots = [
-                plot_class()
-                for plot_class in plot_classes
-                if plot_class.name in plots]
+        plots = [
+            plot_class()
+            for plot_class in plot_classes
+            if plot_class.name in plots]
 
     if plots_path is None:
         plots_path = op.join(env.get_rundir_path(), 'plots')

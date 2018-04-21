@@ -144,4 +144,4 @@ class Environment(object):
         except GrondEnvironmentError:
             pass
 
-        return sorted(list(plots))
+        return sorted(list(plots), key=lambda plot: plot.name)

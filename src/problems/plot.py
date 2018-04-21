@@ -5,7 +5,7 @@ import random
 import numpy as num
 from matplotlib import cm, patches
 
-from pyrocko.guts import Tuple, Float, Int, String, List, Bool
+from pyrocko.guts import Tuple, Float, Int, String, List, Bool, StringChoice
 
 from pyrocko.plot import mpl_margins, mpl_color, mpl_init
 from pyrocko.plot import beachball, hudson
@@ -33,7 +33,7 @@ def eigh_sorted(mat):
     return evals[iorder], evecs[:, iorder]
 
 
-class GrondJointparPlot(PlotConfig):
+class JointparPlot(PlotConfig):
     name = 'jointpar'
     size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
     misfit_cutoff = Float.T(optional=True)
@@ -76,9 +76,6 @@ class GrondJointparPlot(PlotConfig):
             par = problem.combined[ipar]
             lo, hi = bounds[ipar]
             if lo == hi:
-                if exclude is None:
-                    exclude = []
-
                 exclude.append(par.name)
 
         xref = problem.get_xref()
@@ -141,7 +138,7 @@ class GrondJointparPlot(PlotConfig):
             for jfig in range(nfig):
                 if ifig >= jfig:
                     item = PlotItem(name='fig_%i_%i' % (ifig, jfig))
-                    item.attributes['targets'] = []
+                    item.attributes['parameters'] = []
                     figs_row.append((item, plt.figure(figsize=figsize)))
                 else:
                     figs_row.append(None)
@@ -168,7 +165,7 @@ class GrondJointparPlot(PlotConfig):
 
                 item, fig = figs[ifig][jfig]
 
-                tlist = item.attributes['targets']
+                tlist = item.attributes['parameters']
                 if xpar.name not in tlist:
                     tlist.append(xpar.name)
                 if ypar.name not in tlist:
@@ -281,76 +278,88 @@ class GrondJointparPlot(PlotConfig):
         return figs_flat
 
 
-def draw_histogram_figures(history, optimizer, plt):
+class HistogramPlot(PlotConfig):
+    name = 'histogram'
+    size_cm = Tuple.T(2, Float.T(), default=(12.5, 7.5))
+    exclude = List.T(String.T())
+    include = List.T(String.T())
+    method = StringChoice.T(
+        choices=['gaussian_kde', 'histogram'],
+        default='gaussian_kde')
 
-    import scipy.stats
-    from grond.core import make_stats
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
 
-    exclude = None
-    include = None
-    figsize = (5, 3)
-    fontsize = 10
-    method = 'gaussian_kde'
-    ref_color = mpl_color('aluminium6')
-    stats_color = mpl_color('scarletred2')
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history))
 
-    problem = history.problem
-    misfits = history.misfits
-    if not problem:
-        return []
+    def draw_figures(self, history):
 
-    models = history.models
+        import scipy.stats
+        from grond.core import make_stats
 
-    bounds = problem.get_combined_bounds()
-    for ipar in range(problem.ncombined):
-        par = problem.combined[ipar]
-        vmin, vmax = bounds[ipar]
-        if vmin == vmax:
-            if exclude is None:
-                exclude = []
+        exclude = self.exclude
+        include = self.include
+        figsize = self.size_inch
+        fontsize = self.font_size
+        method = self.method
+        ref_color = mpl_color('aluminium6')
+        stats_color = mpl_color('scarletred2')
 
-            exclude.append(par.name)
+        problem = history.problem
+        misfits = history.misfits
+        if not problem:
+            return []
 
-    xref = problem.get_xref()
+        models = history.models
 
-    smap = {}
-    iselected = 0
-    for ipar in range(problem.ncombined):
-        par = problem.combined[ipar]
-        if exclude and par.name in exclude or \
-                include and par.name not in include:
-            continue
+        bounds = problem.get_combined_bounds()
+        exclude = list(exclude)
+        for ipar in range(problem.ncombined):
+            par = problem.combined[ipar]
+            vmin, vmax = bounds[ipar]
+            if vmin == vmax:
+                exclude.append(par.name)
 
-        smap[iselected] = ipar
-        iselected += 1
+        xref = problem.get_xref()
 
-    nselected = iselected
-    del iselected
+        smap = {}
+        iselected = 0
+        for ipar in range(problem.ncombined):
+            par = problem.combined[ipar]
+            if exclude and par.name in exclude or \
+                    include and par.name not in include:
+                continue
 
-    pnames = [
-        problem.combined[smap[iselected]].name
-        for iselected in range(nselected)]
+            smap[iselected] = ipar
+            iselected += 1
 
-    rstats = make_stats(problem, models, misfits, pnames=pnames)
+        nselected = iselected
+        del iselected
 
-    figs = []
-    for iselected in range(nselected):
-        ipar = smap[iselected]
-        par = problem.combined[ipar]
-        vs = problem.extract(models, ipar)
-        vmin, vmax = bounds[ipar]
+        pnames = [
+            problem.combined[smap[iselected]].name
+            for iselected in range(nselected)]
 
-        fig = plt.figure(figsize=figsize)
-        labelpos = mpl_margins(
-            fig, nw=1, nh=1, w=7., bottom=5., top=1, units=fontsize)
+        rstats = make_stats(problem, models, misfits, pnames=pnames)
 
-        axes = fig.add_subplot(1, 1, 1)
-        labelpos(axes, 2.5, 2.0)
-        axes.set_xlabel(par.get_label())
-        axes.set_ylabel('PDF')
-        axes.set_xlim(*fixlim(*par.scaled((vmin, vmax))))
+        for iselected in range(nselected):
+            ipar = smap[iselected]
+            par = problem.combined[ipar]
+            vs = problem.extract(models, ipar)
+            vmin, vmax = bounds[ipar]
 
-        for method in 'gaussian_kde', 'histogram':
+            fig = plt.figure(figsize=figsize)
+            labelpos = mpl_margins(
+                fig, nw=1, nh=1, w=7., bottom=5., top=1, units=fontsize)
+
+            axes = fig.add_subplot(1, 1, 1)
+            labelpos(axes, 2.5, 2.0)
+            axes.set_xlabel(par.get_label())
+            axes.set_ylabel('PDF')
+            axes.set_xlim(*fixlim(*par.scaled((vmin, vmax))))
+
             if method == 'gaussian_kde':
                 kde = scipy.stats.gaussian_kde(vs)
                 vps = num.linspace(vmin, vmax, 600)
@@ -363,365 +372,404 @@ def draw_histogram_figures(history, optimizer, plt):
             axes.plot(
                 par.scaled(vps), par.inv_scaled(pps), color=stats_color)
 
-        pstats = rstats.parameter_stats_list[iselected]
+            pstats = rstats.parameter_stats_list[iselected]
 
-        axes.axvspan(
-            par.scaled(pstats.minimum),
-            par.scaled(pstats.maximum),
-            color=stats_color, alpha=0.1)
-        axes.axvspan(
-            par.scaled(pstats.percentile16),
-            par.scaled(pstats.percentile84),
-            color=stats_color, alpha=0.1)
-        axes.axvspan(
-            par.scaled(pstats.percentile5),
-            par.scaled(pstats.percentile95),
-            color=stats_color, alpha=0.1)
+            axes.axvspan(
+                par.scaled(pstats.minimum),
+                par.scaled(pstats.maximum),
+                color=stats_color, alpha=0.1)
+            axes.axvspan(
+                par.scaled(pstats.percentile16),
+                par.scaled(pstats.percentile84),
+                color=stats_color, alpha=0.1)
+            axes.axvspan(
+                par.scaled(pstats.percentile5),
+                par.scaled(pstats.percentile95),
+                color=stats_color, alpha=0.1)
 
-        axes.axvline(
-            par.scaled(pstats.median),
-            color=stats_color, alpha=0.5)
-        axes.axvline(
-            par.scaled(pstats.mean),
-            color=stats_color, ls=':', alpha=0.5)
+            axes.axvline(
+                par.scaled(pstats.median),
+                color=stats_color, alpha=0.5)
+            axes.axvline(
+                par.scaled(pstats.mean),
+                color=stats_color, ls=':', alpha=0.5)
 
-        axes.axvline(
-            par.scaled(problem.extract(xref, ipar)),
-            color=ref_color)
+            axes.axvline(
+                par.scaled(problem.extract(xref, ipar)),
+                color=ref_color)
 
-        figs.append(fig)
+            item = PlotItem(name=par.name)
+            item.attributes['parameters'] = [par.name]
+            yield item, fig
 
-    return figs
+
+class SolutionPlot(PlotConfig):
+    name = 'solution_mt'
+    size_cm = Tuple.T(2, Float.T(), default=(15, 5))
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history))
+
+    def draw_figures(self, history):
+
+        fontsize = self.font_size
+
+        fig = plt.figure(figsize=self.size_inch)
+        axes = fig.add_subplot(1, 1, 1, aspect=1.0)
+        fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+
+        problem = history.problem
+        if not problem:
+            logger.warn('problem not set')
+            return []
+
+        models = history.models
+
+        if models.size == 0:
+            logger.warn('empty models vector')
+            return []
+
+        gms = problem.combine_misfits(history.misfits)
+        isort = num.argsort(gms)
+        iorder = num.empty_like(isort)
+        iorder[isort] = num.arange(iorder.size)[::-1]
+
+        mean_source = core.get_mean_source(
+            problem, history.models)
+
+        best_source = core.get_best_source(
+            problem, history.models, history.misfits)
+
+        ref_source = problem.base_source
+
+        for xpos, label in [
+                (0., 'Full'),
+                (2., 'Isotropic'),
+                (4., 'Deviatoric'),
+                (6., 'CLVD'),
+                (8., 'DC')]:
+
+            axes.annotate(
+                label,
+                xy=(1 + xpos, 3),
+                xycoords='data',
+                xytext=(0., 0.),
+                textcoords='offset points',
+                ha='center',
+                va='center',
+                color='black',
+                fontsize=fontsize)
+
+        decos = []
+        for source in [best_source, mean_source, ref_source]:
+            mt = source.pyrocko_moment_tensor()
+            deco = mt.standard_decomposition()
+            decos.append(deco)
+
+        moment_full_max = max(deco[-1][0] for deco in decos)
+
+        for ypos, label, deco, color_t in [
+                (2., 'Ensemble best', decos[0], mpl_color('aluminium5')),
+                (1., 'Ensemble mean', decos[1], mpl_color('scarletred1')),
+                (0., 'Reference', decos[2], mpl_color('aluminium3'))]:
+
+            [(moment_iso, ratio_iso, m_iso),
+             (moment_dc, ratio_dc, m_dc),
+             (moment_clvd, ratio_clvd, m_clvd),
+             (moment_devi, ratio_devi, m_devi),
+             (moment_full, ratio_full, m_full)] = deco
+
+            size0 = moment_full / moment_full_max
+
+            axes.annotate(
+                label,
+                xy=(-2., ypos),
+                xycoords='data',
+                xytext=(0., 0.),
+                textcoords='offset points',
+                ha='left',
+                va='center',
+                color='black',
+                fontsize=fontsize)
+
+            for xpos, mt_part, ratio, ops in [
+                    (0., m_full, ratio_full, '-'),
+                    (2., m_iso, ratio_iso, '='),
+                    (4., m_devi, ratio_devi, '='),
+                    (6., m_clvd, ratio_clvd, '+'),
+                    (8., m_dc, ratio_dc, None)]:
+
+                if ratio > 1e-4:
+                    try:
+                        beachball.plot_beachball_mpl(
+                            mt_part, axes,
+                            beachball_type='full',
+                            position=(1. + xpos, ypos),
+                            size=0.9 * size0 * math.sqrt(ratio),
+                            size_units='data',
+                            color_t=color_t,
+                            linewidth=1.0)
+
+                    except beachball.BeachballError as e:
+                        logger.warn(str(e))
+
+                        axes.annotate(
+                            'ERROR',
+                            xy=(1. + xpos, ypos),
+                            ha='center',
+                            va='center',
+                            color='red',
+                            fontsize=fontsize)
+
+                else:
+                    axes.annotate(
+                        'N/A',
+                        xy=(1. + xpos, ypos),
+                        ha='center',
+                        va='center',
+                        color='black',
+                        fontsize=fontsize)
+
+                if ops is not None:
+                    axes.annotate(
+                        ops,
+                        xy=(2. + xpos, ypos),
+                        ha='center',
+                        va='center',
+                        color='black',
+                        fontsize=fontsize)
+
+        axes.axison = False
+        axes.set_xlim(-2.25, 9.75)
+        axes.set_ylim(-0.5, 3.5)
+
+        item = PlotItem(name='main')
+        return [[item, fig]]
 
 
-def draw_solution_figure(
-        history, optimizer, plt,
-        misfit_cutoff=None,
-        beachball_type='full'):
+class LocationPlot(PlotConfig):
+    name = 'location_mt'
+    size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
+    beachball_type = StringChoice.T(
+        choices=['full', 'deviatoric', 'dc'],
+        default='dc')
 
-    fontsize = 10.
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history))
 
-    fig = plt.figure(figsize=(6, 2))
-    axes = fig.add_subplot(1, 1, 1, aspect=1.0)
-    fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+    def draw_figures(self, history):
+        from matplotlib import colors
 
-    problem = history.problem
-    if not problem:
-        logger.warn('problem not set')
-        return []
+        color = 'black'
+        fontsize = self.font_size
+        markersize = fontsize * 1.5
+        beachballsize_small = markersize * 0.5
+        beachball_type = self.beachball_type
 
-    models = history.models
+        problem = history.problem
 
-    if models.size == 0:
-        logger.warn('empty models vector')
-        return []
+        fig = plt.figure(figsize=self.size_inch)
+        axes_en = fig.add_subplot(2, 2, 1)
+        axes_dn = fig.add_subplot(2, 2, 2)
+        axes_ed = fig.add_subplot(2, 2, 3)
 
-    gms = problem.combine_misfits(history.misfits)
-    isort = num.argsort(gms)
-    iorder = num.empty_like(isort)
-    iorder[isort] = num.arange(iorder.size)[::-1]
+        bounds = problem.get_combined_bounds()
 
-    mean_source = core.get_mean_source(
-        problem, history.models)
+        gms = problem.combine_misfits(history.misfits)
 
-    best_source = core.get_best_source(
-        problem, history.models, history.misfits)
+        isort = num.argsort(gms)[::-1]
 
-    ref_source = problem.base_source
+        gms = gms[isort]
+        models = history.models[isort, :]
 
-    for xpos, label in [
-            (0., 'Full'),
-            (2., 'Isotropic'),
-            (4., 'Deviatoric'),
-            (6., 'CLVD'),
-            (8., 'DC')]:
+        iorder = num.arange(history.nmodels)
 
-        axes.annotate(
-            label,
-            xy=(1 + xpos, 3),
-            xycoords='data',
-            xytext=(0., 0.),
-            textcoords='offset points',
-            ha='center',
-            va='center',
-            color='black',
-            fontsize=fontsize)
+        for axes, xparname, yparname in [
+                (axes_en, 'east_shift', 'north_shift'),
+                (axes_dn, 'depth', 'north_shift'),
+                (axes_ed, 'east_shift', 'depth')]:
 
-    decos = []
-    for source in [best_source, mean_source, ref_source]:
-        mt = source.pyrocko_moment_tensor()
-        deco = mt.standard_decomposition()
-        decos.append(deco)
+            ixpar = problem.name_to_index(xparname)
+            iypar = problem.name_to_index(yparname)
 
-    moment_full_max = max(deco[-1][0] for deco in decos)
+            xpar = problem.combined[ixpar]
+            ypar = problem.combined[iypar]
 
-    for ypos, label, deco, color_t in [
-            (2., 'Ensemble best', decos[0], mpl_color('aluminium5')),
-            (1., 'Ensemble mean', decos[1], mpl_color('scarletred1')),
-            (0., 'Reference', decos[2], mpl_color('aluminium3'))]:
+            axes.set_xlabel(xpar.get_label())
+            axes.set_ylabel(ypar.get_label())
 
-        [(moment_iso, ratio_iso, m_iso),
-         (moment_dc, ratio_dc, m_dc),
-         (moment_clvd, ratio_clvd, m_clvd),
-         (moment_devi, ratio_devi, m_devi),
-         (moment_full, ratio_full, m_full)] = deco
+            xmin, xmax = fixlim(*xpar.scaled(bounds[ixpar]))
+            ymin, ymax = fixlim(*ypar.scaled(bounds[iypar]))
 
-        size0 = moment_full / moment_full_max
+            axes.set_aspect(1.0)
+            axes.set_xlim(xmin, xmax)
+            axes.set_ylim(ymin, ymax)
 
-        axes.annotate(
-            label,
-            xy=(-2., ypos),
-            xycoords='data',
-            xytext=(0., 0.),
-            textcoords='offset points',
-            ha='left',
-            va='center',
-            color='black',
-            fontsize=fontsize)
+            # fxs = xpar.scaled(problem.extract(models, ixpar))
+            # fys = ypar.scaled(problem.extract(models, iypar))
 
-        for xpos, mt_part, ratio, ops in [
-                (0., m_full, ratio_full, '-'),
-                (2., m_iso, ratio_iso, '='),
-                (4., m_devi, ratio_devi, '='),
-                (6., m_clvd, ratio_clvd, '+'),
-                (8., m_dc, ratio_dc, None)]:
+            # axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
+            # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
 
-            if ratio > 1e-4:
+            cmap = cm.ScalarMappable(
+                norm=colors.Normalize(
+                    vmin=num.min(iorder),
+                    vmax=num.max(iorder)),
+
+                cmap=plt.get_cmap('coolwarm'))
+
+            for ix, x in enumerate(models):
+                source = problem.get_source(x)
+                mt = source.pyrocko_moment_tensor()
+                fx = problem.extract(x, ixpar)
+                fy = problem.extract(x, iypar)
+                sx, sy = xpar.scaled(fx), ypar.scaled(fy)
+
+                color = cmap.to_rgba(iorder[ix])
+
+                alpha = (iorder[ix] - num.min(iorder)) / \
+                    float(num.max(iorder) - num.min(iorder))
+
                 try:
                     beachball.plot_beachball_mpl(
-                        mt_part, axes,
-                        beachball_type='full',
-                        position=(1. + xpos, ypos),
-                        size=0.9 * size0 * math.sqrt(ratio),
-                        size_units='data',
-                        color_t=color_t,
-                        linewidth=1.0)
+                        mt, axes,
+                        beachball_type=beachball_type,
+                        position=(sx, sy),
+                        size=beachballsize_small,
+                        color_t=color,
+                        alpha=alpha,
+                        zorder=1,
+                        linewidth=0.25)
 
                 except beachball.BeachballError as e:
                     logger.warn(str(e))
 
-                    axes.annotate(
-                        'ERROR',
-                        xy=(1. + xpos, ypos),
-                        ha='center',
-                        va='center',
-                        color='red',
-                        fontsize=fontsize)
-
-            else:
-                axes.annotate(
-                    'N/A',
-                    xy=(1. + xpos, ypos),
-                    ha='center',
-                    va='center',
-                    color='black',
-                    fontsize=fontsize)
-
-            if ops is not None:
-                axes.annotate(
-                    ops,
-                    xy=(2. + xpos, ypos),
-                    ha='center',
-                    va='center',
-                    color='black',
-                    fontsize=fontsize)
-
-    axes.axison = False
-    axes.set_xlim(-2.25, 9.75)
-    axes.set_ylim(-0.5, 3.5)
-
-    return [fig]
+        item = PlotItem(name='main')
+        return [[item, fig]]
 
 
-def draw_location_figure(history, optimizer, plt):
-    from matplotlib import colors
+class HudsonPlot(PlotConfig):
+    name = 'hudson'
+    size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
+    beachball_type = StringChoice.T(
+        choices=['full', 'deviatoric', 'dc'],
+        default='dc')
 
-    color = 'black'
-    fontsize = 10.
-    markersize = fontsize * 1.5
-    # markersize_small = markersize * 0.2
-    beachballsize = markersize
-    beachballsize_small = beachballsize * 0.5
-    beachball_type = 'dc'
-    width = 7.
-    figsize = (width, width / (4. / 3.))
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history))
 
-    problem = history.problem
+    def draw_figures(self, history):
 
-    fig = plt.figure(figsize=figsize)
-    axes_en = fig.add_subplot(2, 2, 1)
-    axes_dn = fig.add_subplot(2, 2, 2)
-    axes_ed = fig.add_subplot(2, 2, 3)
+        color = 'black'
+        fontsize = self.font_size
+        markersize = fontsize * 1.5
+        markersize_small = markersize * 0.2
+        beachballsize = markersize
+        beachballsize_small = beachballsize * 0.5
+        beachball_type = self.beachball_type
 
-    bounds = problem.get_combined_bounds()
+        problem = history.problem
+        mean_source = core.get_mean_source(problem, history.models)
+        best_source = core.get_best_source(
+            problem, history.models, history.misfits)
 
-    gms = problem.combine_misfits(history.misfits)
+        fig = plt.figure(figsize=self.size_inch)
+        axes = fig.add_subplot(1, 1, 1)
 
-    isort = num.argsort(gms)[::-1]
-
-    gms = gms[isort]
-    models = history.models[isort, :]
-
-    iorder = num.arange(history.nmodels)
-
-    for axes, xparname, yparname in [
-            (axes_en, 'east_shift', 'north_shift'),
-            (axes_dn, 'depth', 'north_shift'),
-            (axes_ed, 'east_shift', 'depth')]:
-
-        ixpar = problem.name_to_index(xparname)
-        iypar = problem.name_to_index(yparname)
-
-        xpar = problem.combined[ixpar]
-        ypar = problem.combined[iypar]
-
-        axes.set_xlabel(xpar.get_label())
-        axes.set_ylabel(ypar.get_label())
-
-        xmin, xmax = fixlim(*xpar.scaled(bounds[ixpar]))
-        ymin, ymax = fixlim(*ypar.scaled(bounds[iypar]))
-
-        axes.set_aspect(1.0)
-        axes.set_xlim(xmin, xmax)
-        axes.set_ylim(ymin, ymax)
-
-        # fxs = xpar.scaled(problem.extract(models, ixpar))
-        # fys = ypar.scaled(problem.extract(models, iypar))
-
-        # axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
-        # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
-
-        cmap = cm.ScalarMappable(
-            norm=colors.Normalize(
-                vmin=num.min(iorder),
-                vmax=num.max(iorder)),
-
-            cmap=plt.get_cmap('coolwarm'))
-
-        for ix, x in enumerate(models):
+        data = []
+        for ix, x in enumerate(history.models):
             source = problem.get_source(x)
             mt = source.pyrocko_moment_tensor()
-            fx = problem.extract(x, ixpar)
-            fy = problem.extract(x, iypar)
-            sx, sy = xpar.scaled(fx), ypar.scaled(fy)
+            u, v = hudson.project(mt)
 
-            color = cmap.to_rgba(iorder[ix])
+            if random.random() < 0.1:
+                try:
+                    beachball.plot_beachball_mpl(
+                        mt, axes,
+                        beachball_type=beachball_type,
+                        position=(u, v),
+                        size=beachballsize_small,
+                        color_t=color,
+                        alpha=0.5,
+                        zorder=1,
+                        linewidth=0.25)
+                except beachball.BeachballError as e:
+                    logger.warn(str(e))
 
-            alpha = (iorder[ix] - num.min(iorder)) / \
-                float(num.max(iorder) - num.min(iorder))
+            else:
+                data.append((u, v))
 
-            try:
-                beachball.plot_beachball_mpl(
-                    mt, axes,
-                    beachball_type=beachball_type,
-                    position=(sx, sy),
-                    size=beachballsize_small,
-                    color_t=color,
-                    alpha=alpha,
-                    zorder=1,
-                    linewidth=0.25)
+        if data:
+            u, v = num.array(data).T
+            axes.plot(
+                u, v, 'o',
+                color=color,
+                ms=markersize_small,
+                mec='none',
+                mew=0,
+                alpha=0.25,
+                zorder=0)
 
-            except beachball.BeachballError as e:
-                logger.warn(str(e))
+        hudson.draw_axes(axes)
 
-    return [fig]
-
-
-def draw_hudson_figure(history, optimizer, plt):
-
-    color = 'black'
-    fontsize = 10.
-    markersize = fontsize * 1.5
-    markersize_small = markersize * 0.2
-    beachballsize = markersize
-    beachballsize_small = beachballsize * 0.5
-    width = 7.
-    beachball_type = 'dc'
-    figsize = (width, width / (4. / 3.))
-
-    problem = history.problem
-    mean_source = core.get_mean_source(problem, history.models)
-    best_source = core.get_best_source(
-        problem, history.models, history.misfits)
-
-    fig = plt.figure(figsize=figsize)
-    axes = fig.add_subplot(1, 1, 1)
-
-    data = []
-    for ix, x in enumerate(history.models):
-        source = problem.get_source(x)
-        mt = source.pyrocko_moment_tensor()
+        mt = mean_source.pyrocko_moment_tensor()
         u, v = hudson.project(mt)
 
-        if random.random() < 0.1:
-            try:
-                beachball.plot_beachball_mpl(
-                    mt, axes,
-                    beachball_type=beachball_type,
-                    position=(u, v),
-                    size=beachballsize_small,
-                    color_t=color,
-                    alpha=0.5,
-                    zorder=1,
-                    linewidth=0.25)
-            except beachball.BeachballError as e:
-                logger.warn(str(e))
+        try:
+            beachball.plot_beachball_mpl(
+                mt, axes,
+                beachball_type=beachball_type,
+                position=(u, v),
+                size=beachballsize,
+                color_t=color,
+                zorder=2,
+                linewidth=0.5)
+        except beachball.BeachballError as e:
+            logger.warn(str(e))
 
-        else:
-            data.append((u, v))
+        mt = best_source.pyrocko_moment_tensor()
+        u, v = hudson.project(mt)
 
-    if data:
-        u, v = num.array(data).T
         axes.plot(
-            u, v, 'o',
-            color=color,
-            ms=markersize_small,
-            mec='none',
-            mew=0,
-            alpha=0.25,
-            zorder=0)
+            u, v, 's',
+            markersize=markersize,
+            mew=1,
+            mec='black',
+            mfc='none',
+            zorder=-2)
 
-    hudson.draw_axes(axes)
+        mt = problem.base_source.pyrocko_moment_tensor()
+        u, v = hudson.project(mt)
 
-    mt = mean_source.pyrocko_moment_tensor()
-    u, v = hudson.project(mt)
+        try:
+            beachball.plot_beachball_mpl(
+                mt, axes,
+                beachball_type=beachball_type,
+                position=(u, v),
+                size=beachballsize,
+                color_t='red',
+                zorder=2,
+                linewidth=0.5)
+        except beachball.BeachballError as e:
+            logger.warn(str(e))
 
-    try:
-        beachball.plot_beachball_mpl(
-            mt, axes,
-            beachball_type=beachball_type,
-            position=(u, v),
-            size=beachballsize,
-            color_t=color,
-            zorder=2,
-            linewidth=0.5)
-    except beachball.BeachballError as e:
-        logger.warn(str(e))
+        item = PlotItem(name='main')
+        return [[item, fig]]
 
-    mt = best_source.pyrocko_moment_tensor()
-    u, v = hudson.project(mt)
 
-    axes.plot(
-        u, v, 's',
-        markersize=markersize,
-        mew=1,
-        mec='black',
-        mfc='none',
-        zorder=-2)
-
-    mt = problem.base_source.pyrocko_moment_tensor()
-    u, v = hudson.project(mt)
-
-    try:
-        beachball.plot_beachball_mpl(
-            mt, axes,
-            beachball_type=beachball_type,
-            position=(u, v),
-            size=beachballsize,
-            color_t='red',
-            zorder=2,
-            linewidth=0.5)
-    except beachball.BeachballError as e:
-        logger.warn(str(e))
-
-    return [fig]
+def get_plots():
+    return [
+        JointparPlot,
+        HistogramPlot,
+        SolutionPlot,
+        LocationPlot,
+        HudsonPlot]

@@ -58,13 +58,17 @@ class PlotCollectionManager(object):
             self._collection = PlotCollection()
 
     def dump_collection(self):
-        guts.dump(self._collection, filename=self.path_collection())
+        path = self.path_collection()
+        util.ensuredirs(path)
+        guts.dump(self._collection, filename=path)
 
     def path_collection(self):
         return op.join(self._path, 'plot_collection.yaml')
 
     def path_image(self, group, item, format):
-        return op.join(self._path, group.filename_image(item, format))
+        return op.join(
+            self._path, group.name, group.variant,
+            group.filename_image(item, format))
 
     def path_group(self, group_ref=None, group=None):
         if group_ref is not None:
@@ -74,10 +78,22 @@ class PlotCollectionManager(object):
             group_variant = group.variant
 
         return op.join(
-            self._path, '%s.%s.%s' % (
+            self._path, group_name, group_variant, '%s.%s.%s' % (
                 group_name, group_variant, 'plot_group.yaml'))
 
+    def paths_group_dirs(self, group_ref=None, group=None):
+        if group_ref is not None:
+            group_name, group_variant = group_ref
+        else:
+            group_name = group.name
+            group_variant = group.variant
+
+        return [
+            op.join(self._path, group_name, group_variant),
+            op.join(self._path, group_name)]
+
     def create_group_mpl(self, config, iter_item_figure, **kwargs):
+        from matplotlib import pyplot as plt
         group = PlotGroup(
             formats=guts.clone(config.formats),
             size_cm=config.size_cm,
@@ -107,6 +123,8 @@ class PlotCollectionManager(object):
 
                 logger.info('figure saved: %s' % path)
 
+            plt.close(fig)
+
         util.ensuredirs(path_group)
         group.dump(filename=path_group)
         self._collection.group_refs.append(group_ref)
@@ -123,6 +141,11 @@ class PlotCollectionManager(object):
                     pass
 
         os.unlink(path_group)
+        for path in self.paths_group_dirs(group=group):
+            try:
+                os.rmdir(path)
+            except OSError:
+                pass
 
 
 __all__ = [

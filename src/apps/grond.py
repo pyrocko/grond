@@ -693,6 +693,10 @@ def command_plot(args):
         plot_config_collection = plot.get_plot_config_collection(args[1:])
         print(plot_config_collection)
 
+    elif args[0] == 'all':
+        plots = plot.get_plot_names(args[1:])
+        plot.make_plots(plots, args[1:])
+
     elif op.exists(args[0]):
         plots = plot.read_plot_config_collection(args[0])
         plot.make_plots(plots, args[1:])
