@@ -154,6 +154,11 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
             self, engine, source, modelling_targets, modelling_results):
         return modelling_results[0]
 
+    @classmethod
+    def get_plots(cls):
+        from . import plot
+        return [plot.SatelliteTargetPlotter]
+
 
 __all__ = '''
     SatelliteTargetGroup
