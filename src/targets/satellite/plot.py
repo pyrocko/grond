@@ -1,6 +1,11 @@
 import numpy as num
-
 from matplotlib import cm, gridspec
+
+from grond.plot.config import PlotConfig
+from grond.plot.collection import PlotItem
+
+from matplotlib import pyplot as plt
+from pyrocko import Tuple, Float
 
 km = 1000.
 
@@ -18,10 +23,22 @@ def scale_axes(ax, scale):
     ax.get_yaxis().set_major_formatter(FormatScaled())
 
 
-class SatelliteTargetPlotter(object):
+class SatelliteTargetPlotter(PlotConfig):
 
-    @classmethod
-    def draw_result_figures(cls, ds, history, optimizer, plt):
+    name = 'fits_static'
+    size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimizer = environ.get_optimizer()
+        ds = environ.get_dataset()
+
+        cm.create_group_mpl(
+            self,
+            self.draw_static_fits(ds, history, optimizer))
+
+    def draw_static_fits(self, ds, history, optimizer):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
 
@@ -78,7 +95,15 @@ class SatelliteTargetPlotter(object):
                        scene.quadtree.leaf_coordinates[:, 1],
                        s=.25, c='black', alpha=.1)
 
-        for sat_target, result in zip(problem.satellite_targets, results):
+        for ifig, (sat_target, result) in enumerate(
+                zip(problem.satellite_targets, results)):
+
+            item = PlotItem(
+                name='fig_%i' % ifig,
+                attributes={
+                    'targets': sat_target.id
+                })
+
             fig = plt.figure()
             fig.set_size_inches(16, 4)
             axes = []
@@ -134,4 +159,4 @@ class SatelliteTargetPlotter(object):
             cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
             cbar.set_label('[m]')
 
-            yield fig
+            yield (item, fig)

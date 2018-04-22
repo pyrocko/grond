@@ -42,7 +42,7 @@ class JointparPlot(PlotConfig):
     exclude = List.T(String.T())
     include = List.T(String.T())
     draw_ellipses = Bool.T(default=False)
-    n_each = Int.T(default=6)
+    nsubplots = Int.T(default=6)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -57,7 +57,7 @@ class JointparPlot(PlotConfig):
         color_parameter = self.color_parameter
         exclude = self.exclude
         include = self.include
-        neach = self.n_each
+        nsubplots = self.nsubplots
         figsize = self.size_inch
         ibootstrap = self.ibootstrap
         misfit_cutoff = self.misfit_cutoff
@@ -130,7 +130,7 @@ class JointparPlot(PlotConfig):
                         'parameters selected')
             return []
 
-        nfig = (nselected - 2) // neach + 1
+        nfig = (nselected - 2) // nsubplots + 1
 
         figs = []
         for ifig in range(nfig):
@@ -155,13 +155,13 @@ class JointparPlot(PlotConfig):
                 ixg = (iselected - 1)
                 iyg = jselected
 
-                ix = ixg % neach
-                iy = iyg % neach
+                ix = ixg % nsubplots
+                iy = iyg % nsubplots
 
-                ifig = ixg // neach
-                jfig = iyg // neach
+                ifig = ixg // nsubplots
+                jfig = iyg // nsubplots
 
-                aind = (neach, neach, (ix * neach) + iy + 1)
+                aind = (nsubplots, nsubplots, (ix * nsubplots) + iy + 1)
 
                 item, fig = figs[ifig][jfig]
 
@@ -197,7 +197,7 @@ class JointparPlot(PlotConfig):
                             horizontalalignment='left',
                             rotation=45.)
 
-                if iy == neach - 1 or jselected + 1 == iselected:
+                if iy == nsubplots - 1 or jselected + 1 == iselected:
                     for (ypos, yoff, y) in [
                             (0., 10., ymin),
                             (1.0, -10., ymax)]:
@@ -218,7 +218,7 @@ class JointparPlot(PlotConfig):
                 axes.get_xaxis().set_ticks([])
                 axes.get_yaxis().set_ticks([])
 
-                if iselected == nselected - 1 or ix == neach - 1:
+                if iselected == nselected - 1 or ix == nsubplots - 1:
                     axes.annotate(
                         xpar.get_label(with_unit=False),
                         xy=(0.5, -0.05),

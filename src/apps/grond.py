@@ -178,8 +178,8 @@ def help_and_die(parser, message):
 
 def command_scenario(args):
 
-    STORE_STATIC = 'ak135_static'
-    STORE_WAVEFORMS = 'global_2s'
+    STORE_STATIC = 'crust2_ib_static'
+    STORE_WAVEFORMS = 'crust2_ib'
 
     def setup(parser):
         parser.add_option(
@@ -205,10 +205,10 @@ def command_scenario(args):
             '--nevents', dest='nevents', type=int, default=1,
             help='Number of events to create (default: %default)')
         parser.add_option(
-            '--lat', dest='lat', type=float, default=29.58,
+            '--lat', dest='lat', type=float, default=41.0,
             help='Center latitude of the scenario (default: %default)')
         parser.add_option(
-            '--lon', dest='lon', type=float, default=81.72,
+            '--lon', dest='lon', type=float, default=33.3,
             help='Center latitude of the scenario (default: %default)')
         parser.add_option(
             '--radius', dest='radius', type=float, default=200.,
