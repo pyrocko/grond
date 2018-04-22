@@ -59,12 +59,18 @@ class PNG(PlotFormat):
     def render_mpl(self, fig, path, **kwargs):
         fig.savefig(
             path,
-            format=self.format,
+            format=self.name,
             **kwargs)
 
 
 class PDF(PlotFormat):
     name = 'pdf'
+
+    def render_mpl(self, fig, path, **kwargs):
+        fig.savefig(
+            path,
+            format=self.name,
+            **kwargs)
 
 
 class HTML(PlotFormat):
