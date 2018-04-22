@@ -71,9 +71,9 @@ class GrondScenario(object):
         if interactive:
             print('\nTo create the example project we need to'
                   ' download missing Green\'s function stores:\n'
-                  ' %s'
+                  ' %s\n'
                   'The stores will be downloaded into Pyrockos global cache.\n'
-                  % '\n '.join(self.stores_missing))
+                  % '\n'.join(self.stores_missing))
             for idr, dr in enumerate(cfg.gf_store_superdirs):
                 print(' %d. %s' % ((idr+1), dr))
             s = input('\nIn which cache directory shall the GF store'
