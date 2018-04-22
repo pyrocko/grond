@@ -1,6 +1,8 @@
 from pyrocko.guts import Tuple, Float
 from grond.plot.config import PlotConfig
 
+guts_prefix = 'grond'
+
 
 class GNSSTargetMisfitPlot(PlotConfig):
 

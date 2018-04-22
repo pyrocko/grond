@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from pyrocko.guts import Tuple, Float
 
 km = 1000.
+guts_prefix = 'grond'
 
 
 def scale_axes(ax, scale):
