@@ -4,6 +4,7 @@ import numpy as num
 import os.path as op
 from string import Template
 from pyrocko.guts import Object, String, Float, Unicode
+from pyrocko import util
 
 try:
     newstr = unicode
