@@ -19,7 +19,7 @@ from .problems.base import Problem, load_problem_info_and_data, \
 
 from .optimizers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
-from .meta import expand_template, GrondError, Forbidden
+from .meta import expand_template, GrondError
 from .config import read_config
 
 logger = logging.getLogger('grond.core')
@@ -251,16 +251,8 @@ def check(
         config,
         event_names=None,
         target_string_ids=None,
-        show_plot=False,
-        save_plot_path=None,
         show_waveforms=False,
         n_random_synthetics=10):
-
-    plot = show_plot or save_plot_path
-
-    if plot:
-        from matplotlib import pyplot as plt
-        import grond.plot
 
     fns = defaultdict(list)
     markers = []
@@ -285,29 +277,17 @@ def check(
 
             check_problem(problem)
 
-            xbounds = num.array(
-                problem.get_parameter_bounds(), dtype=num.float)
-
             results_list = []
-
             sources = []
             if n_random_synthetics == 0:
-                x = problem.pack(problem.base_source)
+                x = problem.get_reference_model()
                 sources.append(problem.base_source)
                 results = problem.evaluate(x)
                 results_list.append(results)
 
             else:
                 for i in range(n_random_synthetics):
-                    while True:
-                        x = problem.random_uniform(xbounds)
-                        try:
-                            x = problem.preconstrain(x)
-                            break
-
-                        except Forbidden:
-                            pass
-
+                    x = problem.get_random_model()
                     sources.append(problem.get_source(x))
                     results = problem.evaluate(x)
                     results_list.append(results)
@@ -413,25 +393,6 @@ def check(
                         nslc_ids=[('', target.string_id(), '*', '*')],
                         tmin=tcut[0]-tobs_shift, tmax=tcut[1]-tobs_shift,
                         kind=1))
-
-            if plot:
-                plot_dirname = save_plot_path % {'event_name': event_name}
-                for itarget, target in enumerate(problem.targets):
-                    results = [r_[itarget] for r_ in results_list]
-                    figs = grond.plot.draw_target_check_figures(
-                        sources, target, results)
-
-                    if save_plot_path:
-                        plotname = 'target_check.%s' % target.string_id()
-                        fns['target_check'].extend(grond.plot.save_figs(
-                            figs, plot_dirname, plotname,
-                            formats=['png'], dpi=None))
-
-                    if show_plot:
-                        plt.show()
-
-                    for fig in figs:
-                        plt.close(fig)
 
             else:
                 for itarget, target in enumerate(problem.targets):

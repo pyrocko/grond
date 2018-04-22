@@ -48,7 +48,7 @@ class Analyser(object):
         wproblem = problem.copy()
         wproblem.targets = wtargets
 
-        xbounds = num.array(wproblem.get_parameter_bounds(), dtype=num.float)
+        xbounds = wproblem.get_parameter_bounds()
         npar = xbounds.shape[0]
 
         mss = num.zeros((self.niter, wproblem.ntargets))

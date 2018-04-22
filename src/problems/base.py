@@ -198,11 +198,10 @@ class Problem(Object):
         self._engine = engine
 
     def random_uniform(self, xbounds):
-        x = []
-        for i in range(self.nparameters):
-            x.append(num.random.uniform(xbounds[i, 0], xbounds[i, 1]))
-
-        return num.array(x, dtype=num.float)
+        x = num.random.uniform(0., 1., self.nparameters)
+        x *= (xbounds[:, 1] - xbound[:, 0])
+        x += xbounds[:, 0]
+        return x
 
     def preconstrain(self, x):
         return x
@@ -255,7 +254,7 @@ class Problem(Object):
 
         return ws
 
-    def get_xref(self):
+    def get_reference_model(self):
         return self.pack(self.base_source)
 
     def get_parameter_bounds(self):
@@ -429,6 +428,17 @@ class Problem(Object):
                 results.append(result)
 
         return results
+
+    def get_random_model(self):
+        xbounds = self.get_parameter_bounds()
+
+        while True:
+            x = self.random_uniform(xbounds)
+            try:
+                return self.preconstrain(x)
+
+            except Forbidden:
+                pass
 
 
 class InvalidRundir(Exception):

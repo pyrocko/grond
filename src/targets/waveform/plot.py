@@ -8,13 +8,17 @@ from matplotlib import pyplot as plt
 from matplotlib import cm, patches
 
 from pyrocko import plot, gf, trace
-from pyrocko.plot import mpl_papersize, mpl_color
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_color
+from pyrocko.guts import Tuple, Float, Int
 
 from grond import core, meta
 from .base import WaveformMisfitResult, WaveformMisfitTarget
 
 from grond.plot.config import PlotConfig
 from grond.plot.common import light
+from grond.plot.collection import PlotItem
+
+guts_prefix = 'grond'
 
 logger = logging.getLogger('targets.waveform.plot')
 
@@ -122,13 +126,47 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
-class WaveformTargetPlotter(object):
+class WaveformCheckPlot(PlotConfig):
+    name = 'waveform_check'
+    size_cm = Tuple.T(2, Float.T(), default=(10., 7.5))
+    n_random_synthetics = Int.T(default=10)
 
-    @classmethod
-    def draw_check_figures(cls, sources, target, results):
-        if not results:
-            return []
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
 
+        environ.setup_modelling()
+
+        problem = environ.get_problem()
+        results_list = []
+        sources = []
+        if self.n_random_synthetics == 0:
+            x = problem.get_reference_model()
+            sources.append(problem.base_source)
+            results = problem.evaluate(x)
+            results_list.append(results)
+
+        else:
+            for _ in range(self.n_random_synthetics):
+                x = problem.get_random_model()
+                sources.append(problem.get_source(x))
+                results = problem.evaluate(x)
+                results_list.append(results)
+
+        cm.create_group_mpl(self, self.draw_figures(
+            sources, problem.targets, results_list))
+
+    def draw_figures(self, sources, targets, results_list):
+        for itarget, target, results in zip(
+                range(len(targets)), targets, results_list):
+
+            if results:
+                item = PlotItem(name='t%i' % itarget)
+                item.attributes['targets'] = [target.path]
+                fig = self.draw_figure(sources, target, results)
+                yield item, fig
+
+    def draw_figure(self, sources, target, results):
         t0_mean = num.mean([s.time for s in sources])
 
         # distances = [
@@ -150,7 +188,7 @@ class WaveformTargetPlotter(object):
         else:
             yabsmax = None
 
-        fontsize = 10
+        fontsize = self.font_size
 
         fig = None
         ii = 0
@@ -217,7 +255,7 @@ class WaveformTargetPlotter(object):
         if fig is None:
             return []
 
-        return [fig]
+        return fig
 
     @classmethod
     def draw_fits_ensemble_figures(
@@ -1039,3 +1077,7 @@ class WaveformTargetPlotter(object):
                 fig.suptitle(title, fontsize=fontsize_title)
 
         return figs
+
+
+def get_plots():
+    return [WaveformCheckPlot]

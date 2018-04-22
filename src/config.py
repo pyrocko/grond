@@ -9,6 +9,8 @@ from .problems.base import ProblemConfig
 from .optimizers.base import OptimizerConfig
 from .targets.base import TargetGroup
 
+guts_prefix = 'grond'
+
 
 class EngineConfig(HasPaths):
     gf_stores_from_pyrocko_config = Bool.T(default=True)
@@ -75,6 +77,11 @@ class Config(HasPaths):
 
 
 def read_config(path):
+    ks = guts.g_tagname_to_class.keys()
+    for k in sorted(list(ks)):
+        if k.startswith('grond.'):
+            print(k)
+
     config = guts.load(filename=path)
     if not isinstance(config, Config):
         raise GrondError('invalid Grond configuration in file "%s"' % path)

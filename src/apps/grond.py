@@ -465,10 +465,6 @@ def command_check(args):
                  'form SUPERGROUP.GROUP.NETWORK.STATION.LOCATION.CHANNEL.')
 
         parser.add_option(
-            '--plot', dest='show_plot', action='store_true',
-            help='plot sample synthetics and data.')
-
-        parser.add_option(
             '--waveforms', dest='show_waveforms', action='store_true',
             help='show raw, restituted, projected, and processed waveforms')
 

@@ -59,7 +59,7 @@ class HighScoreOptimizerPlot(object):
         axes.get_xaxis().set_major_locator(plt.MaxNLocator(4))
         axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
 
-        xref = problem.get_xref()
+        xref = problem.get_reference_model()
         axes.axvline(xpar.scaled(xref[ixpar]), color='black', alpha=0.3)
         axes.axhline(ypar.scaled(xref[iypar]), color='black', alpha=0.3)
 
