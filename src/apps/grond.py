@@ -58,7 +58,7 @@ subcommand_usages = {
         'report <configfile> <eventnames> ...'),
     'report-index': 'report <reportdir> [options]',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
-                       '<targetconfigname> [options]',
+                       '<target_group_path> [options]',
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -897,7 +897,7 @@ def command_qc_polarization(args):
 
     import grond.qc
 
-    config_path, event_name, target_config_name = args
+    config_path, event_name, target_group_path = args
 
     config = grond.read_config(config_path)
 
@@ -923,16 +923,16 @@ def command_qc_polarization(args):
                 'no markers associated with event "%s" found in file "%s"' % (
                     event_name, options.picks_filename))
 
-    target_config_names_avail = []
-    for target_config in config.target_configs:
-        name = '%s.%s' % (target_config.super_group, target_config.group or '')
-        if name == target_config_name:
-            imc = target_config.inner_misfit_config
+    target_group_paths_avail = []
+    for target_group in config.target_groups:
+        name = target_group.path
+        if name == target_group_path:
+            imc = target_group.misfit_config
             fmin = imc.fmin
             fmax = imc.fmax
             ffactor = imc.ffactor
 
-            store = engine.get_store(target_config.store_id)
+            store = engine.get_store(target_group.store_id)
             timing = '{cake:P|cake:p|cake:P\\|cake:p\\}'
 
             grond.qc.polarization(
@@ -949,10 +949,10 @@ def command_qc_polarization(args):
 
             return
 
-        target_config_names_avail.append(name)
+        target_group_paths_avail.append(name)
 
-        die('no target_config named "%s" found. Available: %s' % (
-            target_config_name, ', '.join(target_config_names_avail)))
+        die('no target group with path "%s" found. Available: %s' % (
+            target_group_path, ', '.join(target_group_paths_avail)))
 
 
 if __name__ == '__main__':
