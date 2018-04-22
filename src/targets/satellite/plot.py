@@ -5,7 +5,7 @@ from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
 from matplotlib import pyplot as plt
-from pyrocko import Tuple, Float
+from pyrocko.guts import Tuple, Float
 
 km = 1000.
 
@@ -25,7 +25,7 @@ def scale_axes(ax, scale):
 
 class SatelliteTargetPlotter(PlotConfig):
 
-    name = 'fits_static'
+    name = 'fits_satellite'
     size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
 
     def make(self, environ):
@@ -34,6 +34,8 @@ class SatelliteTargetPlotter(PlotConfig):
         optimizer = environ.get_optimizer()
         ds = environ.get_dataset()
 
+        environ.setup_modelling()
+
         cm.create_group_mpl(
             self,
             self.draw_static_fits(ds, history, optimizer))
@@ -41,7 +43,7 @@ class SatelliteTargetPlotter(PlotConfig):
     def draw_static_fits(self, ds, history, optimizer):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
-
+        
         for target in problem.targets:
             target.set_dataset(ds)
 
@@ -101,7 +103,7 @@ class SatelliteTargetPlotter(PlotConfig):
             item = PlotItem(
                 name='fig_%i' % ifig,
                 attributes={
-                    'targets': sat_target.id
+                    'targets': sat_target.path
                 })
 
             fig = plt.figure()

@@ -1,7 +1,10 @@
 import os.path as op
+import logging
 from grond.environment import Environment
 from grond.plot.collection import PlotCollectionManager
 from grond.plot.config import PlotConfigCollection
+
+logger = logging.getLogger('grond.plots')
 
 
 def get_plot_names(args):
@@ -22,9 +25,9 @@ def get_plot_config_collection(args):
     return collection
 
 
-def make_plots(plots, args, plots_path=None):
+def make_plots(plot_list, args, plots_path=None):
     env = Environment(*args)
-    if isinstance(plots, PlotConfigCollection):
+    if isinstance(plot_list, PlotConfigCollection):
         plots = plots.plot_configs
 
     else:
@@ -32,7 +35,13 @@ def make_plots(plots, args, plots_path=None):
         plots = [
             plot_class()
             for plot_class in plot_classes
-            if plot_class.name in plots]
+            if plot_class.name in plot_list]
+        
+        if set(plot_list) - set([p.name for p in plots]):
+            logger.warning(
+                'Plots %s not available!'
+                % ', '.join(set(plot_list) - set([p.name for p in plots])))
+        
 
     if plots_path is None:
         plots_path = op.join(env.get_rundir_path(), 'plots')
