@@ -29,7 +29,7 @@ class OptimizerPlotter(object):
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        xref = problem.get_xref()
+        xref = problem.get_reference_model()
 
         models = history.models
 
