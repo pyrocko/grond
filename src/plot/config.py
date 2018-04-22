@@ -78,10 +78,12 @@ class HTML(PlotFormat):
 
     @property
     def extension(self):
-        return '.html'
+        return 'html'
 
     def render_mpl(self, fig, path, **kwargs):
         import mpld3
+        kwargs.pop('dpi')
+
         mpld3.save_html(
             fig,
             fileobj=path,
