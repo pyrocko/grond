@@ -17,6 +17,9 @@ class PlotFormat(Object):
     def get_dpi(self, size_cm):
         return None
 
+    def render_mpl(self, fig, path, **kwargs):
+        pass
+
 
 class PNG(PlotFormat):
     name = 'png'
@@ -53,17 +56,30 @@ class PNG(PlotFormat):
         else:
             return 100.0
 
+    def render_mpl(self, fig, path, **kwargs):
+        fig.savefig(
+            path,
+            format=self.format,
+            **kwargs)
+
 
 class PDF(PlotFormat):
     name = 'pdf'
 
 
-class JSON(PlotFormat):
-    name = 'mpld3_json'
+class HTML(PlotFormat):
+    name = 'html'
 
     @property
     def extension(self):
-        return 'mpld3.json'
+        return '.html'
+
+    def render_mpl(self, fig, path, **kwargs):
+        import mpld3
+        mpld3.save_html(
+            fig,
+            fileobj=path,
+            **kwargs)
 
 
 class PlotConfig(Object):

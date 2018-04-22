@@ -116,9 +116,9 @@ class PlotCollectionManager(object):
             for format in group.formats:
                 path = self.path_image(group, item, format)
                 util.ensuredirs(path)
-                fig.savefig(
-                    path,
-                    format=format.name,
+                format.render_mpl(
+                    fig,
+                    path=path,
                     dpi=format.get_dpi(group.size_cm))
 
                 logger.info('figure saved: %s' % path)
@@ -129,6 +129,9 @@ class PlotCollectionManager(object):
         group.dump(filename=path_group)
         self._collection.group_refs.append(group_ref)
         self.dump_collection()
+
+    def create_group_pygmt(self, config, iter_item_figure):
+        pass
 
     def remove_group_files(self, path_group):
         group = guts.load(filename=path_group)
