@@ -157,7 +157,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     @classmethod
     def get_plots(cls):
         from . import plot
-        return [plot.SatelliteTargetPlotter]
+        return [plot.SatelliteTargetPlot]
 
 
 __all__ = '''

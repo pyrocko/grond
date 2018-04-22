@@ -23,7 +23,7 @@ def scale_axes(ax, scale):
     ax.get_yaxis().set_major_formatter(FormatScaled())
 
 
-class SatelliteTargetPlotter(PlotConfig):
+class SatelliteTargetPlot(PlotConfig):
 
     name = 'fits_static'
     size_cm = Tuple.T(2, Float.T(), default=(20., 20.))

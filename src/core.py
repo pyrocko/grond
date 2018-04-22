@@ -22,6 +22,8 @@ from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError, Forbidden
 from .config import read_config
 
+from .monitor import GrondMonitor
+
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
 
@@ -519,6 +521,7 @@ def process_event(ievent, g_data_id):
     logger.info(
         'starting event %i / %i' % (ievent+1, nevents))
 
+    logger.info('analysing problem %s' % problem.name)
     analyser = config.analyser_config.get_analyser()
     analyser.analyse(problem)
 
@@ -529,7 +532,6 @@ def process_event(ievent, g_data_id):
 
     problem.dump_problem_info(rundir)
 
-    from grond.monitor import GrondMonitor
     GrondMonitor.watch(rundir)
 
     xs_inject = None

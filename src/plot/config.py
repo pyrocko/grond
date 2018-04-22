@@ -58,6 +58,14 @@ class PDF(PlotFormat):
     name = 'pdf'
 
 
+class JSON(PlotFormat):
+    name = 'mpld3_json'
+
+    @property
+    def extension(self):
+        return 'mpld3.json'
+
+
 class PlotConfig(Object):
     name = 'undefined'
     variant = String.T(default='default')
