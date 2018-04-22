@@ -467,9 +467,6 @@ def process_event(ievent, g_data_id):
         config.rundir_template,
         dict(problem_name=problem.name))
 
-    from grond.monitor import GrondMonitor
-    GrondMonitor.watch(rundir)
-
     if op.exists(rundir):
         if force:
             shutil.rmtree(rundir)
@@ -492,6 +489,9 @@ def process_event(ievent, g_data_id):
     config.change_basepath(basepath)
 
     problem.dump_problem_info(rundir)
+
+    from grond.monitor import GrondMonitor
+    GrondMonitor.watch(rundir)
 
     xs_inject = None
     synt = ds.synthetic_test
