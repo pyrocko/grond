@@ -44,7 +44,7 @@ class SatelliteTargetPlot(PlotConfig):
     def draw_static_fits(self, ds, history, optimizer):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
-        
+
         for target in problem.targets:
             target.set_dataset(ds)
 

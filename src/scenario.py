@@ -312,7 +312,7 @@ class GNSSCampaignObservation(Observation):
 
 class SourceProblem(object):
 
-    def __init__(self, magnitude_min=5, magnitude_max=6, nevents=1):
+    def __init__(self, magnitude_min=6., magnitude_max=7., nevents=1):
         self.magnitude_min = magnitude_min
         self.magnitude_max = magnitude_max
         self.nevents = nevents

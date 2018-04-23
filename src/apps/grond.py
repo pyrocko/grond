@@ -72,7 +72,7 @@ usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
 
 Subcommands:
 
-    scenario         %(scenario)s
+    scenario        %(scenario)s
     init            %(init)s
     events          %(events)s
     check           %(check)s
@@ -232,7 +232,7 @@ def command_scenario(args):
             '--force', dest='force', action='store_true',
             help='Overwrite existing project folder.')
 
-    parser, options, args = cl_parse('init', args, setup)
+    parser, options, args = cl_parse('scenario', args, setup)
 
     if len(args) == 1:
         project_dir = op.join(op.curdir, args[0])
