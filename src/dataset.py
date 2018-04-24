@@ -926,9 +926,15 @@ class DatasetConfig(HasPaths):
 
             if self.kite_scene_paths:
                 logger.info('Loading kite scenes...')
-                for path in self.kite_scene_paths:
-                    for fn in glob.glob(xjoin(fp(path), '*.npz')):
-                        ds.add_kite_scene(filename=fn)
+                regex = r'\.npz'
+                paths = util.select_files(
+                    fp(self.kite_scene_paths),
+                    regex=regex,
+                    show_progress=False)
+
+                for path in paths:
+                    ds.add_kite_scene(filename=path)
+
                 if not ds.kite_scenes:
                     logger.warning('Could not find any kite scenes at %s' %
                                    self.kite_scene_paths)
