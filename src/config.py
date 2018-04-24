@@ -34,12 +34,15 @@ class EngineConfig(HasPaths):
 
 
 class Config(HasPaths):
-    rundir_template = Path.T()
+    rundir_template = Path.T(
+        help='Rundir for all results')
     dataset_config = DatasetConfig.T()
-    target_groups = List.T(TargetGroup.T())
+    target_groups = List.T(
+        TargetGroup.T())
     problem_config = ProblemConfig.T()
-    analyser_config = AnalyserConfig.T(
-        default=TargetBalancingAnalyserConfig.D())
+    analyser_configs = List.T(
+        AnalyserConfig.T(),
+        default=[TargetBalancingAnalyserConfig.D()])
     optimizer_config = OptimizerConfig.T()
     engine_config = EngineConfig.T(
         default=EngineConfig.D())

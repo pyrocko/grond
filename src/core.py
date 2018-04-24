@@ -483,8 +483,10 @@ def process_event(ievent, g_data_id):
         'starting event %i / %i' % (ievent+1, nevents))
 
     logger.info('analysing problem %s' % problem.name)
-    analyser = config.analyser_config.get_analyser()
-    analyser.analyse(problem)
+
+    for analyser_conf in config.analyser_configs:
+        analyser = analyser_conf.get_analyser()
+        analyser.analyse(problem)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
