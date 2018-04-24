@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from pyrocko.guts import Tuple, Float
 
 km = 1000.
+guts_prefix = 'grond'
 
 
 def scale_axes(ax, scale):
@@ -43,7 +44,7 @@ class SatelliteTargetPlot(PlotConfig):
     def draw_static_fits(self, ds, history, optimizer):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
-        
+
         for target in problem.targets:
             target.set_dataset(ds)
 
