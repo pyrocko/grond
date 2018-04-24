@@ -22,6 +22,7 @@ class GrondScenario(object):
                  center_lat=23., center_lon=52., radius=230*km,
                  problem=None, observations=[]):
         self.project_dir = project_dir
+        self.data_dir = op.join('events', 'scenario')
 
         self.center_lat = center_lat
         self.center_lon = center_lon
@@ -119,9 +120,9 @@ class GrondScenario(object):
 
     def get_dataset_config(self):
         dataset_config = grond.DatasetConfig(
-            events_path='data/events.txt')
+            events_path=op.join(self.data_dir, 'events.txt'))
         for obs in self.observations:
-            obs.update_dataset_config(dataset_config)
+            obs.update_dataset_config(dataset_config, self.data_dir)
         return dataset_config
 
     def get_scenario(self):
@@ -147,7 +148,7 @@ class GrondScenario(object):
         scenario.init_modelling(engine=self.engine)
         scenario.dump(filename=op.join(self.project_dir, 'scenario.yml'))
 
-        data_dir = op.join(self.project_dir, 'data')
+        data_dir = op.join(self.project_dir, self.data_dir)
         util.ensuredir(data_dir)
 
         scenario.dump_data(path=data_dir)
@@ -200,7 +201,7 @@ class Observation(object):
     def __init__(self, store_id, *args, **kwargs):
         self.store_id = store_id
 
-    def update_dataset_config(self, dataset):
+    def update_dataset_config(self, dataset, data_dir):
         return dataset
 
     def get_scenario_target_generator(self):
@@ -218,12 +219,13 @@ class WaveformObservation(Observation):
         self.nstations = nstations
         self.store_id = store_id
 
-    def update_dataset_config(self, dataset_config):
+    def update_dataset_config(self, dataset_config, data_dir):
         ds = dataset_config
-        ds.waveform_paths = ['data/waveforms']
-        ds.waveform_path = 'data/waveforms'
-        ds.stations_path = 'data/meta/stations.txt'
-        ds.responses_stationxml_paths = ['data/meta/stations.xml']
+        ds.waveform_paths = [op.join(data_dir, 'data/waveforms')]
+        ds.waveform_path = op.join(data_dir, 'data/waveforms')
+        ds.stations_path = op.join(data_dir, 'meta', 'stations.txt')
+        ds.responses_stationxml_paths = [
+            op.join(data_dir, 'meta', 'stations.xml')]
         return ds
 
     def get_scenario_target_generator(self):
@@ -254,8 +256,8 @@ class InSARObservation(Observation):
     def __init__(self, store_id=DEFAULT_STATIC_STORE):
         self.store_id = store_id
 
-    def update_dataset_config(self, dataset_config):
-        dataset_config.kite_scene_paths = ['data/insar']
+    def update_dataset_config(self, dataset_config, data_dir):
+        dataset_config.kite_scene_paths = [op.join(data_dir, 'insar')]
         return dataset_config
 
     def get_scenario_target_generator(self):
@@ -289,8 +291,8 @@ class GNSSCampaignObservation(Observation):
         self.store_id = store_id
         self.nstations = nstations
 
-    def update_dataset_config(self, dataset_config):
-        dataset_config.gnss_campaign_paths = ['data/gnss']
+    def update_dataset_config(self, dataset_config, data_dir):
+        dataset_config.gnss_campaign_paths = [op.join(data_dir, 'gnss')]
         return dataset_config
 
     def get_scenario_target_generator(self):
