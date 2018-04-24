@@ -5,6 +5,7 @@ import logging
 import time
 import copy
 import shutil
+import glob
 import os.path as op
 from collections import defaultdict
 import numpy as num
@@ -430,10 +431,13 @@ def check(
 g_state = {}
 
 
-def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
+def go(config, event_names=None,
+       force=False, preserve=False,
+       nparallel=1, status=('state',)):
 
     status = tuple(status)
-    g_data = (config, force, status, nparallel, event_names)
+    g_data = (config, force, preserve, 
+              status, nparallel, event_names)
     g_state[id(g_data)] = g_data
 
     nevents = len(event_names)
@@ -449,7 +453,7 @@ def go(config, event_names=None, force=False, nparallel=1, status=('state',)):
 
 def process_event(ievent, g_data_id):
 
-    config, force, status, nparallel, event_names = g_state[g_data_id]
+    config, force, preserve, status, nparallel, event_names = g_state[g_data_id]
 
     event_name = event_names[ievent]
     nevents = len(event_names)
@@ -470,7 +474,10 @@ def process_event(ievent, g_data_id):
         dict(problem_name=problem.name))
 
     if op.exists(rundir):
-        if force:
+        if preserve:
+            nold_rundirs = len(glob.glob(rundir + '*'))
+            shutil.move(rundir, rundir+'-old-%d' % (nold_rundirs+1))
+        elif force:
             shutil.rmtree(rundir)
         else:
             logger.warn('skipping problem %s: rundir already exists: %s' %
@@ -495,7 +502,8 @@ def process_event(ievent, g_data_id):
 
     problem.dump_problem_info(rundir)
 
-    GrondMonitor.watch(rundir)
+    if not 'quiet' in status:
+        GrondMonitor.watch(rundir)
 
     xs_inject = None
     synt = ds.synthetic_test

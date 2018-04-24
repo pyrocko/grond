@@ -12,7 +12,6 @@ logger = logging.getLogger('grond.targets.satellite.target')
 
 
 class SatelliteMisfitConfig(MisfitConfig):
-    use_weight_focal = Bool.T(default=False)
     optimize_orbital_ramp = Bool.T(default=True)
     ranges = Dict.T(
         String.T(), gf.Range.T(),

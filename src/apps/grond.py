@@ -502,8 +502,11 @@ def command_go(args):
             '--force', dest='force', action='store_true',
             help='overwrite existing run directory')
         parser.add_option(
+            '--preserve', dest='preserve', action='store_true',
+            help='preserve old rundir')
+        parser.add_option(
             '--status', dest='status', default='state',
-            help='status output selection (choices: state, matrix)')
+            help='status output selection (choices: state, quiet)')
         parser.add_option(
             '--parallel', dest='nparallel', type='int', default=1,
             help='set number of events to process in parallel')
@@ -538,6 +541,7 @@ def command_go(args):
         config,
         event_names=event_names,
         force=options.force,
+        preserve=options.preserve,
         status=status,
         nparallel=options.nparallel)
 

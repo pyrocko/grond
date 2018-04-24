@@ -41,7 +41,7 @@ class EngineConfig(HasPaths):
 
 class Config(HasPaths):
     rundir_template = Path.T(
-        help='Directory for the result, supports templating'
+        help='Rundir for the optimisation, supports templating'
              ' (eg. ${event_name})')
     dataset_config = DatasetConfig.T(
         help='Dataset configuration object')

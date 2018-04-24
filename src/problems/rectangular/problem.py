@@ -51,15 +51,15 @@ class RectangularProblem(Problem):
     # stf
 
     problem_parameters = [
-        Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('east_shift', 'm', label='Easting', **as_km),
+        Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('depth', 'm', label='Depth', **as_km),
         Parameter('length', 'm', label='Length', **as_km),
         Parameter('width', 'm', label='Width', **as_km),
-        Parameter('dip', 'deg', label='Dip'),
-        Parameter('strike', 'deg', label='Strike'),
-        Parameter('rake', 'deg', label='Rake'),
         Parameter('slip', 'm', label='Slip'),
+        Parameter('strike', 'deg', label='Strike'),
+        Parameter('dip', 'deg', label='Dip'),
+        Parameter('rake', 'deg', label='Rake'),
         ]
 
     problem_waveform_parameters = [
