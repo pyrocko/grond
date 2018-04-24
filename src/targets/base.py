@@ -4,16 +4,25 @@ import numpy as num
 
 from pyrocko import gf
 from pyrocko.guts_array import Array
-from pyrocko.guts import Object, Float
+from pyrocko.guts import Object, Float, Bool
 
 
 guts_prefix = 'grond'
 
 
 class TargetGroup(Object):
-    normalisation_family = gf.StringID.T(optional=True)
-    path = gf.StringID.T(optional=True)
-    weight = Float.T(default=1.0)
+    enabled = Bool.T(
+        default=True,
+        help='Enable/Disable the target group')
+    normalisation_family = gf.StringID.T(
+        optional=True,
+        help='Group with common misfit normalisation')
+    path = gf.StringID.T(
+        optional=True,
+        help='Targets.id will be prefixed with this path')
+    weight = Float.T(
+        default=1.0,
+        help='Additional manual weight of the target group')
 
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T(optional=True)

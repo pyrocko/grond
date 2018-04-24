@@ -1,4 +1,3 @@
-import os.path as op
 import logging
 from grond.environment import Environment
 from grond.plot.collection import PlotCollectionManager
