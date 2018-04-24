@@ -4,7 +4,7 @@ from pyrocko.guts import Bool, List
 
 from .meta import Path, HasPaths, GrondError
 from .dataset import DatasetConfig
-from .analysers.base import AnalyserConfig
+from .analysers.base import AnalyserConfig, TargetBalancingAnalyserConfig
 from .problems.base import ProblemConfig
 from .optimizers.base import OptimizerConfig
 from .targets.base import TargetGroup
@@ -37,9 +37,11 @@ class Config(HasPaths):
     dataset_config = DatasetConfig.T()
     target_groups = List.T(TargetGroup.T())
     problem_config = ProblemConfig.T()
-    analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
+    analyser_config = AnalyserConfig.T(
+        default=TargetBalancingAnalyserConfig.D())
     optimizer_config = OptimizerConfig.T()
-    engine_config = EngineConfig.T(default=EngineConfig.D())
+    engine_config = EngineConfig.T(
+        default=EngineConfig.D())
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
