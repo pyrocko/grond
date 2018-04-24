@@ -492,7 +492,6 @@ def command_check(args):
         config,
         event_names=event_names,
         target_string_ids=target_string_ids,
-        show_plot=options.show_plot,
         show_waveforms=options.show_waveforms,
         n_random_synthetics=options.n_random_synthetics)
 

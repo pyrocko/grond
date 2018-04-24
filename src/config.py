@@ -80,9 +80,6 @@ class Config(HasPaths):
 
 def read_config(path):
     ks = guts.g_tagname_to_class.keys()
-    for k in sorted(list(ks)):
-        if k.startswith('grond.'):
-            print(k)
 
     config = guts.load(filename=path)
     if not isinstance(config, Config):

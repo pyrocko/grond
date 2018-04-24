@@ -9,7 +9,7 @@ from matplotlib import cm, patches
 
 from pyrocko import plot, gf, trace
 from pyrocko.plot import mpl_init, mpl_papersize, mpl_color
-from pyrocko.guts import Tuple, Float, Int
+from pyrocko.guts import Tuple, Float, Int, String
 
 from grond import core, meta
 from .base import WaveformMisfitResult, WaveformMisfitTarget
@@ -126,8 +126,8 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
-class WaveformCheckPlot(PlotConfig):
-    name = 'waveform_check'
+class CheckWaveformsPlot(PlotConfig):
+    name = 'check_waveform'
     size_cm = Tuple.T(2, Float.T(), default=(10., 7.5))
     n_random_synthetics = Int.T(default=10)
 
@@ -194,7 +194,6 @@ class WaveformCheckPlot(PlotConfig):
         ii = 0
         for source, result in zip(sources, results):
             if not isinstance(result, WaveformMisfitResult):
-                logger.warn(str(result))
                 continue
 
             if result.tobs_shift != 0.0:
@@ -252,19 +251,31 @@ class WaveformCheckPlot(PlotConfig):
             axes.plot(t2-t0, y2 * 0.47 + 3.5, color=color, alpha=0.2, lw=1.0)
             ii += 1
 
-        if fig is None:
-            return []
-
         return fig
 
-    @classmethod
-    def draw_fits_ensemble_figures(
-            cls,
-            ds, history, optimizer, plt,
-            misfit_cutoff=None, color='depth'):
 
-        fontsize = 8
-        fontsize_title = 10
+class FitsWaveformEnsemblePlot(PlotConfig):
+    name = 'fits_waveform_ensemble'
+    size_cm = Tuple.T(2, Float.T(), default=(29.7, 21.0))
+    misfit_cutoff = Float.T(optional=True)
+    color_parameter = String.T(default='misfit')
+    font_size = Float.T(default=8)
+    font_size_title = Float.T(default=10)
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+        environ.setup_modelling()
+        ds = environ.get_dataset()
+        history = environ.get_history()
+        cm.create_group_mpl(self, self.draw_figures(ds, history))
+
+    def draw_figures(self, ds, history):
+
+        color_parameter = self.color_parameter
+        misfit_cutoff = self.misfit_cutoff
+        fontsize = self.font_size
+        fontsize_title = self.font_size_title
 
         problem = history.problem
 
@@ -288,18 +299,18 @@ class WaveformCheckPlot(PlotConfig):
         models = models[::10]
 
         nmodels = models.shape[0]
-        if color == 'dist':
+        if color_parameter == 'dist':
             mx = num.mean(models, axis=0)
             cov = num.cov(models.T)
             mdists = core.mahalanobis_distance(models, mx, cov)
             icolor = meta.ordersort(mdists)
 
-        elif color == 'misfit':
+        elif color_parameter == 'misfit':
             iorder = num.arange(nmodels)
             icolor = iorder
 
-        elif color in problem.parameter_names:
-            ind = problem.name_to_index(color)
+        elif color_parameter in problem.parameter_names:
+            ind = problem.name_to_index(color_parameter)
             icolor = problem.extract(models, ind)
 
         target_to_results = defaultdict(list)
@@ -649,10 +660,25 @@ class WaveformCheckPlot(PlotConfig):
 
         return figs
 
-    @classmethod
-    def draw_fits_figures(cls, ds, history, optimizer, plt):
-        fontsize = 8
-        fontsize_title = 10
+
+class FitsWaveformPlot(PlotConfig):
+    name = 'fits_waveform'
+    size_cm = Tuple.T(2, Float.T(), default=(29.7, 21.0))
+    font_size = Float.T(default=8)
+    font_size_title = Float.T(default=10)
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+        environ.setup_modelling()
+        ds = environ.get_dataset()
+        history = environ.get_history()
+        cm.create_group_mpl(self, self.draw_figures(ds, history))
+
+    def draw_figures(self, ds, history):
+
+        fontsize = self.font_size
+        fontsize_title = self.font_size_title
 
         problem = history.problem
 
@@ -1080,4 +1106,8 @@ class WaveformCheckPlot(PlotConfig):
 
 
 def get_plots():
-    return [WaveformCheckPlot]
+    return [
+        CheckWaveformsPlot,
+        FitsWaveformPlot,
+        FitsWaveformEnsemblePlot,
+]

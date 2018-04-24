@@ -123,6 +123,9 @@ class Environment(object):
         '''Must be called before any modelling can be done.'''
 
         self.get_config().setup_modelling_environment(self.get_problem())
+        ds = self.get_dataset()
+        for target in self.get_problem().targets:
+            target.set_dataset(ds)
 
     def get_plots(self):
         '''Discover all plot classes relevant for the setup.'''
