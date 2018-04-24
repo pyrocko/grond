@@ -5,6 +5,7 @@ from pyrocko.guts import Bool, List
 from .meta import Path, HasPaths, GrondError
 from .dataset import DatasetConfig
 from .analysers.base import AnalyserConfig
+from .analysers.target_balancing import TargetBalancingAnalyserConfig
 from .problems.base import ProblemConfig
 from .optimizers.base import OptimizerConfig
 from .targets.base import TargetGroup
@@ -13,9 +14,15 @@ guts_prefix = 'grond'
 
 
 class EngineConfig(HasPaths):
-    gf_stores_from_pyrocko_config = Bool.T(default=True)
-    gf_store_superdirs = List.T(Path.T())
-    gf_store_dirs = List.T(Path.T())
+    gf_stores_from_pyrocko_config = Bool.T(
+        default=True,
+        help='Load the GF stores from ~/.pyrocko/config')
+    gf_store_superdirs = List.T(
+        Path.T(),
+        help='List of path hosting collection of Green\'s function stores.')
+    gf_store_dirs = List.T(
+        Path.T(),
+        help='List of Green\'s function stores')
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
@@ -33,13 +40,25 @@ class EngineConfig(HasPaths):
 
 
 class Config(HasPaths):
-    rundir_template = Path.T()
-    dataset_config = DatasetConfig.T()
-    target_groups = List.T(TargetGroup.T())
-    problem_config = ProblemConfig.T()
-    analyser_config = AnalyserConfig.T(default=AnalyserConfig.D())
-    optimizer_config = OptimizerConfig.T()
-    engine_config = EngineConfig.T(default=EngineConfig.D())
+    rundir_template = Path.T(
+        help='Directory for the result, supports templating'
+             ' (eg. ${event_name})')
+    dataset_config = DatasetConfig.T(
+        help='Dataset configuration object')
+    target_groups = List.T(
+        TargetGroup.T()
+        help='List of ``TargetGroup``s')
+    problem_config = ProblemConfig.T(
+        help='Problem config')
+    analyser_configs = List.T(
+        AnalyserConfig.T(),
+        default=[TargetBalancingAnalyserConfig.D()],
+        help='List of problem analysers')
+    optimizer_config = OptimizerConfig.T(
+        help='The optimizers configuration')
+    engine_config = EngineConfig.T(
+        default=EngineConfig.D(),
+        help=':class:`pyrocko.gf.LocalEngine` configuration')
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
