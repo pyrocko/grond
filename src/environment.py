@@ -148,3 +148,7 @@ class Environment(object):
             pass
 
         return sorted(list(plots), key=lambda plot: plot.name)
+
+    @property
+    def path_plots(self):
+        return op.join(self.get_rundir_path(), 'plots')

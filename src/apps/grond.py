@@ -514,10 +514,13 @@ def command_go(args):
         config_path = args[0]
         config = grond.read_config(config_path)
 
-        for event_name in grond.get_event_names(config):
-            print(event_name)
+        if grond.nevents == 1:
+            args.append(grond.get_event_names[0])
+        else:
+            for event_name in grond.get_event_names():
+                print(event_name)
 
-        help_and_die(parser, 'missing arguments')
+            help_and_die(parser, 'missing arguments')
 
     if len(args) < 2:
         help_and_die(parser, 'missing arguments')
@@ -693,7 +696,7 @@ def command_plot(args):
         plot.make_plots(plots, args[1:])
 
     elif op.exists(args[0]):
-        plots = plot.read_plot_config_collection(args[0])
+        plots = plot.PlotConfigCollection.load(args[0])
         plot.make_plots(plots, args[1:])
 
     else:

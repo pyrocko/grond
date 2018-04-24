@@ -43,7 +43,7 @@ def make_plots(plot_list, args, plots_path=None):
                 % ', '.join(set(plot_list) - set([p.name for p in plots])))
 
     if plots_path is None:
-        plots_path = op.join(env.get_rundir_path(), 'plots')
+        plots_path = env.path_plots
 
     manager = PlotCollectionManager(plots_path)
     env.set_plot_collection_manager(manager)

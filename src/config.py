@@ -46,7 +46,7 @@ class Config(HasPaths):
     dataset_config = DatasetConfig.T(
         help='Dataset configuration object')
     target_groups = List.T(
-        TargetGroup.T()
+        TargetGroup.T(),
         help='List of ``TargetGroup``s')
     problem_config = ProblemConfig.T(
         help='Problem config')
@@ -65,6 +65,10 @@ class Config(HasPaths):
 
     def get_event_names(self):
         return self.dataset_config.get_event_names()
+
+    @property
+    def nevents(self):
+        return len(self.dataset_config.get_events())
 
     def get_dataset(self, event_name):
         return self.dataset_config.get_dataset(event_name)
@@ -96,8 +100,6 @@ class Config(HasPaths):
 
 
 def read_config(path):
-    ks = guts.g_tagname_to_class.keys()
-
     config = guts.load(filename=path)
     if not isinstance(config, Config):
         raise GrondError('invalid Grond configuration in file "%s"' % path)

@@ -24,10 +24,18 @@ class PlotFormat(Object):
 class PNG(PlotFormat):
     name = 'png'
 
-    dpi = Float.T(optional=True)
-    size_pixels = Int.T(optional=True)
-    width_pixels = Int.T(optional=True)
-    height_pixels = Int.T(optional=True)
+    dpi = Float.T(
+        optional=True,
+        help='DPI of the figure')
+    size_pixels = Int.T(
+        optional=True,
+        help='Size in pixels')
+    width_pixels = Int.T(
+        optional=True,
+        help='Width in pixels')
+    height_pixels = Int.T(
+        optional=True,
+        help='Height in pixels')
 
     @property
     def extension(self):
@@ -92,27 +100,39 @@ class HTML(PlotFormat):
 
 class PlotConfig(Object):
     name = 'undefined'
-    variant = String.T(default='default')
-    formats = List.T(PlotFormat.T(), default=[PNG()])
-    size_cm = Tuple.T(2, Float.T())
-    font_size = Float.T(default=10.)
+    variant = String.T(
+        default='default',
+        help='Variant of the plot (if applicable)')
+    formats = List.T(
+        PlotFormat.T(),
+        default=[PNG()],
+        help='Format of the plot')
+    size_cm = Tuple.T(
+        2, Float.T(),
+        help='size of the plot')
+    font_size = Float.T(
+        default=10.,
+        help='font size')
 
     @property
     def size_inch(self):
         return self.size_cm[0]/inch, self.size_cm[1]/inch
 
+    def make(self, environ):
+        pass
+
 
 class PlotConfigCollection(Object):
     plot_configs = List.T(PlotConfig.T())
 
+    @classmethod
+    def load(cls, path):
+        collection = load(filename=path)
+        if not isinstance(collection, PlotConfigCollection):
+            raise GrondError(
+                'invalid plot collection configuration in file "%s"' % path)
 
-def read_plot_config_collection(path):
-    collection = load(filename=path)
-    if not isinstance(collection, PlotConfigCollection):
-        raise GrondError(
-            'invalid plot collection configuration in file "%s"' % path)
-
-    return collection
+        return collection
 
 
 __all__ = [
@@ -120,5 +140,4 @@ __all__ = [
     'PNG',
     'PDF',
     'PlotConfig',
-    'read_plot_config_collection',
 ]
