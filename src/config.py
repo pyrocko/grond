@@ -4,7 +4,8 @@ from pyrocko.guts import Bool, List
 
 from .meta import Path, HasPaths, GrondError
 from .dataset import DatasetConfig
-from .analysers.base import AnalyserConfig, TargetBalancingAnalyserConfig
+from .analysers.base import AnalyserConfig
+from .analysers.target_balancing import TargetBalancingAnalyserConfig
 from .problems.base import ProblemConfig
 from .optimizers.base import OptimizerConfig
 from .targets.base import TargetGroup

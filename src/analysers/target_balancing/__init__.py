@@ -1,1 +1,1 @@
-from analyzer import TargetBalancingAnalyzer, TargetBalancingAnalyzerConfig  # noqa
+from analyzer import TargetBalancingAnalyser, TargetBalancingAnalyserConfig  # noqa
