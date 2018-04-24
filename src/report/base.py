@@ -16,11 +16,6 @@ guts_prefix = 'grond'
 class ReportConfig(Object):
     reportdir_template = Path.T(
         default='reports/${event_name}/${problem_name}')
-    plot_names = List.T(
-        String.T(),
-        default=['solution', 'fits', 'histogram', 'jointpar', 'hudson',
-                 'sequence', 'fits_ensemble', 'contributions', 'bootstrap',
-                 'target_check'])
 
 
 class ReportPlot(Object):
