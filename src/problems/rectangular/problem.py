@@ -22,14 +22,10 @@ class RectangularProblemConfig(ProblemConfig):
     distance_min = Float.T(default=0.)
 
     def get_problem(self, event, target_groups, targets):
-        base_source = gf.RectangularSource(
-            lat=event.lat,
-            lon=event.lon,
-            time=event.time,
-            depth=event.depth,
+        base_source = gf.RectangularSource.from_pyrocko_event(
+            event,
             anchor='top',
-            decimation_factor=self.decimation_factor,
-            )
+            decimation_factor=self.decimation_factor)
 
         subs = dict(
             event_name=event.name,

@@ -49,11 +49,13 @@ class SatelliteTargetGroup(TargetGroup):
                 lats += qt.leaf_focal_points[:, 1]
                 east_shifts = num.zeros_like(lats)
                 north_shifts = num.zeros_like(lats)
-            elif qt.frame.isDegree():
+            elif qt.frame.isMeter():
                 logger.debug('Target %s is referenced in meter'
                              % scene.meta.scene_id)
                 east_shifts = qt.leaf_focal_points[:, 0]
-                north_shifts = qt.leaf_focal_points[:, 0]
+                north_shifts = qt.leaf_focal_points[:, 1]
+            else:
+                assert False
 
             sat_target = SatelliteMisfitTarget(
                 quantity='displacement',
