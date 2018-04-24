@@ -6,7 +6,7 @@ from string import Template
 from pyrocko.guts import Object, String, Float, Unicode
 from pyrocko import util
 
-gut_prefix = 'grond'
+guts_prefix = 'grond'
 
 
 try:
