@@ -24,6 +24,23 @@ git pull origin master
 sudo python setup.py install
 ```
 
+## Basic setup of data
+
+To use grond with your data we suggest the following folder stucture:
+
+```
+data
+└── events
+    ├── laquila2009
+    │   ├── event.txt
+    │   ├── insar
+    │   │   ├── dsc_LAquila2009_Envisat.npz
+    │   │   └── dsc_LAquila2009_Envisat.yml
+    │   └── waveforms
+    │       ├── raw
+    │       │   └── 2009-04-06_MW6.3_Central_Italy.421793.seed
+    │       └── stations.xml
+```
 
 ## Basic usage
 
