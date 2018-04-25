@@ -53,10 +53,10 @@ def make_plots(plot_list, args, plots_path=None):
 
 def make_movie(dirname, xpar_name, ypar_name, movie_filename):
     env = Environment(dirname)
-    optimizer = env.get_optimizer()
+    optimiser = env.get_optimiser()
     problem = env.get_problem()
     history = env.get_history()
-    movie_maker = optimizer.get_movie_maker(
+    movie_maker = optimiser.get_movie_maker(
         problem, history, xpar_name, ypar_name, movie_filename)
 
     movie_maker.render()

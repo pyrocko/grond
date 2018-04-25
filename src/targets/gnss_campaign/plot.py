@@ -13,14 +13,14 @@ class GNSSTargetMisfitPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
-        optimizer = environ.get_optimizer()
+        optimiser = environ.get_optimiser()
         ds = environ.get_dataset()
 
         cm.create_group_pygmt(
             self,
-            self.draw_gnss_fits(ds, history, optimizer))
+            self.draw_gnss_fits(ds, history, optimiser))
 
-    def plot_gnss_fits(self, ds, history, optimizer):
+    def plot_gnss_fits(self, ds, history, optimiser):
         lat, lon = self.get_center_latlon()
         radius = self.get_radius()
 

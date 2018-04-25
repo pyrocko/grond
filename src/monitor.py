@@ -57,11 +57,11 @@ class GrondMonitor(object):
 
         self.history = ModelHistory.follow(self.rundir)
 
-        optimizer_fn = op.join(self.rundir, 'optimizer.yaml')
-        self.optimizer = guts.load(filename=optimizer_fn)
+        optimiser_fn = op.join(self.rundir, 'optimiser.yaml')
+        self.optimiser = guts.load(filename=optimiser_fn)
 
         self.problem = self.history.problem
-        self.niter = self.optimizer.niterations
+        self.niter = self.optimiser.niterations
 
         self.starttime = time.time()
         self.last_update = self.starttime
@@ -101,7 +101,7 @@ class GrondMonitor(object):
         ''' Connected and called through the self.history.add_listener '''
         self.iiter = self.history.nmodels
         problem = self.history.problem
-        optimizer_status = self.optimizer.get_status(self.history)
+        optimiser_status = self.optimiser.get_status(self.history)
 
         lines = []
         lnadd = lines.append
@@ -117,15 +117,15 @@ class GrondMonitor(object):
               .format(s=self, p=problem))
         lnadd('Iteration {s.iiter} / {s.niter}'
               .format(s=self))
-        lnadd(optimizer_status.extra_text)
+        lnadd(optimiser_status.extra_text)
 
         col_param_width = max([len(p) for p in parameter_names]) + 2
 
         out_ln = self.row_name +\
-            ''.join([self.parameter_fmt] * optimizer_status.ncolumns)
+            ''.join([self.parameter_fmt] * optimiser_status.ncolumns)
 
         lnadd(out_ln.format(
-            *['Parameter'] + list(optimizer_status.column_names),
+            *['Parameter'] + list(optimiser_status.column_names),
             col_param_width=col_param_width,
             col_width=self.col_width,
             type='s'))
@@ -133,7 +133,7 @@ class GrondMonitor(object):
         for ip, parameter_name in enumerate(parameter_names):
             lnadd(out_ln.format(
                  parameter_name,
-                 *[fmt(v[ip]) for v in optimizer_status.values],
+                 *[fmt(v[ip]) for v in optimiser_status.values],
                  col_param_width=col_param_width,
                  col_width=self.col_width))
 

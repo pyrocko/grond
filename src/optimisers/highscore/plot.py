@@ -6,18 +6,18 @@ from matplotlib import pyplot as plt
 
 from pyrocko.plot import mpl_init, mpl_margins
 
-logger = logging.getLogger('grond.optimizer.highscore.plot')
+logger = logging.getLogger('grond.optimiser.highscore.plot')
 
 
-class HighScoreOptimizerPlot(object):
+class HighScoreOptimiserPlot(object):
 
     def __init__(
-            self, optimizer, problem, history, xpar_name, ypar_name,
+            self, optimiser, problem, history, xpar_name, ypar_name,
             movie_filename):
 
-        self.optimizer = optimizer
+        self.optimiser = optimiser
         self.problem = problem
-        self.chains = optimizer.chains(problem, history)
+        self.chains = optimiser.chains(problem, history)
         self.history = history
         self.xpar_name = xpar_name
         self.ypar_name = ypar_name
@@ -71,7 +71,7 @@ class HighScoreOptimizerPlot(object):
         self.ixpar = ixpar
         self.iypar = iypar
         from matplotlib import colors
-        n = self.optimizer.nbootstrap + 1
+        n = self.optimiser.nbootstrap + 1
         hsv = num.vstack((
             num.random.uniform(0., 1., n),
             num.random.uniform(0.5, 0.9, n),
@@ -176,7 +176,7 @@ class HighScoreOptimizerPlot(object):
 
             self._volatile.append(paths)
 
-        phase, iiter_phase = self.optimizer.get_sampler_phase(self.iiter)
+        phase, iiter_phase = self.optimiser.get_sampler_phase(self.iiter)
 
         np = 1000
         models_prob = num.zeros((np, self.problem.nparameters))
@@ -259,4 +259,4 @@ class HighScoreOptimizerPlot(object):
 
 
 __all__ = [
-    'HighScoreOptimizerPlot']
+    'HighScoreOptimiserPlot']

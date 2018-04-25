@@ -7,7 +7,7 @@ from .dataset import DatasetConfig
 from .analysers.base import AnalyserConfig
 from .analysers.target_balancing import TargetBalancingAnalyserConfig
 from .problems.base import ProblemConfig
-from .optimizers.base import OptimizerConfig
+from .optimisers.base import OptimiserConfig
 from .targets.base import TargetGroup
 
 guts_prefix = 'grond'
@@ -54,8 +54,8 @@ class Config(HasPaths):
         AnalyserConfig.T(),
         default=[TargetBalancingAnalyserConfig.D()],
         help='List of problem analysers')
-    optimizer_config = OptimizerConfig.T(
-        help='The optimizers configuration')
+    optimiser_config = OptimiserConfig.T(
+        help='The optimisers configuration')
     engine_config = EngineConfig.T(
         default=EngineConfig.D(),
         help=':class:`pyrocko.gf.LocalEngine` configuration')

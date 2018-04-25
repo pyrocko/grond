@@ -16,9 +16,9 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound
 from .problems.base import Problem, load_problem_info_and_data, \
-    load_problem_data, load_optimizer_info
+    load_problem_data, load_optimiser_info
 
-from .optimizers.base import BadProblem
+from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError
 from .config import read_config
@@ -195,7 +195,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     else:
         xs, misfits = load_problem_data(rundir, problem)
 
-    optimizer = load_optimizer_info(rundir)
+    optimiser = load_optimiser_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
         if force:
@@ -213,8 +213,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     ibests_list.append(isort[:nbest])
 
     if weed != 3:
-        for ibootstrap in range(optimizer.nbootstrap):
-            bms = optimizer.bootstrap_misfits(problem, misfits, ibootstrap)
+        for ibootstrap in range(optimiser.nbootstrap):
+            bms = optimiser.bootstrap_misfits(problem, misfits, ibootstrap)
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
@@ -511,17 +511,17 @@ def process_event(ievent, g_data_id):
         xs_inject = synt.get_x()[num.newaxis, :]
 
     try:
-        optimizer = config.optimizer_config.get_optimizer()
+        optimiser = config.optimiser_config.get_optimiser()
         if xs_inject is not None:
-            from .optimizers import highscore
-            if not isinstance(optimizer, highscore.HighScoreOptimizer):
+            from .optimisers import highscore
+            if not isinstance(optimiser, highscore.HighScoreOptimiser):
                 raise GrondError(
-                    'optimizer does not support injections')
+                    'optimiser does not support injections')
 
-            optimizer.sampler_phases[0:0] = [
+            optimiser.sampler_phases[0:0] = [
                 highscore.InjectionSamplerPhase(xs_inject=xs_inject)]
 
-        optimizer.optimize(
+        optimiser.optimize(
             problem,
             rundir=rundir)
 

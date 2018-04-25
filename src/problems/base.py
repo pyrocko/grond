@@ -635,8 +635,8 @@ def load_problem_info_and_data(dirname, subset=None):
     return problem, models, misfits
 
 
-def load_optimizer_info(dirname):
-    fn = op.join(dirname, 'optimizer.yaml')
+def load_optimiser_info(dirname):
+    fn = op.join(dirname, 'optimiser.yaml')
     return guts.load(filename=fn)
 
 

@@ -2,7 +2,7 @@ import os.path as op
 
 from grond.config import read_config
 from grond import meta
-from grond.problems.base import load_optimizer_info, load_problem_info, \
+from grond.problems.base import load_optimiser_info, load_problem_info, \
     ModelHistory
 
 
@@ -42,7 +42,7 @@ class Environment(object):
     def reset(self):
         self._histories = {}
         self._dataset = None
-        self._optimizer = None
+        self._optimiser = None
         self._problem = None
 
     def get_config(self):
@@ -81,15 +81,15 @@ class Environment(object):
 
         return self._rundir_path
 
-    def get_optimizer(self):
-        if self._optimizer is None:
+    def get_optimiser(self):
+        if self._optimiser is None:
             try:
-                self._optimizer = load_optimizer_info(self.get_rundir_path())
+                self._optimiser = load_optimiser_info(self.get_rundir_path())
             except NoRundirAvailable:
-                self._optimizer = \
-                    self.get_config().optimizer_config.get_optimizer()
+                self._optimiser = \
+                    self.get_config().optimiser_config.get_optimiser()
 
-        return self._optimizer
+        return self._optimiser
 
     def get_problem(self):
         if self._problem is None:
@@ -137,7 +137,7 @@ class Environment(object):
             pass
 
         try:
-            plots.update(self.get_optimizer().get_plot_classes())
+            plots.update(self.get_optimiser().get_plot_classes())
         except GrondEnvironmentError:
             pass
 

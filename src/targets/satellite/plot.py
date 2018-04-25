@@ -32,16 +32,16 @@ class SatelliteTargetPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
-        optimizer = environ.get_optimizer()
+        optimiser = environ.get_optimiser()
         ds = environ.get_dataset()
 
         environ.setup_modelling()
 
         cm.create_group_mpl(
             self,
-            self.draw_static_fits(ds, history, optimizer))
+            self.draw_static_fits(ds, history, optimiser))
 
-    def draw_static_fits(self, ds, history, optimizer):
+    def draw_static_fits(self, ds, history, optimiser):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
 

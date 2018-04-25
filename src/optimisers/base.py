@@ -5,14 +5,14 @@ from grond.meta import GrondError
 
 guts_prefix = 'grond'
 
-logger = logging.getLogger('grond.optimizers.base')
+logger = logging.getLogger('grond.optimisers.base')
 
 
 class BadProblem(GrondError):
     pass
 
 
-class Optimizer(Object):
+class Optimiser(Object):
 
     @classmethod
     def get_plot_classes(cls):
@@ -30,11 +30,11 @@ class Optimizer(Object):
         pass
 
 
-class OptimizerConfig(Object):
+class OptimiserConfig(Object):
     pass
 
 
-class OptimizerStatus(object):
+class OptimiserStatus(object):
     __slots__ = ['columns', 'extra_text']
 
     def __init__(self, columns, extra_text):
@@ -56,6 +56,6 @@ class OptimizerStatus(object):
 
 __all__ = '''
     BadProblem
-    Optimizer
-    OptimizerConfig
+    Optimiser
+    OptimiserConfig
 '''.split()
