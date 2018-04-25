@@ -15,7 +15,7 @@ class BadProblem(GrondError):
 class Optimizer(Object):
 
     @classmethod
-    def get_plots(cls):
+    def get_plot_classes(cls):
         from . import plot
         return plot.get_plot_classes()
 

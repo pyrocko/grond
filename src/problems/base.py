@@ -57,9 +57,9 @@ class Problem(Object):
         logger.name = self.__class__.__name__
 
     @classmethod
-    def get_plots(cls):
+    def get_plot_classes(cls):
         from . import plot
-        return plot.get_plots()
+        return plot.get_plot_classes()
 
     def get_engine(self):
         return self._engine

@@ -8,13 +8,13 @@ logger = logging.getLogger('grond.plots')
 
 def get_plot_names(args):
     env = Environment(*args)
-    plot_classes = env.get_plots()
+    plot_classes = env.get_plot_classes()
     return [plot_class.name for plot_class in plot_classes]
 
 
 def get_plot_config_collection(args):
     env = Environment(*args)
-    plot_classes = env.get_plots()
+    plot_classes = env.get_plot_classes()
     collection = PlotConfigCollection()
 
     for plot_class in plot_classes:
@@ -30,7 +30,7 @@ def make_plots(plot_list, args, plots_path=None):
         plots = plot_list.plot_configs
 
     else:
-        plot_classes = env.get_plots()
+        plot_classes = env.get_plot_classes()
         plots = [
             plot_class()
             for plot_class in plot_classes

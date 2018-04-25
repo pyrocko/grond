@@ -163,3 +163,7 @@ class SatelliteTargetPlot(PlotConfig):
             cbar.set_label('[m]')
 
             yield (item, fig)
+
+
+def get_plot_classes():
+    return [SatelliteTargetPlot]

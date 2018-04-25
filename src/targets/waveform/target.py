@@ -212,10 +212,10 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         return '.'.join(x for x in (self.path,) + self.codes if x)
 
     @classmethod
-    def get_plots(cls):
+    def get_plot_classes(cls):
         from . import plot
-        plots = super(WaveformMisfitTarget, cls).get_plots()
-        plots.extend(plot.get_plots())
+        plots = super(WaveformMisfitTarget, cls).get_plot_classes()
+        plots.extend(plot.get_plot_classes())
         return plots
 
     def get_combined_weight(self, apply_balancing_weights):

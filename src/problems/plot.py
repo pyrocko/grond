@@ -766,7 +766,7 @@ class HudsonPlot(PlotConfig):
         return [[item, fig]]
 
 
-def get_plots():
+def get_plot_classes():
     return [
         JointparPlot,
         HistogramPlot,

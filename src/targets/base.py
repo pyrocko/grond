@@ -75,7 +75,7 @@ class MisfitTarget(Object):
         self._target_ranges = None
 
     @classmethod
-    def get_plots(cls):
+    def get_plot_classes(cls):
         return []
 
     def set_dataset(self, ds):

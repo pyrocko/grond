@@ -156,9 +156,11 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return modelling_results[0]
 
     @classmethod
-    def get_plots(cls):
+    def get_plot_classes(cls):
         from . import plot
-        return [plot.SatelliteTargetPlot]
+        plots = super(SatelliteMisfitTarget, cls).get_plot_classes()
+        plots.extend(plot.get_plot_classes())
+        return plots
 
 
 __all__ = '''

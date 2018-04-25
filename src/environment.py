@@ -127,23 +127,23 @@ class Environment(object):
         for target in self.get_problem().targets:
             target.set_dataset(ds)
 
-    def get_plots(self):
+    def get_plot_classes(self):
         '''Discover all plot classes relevant for the setup.'''
 
         plots = set()
         try:
-            plots.update(self.get_problem().get_plots())
+            plots.update(self.get_problem().get_plot_classes())
         except GrondEnvironmentError:
             pass
 
         try:
-            plots.update(self.get_optimizer().get_plots())
+            plots.update(self.get_optimizer().get_plot_classes())
         except GrondEnvironmentError:
             pass
 
         try:
             for target in self.get_problem().targets:
-                plots.update(target.get_plots())
+                plots.update(target.get_plot_classes())
         except GrondEnvironmentError:
             pass
 
