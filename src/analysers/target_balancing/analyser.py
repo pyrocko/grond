@@ -9,7 +9,7 @@ from grond.meta import Forbidden
 
 from ..base import Analyser, AnalyserConfig
 
-logger = logging.getLogger('grond.analysers.target_balancer')
+logger = logging.getLogger('grond.analysers.target_balancing.analyser')
 
 
 guts_prefix = 'grond'
@@ -105,6 +105,6 @@ class TargetBalancingAnalyserConfig(AnalyserConfig):
 
 
 __all__ = '''
-    Analyser
-    AnalyserConfig
+    TargetBalancingAnalyser
+    TargetBalancingAnalyserConfig
 '''.split()

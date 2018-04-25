@@ -309,8 +309,6 @@ class HistogramPlot(PlotConfig):
 
         problem = history.problem
         misfits = history.misfits
-        if not problem:
-            return []
 
         models = history.models
 
@@ -422,10 +420,6 @@ class SolutionPlot(PlotConfig):
         fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
 
         problem = history.problem
-        if not problem:
-            logger.warn('problem not set')
-            return []
-
         models = history.models
 
         if models.size == 0:

@@ -11,7 +11,7 @@ from . import measure as fm
 from grond import dataset
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.targets.waveform.phase_ratio')
+logger = logging.getLogger('grond.targets.waveform_phase_ratio.target')
 
 
 def log_exclude(target, reason):

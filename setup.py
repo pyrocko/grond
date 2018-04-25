@@ -20,6 +20,7 @@ setup(
         'grond.apps',
         'grond.targets',
         'grond.targets.waveform',
+        'grond.targets.waveform_phase_ratio',
         'grond.targets.satellite',
         'grond.targets.gnss_campaign',
         'grond.problems',
