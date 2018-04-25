@@ -112,8 +112,12 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
 
+    @property
+    def scene(self):
+        return self._ds.get_kite_scene(self.scene_id)
+
     def post_process(self, engine, source, statics):
-        scene = self._ds.get_kite_scene(self.scene_id)
+        scene = self.scene
         quadtree = scene.quadtree
 
         stat_obs = quadtree.leaf_medians

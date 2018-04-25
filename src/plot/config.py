@@ -18,7 +18,10 @@ class PlotFormat(Object):
         return None
 
     def render_mpl(self, fig, path, **kwargs):
-        pass
+        raise NotImplementedError
+
+    def render_automap(self, automap, path, **kwargs):
+        raise NotImplementedError
 
 
 class PNG(PlotFormat):
@@ -65,20 +68,20 @@ class PNG(PlotFormat):
             return 100.0
 
     def render_mpl(self, fig, path, **kwargs):
-        fig.savefig(
-            path,
-            format=self.name,
-            **kwargs)
+        return fig.savefig(path, format=self.name, **kwargs)
+
+    def render_automap(self, automap, path, **kwargs):
+        return automap.save(path, **kwargs)
 
 
 class PDF(PlotFormat):
     name = 'pdf'
 
     def render_mpl(self, fig, path, **kwargs):
-        fig.savefig(
-            path,
-            format=self.name,
-            **kwargs)
+        return fig.savefig(path, format=self.name, **kwargs)
+
+    def render_automap(self, automap, path, **kwargs):
+        return automap.save(path, **kwargs)
 
 
 class HTML(PlotFormat):

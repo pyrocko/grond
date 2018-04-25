@@ -130,7 +130,42 @@ class PlotCollectionManager(object):
         self._collection.group_refs.append(group_ref)
         self.dump_collection()
 
-    def create_group_pygmt(self, config, iter_item_figure):
+    def create_group_automap(self, config, iter_item_figure, **kwargs):
+        group = PlotGroup(
+            formats=guts.clone(config.formats),
+            size_cm=config.size_cm,
+            name=config.name,
+            variant=config.variant,
+            **kwargs)
+
+        path_group = self.path_group(group=group)
+        if os.path.exists(path_group):
+            self.remove_group_files(path_group)
+
+        group_ref = (group.name, group.variant)
+        if group_ref in self._collection.group_refs:
+            self._collection.group_refs.remove(group_ref)
+
+        self.dump_collection()
+
+        for item, automap in iter_item_figure:
+            group.items.append(item)
+            for format in group.formats:
+                path = self.path_image(group, item, format)
+                util.ensuredirs(path)
+                format.render_automap(
+                    automap,
+                    path=path,
+                    resolution=format.get_dpi(group.size_cm))
+
+                logger.info('figure saved: %s' % path)
+
+        util.ensuredirs(path_group)
+        group.dump(filename=path_group)
+        self._collection.group_refs.append(group_ref)
+        self.dump_collection()
+
+    def create_group_gmtpy(self, config, iter_item_figure):
         pass
 
     def remove_group_files(self, path_group):
