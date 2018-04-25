@@ -116,8 +116,7 @@ class SatelliteTargetPlot(PlotConfig):
             axes.append(plt.subplot(gs[0, 0]))
             axes.append(plt.subplot(gs[0, 1]))
             axes.append(plt.subplot(gs[0, 2]))
-
-            scene = ds.get_kite_scene(sat_target.scene_id)
+            scene = target.get_scene()
 
             stat_obs = result.statics_obs
             cmw = cm.ScalarMappable(cmap='coolwarm')
