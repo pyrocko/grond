@@ -12,7 +12,7 @@ from pyrocko.plot import mpl_init, mpl_papersize, mpl_color
 from pyrocko.guts import Tuple, Float, Int, String
 
 from grond import core, meta
-from .base import WaveformMisfitResult, WaveformMisfitTarget
+from .target import WaveformMisfitResult, WaveformMisfitTarget
 
 from grond.plot.config import PlotConfig
 from grond.plot.common import light
@@ -43,10 +43,6 @@ def amp_spec_max(spec_trs, key):
             amaxs[k] = max(amaxs[k], amax)
 
     return amaxs
-
-
-class WaveformTargetCheckPlotConfig(PlotConfig):
-    name = 'waveform_target_check'
 
 
 def plot_trace(axes, tr, **kwargs):
@@ -164,7 +160,8 @@ class CheckWaveformsPlot(PlotConfig):
                 item = PlotItem(name='t%i' % itarget)
                 item.attributes['targets'] = [target.path]
                 fig = self.draw_figure(sources, target, results)
-                yield item, fig
+                if fig is not None:
+                    yield item, fig
 
     def draw_figure(self, sources, target, results):
         t0_mean = num.mean([s.time for s in sources])
@@ -190,8 +187,22 @@ class CheckWaveformsPlot(PlotConfig):
 
         fontsize = self.font_size
 
-        fig = None
+        fig = plt.figure(figsize=self.size_inch)
+
+        labelpos = plot.mpl_margins(
+            fig, nw=1, nh=1, w=1., h=5.,
+            units=fontsize)
+
+        axes = fig.add_subplot(1, 1, 1)
+
+        labelpos(axes, 2.5, 2.0)
+        axes.set_frame_on(False)
+        axes.set_ylim(1., 4.)
+        axes.get_yaxis().set_visible(False)
+        axes.set_title('%s' % target.string_id())
+        axes.set_xlabel('Time [s]')
         ii = 0
+
         for source, result in zip(sources, results):
             if not isinstance(result, WaveformMisfitResult):
                 continue
@@ -200,22 +211,6 @@ class CheckWaveformsPlot(PlotConfig):
                 t0 = result.tsyn_pick
             else:
                 t0 = t0_mean
-
-            if fig is None:
-                fig = plt.figure(figsize=(4, 3))
-
-                labelpos = plot.mpl_margins(
-                    fig, nw=1, nh=1, w=1., h=5.,
-                    units=fontsize)
-
-                axes = fig.add_subplot(1, 1, 1)
-
-                labelpos(axes, 2.5, 2.0)
-                axes.set_frame_on(False)
-                axes.set_ylim(1., 4.)
-                axes.get_yaxis().set_visible(False)
-                axes.set_title('%s' % target.string_id())
-                axes.set_xlabel('Time [s]')
 
             t = result.filtered_obs.get_xdata()
             ydata = result.filtered_obs.get_ydata() / yabsmax
@@ -507,10 +502,13 @@ class FitsWaveformEnsemblePlot(PlotConfig):
                     ixx = ix // nxmax
                     iyy = iy // nymax
                     if (iyy, ixx) not in figures:
-                        figures[iyy, ixx] = plt.figure(
-                            figsize=mpl_papersize('a4', 'landscape'))
+                        title = '_'.join(x for x in cg if x)
+                        item = PlotItem(name='fig_%s_%i_%i' % (title, ixx, iyy))
+                        item.attributes['targets'] = []
+                        figures[iyy, ixx] = (
+                            item, plt.figure(figsize=self.size_inch))
 
-                        figures[iyy, ixx].subplots_adjust(
+                        figures[iyy, ixx][1].subplots_adjust(
                             left=0.03,
                             right=1.0 - 0.03,
                             bottom=0.03,
@@ -520,9 +518,11 @@ class FitsWaveformEnsemblePlot(PlotConfig):
 
                         figs.append(figures[iyy, ixx])
 
-                    fig = figures[iyy, ixx]
+                    item, fig = figures[iyy, ixx]
 
                     target = frame_to_target[iy, ix]
+
+                    item.attributes['targets'].append(target.path)
 
                     amin, amax = trace_minmaxs[
                         target.normalisation_family, target.path]
@@ -605,11 +605,11 @@ class FitsWaveformEnsemblePlot(PlotConfig):
 
                         for tmark, text, ha in [
                                 (tmarks[0],
-                                 '$\,$ ' + meta.str_duration(
+                                 '$\\,$ ' + meta.str_duration(
                                     tmarks[0] - source.time),
                                  'right'),
                                 (tmarks[1],
-                                 '$\Delta$ ' + meta.str_duration(
+                                 '$\\Delta$ ' + meta.str_duration(
                                     tmarks[1] - tmarks[0]),
                                  'left')]:
 
@@ -651,7 +651,7 @@ class FitsWaveformEnsemblePlot(PlotConfig):
                         fontsize=fontsize,
                         fontstyle='normal')
 
-            for (iyy, ixx), fig in figures.items():
+            for (iyy, ixx), (_, fig) in figures.items():
                 title = '.'.join(x for x in cg if x)
                 if len(figures) > 1:
                     title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
@@ -892,10 +892,13 @@ class FitsWaveformPlot(PlotConfig):
                     ixx = ix // nxmax
                     iyy = iy // nymax
                     if (iyy, ixx) not in figures:
-                        figures[iyy, ixx] = plt.figure(
-                            figsize=mpl_papersize('a4', 'landscape'))
+                        title = '_'.join(x for x in cg if x)
+                        item = PlotItem(name='fig_%s_%i_%i' % (title, ixx, iyy))
+                        item.attributes['targets'] = []
+                        figures[iyy, ixx] = (
+                            item, plt.figure(figsize=self.size_inch))
 
-                        figures[iyy, ixx].subplots_adjust(
+                        figures[iyy, ixx][1].subplots_adjust(
                             left=0.03,
                             right=1.0 - 0.03,
                             bottom=0.03,
@@ -905,9 +908,11 @@ class FitsWaveformPlot(PlotConfig):
 
                         figs.append(figures[iyy, ixx])
 
-                    fig = figures[iyy, ixx]
+                    item, fig = figures[iyy, ixx]
 
                     target = frame_to_target[iy, ix]
+
+                    item.attributes['targets'].append(target.path)
 
                     amin, amax = trace_minmaxs[
                         target.normalisation_family, target.path]
@@ -1024,11 +1029,11 @@ class FitsWaveformPlot(PlotConfig):
 
                     for tmark, text, ha in [
                             (tmarks[0],
-                             '$\,$ ' + meta.str_duration(
+                             '$\\,$ ' + meta.str_duration(
                                  tmarks[0] - source.time),
                              'right'),
                             (tmarks[1],
-                             '$\Delta$ ' + meta.str_duration(
+                             '$\\Delta$ ' + meta.str_duration(
                                  tmarks[1] - tmarks[0]),
                              'left')]:
 
@@ -1095,7 +1100,7 @@ class FitsWaveformPlot(PlotConfig):
                         fontsize=fontsize,
                         fontstyle='normal')
 
-            for (iyy, ixx), fig in figures.items():
+            for (iyy, ixx), (_, fig) in figures.items():
                 title = '.'.join(x for x in cg if x)
                 if len(figures) > 1:
                     title += ' (%i/%i, %i/%i)' % (iyy + 1, nyy, ixx + 1, nxx)
@@ -1110,4 +1115,4 @@ def get_plot_classes():
         CheckWaveformsPlot,
         FitsWaveformPlot,
         FitsWaveformEnsemblePlot,
-]
+    ]
