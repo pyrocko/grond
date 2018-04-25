@@ -345,7 +345,7 @@ def check(
                     freqlimits = tuple(freqlimits)
 
                     try:
-                        trs_projected, trs_restituted, trs_raw = \
+                        trs_projected, trs_restituted, trs_raw, _ = \
                             ds.get_waveform(
                                 target.codes,
                                 tmin=tmin+tobs_shift,

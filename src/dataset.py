@@ -746,15 +746,20 @@ class Dataset(object):
                 for tr in trs_projected:
                     cache[tr.nslc_id + cache_k] = tr
 
-            if debug:
-                return trs_projected, trs_restituted, trs_raw
-
+            tr_return = None
             for tr in trs_projected:
                 if tr.channel == channel:
-                    return tr
+                    tr_return = tr
 
-            raise NotFound(
-                'waveform not available', station.nsl() + (channel,))
+            if debug:
+                return trs_projected, trs_restituted, trs_raw, tr_return
+
+            elif tr_return:
+                return tr_return
+
+            else:
+                raise NotFound(
+                    'waveform not available', station.nsl() + (channel,))
 
         except NotFound as e:
             if cache is not None:

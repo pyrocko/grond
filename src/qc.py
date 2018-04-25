@@ -95,7 +95,7 @@ def polarization(
             tfade = 1.0 / (fmin / ffactor)
 
             try:
-                trs_projected, trs_restituted, trs_raw = \
+                trs_projected, trs_restituted, trs_raw, _ = \
                     ds.get_waveform(
                         nslc,
                         tmin=tmin,
