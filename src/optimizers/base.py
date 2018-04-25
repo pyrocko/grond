@@ -16,7 +16,8 @@ class Optimizer(Object):
 
     @classmethod
     def get_plots(cls):
-        return []
+        from . import plot
+        return plot.get_plot_classes()
 
     def optimize(self, problem):
         raise NotImplemented()

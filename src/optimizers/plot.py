@@ -2,8 +2,13 @@ import logging
 import numpy as num
 from scipy import signal
 
-from matplotlib import cm
-from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color
+from matplotlib import cm, pyplot as plt
+
+from pyrocko.guts import Tuple, Float, Int, StringChoice
+from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color, mpl_init
+
+from grond.plot.config import PlotConfig
+from grond.plot.collection import PlotItem
 
 logger = logging.getLogger('grond.problem.plot')
 
@@ -15,16 +20,32 @@ def fixlim(lo, hi):
         return lo, hi
 
 
-class OptimizerPlotter(object):
+class SequencePlot(PlotConfig):
+    name = 'sequence'
+    size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+    misfit_cutoff = Float.T(optional=True)
+    ibootstrap = Int.T(optional=True)
+    sort_by = StringChoice.T(
+        choices=['iteration', 'misfit'],
+        default='iteration')
+    subplot_layout = Tuple.T(2, Int.T(), default=(2, 3))
+    marker_size = Float.T(default=1.5)
 
-    @classmethod
-    def draw_sequence_figures(
-            cls, history, optimizer, plt,
-            misfit_cutoff=None, sort_by='iteration'):
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history))
+
+    def draw_figures(self, history):
+        misfit_cutoff = self.misfit_cutoff
+        sort_by = self.sort_by
 
         problem = history.problem
         npar = problem.nparameters
         ndep = problem.ndependants
+        fontsize = self.font_size
+        nfx, nfy = self.subplot_layout
 
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
@@ -71,14 +92,10 @@ class OptimizerPlotter(object):
             else:
                 axes.get_xaxis().set_visible(False)
 
-        fontsize = 10.0
-
-        nfx = 2
-        nfy = 3
         # nfz = (npar + ndep + 1 - 1) / (nfx*nfy) + 1
         cmap = cm.YlOrRd
         cmap = cm.jet
-        msize = 1.5
+        msize = self.marker_size
         axes = None
         figs = []
         fig = None
@@ -87,15 +104,19 @@ class OptimizerPlotter(object):
             impl = ipar % (nfx * nfy) + 1
 
             if impl == 1:
-                fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+                fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
                     w=7., h=5.,
                     wspace=7., hspace=2., units=fontsize)
 
-                figs.append(fig)
+                item = PlotItem(name='fig_%i' % (len(figs)+1))
+                item.attributes['parameters'] = []
+                figs.append((item, fig))
 
             par = problem.parameters[ipar]
+
+            figs[-1][0].attributes['parameters'].append(par.name)
 
             axes = fig.add_subplot(nfy, nfx, impl)
             labelpos(axes, 2.5, 2.0)
@@ -125,9 +146,13 @@ class OptimizerPlotter(object):
                     w=7., h=5.,
                     wspace=7., hspace=2., units=fontsize)
 
-                figs.append(fig)
+                item = PlotItem(name='fig_%i' % (len(figs)+1))
+                item.attributes['parameters'] = []
+
+                figs.append((item, fig))
 
             par = problem.dependants[idep]
+            figs[-1][0].attributes['parameters'].append(par.name)
 
             axes = fig.add_subplot(nfy, nfx, impl)
             labelpos(axes, 2.5, 2.0)
@@ -153,6 +178,10 @@ class OptimizerPlotter(object):
             fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
             labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
                                    hspace=2., units=fontsize)
+
+            item = PlotItem(name='fig_%i' % (len(figs)+1))
+            item.attributes['parameters'] = []
+
             figs.append(fig)
 
         axes = fig.add_subplot(nfy, nfx, impl)
@@ -179,12 +208,22 @@ class OptimizerPlotter(object):
 
         return figs
 
-    @classmethod
-    def draw_contributions_figure(cls, history, optimizer, plt):
 
-        fontsize = 10.
+class ContributionsPlot(PlotConfig):
+    name = 'contributions'
+    size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
 
-        fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history))
+
+    def draw_figures(self, history):
+
+        fontsize = self.font_size
+
+        fig = plt.figure(figsize=self.size_inch)
         labelpos = mpl_margins(fig, nw=2, nh=2, w=7., h=5., wspace=2.,
                                hspace=5., units=fontsize)
 
@@ -301,10 +340,21 @@ class OptimizerPlotter(object):
         axes2.plot(imodels, gms_softclip, color='black')
         axes2.axhline(1.0, color=(0.5, 0.5, 0.5))
 
-        return [fig]
+        return [[PlotItem(name='main'), fig]]
 
-    @classmethod
-    def draw_bootstrap_figure(cls, history, optimizer, plt):
+
+class BootstrapPlot(PlotConfig):
+    name = 'bootstrap'
+    size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimizer = environ.get_optimizer()
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(self, self.draw_figures(history, optimizer))
+
+    def draw_figures(self, history, optimizer):
 
         fig = plt.figure()
 
@@ -349,4 +399,8 @@ class OptimizerPlotter(object):
         axes.set_xlabel(
             'Tested model, sorted descending by global misfit value')
 
-        return [fig]
+        return [[PlotItem(name='main'), fig]]
+
+
+def get_plot_classes():
+    return [SequencePlot, ContributionsPlot, BootstrapPlot]
