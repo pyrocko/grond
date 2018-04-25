@@ -350,11 +350,11 @@ class BootstrapPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
-        optimizer = environ.get_optimizer()
+        optimiser = environ.get_optimiser()
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history, optimizer))
+        cm.create_group_mpl(self, self.draw_figures(history, optimiser))
 
-    def draw_figures(self, history, optimizer):
+    def draw_figures(self, history, optimiser):
 
         fig = plt.figure()
 
@@ -368,8 +368,8 @@ class BootstrapPlot(PlotConfig):
         gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
         ibests = []
-        for ibootstrap in range(optimizer.nbootstrap):
-            bms = optimizer.bootstrap_misfits(
+        for ibootstrap in range(optimiser.nbootstrap):
+            bms = optimiser.bootstrap_misfits(
                 problem, history.misfits, ibootstrap)
 
             isort_bms = num.argsort(bms)[::-1]

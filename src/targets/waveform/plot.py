@@ -1105,7 +1105,7 @@ class FitsWaveformPlot(PlotConfig):
         return figs
 
 
-def get_plots():
+def get_plot_classes():
     return [
         CheckWaveformsPlot,
         FitsWaveformPlot,

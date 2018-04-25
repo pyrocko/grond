@@ -12,12 +12,12 @@ from pyrocko.guts_array import Array
 
 from grond.meta import GrondError, Forbidden
 from grond.problems.base import ModelHistory
-from grond.optimizers.base import Optimizer, OptimizerConfig, BadProblem, \
-    OptimizerStatus
+from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
+    OptimiserStatus
 
 guts_prefix = 'grond'
 
-logger = logging.getLogger('grond.optimizers.highscore.optimizer')
+logger = logging.getLogger('grond.optimisers.highscore.optimiser')
 
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
@@ -347,7 +347,7 @@ class Chains(object):
         return num.cov(xs.T)
 
 
-class HighScoreOptimizer(Optimizer):
+class HighScoreOptimiser(Optimiser):
 
     sampler_phases = List.T(SamplerPhase.T())
     chain_length_factor = Float.T(default=8.)
@@ -356,7 +356,7 @@ class HighScoreOptimizer(Optimizer):
     bootstrap_seed = Int.T(default=23)
 
     def __init__(self, **kwargs):
-        Optimizer.__init__(self, **kwargs)
+        Optimiser.__init__(self, **kwargs)
         self._bootstrap_weights = {}
         self._status_chains = None
 
@@ -416,10 +416,10 @@ class HighScoreOptimizer(Optimizer):
 
             self._tlog_last = t
 
-    def optimize(self, problem, rundir=None):
+    def optimise(self, problem, rundir=None):
 
         if rundir is not None:
-            self.dump(filename=op.join(rundir, 'optimizer.yaml'))
+            self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
         history = ModelHistory(problem, path=rundir, mode='w')
         chains = self.chains(problem, history)
@@ -489,22 +489,22 @@ class HighScoreOptimizer(Optimizer):
             ichain=0, estimator='standard_deviation_single_chain')
         glob_best = chains.best_model(ichain=0)
 
-        return OptimizerStatus(
+        return OptimiserStatus(
             columns=OrderedDict(
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_text='Optimizer phase: %s' % phase.__class__.__name__)
+            extra_text='Optimiser phase: %s' % phase.__class__.__name__)
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
 
         from . import plot
-        return plot.HighScoreOptimizerPlot(
+        return plot.HighScoreOptimiserPlot(
             self, problem, history, xpar_name, ypar_name, movie_filename)
 
 
-class HighScoreOptimizerConfig(OptimizerConfig):
+class HighScoreOptimiserConfig(OptimiserConfig):
 
     sampler_phases = List.T(
         SamplerPhase.T(),
@@ -513,14 +513,14 @@ class HighScoreOptimizerConfig(OptimizerConfig):
     chain_length_factor = Float.T(default=8.)
     nbootstrap = Int.T(default=10)
 
-    def get_optimizer(self):
-        return HighScoreOptimizer(
+    def get_optimiser(self):
+        return HighScoreOptimiser(
             sampler_phases=list(self.sampler_phases),
             chain_length_factor=self.chain_length_factor,
             nbootstrap=self.nbootstrap)
 
 
-def load_optimizer_history(dirname, problem):
+def load_optimiser_history(dirname, problem):
     fn = op.join(dirname, 'accepted')
     with open(fn, 'r') as f:
         nmodels = os.fstat(f.fileno()).st_size // (problem.nbootstrap+1)
@@ -550,6 +550,6 @@ __all__ = '''
     UniformSamplerPhase
     DirectedSamplerPhase
     Chains
-    HighScoreOptimizerConfig
-    HighScoreOptimizer
+    HighScoreOptimiserConfig
+    HighScoreOptimiser
 '''.split()

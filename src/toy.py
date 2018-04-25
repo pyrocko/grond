@@ -4,12 +4,12 @@ import numpy as num
 from pyrocko.guts import Object, Float, Dict, List, String
 from pyrocko import gf
 from grond import Problem, Parameter, MisfitTarget
-from grond.optimizers.highscore.plot import HighScoreOptimizerPlot
+from grond.optimisers.highscore.plot import HighScoreOptimiserPlot
 
 guts_prefix = 'grond.toy'
 
 
-class ToyOptimizerPlot(HighScoreOptimizerPlot):
+class ToyOptimiserPlot(HighScoreOptimiserPlot):
 
     def set_source(self, source):
         self._source = source
@@ -25,7 +25,7 @@ class ToyOptimizerPlot(HighScoreOptimizerPlot):
         self.axes.set_ylim(-10., 10.)
 
     def start(self):
-        HighScoreOptimizerPlot.start(self)
+        HighScoreOptimiserPlot.start(self)
         x = [getattr(t, self.xpar_name) for t in self._targets]
         y = [getattr(t, self.ypar_name) for t in self._targets]
         self.axes.plot(x, y, '^', color='black')
@@ -35,7 +35,7 @@ class ToyOptimizerPlot(HighScoreOptimizerPlot):
 
             zmin = num.min(zc)
 
-            if self.optimizer.nbootstrap < 5:
+            if self.optimiser.nbootstrap < 5:
                 alpha = 1.0
             else:
                 alpha = 0.5

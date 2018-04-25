@@ -162,7 +162,7 @@ class GrondScenario(object):
             gf_stores_from_pyrocko_config=False,
             gf_store_superdirs=['gf_stores'])
 
-        optimizer_config = grond.HighScoreOptimizerConfig()
+        optimiser_config = grond.HighScoreOptimiserConfig()
 
         config = grond.Config(
             rundir_template=op.join('rundir', '${problem_name}.grun'),
@@ -170,7 +170,7 @@ class GrondScenario(object):
             target_groups=[obs.get_grond_target_group()
                            for obs in self.observations],
             problem_config=self.problem.get_grond_problem_config(),
-            optimizer_config=optimizer_config,
+            optimiser_config=optimiser_config,
             engine_config=engine_config)
 
         return config

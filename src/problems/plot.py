@@ -47,12 +47,12 @@ class JointparPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
-        optimizer = environ.get_optimizer()
+        optimiser = environ.get_optimiser()
 
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history, optimizer))
+        cm.create_group_mpl(self, self.draw_figures(history, optimiser))
 
-    def draw_figures(self, history, optimizer):
+    def draw_figures(self, history, optimiser):
 
         color_parameter = self.color_parameter
         exclude = self.exclude
@@ -81,7 +81,7 @@ class JointparPlot(PlotConfig):
         xref = problem.get_reference_model()
 
         if ibootstrap is not None:
-            gms = optimizer.bootstrap_misfits(
+            gms = optimiser.bootstrap_misfits(
                 problem, history.misfits, ibootstrap)
         else:
             gms = problem.combine_misfits(history.misfits)
@@ -760,7 +760,7 @@ class HudsonPlot(PlotConfig):
         return [[item, fig]]
 
 
-def get_plots():
+def get_plot_classes():
     return [
         JointparPlot,
         HistogramPlot,

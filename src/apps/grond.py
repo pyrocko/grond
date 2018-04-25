@@ -29,11 +29,11 @@ subcommand_descriptions = {
     'init': 'create project structure or print example configuration',
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
-    'go': 'run Grond optimization',
+    'go': 'run Grond optimisation',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
-    'plot': 'plot optimization result',
-    'movie': 'visualize optimizer evolution',
+    'plot': 'plot optimisation result',
+    'movie': 'visualize optimiser evolution',
     'export': 'export results',
     'report': 'create result report',
     'report-index': 'create report index',
@@ -374,7 +374,7 @@ def command_init(args):
                 kite_scenes=['*all'],
                 misfit_config=grond.SatelliteMisfitConfig(
                     use_weight_focal=False,
-                    optimize_orbital_ramp=True,
+                    optimise_orbital_ramp=True,
                     ranges={
                         'offset': '-0.5 .. 0.5',
                         'ramp_north': '-1e-4 .. 1e-4',
@@ -399,14 +399,14 @@ def command_init(args):
     engine_config = grond.EngineConfig(
         gf_store_superdirs=['.'])
 
-    optimizer_config = grond.HighScoreOptimizerConfig()
+    optimiser_config = grond.HighScoreOptimiserConfig()
 
     config = grond.Config(
         rundir_template=op.join('rundir', '${problem_name}.grun'),
         dataset_config=dataset_config,
         target_groups=target_groups,
         problem_config=problem_config,
-        optimizer_config=optimizer_config,
+        optimiser_config=optimiser_config,
         engine_config=engine_config)
 
     events = '''name = 2011-myanmar

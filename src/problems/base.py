@@ -57,9 +57,9 @@ class Problem(Object):
         logger.name = self.__class__.__name__
 
     @classmethod
-    def get_plots(cls):
+    def get_plot_classes(cls):
         from . import plot
-        return plot.get_plots()
+        return plot.get_plot_classes()
 
     def get_engine(self):
         return self._engine
@@ -635,8 +635,8 @@ def load_problem_info_and_data(dirname, subset=None):
     return problem, models, misfits
 
 
-def load_optimizer_info(dirname):
-    fn = op.join(dirname, 'optimizer.yaml')
+def load_optimiser_info(dirname):
+    fn = op.join(dirname, 'optimiser.yaml')
     return guts.load(filename=fn)
 
 
