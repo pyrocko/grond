@@ -478,7 +478,7 @@ class HighScoreOptimizer(Optimizer):
         self._status_chains.goto(history.nmodels)
         chains = self._status_chains
 
-        phase = self.get_sampler_phase(history.nmodels)[0]
+        phase = self.get_sampler_phase(history.nmodels-1)[0]
 
         bs_mean = chains.mean_model(ichain=None)
         bs_std = chains.standard_deviation_models(
