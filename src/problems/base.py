@@ -363,18 +363,22 @@ class Problem(Object):
 
         return self._family_mask
 
-    def evaluate(self, x, mask=None, result_mode='full'):
+    def evaluate(self, x, mask=None, result_mode='full', targets=None):
         source = self.get_source(x)
         engine = self.get_engine()
 
         self.set_target_parameter_values(x)
 
-        for target in self.targets:
+        if mask is not None and targets is not None:
+            raise ValueError('mask cannot be defined with targets set')
+        targets = targets if targets is not None else self.targets
+
+        for target in targets:
             target.set_result_mode(result_mode)
 
         modelling_targets = []
         t2m_map = {}
-        for itarget, target in enumerate(self.targets):
+        for itarget, target in enumerate(targets):
             t2m_map[target] = target.prepare_modelling(engine, source)
             if mask is None or mask[itarget]:
                 modelling_targets.extend(t2m_map[target])
@@ -384,7 +388,7 @@ class Problem(Object):
 
         imt = 0
         results = []
-        for itarget, target in enumerate(self.targets):
+        for itarget, target in enumerate(targets):
             nmt_this = len(t2m_map[target])
             if mask is None or mask[itarget]:
                 result = target.finalize_modelling(
