@@ -2,14 +2,14 @@ import copy
 import time
 import logging
 import numpy as num
-from pyrocko.guts import Int
+from pyrocko.guts import Int, Bool
 
 from grond.targets import TargetAnalysisResult
 from grond.meta import Forbidden
 
 from ..base import Analyser, AnalyserConfig
 
-logger = logging.getLogger('grond.analysers.target_balancing.analyser')
+logger = logging.getLogger('grond.analysers.target_balancer')
 
 
 guts_prefix = 'grond'
@@ -18,7 +18,6 @@ guts_prefix = 'grond'
 class TargetBalancingAnalyser(Analyser):
 
     def __init__(self, niter):
-        Analyser.__init__(self)
         self.niter = niter
 
     def log_progress(self, problem, iiter, niter):
@@ -34,7 +33,7 @@ class TargetBalancingAnalyser(Analyser):
 
             self._tlog_last = t
 
-    def analyse(self, problem):
+    def analyse(self, problem, ds):
         if self.niter == 0:
             return
 
