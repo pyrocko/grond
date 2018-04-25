@@ -936,13 +936,17 @@ class DatasetConfig(HasPaths):
 
             def fp(path):
                 p = self.expand_path(path, extra=extra)
-                if isinstance(list, p):
+                if p is None:
+                    return None
+
+                if isinstance(p, list):
                     for path in p:
                         if not op.exists(path):
-                            logger.error('Given path %s does not exist!' % path)
+                            logger.warn('Given path %s does not exist!' % path)
                 else:
                     if not op.exists(p):
-                        logger.error('Given path %s does not exist!' % p)
+                        logger.warn('Given path %s does not exist!' % p)
+
                 return p
 
             ds = Dataset(event_name)
