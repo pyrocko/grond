@@ -25,6 +25,7 @@ def scale_axes(ax, scale):
 
 
 class SatelliteTargetPlot(PlotConfig):
+    ''' Target, modelled and model misfit of the satellite displacments '''
 
     name = 'fits_satellite'
     size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
@@ -45,7 +46,8 @@ class SatelliteTargetPlot(PlotConfig):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
 
-        for target in problem.targets:
+        sat_targets = problem.satellite_targets
+        for target in sat_targets:
             target.set_dataset(ds)
 
         gms = problem.combine_misfits(history.misfits)
@@ -55,7 +57,7 @@ class SatelliteTargetPlot(PlotConfig):
         xbest = models[0, :]
 
         source = problem.get_source(xbest)
-        results = problem.evaluate(xbest)
+        results = problem.evaluate(xbest, targets=sat_targets)
 
         def decorateAxes(ax, title):
             ax.set_title(title)
@@ -99,7 +101,7 @@ class SatelliteTargetPlot(PlotConfig):
                        s=.25, c='black', alpha=.1)
 
         for ifig, (sat_target, result) in enumerate(
-                zip(problem.satellite_targets, results)):
+                zip(sat_targets, results)):
 
             item = PlotItem(
                 name='fig_%i' % ifig,

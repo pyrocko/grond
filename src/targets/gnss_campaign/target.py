@@ -150,3 +150,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
             self, engine, source, modelling_targets, modelling_results):
 
         return modelling_results[0]
+
+    @classmethod
+    def get_plot_classes(cls):
+        from . import plot
+        plots = super(GNSSCampaignMisfitTarget, cls).get_plot_classes()
+        plots.extend(plot.get_plot_classes())
+        return plots
