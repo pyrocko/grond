@@ -165,9 +165,9 @@ def cl_parse(command, args, setup=None, details=None):
 
 def die(message, err=''):
     if err:
-        sys.exit('%s: error: %s \n %s' % (program_name, message, err))
+        sys.exit('%s failed: %s \n %s' % (program_name, message, err))
     else:
-        sys.exit('%s: error: %s' % (program_name, message))
+        sys.exit('%s failed: %s' % (program_name, message))
 
 
 def help_and_die(parser, message):
@@ -517,13 +517,13 @@ def command_go(args):
         config_path = args[0]
         config = grond.read_config(config_path)
 
-        if grond.nevents == 1:
-            args.append(grond.get_event_names[0])
+        event_names = config.get_event_names()
+        if len(event_names) == 1:
+            args.append(event_names[0])
         else:
-            for event_name in grond.get_event_names():
-                print(event_name)
-
-            help_and_die(parser, 'missing arguments')
+            help_and_die(
+                parser,
+                'missing <eventnames>, candidates are:\n\n%s' % '\n'.join(event_names))
 
     if len(args) < 2:
         help_and_die(parser, 'missing arguments')
