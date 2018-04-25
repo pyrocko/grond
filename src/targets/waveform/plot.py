@@ -158,7 +158,7 @@ class CheckWaveformsPlot(PlotConfig):
 
             if results:
                 item = PlotItem(name='t%i' % itarget)
-                item.attributes['targets'] = [target.path]
+                item.attributes['targets'] = [target.string_id()]
                 fig = self.draw_figure(sources, target, results)
                 if fig is not None:
                     yield item, fig
@@ -262,7 +262,7 @@ class FitsWaveformEnsemblePlot(PlotConfig):
         mpl_init(fontsize=self.font_size)
         environ.setup_modelling()
         ds = environ.get_dataset()
-        history = environ.get_history()
+        history = environ.get_history(subset='harvest')
         cm.create_group_mpl(self, self.draw_figures(ds, history))
 
     def draw_figures(self, ds, history):
@@ -522,7 +522,7 @@ class FitsWaveformEnsemblePlot(PlotConfig):
 
                     target = frame_to_target[iy, ix]
 
-                    item.attributes['targets'].append(target.path)
+                    item.attributes['targets'].append(target.string_id())
 
                     amin, amax = trace_minmaxs[
                         target.normalisation_family, target.path]
@@ -672,7 +672,7 @@ class FitsWaveformPlot(PlotConfig):
         mpl_init(fontsize=self.font_size)
         environ.setup_modelling()
         ds = environ.get_dataset()
-        history = environ.get_history()
+        history = environ.get_history(subset='harvest')
         cm.create_group_mpl(self, self.draw_figures(ds, history))
 
     def draw_figures(self, ds, history):
@@ -912,7 +912,7 @@ class FitsWaveformPlot(PlotConfig):
 
                     target = frame_to_target[iy, ix]
 
-                    item.attributes['targets'].append(target.path)
+                    item.attributes['targets'].append(target.string_id())
 
                     amin, amax = trace_minmaxs[
                         target.normalisation_family, target.path]

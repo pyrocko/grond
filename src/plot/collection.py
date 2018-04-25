@@ -126,6 +126,7 @@ class PlotCollectionManager(object):
             plt.close(fig)
 
         util.ensuredirs(path_group)
+        group.validate()
         group.dump(filename=path_group)
         self._collection.group_refs.append(group_ref)
         self.dump_collection()
