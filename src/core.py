@@ -267,6 +267,7 @@ def check(
             problem = config.get_problem(event)
 
             _, nfamilies = problem.get_family_mask()
+            logger.info('problem: %s' % problem.name)
             logger.info('number of target families: %i' % nfamilies)
             logger.info('number of targets (total): %i' % len(problem.targets))
 

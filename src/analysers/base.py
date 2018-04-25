@@ -1,16 +1,16 @@
-from pyrocko.guts import Object
+from pyrocko.guts import Object, Bool
 
 guts_prefix = 'grond'
 
 
-class Analyser(Object):
+class Analyser(object):
 
-    def analyse(self, problem):
+    def analyse(self, problem, ds):
         pass
 
 
 class AnalyserConfig(Object):
-
+        
     def get_analyser(self):
         return Analyser
 
