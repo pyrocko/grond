@@ -30,6 +30,7 @@ setup(
         'grond.optimisers',
         'grond.optimisers.highscore',
         'grond.analysers',
+        'grond.analysers.noise_analyser',
         'grond.analysers.target_balancing',
         'grond.report',
         'grond.plot',

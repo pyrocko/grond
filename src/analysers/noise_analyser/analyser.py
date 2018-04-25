@@ -127,6 +127,7 @@ def seismic_noise_variance(data_traces, engine, event, targets,
 class NoiseAnalyser(Analyser):
 
     def __init__(self, nsamples, pre_ev_noise_len, check_evs):
+        Analyser.__init__(self)
         self.nsamples = nsamples
         self.pre_ev_noise_len = pre_ev_noise_len
         self.check_evs = check_evs

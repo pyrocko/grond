@@ -494,7 +494,7 @@ def process_event(ievent, g_data_id):
 
     for analyser_conf in config.analyser_configs:
         analyser = analyser_conf.get_analyser()
-        analyser.analyse(problem)
+        analyser.analyse(problem, ds)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)

@@ -11,7 +11,7 @@ from pyrocko.guts import Object, String, Bool, List, Dict, Int
 
 from ..meta import ADict, Parameter, GrondError, xjoin
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
-    WaveformMisfitTarget, SatelliteMisfitTarget, GNSSMisfitTarget
+    WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
 
 guts_prefix = 'grond'
@@ -180,7 +180,7 @@ class Problem(Object):
     @property
     def gnss_targets(self):
         return [t for t in self.targets
-                if isinstance(t, GNSSMisfitTarget)]
+                if isinstance(t, GNSSCampaignMisfitTarget)]
 
     @property
     def waveform_targets(self):
