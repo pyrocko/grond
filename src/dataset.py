@@ -1,5 +1,6 @@
 import glob
 import copy
+import os.path as op
 import logging
 import math
 import numpy as num
@@ -11,7 +12,7 @@ from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import (Object, Tuple, String, Float, List, Bool, dump_all,
                           load_all)
 
-from .meta import Path, HasPaths, expand_template, xjoin
+from .meta import Path, HasPaths, expand_template
 from .synthetic_tests import SyntheticTest
 
 guts_prefix = 'grond'
@@ -226,6 +227,15 @@ class Dataset(object):
 
         self._picks = None
 
+    def add_gnss_campaigns(self, paths):
+        paths = util.select_files(
+            paths,
+            regex=r'\.yml|\.yaml',
+            show_progress=False)
+
+        for path in paths:
+            self.add_gnss_campaign(filename=path)
+
     def add_gnss_campaign(self, filename):
         try:
             from pyrocko.model import gnss  # noqa
@@ -237,12 +247,25 @@ class Dataset(object):
         campaign = load_all(filename=filename)
         self.gnss_campaigns.append(campaign[0])
 
+    def add_kite_scenes(self, paths):
+        paths = util.select_files(
+            paths,
+            regex=r'\.npz',
+            show_progress=False)
+
+        for path in paths:
+            self.add_kite_scene(filename=path)
+
+        if not self.kite_scenes:
+            logger.warning('Could not find any kite scenes at %s' %
+                           self.kite_scene_paths)
+
     def add_kite_scene(self, filename):
         try:
             from kite import Scene
         except ImportError:
-            raise ImportError('Module kite could not be imported, '
-                              'please install from http://pyrocko.org')
+            raise ImportError('Module kite could not be imported,'
+                              ' please install from http://pyrocko.org')
         logger.debug('Loading kite scene from %s' % filename)
 
         scene = Scene()
@@ -254,7 +277,7 @@ class Dataset(object):
         except NotFound:
             self.kite_scenes.append(scene)
         else:
-            raise AttributeError('scene_id not unique for %s' % filename)
+            raise AttributeError('kite scene_id not unique for %s' % filename)
 
     def is_blacklisted(self, obj):
         try:
@@ -912,7 +935,15 @@ class DatasetConfig(HasPaths):
                     event_name=event_name))
 
             def fp(path):
-                return self.expand_path(path, extra=extra)
+                p = self.expand_path(path, extra=extra)
+                if isinstance(list, p):
+                    for path in p:
+                        if not op.exists(path):
+                            logger.error('Given path %s does not exist!' % path)
+                else:
+                    if not op.exists(p):
+                        logger.error('Given path %s does not exist!' % p)
+                return p
 
             ds = Dataset(event_name)
             ds.add_stations(
@@ -925,25 +956,10 @@ class DatasetConfig(HasPaths):
                 ds.add_waveforms(paths=fp(self.waveform_paths))
 
             if self.kite_scene_paths:
-                logger.info('Loading kite scenes...')
-                regex = r'\.npz'
-                paths = util.select_files(
-                    fp(self.kite_scene_paths),
-                    regex=regex,
-                    show_progress=False)
-
-                for path in paths:
-                    ds.add_kite_scene(filename=path)
-
-                if not ds.kite_scenes:
-                    logger.warning('Could not find any kite scenes at %s' %
-                                   self.kite_scene_paths)
+                ds.add_kite_scenes(paths=fp(self.kite_scene_paths))
 
             if self.gnss_campaign_paths:
-                logger.info('Loading GNSS campaigns...')
-                for path in self.gnss_campaign_paths:
-                    for fn in glob.glob(xjoin(path, '*.yml')):
-                        ds.add_gnss_campaign(filename=fn)
+                ds.add_gnss_campaigns(paths=fp(self.gnss_campaign_paths))
 
             if self.clippings_path:
                 ds.add_clippings(markers_filename=fp(self.clippings_path))
