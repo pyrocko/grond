@@ -12,7 +12,7 @@ logger = logging.getLogger('grond.targets.satellite.target')
 
 
 class SatelliteMisfitConfig(MisfitConfig):
-    optimize_orbital_ramp = Bool.T(default=True)
+    optimise_orbital_ramp = Bool.T(default=True)
     ranges = Dict.T(
         String.T(), gf.Range.T(),
         default={'offset': '-0.5 .. 0.5',
@@ -95,7 +95,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
-        if not self.misfit_config.optimize_orbital_ramp:
+        if not self.misfit_config.optimise_orbital_ramp:
             self.parameters = []
         else:
             self.parameters = self.available_parameters
@@ -118,7 +118,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         stat_obs = quadtree.leaf_medians
 
-        if self.misfit_config.optimize_orbital_ramp:
+        if self.misfit_config.optimise_orbital_ramp:
             stat_level = num.zeros_like(stat_obs)
             stat_level.fill(self.parameter_values['offset'])
             stat_level += (quadtree.leaf_center_distance[:, 0]

@@ -19,7 +19,7 @@ class Optimiser(Object):
         from . import plot
         return plot.get_plot_classes()
 
-    def optimize(self, problem):
+    def optimise(self, problem):
         raise NotImplemented()
 
     @property

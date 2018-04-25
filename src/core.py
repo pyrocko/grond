@@ -521,7 +521,7 @@ def process_event(ievent, g_data_id):
             optimiser.sampler_phases[0:0] = [
                 highscore.InjectionSamplerPhase(xs_inject=xs_inject)]
 
-        optimiser.optimize(
+        optimiser.optimise(
             problem,
             rundir=rundir)
 

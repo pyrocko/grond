@@ -3,7 +3,7 @@ from pyrocko.guts import Object
 guts_prefix = 'grond'
 
 
-class Analyser(object):
+class Analyser(Object):
 
     def analyse(self, problem):
         pass

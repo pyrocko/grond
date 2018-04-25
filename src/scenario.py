@@ -274,7 +274,7 @@ class InSARObservation(Observation):
             kite_scenes=['*all'],
             misfit_config=grond.SatelliteMisfitConfig(
                 use_weight_focal=False,
-                optimize_orbital_ramp=True,
+                optimise_orbital_ramp=True,
                 ranges={
                     'offset': '-0.5 .. 0.5',
                     'ramp_north': '-1e-4 .. 1e-4',

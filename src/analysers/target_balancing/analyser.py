@@ -18,6 +18,7 @@ guts_prefix = 'grond'
 class TargetBalancingAnalyser(Analyser):
 
     def __init__(self, niter):
+        Analyser.__init__(self)
         self.niter = niter
 
     def log_progress(self, problem, iiter, niter):
@@ -101,7 +102,7 @@ class TargetBalancingAnalyserConfig(AnalyserConfig):
     niterations = Int.T(default=1000)
 
     def get_analyser(self):
-        return Analyser(niter=self.niterations)
+        return TargetBalancingAnalyser(niter=self.niterations)
 
 
 __all__ = '''
