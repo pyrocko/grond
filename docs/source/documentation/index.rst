@@ -118,9 +118,9 @@ You can browse for more GF stores to `download here`_.
 
 **GF's for regional and local seismic waveform data:**
 
-Regional analyses may require smaller and individual medium GF stores. Suitable are GF stores built with the QSEIS method ``qseis``.
+Regional analyses may require smaller and individual medium GF stores. Suitable are GF stores built with the method ``qseis``.
 
-**GF's for near-field static displacements (e.g. InSAR, GNSSS):**
+**GF's for near-field static displacements (e.g. InSAR, GNSS):**
 
 Near-field static displacements require GF stores with high spatial sampling and mostly only little temporal sampling. With the PSGRN/PSCMP GF method you can build for any given local 1d-layered velocity model your own GF store ``psgrn``.
 
@@ -177,10 +177,10 @@ Now, you may start the optimization for a given event using:
 During the optimization, results are aggregated in an output directory, referred to `<rundir>`  in the configuration. 
 
 
-Plots, exports  and report
---------------------------
+Results plots, exports and reports
+----------------------------------
 
-To visualize the  results run:
+To visualize the results run:
 
 ::
 
