@@ -5,8 +5,7 @@ import logging
 import numpy as num
 from pyrocko.guts import Int, Bool, Float
 
-from grond.targets import TargetAnalysisResult
-from ..base import Analyser, AnalyserConfig
+from ..base import Analyser, AnalyserConfig, AnalyserResult
 
 logger = logging.getLogger('grond.analysers.target_balancer')
 
@@ -187,8 +186,12 @@ class NoiseAnalyser(Analyser):
                 num.nansum(num.isfinite(weights[families == ifamily])))
 
         for weight, target in zip(weights, problem.waveform_targets):
-            target.analysis_result = TargetAnalysisResult(
-                station_noise_weight=float(weight))
+            target.analyser_results['noise'] = \
+                NoiseAnalyserResult(weight=float(weight))
+
+
+class NoiseAnalyserResult(AnalyserResult):
+    pass
 
 
 class NoiseAnalyserConfig(AnalyserConfig):

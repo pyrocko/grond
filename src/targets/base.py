@@ -6,6 +6,8 @@ from pyrocko import gf
 from pyrocko.guts_array import Array
 from pyrocko.guts import Object, Float, Bool, Dict
 
+from grond.analysers.base import AnalyserResult
+
 
 guts_prefix = 'grond'
 
@@ -31,13 +33,6 @@ class TargetGroup(Object):
         raise NotImplementedError()
 
 
-class TargetAnalysisResult(Object):
-    class NoResult(Exception):
-        pass
-    
-    balancing_weight = Float.T(optional=True)
-    station_noise_weight = Float.T(optional=True)
-
 class MisfitResult(Object):
     misfits = Array.T(
         shape=(None, 2),
@@ -53,8 +48,10 @@ class MisfitTarget(Object):
     manual_weight = Float.T(
         default=1.0,
         help='Relative weight of this target')
-    analysis_result = TargetAnalysisResult.T(
-        optional=True)
+    analyser_results = Dict.T(
+        gf.StringID.T(),
+        AnalyserResult.T(),
+        help='Analysers put their results here')
     normalisation_family = gf.StringID.T(
         optional=True,
         help='Normalisation family of this misfit target')
@@ -133,5 +130,4 @@ __all__ = '''
     TargetGroup
     MisfitTarget
     MisfitResult
-    TargetAnalysisResult
 '''.split()

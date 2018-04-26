@@ -8,9 +8,9 @@ from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
 from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
+from grond.analysers.base import AnalyserResult
 
-from ..base import (MisfitConfig, MisfitTarget, MisfitResult,
-                    TargetGroup, TargetAnalysisResult)
+from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -218,7 +218,9 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         plots.extend(plot.get_plot_classes())
         return plots
 
-    def get_combined_weight(self, apply_balancing_weights, apply_station_noise_weights):
+    def get_combined_weight(
+            self, apply_balancing_weights, apply_station_noise_weights):
+
         w = self.manual_weight
         if apply_balancing_weights:
             w *= self.get_balancing_weight()
@@ -227,19 +229,19 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         return num.array([w], dtype=num.float)
 
     def get_balancing_weight(self):
-        if not self.analysis_result:
-            raise TargetAnalysisResult.tNoResults(
+        if 'target_balancing' not in self.analyser_results:
+            raise AnalyserResult.NoResults(
                 'no balancing weights available')
 
-        return self.analysis_result.balancing_weight
+        return self.analyser_results['target_balancing'].weight
 
     def get_station_noise_weight(self):
-        if not self.analysis_result:
-            raise TargetAnalysisResult.tNoResults(
-                'no balancing weights available')
+        if 'noise' not in self.analyser_results:
+            raise AnalyserResult.NoResults(
+                'no station noise weights available')
 
-        return self.analysis_result.station_noise_weight
-    
+        return self.analyser_results['target_balancing'].weight
+
     def get_taper_params(self, engine, source):
         store = engine.get_store(self.store_id)
         config = self.misfit_config

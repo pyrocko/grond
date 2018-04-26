@@ -1,4 +1,6 @@
-from pyrocko.guts import Object, Bool
+from pyrocko.guts import Object
+
+from grond.meta import GrondError
 
 guts_prefix = 'grond'
 
@@ -10,9 +12,17 @@ class Analyser(object):
 
 
 class AnalyserConfig(Object):
-        
+
     def get_analyser(self):
         return Analyser
+
+
+class AnalyserResult(Object):
+
+    class NoResults(GrondError):
+        pass
+
+    pass
 
 
 __all__ = '''
