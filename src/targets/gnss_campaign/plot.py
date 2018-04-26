@@ -47,7 +47,10 @@ class GNSSTargetMisfitPlot(PlotConfig):
 
         cm.create_group_automap(
             self,
-            self.draw_gnss_fits(ds, history, optimiser))
+            self.draw_gnss_fits(ds, history, optimiser),
+            title='Static GNSS Surface Displacements',
+            section='results.gnss',
+            description=self.__class__.__doc__)
 
     def draw_gnss_fits(self, ds, history, optimiser):
         problem = history.problem
@@ -73,7 +76,12 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 name='fig_%i' % itarget,
                 attributes={
                     'targets': gnss_target.path
-                })
+                },
+                title='Static GNSS Surface Displacements - Campaign %s'
+                      % camp.name,
+                description='Static surface displacement from GNSS campaign %s'
+                            ' (black vectors) and displacements derived from'
+                            ' best rupture model (red).' % camp.name)
 
             lat, lon = camp.get_center_latlon()
 
@@ -87,7 +95,6 @@ class GNSSTargetMisfitPlot(PlotConfig):
             model_camp = gnss.GNSSCampaign(
                 stations=copy.deepcopy(camp.stations),
                 name='grond model')
-
             for ista, sta in enumerate(model_camp.stations):
                 sta.north.shift = result.statics_syn['displacement.n'][ista]
                 sta.north.sigma = 0.
