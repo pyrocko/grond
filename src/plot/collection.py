@@ -20,14 +20,33 @@ class StringID(StringPattern):
 
 class PlotItem(Object):
     name = StringID.T()
-    attributes = Dict.T(StringID.T(), List.T(String.T()))
+    attributes = Dict.T(
+        StringID.T(), List.T(String.T()))
+    title = Unicode.T(
+        optional=True,
+        help='item\'s description')
+    description = Unicode.T(
+        optional=True,
+        help='item\'s description')
 
 
 class PlotGroup(Object):
-    name = StringID.T()
-    variant = StringID.T()
-    description = Unicode.T(optional=True)
-    formats = List.T(PlotFormat.T())
+    name = StringID.T(
+        help='group name')
+    section = StringID.T(
+        optional=True,
+        help='group\'s section path, e.g. results.waveforms')
+    title = Unicode.T(
+        optional=True,
+        help='group\'s title')
+    description = Unicode.T(
+        optional=True,
+        help='group description')
+    formats = List.T(
+        PlotFormat.T(),
+        help='plot format')
+    variant = StringID.T(
+        help='variant of the group')
     size_cm = Tuple.T(2, Float.T())
     items = List.T(PlotItem.T())
     attributes = Dict.T(StringID.T(), List.T(String.T()))
