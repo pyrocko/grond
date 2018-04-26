@@ -5,7 +5,7 @@ from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
 from matplotlib import pyplot as plt
-from pyrocko.guts import Tuple, Float
+from pyrocko.guts import Tuple, Float, String, Int
 
 km = 1000.
 guts_prefix = 'grond'
@@ -28,9 +28,14 @@ class SatelliteTargetPlot(PlotConfig):
     ''' Maps showing surface displacements from satellite and modelled data '''
 
     name = 'fits_satellite'
+    dpi = Int.T(
+        default=250)
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(20., 10.))
+        default=(22., 9.))
+    colormap = String.T(
+        default='RdBu',
+        help='Colormap for the surface displacements')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -71,56 +76,59 @@ class SatelliteTargetPlot(PlotConfig):
             scale_axes(ax, 1. / km)
             ax.set_aspect('equal')
 
-        def drawRectangularOutline(ax):
-            # source.regularize()
+        def drawSource(ax):
             fn, fe = source.outline(cs='xy').T
-            offset_n, offset_e = latlon_to_ne_numpy(
-                sat_target.lats[0], sat_target.lons[0],
-                source.lat, source.lon)
-            fn += offset_n
-            fe += offset_e
-            ax.plot(offset_e, offset_n, marker='o')
-            ax.plot(fe, fn, marker='o')
-            # ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
-            # ax.plot(fe[:2], fn[:2], linewidth=2., color='black', alpha=0.5)
+            # source is centered
+            ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
+            ax.fill(fe, fn,
+                    edgecolor=(0., 0., 0.),
+                    facecolor=(.5, .5, .5), alpha=0.5)
 
         def mapDisplacementGrid(displacements, scene):
+            arr = num.full_like(scene.displacement, fill_value=num.nan)
             qt = scene.quadtree
-            array = num.empty_like(scene.displacement)
-            array.fill(num.nan)
+
             for syn_v, l in zip(displacements, qt.leaves):
-                array[l._slice_rows, l._slice_cols] = syn_v
+                arr[l._slice_rows, l._slice_cols] = syn_v
 
-            array[scene.displacement_mask] = num.nan
-            return array
+            arr[scene.displacement_mask] = num.nan
+            return arr
 
-        def drawTiles(ax, scene):
-            rect = scene.quadtree.getMPLRectangles()
-            for r in rect:
+        def drawLeaves(ax, scene, offset_e=0, offset_n=0):
+            rects = scene.quadtree.getMPLRectangles()
+            for r in rects:
                 r.set_edgecolor((.4, .4, .4))
                 r.set_linewidth(.5)
                 r.set_facecolor('none')
-            map(ax.add_artist, rect)
+                r.set_x(r.get_x() - offset_e)
+                r.set_y(r.get_y() - offset_n)
+            map(ax.add_artist, rects)
 
-            ax.scatter(scene.quadtree.leaf_coordinates[:, 0],
-                       scene.quadtree.leaf_coordinates[:, 1],
+            ax.scatter(scene.quadtree.leaf_coordinates[:, 0] - offset_e,
+                       scene.quadtree.leaf_coordinates[:, 1] - offset_n,
                        s=.25, c='black', alpha=.1)
+
+        urE, urN, llE, llN = (0., 0., 0., 0.)
+        for target in sat_targets:
+            off_n, off_e = map(float, latlon_to_ne_numpy(
+                target.scene.frame.llLat, target.scene.frame.llLon,
+                source.lat, source.lon))
+            turE, turN, tllE, tllN = zip(
+                *[(l.gridE.max()-off_e,
+                   l.gridN.max()-off_n,
+                   l.gridE.min()-off_e,
+                   l.gridN.min()-off_n)
+                  for l in
+                  target.scene.quadtree.leaves])
+            turE, turN = map(max, (turE, turN))
+            tllE, tllN = map(min, (tllE, tllN))
+            urE, urN = map(max, ((turE, urE), (urN, turN)))
+            llE, llN = map(min, ((tllE, llE), (llN, tllN)))
 
         for ifig, (sat_target, result) in enumerate(
                 zip(sat_targets, results)):
-            scene = sat_target.scene
 
-            item = PlotItem(
-                name='fig_%i' % ifig,
-                attributes={
-                    'targets': [sat_target.path]
-                },
-                title='Satellite Surface Displacements - %s'
-                      % scene.meta.scene_title,
-                description='''Surface displacements derived from
-satellite data, Scene {meta.scene_title} (id: {meta.scene_id}).
- (Left) the input data, (center) the
-modelled data and (right) the model residual.'''.format(meta=scene.meta))
+            scene = sat_target.scene
 
             fig = plt.figure()
             fig.set_size_inches(*self.size_inch)
@@ -129,48 +137,72 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                 hspace=.0001, left=.06, bottom=.1,
                 right=.9)
 
-            axes = [plt.subplot(gs[0, i]) for i in range(3)]
+            item = PlotItem(
+                name='fig_%i' % ifig,
+                attributes={'targets': [sat_target.path]},
+                title='Satellite Surface Displacements - %s'
+                      % scene.meta.scene_title,
+                description='''Surface displacements derived from
+satellite data, Scene {meta.scene_title} (id: {meta.scene_id}).
+ (Left) the input data, (center) the
+modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
             stat_obs = result.statics_obs
-            cmw = cm.ScalarMappable(cmap='coolwarm')
-            cmw.set_array(stat_obs)
-            cmap = cmw.get_cmap()
-            norm = cmw.norm
-
             stat_syn = result.statics_syn['displacement.los']
-            res = (stat_obs - stat_syn)
-            im_extent = (scene.frame.E.min(), scene.frame.E.max(),
-                         scene.frame.N.min(), scene.frame.N.max())
+            res = stat_obs - stat_syn
 
+            offset_n, offset_e = map(float, latlon_to_ne_numpy(
+                scene.frame.llLat, scene.frame.llLon,
+                source.lat, source.lon))
+
+            im_extent = (scene.frame.E.min() - offset_e,
+                         scene.frame.E.max() - offset_e,
+                         scene.frame.N.min() - offset_n,
+                         scene.frame.N.max() - offset_n)
+
+            abs_displ = num.abs([stat_obs.min(), stat_obs.max(),
+                                 stat_syn.min(), stat_syn.max(),
+                                 res.min(), res.max()]).max()
+
+            cmw = cm.ScalarMappable(cmap=self.colormap)
+            cmw.set_array(stat_obs)
+            cmw.set_clim(vmin=abs_displ, vmax=-abs_displ)
+            cmap = cmw.get_cmap()
+
+            axes = [plt.subplot(gs[0, i]) for i in range(3)]
             ax = axes[0]
             ax.imshow(mapDisplacementGrid(stat_obs, scene),
                       extent=im_extent, cmap=cmap,
-                      origin='lower', norm=norm)
-            drawTiles(ax, scene)
-            drawRectangularOutline(ax)
+                      origin='lower')
+            drawLeaves(ax, scene, offset_e, offset_n)
+            drawSource(ax)
             decorateAxes(ax, 'Data')
             ax.set_ylabel('[km]')
 
             ax = axes[1]
             ax.imshow(mapDisplacementGrid(stat_syn, scene),
                       extent=im_extent, cmap=cmap,
-                      origin='lower', norm=norm)
-            drawTiles(ax, scene)
-            drawRectangularOutline(ax)
+                      origin='lower')
+            drawLeaves(ax, scene, offset_e, offset_n)
+            drawSource(ax)
             decorateAxes(ax, 'Model')
             ax.get_yaxis().set_visible(False)
 
             ax = axes[2]
             ax.imshow(mapDisplacementGrid(res, scene),
                       extent=im_extent, cmap=cmap,
-                      origin='lower', norm=norm)
-            drawTiles(ax, scene)
-            drawRectangularOutline(ax)
+                      origin='lower')
+            drawLeaves(ax, scene, offset_e, offset_n)
+            drawSource(ax)
             decorateAxes(ax, 'Residual')
             ax.get_yaxis().set_visible(False)
 
+            for ax in axes:
+                ax.set_xlim(llE, urE)
+                ax.set_ylim(llN, urN)
+
             pos = ax.get_position()
-            cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.02, pos.y1 - pos.y0])
+            cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.015, pos.y1 - pos.y0])
             cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
             cbar.set_label('[m]')
 
