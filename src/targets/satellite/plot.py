@@ -106,7 +106,7 @@ class SatelliteTargetPlot(PlotConfig):
             item = PlotItem(
                 name='fig_%i' % ifig,
                 attributes={
-                    'targets': sat_target.path
+                    'targets': [sat_target.path],
                 })
 
             fig = plt.figure()
@@ -118,7 +118,7 @@ class SatelliteTargetPlot(PlotConfig):
             axes.append(plt.subplot(gs[0, 0]))
             axes.append(plt.subplot(gs[0, 1]))
             axes.append(plt.subplot(gs[0, 2]))
-            scene = target.get_scene()
+            scene = target.scene
 
             stat_obs = result.statics_obs
             cmw = cm.ScalarMappable(cmap='coolwarm')
