@@ -191,7 +191,7 @@ class NoiseAnalyser(Analyser):
 
 
 class NoiseAnalyserResult(AnalyserResult):
-    pass
+    weight = Float.T()
 
 
 class NoiseAnalyserConfig(AnalyserConfig):
