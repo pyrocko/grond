@@ -2,12 +2,11 @@ import copy
 import time
 import logging
 import numpy as num
-from pyrocko.guts import Int, Bool
+from pyrocko.guts import Int, Float
 
-from grond.targets import TargetAnalysisResult
 from grond.meta import Forbidden
 
-from ..base import Analyser, AnalyserConfig
+from ..base import Analyser, AnalyserConfig, AnalyserResult
 
 logger = logging.getLogger('grond.analysers.target_balancer')
 
@@ -94,8 +93,12 @@ class TargetBalancingAnalyser(Analyser):
                 num.nansum(num.isfinite(weights[families == ifamily])))
 
         for weight, target in zip(weights, problem.waveform_targets):
-            target.analysis_result = TargetAnalysisResult(
-                balancing_weight=float(weight))
+            target.analyser_results['target_balancing'] = \
+                TargetBalancingAnalyserResult(weight=float(weight))
+
+
+class TargetBalancingAnalyserResult(AnalyserResult):
+    weight = Float.T()
 
 
 class TargetBalancingAnalyserConfig(AnalyserConfig):

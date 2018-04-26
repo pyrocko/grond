@@ -531,6 +531,9 @@ def process_event(ievent, g_data_id):
     except BadProblem as e:
         logger.error(str(e))
 
+    except GrondError as e:
+        logger.error(str(e))
+
     tstop = time.time()
     logger.info(
         'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
