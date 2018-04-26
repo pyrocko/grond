@@ -4,7 +4,7 @@ import numpy as num
 
 from pyrocko import gf
 from pyrocko.guts_array import Array
-from pyrocko.guts import Object, Float, Bool
+from pyrocko.guts import Object, Float, Bool, Dict
 
 
 guts_prefix = 'grond'
@@ -34,9 +34,9 @@ class TargetGroup(Object):
 class TargetAnalysisResult(Object):
     class NoResult(Exception):
         pass
-
-    balancing_weight = Float.T()
-
+    
+    balancing_weight = Float.T(optional=True)
+    station_noise_weight = Float.T(optional=True)
 
 class MisfitResult(Object):
     misfits = Array.T(
@@ -116,7 +116,8 @@ class MisfitTarget(Object):
     def post_process(self, engine, source, statics):
         raise NotImplementedError()
 
-    def get_combined_weight(self, apply_balancing_weights=False):
+    def get_combined_weight(self, apply_balancing_weights=False,
+                            apply_station_noise_weights=False):
         return num.ones(1, dtype=num.float)
 
     def prepare_modelling(self, engine, source):
