@@ -503,7 +503,7 @@ def process_event(ievent, g_data_id):
 
     problem.dump_problem_info(rundir)
 
-    if not 'quiet' in status:
+    if 'quiet' not in status:
         GrondMonitor.watch(rundir)
 
     xs_inject = None

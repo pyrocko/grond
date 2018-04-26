@@ -599,68 +599,6 @@ def command_harvest(args):
         weed=options.weed)
 
 
-def command_plot_old(args):
-
-    def setup(parser):
-        parser.add_option(
-            '--save', dest='save', action='store_true', default=False,
-            help='save figures to files')
-
-        parser.add_option(
-            '--format', '--formats', dest='formats', default='pdf',
-            help='comma-separated list of ouptut formats (default: pdf)')
-
-        parser.add_option(
-            '--dpi', '--dpi', dest='dpi', type=float, default=120.,
-            help='DPI setting for raster formats (default=120)')
-
-    # plotnames_avail = plot.available_plotnames()
-    # made explicit to avoid import of pyplot before backend can be chosen
-    plotnames_avail = [
-        'bootstrap',
-        'sequence',
-        'contributions',
-        'jointpar',
-        'histogram',
-        'hudson',
-        'fits',
-        'fits_statics',
-        'fits_ensemble',
-        'solution',
-        'location']
-
-    details = '''Available <plotnames> are: %s, or "all". Multiple plots are
-selected by specifying a comma-separated list.''' % (
-        ', '.join('"%s"' % x for x in plotnames_avail))
-
-    parser, options, args = cl_parse('plot', args, setup, details)
-
-    if len(args) != 2:
-        help_and_die(parser, 'two arguments required')
-
-    if args[0] == 'all':
-        plotnames = plotnames_avail
-    else:
-        plotnames = args[0].split(',')
-
-    formats = options.formats.split(',')
-    dirname = args[1]
-
-    if options.save:
-        import matplotlib
-        matplotlib.use('Agg')
-
-    from grond import plot
-
-    try:
-        plot.plot_result(
-            dirname, plotnames,
-            save=options.save, formats=formats, dpi=options.dpi)
-
-    except grond.GrondError as e:
-        die(str(e))
-
-
 def command_plot(args):
 
     def setup(parser):
