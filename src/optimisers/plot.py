@@ -10,6 +10,9 @@ from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color, mpl_init
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
+from .highscore.plot import *
+
+
 logger = logging.getLogger('grond.problem.plot')
 
 

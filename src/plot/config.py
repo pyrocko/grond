@@ -27,7 +27,7 @@ class PlotFormat(Object):
 class PNG(PlotFormat):
     name = 'png'
 
-    dpi = Float.T(
+    dpi = Int.T(
         optional=True,
         help='DPI of the figure')
     size_pixels = Int.T(
@@ -76,6 +76,13 @@ class PNG(PlotFormat):
 
 class PDF(PlotFormat):
     name = 'pdf'
+
+    dpi = Int.T(
+        default=150,
+        help='DPI of the figure')
+
+    def get_dpi(self, size_cm):
+        return self.dpi
 
     def render_mpl(self, fig, path, **kwargs):
         return fig.savefig(path, format=self.name, **kwargs)
@@ -143,4 +150,5 @@ __all__ = [
     'PNG',
     'PDF',
     'PlotConfig',
+    'PlotConfigCollection',
 ]
