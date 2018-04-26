@@ -602,6 +602,9 @@ def command_harvest(args):
 
 def command_plot(args):
 
+    import matplotlib
+    matplotlib.use('Agg')
+
     from grond.environment import Environment
 
     def setup(parser):
@@ -644,6 +647,9 @@ def command_plot(args):
 
 
 def command_movie(args):
+
+    import matplotlib
+    matplotlib.use('Agg')
 
     def setup(parser):
         pass
@@ -723,6 +729,9 @@ def command_export(args):
 
 
 def command_report(args):
+
+    import matplotlib
+    matplotlib.use('Agg')
 
     from grond.environment import Environment
     from grond.report import report
