@@ -6,6 +6,7 @@ from pyrocko.plot import automap
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
+import copy
 from pyrocko.guts import Tuple, Float, Bool
 
 guts_prefix = 'grond'
@@ -24,7 +25,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
         default=(30., 30.),
         help='width and length of the figure in cm')
     show_topo = Bool.T(
-        default=False,
+        default=True,
         help='show topography')
     show_grid = Bool.T(
         default=True,
@@ -84,7 +85,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 radius = 30*km
 
             model_camp = gnss.GNSSCampaign(
-                stations=camp.stations,
+                stations=copy.deepcopy(camp.stations),
                 name='grond model')
 
             for ista, sta in enumerate(model_camp.stations):
@@ -109,12 +110,17 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
-            m.add_gnss_campaign(camp)
+            m.add_gnss_campaign(camp, psxy_style={
+                'G': 'black',
+                'W': '0.5p,black',
+                })
+
             m.add_gnss_campaign(model_camp, psxy_style={
                 'G': 'red',
                 'W': '0.5p,red',
-                't': 50,
-                })
+                't': 30,
+                },
+                labels=False)
             yield (item, m)
 
 
