@@ -602,21 +602,13 @@ def command_harvest(args):
 def command_plot(args):
 
     def setup(parser):
-        parser.add_option(
-            '--save', dest='save', action='store_true', default=False,
-            help='save figures to files')
-
-        parser.add_option(
-            '--format', '--formats', dest='formats', default='pdf',
-            help='comma-separated list of ouptut formats (default: pdf)')
-
-        parser.add_option(
-            '--dpi', '--dpi', dest='dpi', type=float, default=120.,
-            help='DPI setting for raster formats (default=120)')
+        pass
 
     details = '''Available <plotnames> can be listed with
 
     `grond plot list ( <rundir> | <configfile> <eventname> )`
+    `grond plot <plotname> ( <rundir> | <configfile> <eventname> )`
+    `grond plot config ( <rundir> | <configfile> <eventname> )`
 '''
 
     parser, options, args = cl_parse('plot', args, setup, details)
