@@ -403,7 +403,7 @@ class HistogramPlot(PlotConfig):
 
 class SolutionPlot(PlotConfig):
     name = 'solution_mt'
-    size_cm = Tuple.T(2, Float.T(), default=(15, 5))
+    size_cm = Tuple.T(2, Float.T(), default=(15., 5.))
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()

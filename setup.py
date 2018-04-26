@@ -42,5 +42,12 @@ setup(
         ]
     },
     package_dir={'grond': 'src'},
+
+    package_data={
+        'grond': ['report/app/*.html',
+                   'report/app/css/*.css',
+                   'report/app/css/*.map',
+                   'report/app/js/*.js']},
+
     data_files=[] + grond_completion(),
     )

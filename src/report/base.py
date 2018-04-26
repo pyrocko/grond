@@ -18,36 +18,13 @@ class ReportConfig(Object):
         default='reports/${event_name}/${problem_name}')
 
 
-class ReportPlot(Object):
-    name = String.T()
-    file_names = List.T(String.T())
-
-
-class ReportPlots(Object):
-    plots = List.T(ReportPlot.T())
-
-
-def report(
-        rundir=None, config_and_event_name=None, report_config=None,
-        skip_plotting=False):
+def report(env, report_config=None):
 
     if report_config is None:
         report_config = ReportConfig()
 
-    from grond.config import read_config
-    from grond.core import check
-    from grond.plot import plot_result, available_plotnames
-
-    if config_and_event_name is None:
-        config = read_config(op.join(rundir, 'config.yaml'))
-        problem = load_problem_info(rundir)
-        event_name = problem.base_source.name
-
-    else:
-        config, event_name = config_and_event_name
-        ds = config.get_dataset(event_name)
-        event = ds.get_event()
-        problem = config.get_problem(event)
+    event_name = env.get_event_name()
+    problem = env.get_problem()
 
     reportdir = expand_template(
         report_config.reportdir_template,
@@ -64,41 +41,13 @@ def report(
     plots_dir_out = op.join(reportdir, 'plots')
     util.ensuredir(plots_dir_out)
 
-    fns = {}
-    if 'target_check' in report_config.plot_names:
-        fns.update(check(
-            config,
-            event_names=[event_name],
-            save_plot_path=op.join(plots_dir_out)))
+    rundir_path = env.get_rundir_path()
 
-    if rundir:
-        core.export(
-            'stats', [rundir], filename=op.join(reportdir, 'stats.yaml'))
+    core.export(
+        'stats', [rundir_path], filename=op.join(reportdir, 'stats.yaml'))
 
-        avail = available_plotnames()
-        fns.update(plot_result(
-            rundir,
-            [name for name in report_config.plot_names if name in avail],
-            save_path=plots_dir_out, formats=('png',)))
-
-    rps = []
-    for plot_name in sorted(
-            fns.keys(),
-            key=lambda x: report_config.plot_names.index(x)):
-
-        plot_paths = fns.get(plot_name, [])
-        plot_basenames = []
-        for plot_path in plot_paths:
-            plot_basename = op.basename(plot_path)
-            plot_basenames.append(plot_basename)
-
-        rp = ReportPlot(
-            name=plot_name,
-            file_names=plot_basenames)
-
-        rps.append(rp)
-
-    guts.dump_all(rps, filename=op.join(reportdir, 'plots.yaml'))
+    from grond import plot
+    plot.make_plots(env, plots_path=op.join(reportdir, 'plots'))
 
 
 def iter_report_dirs(report_base_path):
@@ -147,6 +96,5 @@ __all__ = '''
     report
     report_index
     ReportConfig
-    ReportPlot
     ReportEntry
 '''.split()

@@ -15,7 +15,6 @@ function ReportEntry(obj) { copy_properties(obj, this); }
 
 var yaml_type_map = [
     ['!grond.ReportEntry', Dummy],
-    ['!grond.ReportPlot', Dummy],
     ['!grond.ParameterStats', Dummy],
     ['!grond.TargetAnalysisResult', Dummy],
     ['!grond.ResultStats', Dummy],
@@ -28,6 +27,11 @@ var yaml_type_map = [
     ['!grond.CMTProblem', Dummy],
     ['!pf.MTSource', Dummy],
     ['!pf.HalfSinusoidSTF', Dummy],
+    ['!grond.PlotCollection', Dummy],
+    ['!grond.PlotGroup', Dummy],
+    ['!grond.PlotItem', Dummy],
+    ['!grond.PNG', Dummy],
+    ['!grond.PDF', Dummy],
 ];
 
 function make_constructor(type) {
@@ -144,18 +148,38 @@ angular.module('reportApp', ['ngRoute'])
             $scope, YamlDoc, YamlMultiDoc, $routeParams) {
 
         $scope.stats = null;
-        $scope.plots = [];
+        $scope.plot_groups = [];
 
         $scope.path = $routeParams.report_path;
 
+        var plot_group_path = function(group_ref) {
+            return $scope.path + '/plots/' + group_ref[0] + '/' + group_ref[1] + '/' + group_ref[0] + '.' + group_ref[1];
+        };
+
+        $scope.image_path = function(group, item) {
+            return plot_group_path([group.name, group.variant]) + '.' + item.name + '.d100.png'
+        }
+
         YamlDoc.query(
             $scope.path + '/stats.yaml',
-            function(doc) { $scope.stats = doc; console.log(doc); },
+            function(doc) { $scope.stats = doc; },
             {schema: report_schema});
 
+
+        var query_group = function(group_ref) {
+            YamlDoc.query(
+                plot_group_path(group_ref) + '.plot_group.yaml',
+                function(doc) { $scope.plot_groups.push(doc); },
+                {schema: report_schema});
+        };
+
         YamlMultiDoc.query(
-            $scope.path + '/plots.yaml',
-            function(doc) { $scope.plots.push(doc); },
+            $scope.path + '/plots/plot_collection.yaml',
+            function(doc) {
+                Array.forEach(
+                    doc.group_refs,
+                    query_group);
+                },
             {schema: report_schema});
     })
 

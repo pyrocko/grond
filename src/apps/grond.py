@@ -523,7 +523,8 @@ def command_go(args):
         else:
             help_and_die(
                 parser,
-                'missing <eventnames>, candidates are:\n\n%s' % '\n'.join(event_names))
+                'missing <eventnames>, candidates are:\n\n%s' % '\n'.join(
+                    event_names))
 
     if len(args) < 2:
         help_and_die(parser, 'missing arguments')
@@ -601,6 +602,8 @@ def command_harvest(args):
 
 def command_plot(args):
 
+    from grond.environment import Environment
+
     def setup(parser):
         pass
 
@@ -616,26 +619,28 @@ def command_plot(args):
     if len(args) not in (2, 3):
         help_and_die(parser, 'two or three arguments required')
 
+    env = Environment(*args[1:])
+
     from grond import plot
     if args[0] == 'list':
-        for plot_name in plot.get_plot_names(args[1:]):
+        for plot_name in plot.get_plot_names(env):
             print(plot_name)
 
     elif args[0] == 'config':
-        plot_config_collection = plot.get_plot_config_collection(args[1:])
+        plot_config_collection = plot.get_plot_config_collection(env)
         print(plot_config_collection)
 
     elif args[0] == 'all':
-        plots = plot.get_plot_names(args[1:])
-        plot.make_plots(plots, args[1:])
+        plots = plot.get_plot_names(env)
+        plot.make_plots(env, plots)
 
     elif op.exists(args[0]):
         plots = plot.PlotConfigCollection.load(args[0])
-        plot.make_plots(plots, args[1:])
+        plot.make_plots(env, plots)
 
     else:
-        plot_names = args[0].split(',')
-        plot.make_plots(plot_names, args[1:])
+        plot_names = [name.strip() for name in args[0].split(',')]
+        plot.make_plots(env, plot_names=plot_names)
 
 
 def command_movie(args):
@@ -719,7 +724,8 @@ def command_export(args):
 
 def command_report(args):
 
-    import grond.report
+    from grond.environment import Environment
+    from grond.report import report
 
     def setup(parser):
         pass
@@ -732,7 +738,8 @@ def command_report(args):
         rundirs = args
         try:
             for rundir in rundirs:
-                grond.report.report(rundir)
+                env = Environment(rundir)
+                report(env)
 
         except grond.GrondError as e:
             die(str(e))
@@ -745,9 +752,10 @@ def command_report(args):
         event_names = args[1:]
 
         try:
-            config = grond.read_config(config_path)
+            env = Environment(config_path)
             for event_name in event_names:
-                grond.report.report(config_and_event_name=(config, event_name))
+                env.set_event_name(event_name)
+                report(env)
 
         except grond.GrondError as e:
             die(str(e))
