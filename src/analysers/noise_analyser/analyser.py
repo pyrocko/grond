@@ -76,7 +76,6 @@ def seismic_noise_variance(data_traces, engine, event, targets,
         arrival_time = get_phase_arrival_time(
             engine=engine, source=event,
             target=target, wavename=wavename)
-        tr = tr[0]  # stupid
         if check_evs:
             events = global_cmt_catalog.get_events(
                 time_range=(
@@ -167,7 +166,7 @@ class NoiseAnalyser(Analyser):
                         get_backazimuth_for_waveform(),
                         tinc_cache=1./freqlimits[0],
                         debug=True)
-                traces.append(trs_projected)
+                traces.append(tr_return)
 
         wproblem = problem.copy()
 
@@ -190,8 +189,6 @@ class NoiseAnalyser(Analyser):
         for weight, target in zip(weights, problem.waveform_targets):
             target.analysis_result = TargetAnalysisResult(
                 station_noise_weight=float(weight))
-            # noise weights station_weights
-            # combined weights!
 
 
 class NoiseAnalyserConfig(AnalyserConfig):
