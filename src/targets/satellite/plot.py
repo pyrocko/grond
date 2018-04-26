@@ -25,10 +25,12 @@ def scale_axes(ax, scale):
 
 
 class SatelliteTargetPlot(PlotConfig):
-    ''' Target, modelled and model misfit of the satellite displacments '''
+    ''' Maps showing surface displacements from satellite and modelled data '''
 
     name = 'fits_satellite'
-    size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(20., 10.))
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -40,7 +42,11 @@ class SatelliteTargetPlot(PlotConfig):
 
         cm.create_group_mpl(
             self,
-            self.draw_static_fits(ds, history, optimiser))
+            self.draw_static_fits(ds, history, optimiser),
+            title='Satellite Surface Displacements',
+            section='results.satellite',
+            description='Maps showing surface displacements'
+                        ' from satellite and modelled data')
 
     def draw_static_fits(self, ds, history, optimiser):
         from pyrocko.orthodrome import latlon_to_ne_numpy
@@ -66,7 +72,7 @@ class SatelliteTargetPlot(PlotConfig):
             ax.set_aspect('equal')
 
         def drawRectangularOutline(ax):
-            source.regularize()
+            # source.regularize()
             fn, fe = source.outline(cs='xy').T
             offset_n, offset_e = latlon_to_ne_numpy(
                 sat_target.lats[0], sat_target.lons[0],
@@ -102,23 +108,28 @@ class SatelliteTargetPlot(PlotConfig):
 
         for ifig, (sat_target, result) in enumerate(
                 zip(sat_targets, results)):
+            scene = sat_target.scene
 
             item = PlotItem(
                 name='fig_%i' % ifig,
                 attributes={
-                    'targets': [sat_target.path],
-                })
+                    'targets': [sat_target.path]
+                },
+                title='Satellite Surface Displacements - %s'
+                      % scene.meta.scene_title,
+                description='''Surface displacements derived from
+satellite data, Scene {meta.scene_title} (id: {meta.scene_id}).
+ (Left) the input data, (center) the
+modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
             fig = plt.figure()
-            fig.set_size_inches(16, 4)
-            axes = []
-            gs = gridspec.GridSpec(1, 3,
-                                   hspace=.0001, left=.06, bottom=.1,
-                                   right=.9)
-            axes.append(plt.subplot(gs[0, 0]))
-            axes.append(plt.subplot(gs[0, 1]))
-            axes.append(plt.subplot(gs[0, 2]))
-            scene = target.scene
+            fig.set_size_inches(*self.size_inch)
+            gs = gridspec.GridSpec(
+                1, 3,
+                hspace=.0001, left=.06, bottom=.1,
+                right=.9)
+
+            axes = [plt.subplot(gs[0, i]) for i in range(3)]
 
             stat_obs = result.statics_obs
             cmw = cm.ScalarMappable(cmap='coolwarm')

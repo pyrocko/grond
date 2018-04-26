@@ -16,7 +16,7 @@ logger = logging.getLogger('grond.targets.gnss_campaign.plot')
 
 
 class GNSSTargetMisfitPlot(PlotConfig):
-    ''' Map showing the GNSS campaign and Grond model '''
+    ''' Maps showing surface displacements of GNSS campaigns and the model '''
 
     name = 'fits_gnss'
 
