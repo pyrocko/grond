@@ -3,12 +3,6 @@ import os
 from setuptools import setup
 
 
-def grond_completion():
-    if os.access('/etc/bash_completion.d/', os.W_OK):
-        return [('/etc/bash_completion.d', ['extras/grond'])]
-    return []
-
-
 setup(
     name='grond',
     description='What do you want to bust today?!',
@@ -49,5 +43,5 @@ setup(
                    'report/app/css/*.map',
                    'report/app/js/*.js']},
 
-    data_files=[] + grond_completion(),
+    data_files=[],
     )
