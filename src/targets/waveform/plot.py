@@ -330,8 +330,8 @@ class FitsWaveformEnsemblePlot(PlotConfig):
                     continue
 
                 itarget = target_index[target]
-                w = target.get_combined_weight(problem.apply_balancing_weights)
-
+                w = target.get_combined_weight(problem.apply_balancing_weights, problem.apply_station_noise_weights)
+                
                 if target.misfit_config.domain == 'cc_max_norm':
                     tref = (
                         result.filtered_obs.tmin + result.filtered_obs.tmax) \
