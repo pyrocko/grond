@@ -158,7 +158,7 @@ class Parameter(Object):
 
     def _get_name(self):
         if None not in self.groups:
-            return '%s:%s' % (':'.join(self.groups), self._name)
+            return '%s.%s' % ('.'.join(self.groups), self._name)
         return self._name
 
     def _set_name(self, value):
