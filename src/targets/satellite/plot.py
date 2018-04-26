@@ -45,7 +45,8 @@ class SatelliteTargetPlot(PlotConfig):
             self.draw_static_fits(ds, history, optimiser),
             title='Satellite Surface Displacements',
             section='results.satellite',
-            description=self.__class__.__name__)
+            description='Maps showing surface displacements'
+                        ' from satellite and modelled data')
 
     def draw_static_fits(self, ds, history, optimiser):
         from pyrocko.orthodrome import latlon_to_ne_numpy
@@ -71,7 +72,7 @@ class SatelliteTargetPlot(PlotConfig):
             ax.set_aspect('equal')
 
         def drawRectangularOutline(ax):
-            source.regularize()
+            # source.regularize()
             fn, fe = source.outline(cs='xy').T
             offset_n, offset_e = latlon_to_ne_numpy(
                 sat_target.lats[0], sat_target.lons[0],
@@ -107,17 +108,19 @@ class SatelliteTargetPlot(PlotConfig):
 
         for ifig, (sat_target, result) in enumerate(
                 zip(sat_targets, results)):
-            scene = target.scene
+            scene = sat_target.scene
 
             item = PlotItem(
                 name='fig_%i' % ifig,
                 attributes={
-                    'targets': sat_target.path
+                    'targets': [sat_target.path]
                 },
-                title='Satellite Surface Displacements - %s' % scene.title,
+                title='Satellite Surface Displacements - %s'
+                      % scene.meta.scene_title,
                 description='''Surface displacements derived from
-satellite data, Scene %s (id: %s). (Left) the input data, (center) the
-modelled data and (right) the model residual.''')
+satellite data, Scene {meta.scene_title} (id: {meta.scene_id}).
+ (Left) the input data, (center) the
+modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
             fig = plt.figure()
             fig.set_size_inches(*self.size_inch)
