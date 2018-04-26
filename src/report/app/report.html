@@ -34,10 +34,11 @@
     </div>
 
     <h2>Plots</h2>
-    <div ng-repeat="plot in plots">
-        <h3>Plot: {{ plot.name }}</h3>
-        <span ng-repeat="file_name in plot.file_names">
-            <img style="max-width: 100%;" src="{{ path }}/plots/{{ file_name }}" />
+    <input ng-model="keyword">
+    <div ng-repeat="group in plot_groups">
+        <h3>Plot: {{ plot_group.name }}</h3>
+        <span ng-repeat="item in group.items | filter : keyword">
+            <img style="max-width: 100%;" src="{{ image_path(group, item) }}" />
         </span>
     </div>
 </div>

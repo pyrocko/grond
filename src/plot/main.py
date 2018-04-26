@@ -6,44 +6,42 @@ from grond.plot.config import PlotConfigCollection
 logger = logging.getLogger('grond.plots')
 
 
-def get_plot_names(args):
-    env = Environment(*args)
+def get_plot_names(env):
     plot_classes = env.get_plot_classes()
     return [plot_class.name for plot_class in plot_classes]
 
 
-def get_plot_config_collection(args):
-    env = Environment(*args)
-    plot_classes = env.get_plot_classes()
-    collection = PlotConfigCollection()
+def get_plot_config_collection(env, plot_names=None):
 
-    for plot_class in plot_classes:
-        plot_config = plot_class()
-        collection.plot_configs.append(plot_config)
+    plots = []
+    for plot_class in env.get_plot_classes():
+        if plot_names is None or plot_class.name in plot_names:
+            plots.append(plot_class())
+
+    if plot_names is not None:
+        if set(plot_names) - set([p.name for p in plots]):
+            logger.warning(
+                'Plots %s not available!'
+                % ', '.join(set(plot_names) - set([p.name for p in plots])))
+
+    collection = PlotConfigCollection(plot_configs=plots)
 
     return collection
 
 
-def make_plots(plot_list, args, plots_path=None):
-    env = Environment(*args)
-    if isinstance(plot_list, PlotConfigCollection):
-        plots = plot_list.plot_configs
+def make_plots(
+        env,
+        plot_config_collection=None,
+        plot_names=None,
+        plots_path=None):
 
-    else:
-        plot_classes = env.get_plot_classes()
-        plots = [
-            plot_class()
-            for plot_class in plot_classes
-            if plot_class.name in plot_list]
-
-        if set(plot_list) - set([p.name for p in plots]):
-            logger.warning(
-                'Plots %s not available!'
-                % ', '.join(set(plot_list) - set([p.name for p in plots])))
+    if plot_config_collection is None:
+        plot_config_collection = get_plot_config_collection(env, plot_names)
 
     if plots_path is None:
-        plots_path = env.path_plots
+        plots_path = env.get_plots_path()
 
+    plots = plot_config_collection.plot_configs
     manager = PlotCollectionManager(plots_path)
     env.set_plot_collection_manager(manager)
 
