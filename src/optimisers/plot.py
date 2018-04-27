@@ -24,10 +24,10 @@ def fixlim(lo, hi):
 
 
 class SequencePlot(PlotConfig):
-    '''Draws all parameter values evaluated during the optimization
+    '''Draws all parameter values evaluated during the optimisation
 
     The sequence of all the parameter values is either 
-    a function of the optimization in progress or of 
+    a function of the optimisation in progress or of 
     the misfit from high to low. This plot can be used to check on 
     convergence or see if model parameters push the given bounds.
     The color always shows the relative misfit. Relatively high 
@@ -382,7 +382,7 @@ class BootstrapPlot(PlotConfig):
     have converged to very different places in model-space. This would be
     an indicator that there might be inconsistencies in the observations
     (maybe due to faulty or noisy or misoriented data). Also the shape of 
-    the curve in general can give information. A well-behaved optimization run
+    the curve in general can give information. A well-behaved optimisation run
     has approximately linear functions in this plot. Only at the end they should 
     have a higher downward gradient. This would be the place where the objective 
     functions of the bootstrap start to disagree.

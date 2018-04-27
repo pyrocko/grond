@@ -35,24 +35,26 @@ class OptimiserConfig(Object):
 
 
 class OptimiserStatus(object):
-    __slots__ = ['row_names', 'columns', 'extra_text']
+    __slots__ = ['row_names', 'column_data', 'extra_header', 'extra_footer']
 
-    def __init__(self, row_names, columns, extra_text):
+    def __init__(self, row_names, column_data,
+                 extra_header=None, extra_footer=None):
         self.row_names = row_names
-        self.columns = columns
-        self.extra_text = extra_text
+        self.column_data = column_data
+        self.extra_header = extra_header
+        self.extra_footer = extra_footer
 
     @property
     def column_names(self):
-        return self.columns.keys()
+        return self.column_data.keys()
 
     @property
     def ncolumns(self):
-        return len(self.columns)
+        return len(self.column_data)
 
     @property
     def values(self):
-        return self.columns.values()
+        return self.column_data.values()
 
 
 __all__ = '''

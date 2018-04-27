@@ -322,9 +322,10 @@ class Chains(object):
         return self.history.models[self.chains_i[ichain, ilink], :]
 
     def misfits(self, ichain=0):
-        return self.chains_m[ichain, :]
+        return self.chains_m[ichain, :self.nlinks]
 
     def misfit(self, ichain, ilink):
+        assert ilink < nlinks
         return self.chains_m[ichain, ilink]
 
     def mean_model(self, ichain=None):
@@ -481,6 +482,8 @@ class HighScoreOptimiser(Optimiser):
         return sum([ph.niterations for ph in self.sampler_phases])
 
     def get_status(self, history):
+        sparks = '▁▂▃▅▇'
+
         if self._status_chains is None:
             self._status_chains = self.chains(history.problem, history)
 
@@ -493,7 +496,6 @@ class HighScoreOptimiser(Optimiser):
         row_names.append('Misfit')
 
         def colum_array(data):
-            print('data', data.size)
             arr = num.full(len(row_names), fill_value=num.nan)
             arr[:data.size] = data
             return arr
@@ -514,13 +516,31 @@ class HighScoreOptimiser(Optimiser):
         glob_best = colum_array(chains.best_model(ichain=0))
         glob_best[-1] = chains.best_model_misfit()
 
+        glob_misfits = chains.misfits(ichain=0)
+
+        def spark_plot(data, str_length=25):
+            try:
+                from scipy import stats
+                hist_data, _, _ = stats.binned_statistic(
+                    num.arange(data.size), data,
+                    bins=str_length)
+                _, bins = num.histogram(hist_data,
+                    bins=num.linspace(0., 1., len(sparks)))
+                vec = num.digitize(hist_data, bins)
+                return ''.join([sparks[b-1] for b in vec])
+            except:
+                return ''
+
         return OptimiserStatus(
             row_names=row_names,
-            columns=OrderedDict(
+            column_data=OrderedDict(
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_text='Optimiser phase: %s' % phase.__class__.__name__)
+            extra_header='Optimiser phase: %s\n'
+                         'Global Chain Misfit Distribution: ₀%s¹'
+                         % (phase.__class__.__name__,
+                            spark_plot(glob_misfits)))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
