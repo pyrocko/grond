@@ -491,6 +491,8 @@ def process_event(ievent, g_data_id):
     logger.info(
         'starting event %i / %i' % (ievent+1, nevents))
 
+    logger.info('rundir: %s' % rundir)
+
     logger.info('analysing problem %s' % problem.name)
 
     for analyser_conf in config.analyser_configs:
