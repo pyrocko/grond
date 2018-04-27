@@ -134,7 +134,8 @@ class DoubleDCProblem(Problem):
     def get_plot_classes(cls):
         from . import plot
         plots = super(DoubleDCProblem, cls).get_plot_classes()
-        plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot])
+        plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot,
+                      plot.MTLocationPlot])
         return plots
 
 
