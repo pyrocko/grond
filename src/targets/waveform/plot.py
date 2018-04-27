@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from matplotlib import cm, patches
 
 from pyrocko import plot, gf, trace
-from pyrocko.plot import mpl_init, mpl_papersize, mpl_color
+from pyrocko.plot import mpl_init, mpl_color
 from pyrocko.guts import Tuple, Float, Int, String
 
 from grond import core, meta
@@ -531,7 +531,8 @@ class FitsWaveformEnsemblePlot(PlotConfig):
                     iyy = iy // nymax
                     if (iyy, ixx) not in figures:
                         title = '_'.join(x for x in cg if x)
-                        item = PlotItem(name='fig_%s_%i_%i' % (title, ixx, iyy))
+                        item = PlotItem(
+                            name='fig_%s_%i_%i' % (title, ixx, iyy))
                         item.attributes['targets'] = []
                         figures[iyy, ixx] = (
                             item, plt.figure(figsize=self.size_inch))
@@ -934,7 +935,8 @@ class FitsWaveformPlot(PlotConfig):
                     iyy = iy // nymax
                     if (iyy, ixx) not in figures:
                         title = '_'.join(x for x in cg if x)
-                        item = PlotItem(name='fig_%s_%i_%i' % (title, ixx, iyy))
+                        item = PlotItem(
+                            name='fig_%s_%i_%i' % (title, ixx, iyy))
                         item.attributes['targets'] = []
                         figures[iyy, ixx] = (
                             item, plt.figure(figsize=self.size_inch))

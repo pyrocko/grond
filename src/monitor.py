@@ -144,7 +144,6 @@ class GrondMonitor(object):
     @classmethod
     def watch(cls, rundir):
         import threading
-        import signal
 
         monitor = cls(rundir)
 

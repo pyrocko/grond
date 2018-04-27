@@ -3,12 +3,11 @@ import shutil
 import os
 
 from pyrocko import guts, util
-from pyrocko.guts import Object, List, String
+from pyrocko.guts import Object, String
 
 from grond.meta import Path, expand_template
 
 from grond import core
-from grond.problems.base import load_problem_info
 
 guts_prefix = 'grond'
 
