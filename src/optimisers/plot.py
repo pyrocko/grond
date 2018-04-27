@@ -225,9 +225,10 @@ class SequencePlot(PlotConfig):
 class ContributionsPlot(PlotConfig):
     '''Relative contribution of single targets to the global misfit
 
-    The relative contribution that each single target in the global
-    misfit result is plotted as a function of global misfit
-    (descending). The target contribution is shown in color-filled
+    The relative contribution that each single target has 
+    in the global misfit result is plotted relative and unscales
+    as a function of global misfit (descending). 
+    The target contribution is shown in color-filled
     curves with the bottom curve on the bottom and the best-fit
     target on top. This plot can be used to analyse the balance of
     targets in the optimisations and it indicates poorly fitting 
