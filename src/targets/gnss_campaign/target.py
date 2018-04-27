@@ -140,7 +140,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         return result
 
-    def get_combined_weight(self, apply_balancing_weights=False):
+    def get_combined_weight(self, apply_balancing_weights=False,
+                            apply_station_noise_weights=False):
         return num.array([self.manual_weight])
 
     def prepare_modelling(self, engine, source):
