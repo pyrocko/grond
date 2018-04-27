@@ -107,6 +107,12 @@ class RectangularProblem(Problem):
             # raise Forbidden()
         return x
 
+    @classmethod
+    def get_plot_classes(cls):
+        from . import plot
+        plots = super(RectangularProblem, cls).get_plot_classes()
+        return plots
+
 
 __all__ = '''
     RectangularProblem

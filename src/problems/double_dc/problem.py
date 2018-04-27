@@ -130,6 +130,13 @@ class DoubleDCProblem(Problem):
 
         return num.array(x, dtype=num.float)
 
+    @classmethod
+    def get_plot_classes(cls):
+        from . import plot
+        plots = super(DoubleDCProblem, cls).get_plot_classes()
+        plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot])
+        return plots
+
 
 __all__ = '''
     DoubleDCProblem
