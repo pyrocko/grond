@@ -478,7 +478,7 @@ def process_event(ievent, g_data_id):
     if op.exists(rundir):
         if preserve:
             nold_rundirs = len(glob.glob(rundir + '*'))
-            shutil.move(rundir, rundir+'-old-%d' % (nold_rundirs+1))
+            shutil.move(rundir, rundir+'-old-%d' % (nold_rundirs))
         elif force:
             shutil.rmtree(rundir)
         else:

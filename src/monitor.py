@@ -1,5 +1,7 @@
 import time
 import logging
+import threading
+import signal
 import os.path as op
 import numpy as num
 from datetime import timedelta
@@ -39,15 +41,17 @@ class color:
     END = '\033[0m'
 
 
-class GrondMonitor(object):
+class GrondMonitor(threading.Thread):
 
     col_width = 15
     row_name = color.BOLD + '{:<{col_param_width}s}' + color.END
     parameter_fmt = '{:{col_width}s}'
 
     def __init__(self, rundir):
+        threading.Thread.__init__(self)
         self.rundir = rundir
 
+        self.sig_terminate = threading.Event()
         self.iter_per_second = 0
         self._iiter = 0
         self._iter_buffer = RingBuffer(20)
@@ -67,12 +71,16 @@ class GrondMonitor(object):
         self.last_update = self.starttime
 
         self.history.add_listener(self)
+
+        print('\033c')
         self.start_watch()
 
     def start_watch(self):
         while True:
             self.history.update()
             time.sleep(.1)
+            if self.sig_terminate.is_set():
+                raise AttributeError
 
     @property
     def runtime(self):
@@ -116,7 +124,8 @@ class GrondMonitor(object):
               .format(s=self, p=problem))
         lnadd('Iteration {s.iiter} / {s.niter}'
               .format(s=self))
-        lnadd(optimiser_status.extra_text)
+        if optimiser_status.extra_header is not None:
+            lnadd(optimiser_status.extra_header)
 
         col_param_width = max([len(p) for p in row_names]) + 2
 
@@ -136,18 +145,30 @@ class GrondMonitor(object):
                  col_param_width=col_param_width,
                  col_width=self.col_width))
 
+        if optimiser_status.extra_footer is not None:
+            lnadd(optimiser_status.extra_footer)
+
         lines[0:0] = ['\033[%i;1H\033[1J\033[1;1H' % (len(lines)+2)]
         lnadd('')
         lnadd('\033[%i;1H' % (len(lines)+12))
         print('\n'.join(lines))
 
+    def terminate(self):
+        print('Daring to calm Grond...')
+        self.sig_terminate.set()
+        raise ValueError
+
     @classmethod
     def watch(cls, rundir):
-        import threading
-
         monitor = cls(rundir)
 
-        monitor_thread = threading.Thread(target=monitor.run)
-        monitor_thread.start()
+        def terminate(*args):
+            monitor.terminate()
+            monitor.join()
 
-        return monitor_thread
+        signal.signal(signal.SIGINT, terminate)
+        signal.signal(signal.SIGTERM, terminate)
+
+        monitor.start()
+
+        return monitor
