@@ -62,13 +62,6 @@ class GNSSCampaignTargetGroup(TargetGroup):
 
         return targets
 
-    @classmethod
-    def get_plot_classes(cls):
-        from . import plot
-        plots = super(GNSSCampaignMisfitTarget, cls).get_plot_classes()
-        plots.extend(plot.get_plot_classes())
-        return plots
-
 
 class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     campaign_name = String.T()
