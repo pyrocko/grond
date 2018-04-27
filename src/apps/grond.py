@@ -36,7 +36,6 @@ subcommand_descriptions = {
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
     'report': 'create result report',
-    'report-index': 'create report index',
     'qc-polarization': 'check sensor orientations with polarization analysis',
 }
 
@@ -56,7 +55,6 @@ subcommand_usages = {
     'report': (
         'report <rundir> ... [options]',
         'report <configfile> <eventnames> ...'),
-    'report-index': 'report <reportdir> [options]',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
                        '<target_group_path> [options]',
 }
@@ -83,7 +81,6 @@ Subcommands:
     movie           %(movie)s
     export          %(export)s
     report          %(report)s
-    report-index    %(report_index)s
     qc-polarization %(qc_polarization)s
 
 To get further help and a list of available options for any subcommand run:
@@ -777,26 +774,6 @@ def command_report(args):
 
         except grond.GrondError as e:
             die(str(e))
-
-
-def command_report_index(args):
-
-    import grond.report
-
-    def setup(parser):
-        pass
-
-    parser, options, args = cl_parse('report-index', args, setup)
-    if len(args) < 1:
-        help_and_die(parser, 'arguments required')
-
-    report_base_path = args[0]
-
-    try:
-        grond.report.report_index(report_base_path)
-
-    except grond.GrondError as e:
-        die(str(e))
 
 
 def command_qc_polarization(args):
