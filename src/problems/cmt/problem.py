@@ -212,9 +212,9 @@ class CMTProblem(Problem):
     def get_plot_classes(cls):
         from . import plot
         plots = super(CMTProblem, cls).get_plot_classes()
-        plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot])
+        plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot,
+                      plot.MTLocationPlot])
         return plots
-
 
 
 __all__ = '''

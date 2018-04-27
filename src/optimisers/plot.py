@@ -195,7 +195,7 @@ class SequencePlot(PlotConfig):
             item = PlotItem(name='fig_%i' % (len(figs)+1))
             item.attributes['parameters'] = []
 
-            figs.append(fig)
+            figs.append((item, fig))
 
         axes = fig.add_subplot(nfy, nfx, impl)
         labelpos(axes, 2.5, 2.0)
