@@ -8,6 +8,8 @@ Grond - The Earthquake Buster's Documentation!
 
 .. toctree::
    install/index
+   documentation/idex
+   documentation/plots_docu
    library/index
    :maxdepth: 2
    :caption: Contents:
