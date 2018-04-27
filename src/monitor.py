@@ -102,11 +102,10 @@ class GrondMonitor(object):
         self.iiter = self.history.nmodels
         problem = self.history.problem
         optimiser_status = self.optimiser.get_status(self.history)
+        row_names = optimiser_status.row_names
 
         lines = []
         lnadd = lines.append
-
-        parameter_names = [p.name_nogroups for p in problem.parameters]
 
         def fmt(s):
             return util.gform(s, significant_digits=(self.col_width-1-6)//2)
@@ -119,7 +118,7 @@ class GrondMonitor(object):
               .format(s=self))
         lnadd(optimiser_status.extra_text)
 
-        col_param_width = max([len(p) for p in parameter_names]) + 2
+        col_param_width = max([len(p) for p in row_names]) + 2
 
         out_ln = self.row_name +\
             ''.join([self.parameter_fmt] * optimiser_status.ncolumns)
@@ -130,7 +129,7 @@ class GrondMonitor(object):
             col_width=self.col_width,
             type='s'))
 
-        for ip, parameter_name in enumerate(parameter_names):
+        for ip, parameter_name in enumerate(row_names):
             lnadd(out_ln.format(
                  parameter_name,
                  *[fmt(v[ip]) for v in optimiser_status.values],

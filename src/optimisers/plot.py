@@ -24,7 +24,16 @@ def fixlim(lo, hi):
 
 
 class SequencePlot(PlotConfig):
-    ''' Draws single parameter values as a function of optimization progress'''
+    '''Draws all parameter values evaluated during the optimization
+
+    The sequence of all the parameter values is either 
+    a function of the optimization in progress or of 
+    the misfit from high to low. This plot can be used to check on 
+    convergence or see if model parameters push the given bounds.
+    The color always shows the relative misfit. Relatively high 
+    misfits are in cold blue colors and relatively low misfits in 
+    red. The last panel gives the corresponding misfit values.
+    '''
     name = 'sequence'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
     misfit_cutoff = Float.T(optional=True)
@@ -214,7 +223,15 @@ class SequencePlot(PlotConfig):
 
 
 class ContributionsPlot(PlotConfig):
-    '''Relative contribution of single targets to the global misfit'''
+    '''Relative contribution of single targets to the global misfit
+
+    The relative contribution that each single target in the global
+    misfit result is plotted as a function of global misfit
+    (descending). The target contribution is shown in color-filled
+    curves with the bottom curve on the bottom and the best-fit
+    target on top. This plot can be used to analyse the balance of
+    targets in the optimisations and it indicates poorly fitting 
+    targets easily.'''
     name = 'contributions'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
 
@@ -349,7 +366,26 @@ class ContributionsPlot(PlotConfig):
 
 
 class BootstrapPlot(PlotConfig):
-    ''' Sorted misfit (descending) of single bootstrap chains'''
+    ''' Sorted misfit (descending) of single bootstrap chains
+    
+    For each bootstrap configuration, all models are sorted according to 
+    their misfit value (red lines) and their global misfit value (black line).
+    (They are sorted individually for each line). The best model of 
+    every bootstrap configuration (right end model of red lines) 
+    is marked as a cross in the global misfit configuration. 
+    The horizontal black lines indicate mean and +- standard deviation 
+    of the y-axis values of these crosses. 
+    If the bootstrap configurations converge to the 
+    same region in model-space, all crosses should be close to the right 
+    end of the plot. If this is not the case, some bootstrap configurations 
+    have converged to very different places in model-space. This would be
+    an indicator that there might be inconsistencies in the observations
+    (maybe due to faulty or noisy or misoriented data). Also the shape of 
+    the curve in general can give information. A well-behaved optimization run
+    has approximately linear functions in this plot. Only at the end they should 
+    have a higher downward gradient. This would be the place where the objective 
+    functions of the bootstrap start to disagree.
+    '''
     name = 'bootstrap'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
 
