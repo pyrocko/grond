@@ -85,6 +85,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def id(self):
         return self.campaign_name
 
+    def string_id(self):
+        return self.campaign_name
+
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
 
