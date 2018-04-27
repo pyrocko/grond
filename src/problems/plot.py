@@ -658,13 +658,10 @@ class HudsonPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
-        problem = environ.get_problem()
-        environ.setup_modelling()
-
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(problem, history))
+        cm.create_group_mpl(self, self.draw_figures(history))
 
-    def draw_figures(self, problem, history):
+    def draw_figures(self, history):
 
         color = 'black'
         fontsize = self.font_size
@@ -674,6 +671,7 @@ class HudsonPlot(PlotConfig):
         beachballsize_small = beachballsize * 0.5
         beachball_type = self.beachball_type
 
+        problem = history.problem
         mean_source = core.get_mean_source(problem, history.models)
         best_source = core.get_best_source(
             problem, history.models, history.misfits)
@@ -767,5 +765,5 @@ def get_plot_classes():
         JointparPlot,
         HistogramPlot,
         SolutionPlot,
-        LocationPlot]
-        #HudsonPlot
+        LocationPlot,
+        HudsonPlot]
