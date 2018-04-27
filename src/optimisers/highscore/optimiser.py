@@ -321,6 +321,12 @@ class Chains(object):
     def model(self, ichain, ilink):
         return self.history.models[self.chains_i[ichain, ilink], :]
 
+    def misfits(self, ichain=0):
+        return self.chains_m[ichain, :]
+
+    def misfit(self, ichain, ilink):
+        return self.chains_m[ichain, ilink]
+
     def mean_model(self, ichain=None):
         xs = self.models(ichain)
         return num.mean(xs, axis=0)
@@ -328,6 +334,9 @@ class Chains(object):
     def best_model(self, ichain=0):
         xs = self.models(ichain)
         return xs[0]
+
+    def best_model_misfit(self, ichain=0):
+        return self.chains_m[ichain, 0]
 
     def standard_deviation_models(self, ichain, estimator):
         if estimator == 'median_density_single_chain':
@@ -476,20 +485,37 @@ class HighScoreOptimiser(Optimiser):
             self._status_chains = self.chains(history.problem, history)
 
         self._status_chains.goto(history.nmodels)
+
         chains = self._status_chains
+        problem = history.problem
+
+        row_names = [p.name_nogroups for p in problem.parameters]
+        row_names.append('Misfit')
+
+        def colum_array(data):
+            print('data', data.size)
+            arr = num.full(len(row_names), fill_value=num.nan)
+            arr[:data.size] = data
+            return arr
 
         phase = self.get_sampler_phase(history.nmodels-1)[0]
 
-        bs_mean = chains.mean_model(ichain=None)
-        bs_std = chains.standard_deviation_models(
-            ichain=None, estimator='standard_deviation_all_chains')
+        bs_mean = colum_array(chains.mean_model(ichain=None))
+        bs_std = colum_array(chains.standard_deviation_models(
+            ichain=None, estimator='standard_deviation_all_chains'))
 
-        glob_mean = chains.mean_model(ichain=0)
-        glob_std = chains.standard_deviation_models(
-            ichain=0, estimator='standard_deviation_single_chain')
-        glob_best = chains.best_model(ichain=0)
+        glob_mean = colum_array(chains.mean_model(ichain=0))
+        glob_mean[-1] = num.mean(chains.misfits(ichain=0))
+
+        glob_std = colum_array(chains.standard_deviation_models(
+            ichain=0, estimator='standard_deviation_single_chain'))
+        glob_std[-1] = num.std(chains.misfits(ichain=0))
+
+        glob_best = colum_array(chains.best_model(ichain=0))
+        glob_best[-1] = chains.best_model_misfit()
 
         return OptimiserStatus(
+            row_names=row_names,
             columns=OrderedDict(
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],

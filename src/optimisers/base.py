@@ -14,11 +14,6 @@ class BadProblem(GrondError):
 
 class Optimiser(Object):
 
-    @classmethod
-    def get_plot_classes(cls):
-        from . import plot
-        return plot.get_plot_classes()
-
     def optimise(self, problem):
         raise NotImplemented()
 
@@ -29,15 +24,21 @@ class Optimiser(Object):
     def get_status(self, history):
         pass
 
+    @classmethod
+    def get_plot_classes(cls):
+        from . import plot
+        return plot.get_plot_classes()
+
 
 class OptimiserConfig(Object):
     pass
 
 
 class OptimiserStatus(object):
-    __slots__ = ['columns', 'extra_text']
+    __slots__ = ['row_names', 'columns', 'extra_text']
 
-    def __init__(self, columns, extra_text):
+    def __init__(self, row_names, columns, extra_text):
+        self.row_names = row_names
         self.columns = columns
         self.extra_text = extra_text
 
