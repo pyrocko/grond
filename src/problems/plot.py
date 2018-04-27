@@ -575,7 +575,7 @@ class MTDecompositionPlot(PlotConfig):
         return [[item, fig]]
 
 
-class LocationPlot(PlotConfig):
+class MTLocationPlot(PlotConfig):
     ''' Map of moment tensor location results '''
     name = 'location_mt'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
@@ -681,7 +681,7 @@ class LocationPlot(PlotConfig):
 
 
 class HudsonPlot(PlotConfig):
-    ''' Illustration of the solution distribution of decomposed moment tensor '''
+    ''' Illustration of the solution distribution of decomposed moment tensor '''  # noqa
     name = 'hudson'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
@@ -797,5 +797,4 @@ def get_plot_classes():
     return [
         JointparPlot,
         HistogramPlot,
-        LocationPlot
         ]
