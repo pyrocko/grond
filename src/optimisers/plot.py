@@ -45,6 +45,8 @@ class SequencePlot(PlotConfig):
         sort_by = self.sort_by
 
         problem = history.problem
+        models = history.models
+
         npar = problem.nparameters
         ndep = problem.ndependants
         fontsize = self.font_size
@@ -54,8 +56,6 @@ class SequencePlot(PlotConfig):
         bounds = problem.get_combined_bounds()
 
         xref = problem.get_reference_model()
-
-        models = history.models
 
         gms = problem.combine_misfits(history.misfits)
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)

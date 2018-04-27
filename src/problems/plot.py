@@ -401,8 +401,9 @@ class HistogramPlot(PlotConfig):
             yield item, fig
 
 
-class SolutionPlot(PlotConfig):
-    name = 'solution_mt'
+class MTDecompositionPlot(PlotConfig):
+    ''' Moment tensor decomposition plot '''
+    name = 'mt_decomposition'
     size_cm = Tuple.T(2, Float.T(), default=(15., 5.))
 
     def make(self, environ):
@@ -764,6 +765,5 @@ def get_plot_classes():
     return [
         JointparPlot,
         HistogramPlot,
-        SolutionPlot,
-        LocationPlot,
-        HudsonPlot]
+        LocationPlot
+        ]
