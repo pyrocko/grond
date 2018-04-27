@@ -165,14 +165,14 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                                  res.min(), res.max()]).max()
 
             cmw = cm.ScalarMappable(cmap=self.colormap)
+            cmw.set_clim(vmin=-abs_displ, vmax=abs_displ)
             cmw.set_array(stat_obs)
-            cmw.set_clim(vmin=abs_displ, vmax=-abs_displ)
-            cmap = cmw.get_cmap()
 
             axes = [plt.subplot(gs[0, i]) for i in range(3)]
             ax = axes[0]
             ax.imshow(mapDisplacementGrid(stat_obs, scene),
-                      extent=im_extent, cmap=cmap,
+                      extent=im_extent, cmap=self.colormap,
+                      vmin=-abs_displ, vmax=abs_displ,
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
             drawSource(ax)
@@ -181,7 +181,8 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
             ax = axes[1]
             ax.imshow(mapDisplacementGrid(stat_syn, scene),
-                      extent=im_extent, cmap=cmap,
+                      extent=im_extent, cmap=self.colormap,
+                      vmin=-abs_displ, vmax=abs_displ,
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
             drawSource(ax)
@@ -190,7 +191,8 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
             ax = axes[2]
             ax.imshow(mapDisplacementGrid(res, scene),
-                      extent=im_extent, cmap=cmap,
+                      extent=im_extent, cmap=self.colormap,
+                      vmin=-abs_displ, vmax=abs_displ,
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
             drawSource(ax)
