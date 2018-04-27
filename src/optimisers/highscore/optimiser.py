@@ -439,7 +439,7 @@ class HighScoreOptimiser(Optimiser):
         self._tlog_last = 0
         for iiter in range(niter):
             phase, iiter_phase = self.get_sampler_phase(iiter)
-            # self.log_progress(problem, iiter, niter, phase, iiter_phase)
+            self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
             x = phase.get_sample(problem, iiter_phase, chains)
 

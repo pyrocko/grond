@@ -434,9 +434,8 @@ g_state = {}
 
 def go(config, event_names=None,
        force=False, preserve=False,
-       nparallel=1, status=('state',)):
+       nparallel=1, status='state'):
 
-    status = tuple(status)
     g_data = (config, force, preserve,
               status, nparallel, event_names)
     g_state[id(g_data)] = g_data
@@ -506,7 +505,7 @@ def process_event(ievent, g_data_id):
 
     problem.dump_problem_info(rundir)
 
-    if 'quiet' not in status:
+    if status == 'state':
         GrondMonitor.watch(rundir)
 
     xs_inject = None

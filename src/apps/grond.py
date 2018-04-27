@@ -503,7 +503,10 @@ def command_go(args):
             help='preserve old rundir')
         parser.add_option(
             '--status', dest='status', default='state',
-            help='status output selection (choices: state, quiet)')
+            type='choice',
+            choices=['state', 'quiet'],
+            help='status output selection (choices: state, quiet, default: '
+                 'state)')
         parser.add_option(
             '--parallel', dest='nparallel', type='int', default=1,
             help='set number of events to process in parallel')
@@ -530,17 +533,13 @@ def command_go(args):
     event_names = args[1:]
 
     config = grond.read_config(config_path)
-    if options.status == 'quiet':
-        status = ()
-    else:
-        status = tuple(options.status.split(','))
 
     grond.go(
         config,
         event_names=event_names,
         force=options.force,
         preserve=options.preserve,
-        status=status,
+        status=options.status,
         nparallel=options.nparallel)
 
 
