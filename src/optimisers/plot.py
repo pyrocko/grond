@@ -24,6 +24,7 @@ def fixlim(lo, hi):
 
 
 class SequencePlot(PlotConfig):
+    ''' Draws single parameter values as a function of optimization progress'''
     name = 'sequence'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
     misfit_cutoff = Float.T(optional=True)
@@ -213,6 +214,7 @@ class SequencePlot(PlotConfig):
 
 
 class ContributionsPlot(PlotConfig):
+    '''Relative contribution of single targets to the global misfit'''
     name = 'contributions'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
 
@@ -347,6 +349,7 @@ class ContributionsPlot(PlotConfig):
 
 
 class BootstrapPlot(PlotConfig):
+    ''' Sorted misfit (descending) of single bootstrap chains'''
     name = 'bootstrap'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
 

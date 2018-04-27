@@ -47,10 +47,10 @@ Preparing your ``grond`` Data
 **Seismic Waveforms Data:**
 
 Required input files are:
-	- waveform data (.seed or .mseed format)
-	- response functions (.xml format) 
+	- waveform data (.mseed format or other formats supported by ``pyrocko``)
+	- response functions (StationXML format) 
 
-To download waveform data and instrument response information, you may follow this link: ``downloadwave``
+To download waveform data and instrument response information, you may follow this link: ``download wave``
 For significant earthquake, you can assemble your dataset from the global seismic network using ``pyrocko`` functions.
 
 **InSAR Data:**
@@ -66,7 +66,7 @@ Required input files are:
 
 **GNSS Data:**
 
-Requiered input file is a simple ``YAML`` file containing GNSS station positions, displacement values and measurement uncertainties. A gnss.yml-file should look like as follows:
+Required input file is a simple ``YAML`` file containing GNSS station positions, displacement values and measurement uncertainties. A gnss.yml-file should look like as follows:
 
 .. code-block :: sh
 
@@ -101,20 +101,19 @@ Requiered input file is a simple ``YAML`` file containing GNSS station positions
 Setup of Green's Functions Databases defining the Medium
 --------------------------------------------------------
 
-A Green's functions (GF) database is needed. You can either download from the online repository (`online GF databases`_) or compute them with the `fomosto`_ module of ``pyrocko``. Depending on the data sets, different GF databases are suitable:
+A Green's functions (GF) database is needed that stores GF for many possible source-receiver configurations. You can either download from the online repository (`online GF databases`_) or compute them with the `fomosto`_ module of ``pyrocko``. Depending on the data sets, different setups of GF stores or methods for calculation are suitable:
 
 .. _fomosto: https://pyrocko.org/docs/current/apps/fomosto/index.html
 
 
 **GF's for global teleseismic waveform data:**
 
-For you general point-source analysis a global store of Green's functions with a sampling frequency of 2 Hz may suffice. 
+For a large global earthquakes point-source analysis a global GF store of Green's functions with a sampling frequency of 2 Hz may suffice. 
 
 ::
+        fomosto download kinherd global_2s store 
 
-	fomosto download kinherd global_2s store 
-
-You can browse for more GF stores to `download here`_.
+You can browse here for more available `GF stores`_.
 
 **GF's for regional and local seismic waveform data:**
 
@@ -138,8 +137,8 @@ Identically, for static near-field displacement (e.g. InSAR and/or GNSS data set
 
 .. code-block :: sh
 
+    grond init --waveforms > <project>.gronf
     grond init --insar > <project>.gronf
-    grond init --gnss > <project>.gronf
     grond init --gnss --insar > <project>.gronf   
  
 The ``targets`` (data and misfit setups for seimsic waveforms, InSAR and or GNSS data) can be combined and sources types can be exchanged. A ``grond`` configuration file showing all possible options with their default values is given using: 
@@ -180,11 +179,14 @@ During the optimization, results are aggregated in an output directory, referred
 Results plots, exports and reports
 ----------------------------------
 
-To visualize the results run:
+To visualize the results check your plot options with
 
 ::
 
-	grond plot <plotnames> <rundir> 
+	grond plot list <rundir> 
+
+For more information on the prepared result plots see `grond plot details`_.
+
 
 The results can be exported in various ways by running the subcommand:
 
@@ -207,7 +209,7 @@ to aggregate all results to a browsable summary, (by default) under the director
 .. _qseis: https://pyrocko.org/docs/current/apps/fomosto/tutorial.html#creating-a-new-green-s-function-store
 .. _psgrn: https://pyrocko.org/docs/current/apps/fomosto/tutorial.html#creating-a-new-green-s-function-store
 .. _online GF databases: http://kinherd.org:8080/gfws/static/stores/
-.. _download here: http://kinherd.org:8080/gfws/
-
+.. _GF stores: http://kinherd.org:8080/gfws/
+.. _grond plot details: 
 
 

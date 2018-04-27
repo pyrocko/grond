@@ -34,6 +34,7 @@ def eigh_sorted(mat):
 
 
 class JointparPlot(PlotConfig):
+    '''Plots of all two-dimensional model parameter distributions'''
     name = 'jointpar'
     size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
     misfit_cutoff = Float.T(optional=True)
@@ -279,6 +280,7 @@ class JointparPlot(PlotConfig):
 
 
 class HistogramPlot(PlotConfig):
+    '''Histogram plots of all parameters of the solution space'''
     name = 'histogram'
     size_cm = Tuple.T(2, Float.T(), default=(12.5, 7.5))
     exclude = List.T(String.T())
@@ -546,6 +548,7 @@ class MTDecompositionPlot(PlotConfig):
 
 
 class LocationPlot(PlotConfig):
+    ''' Map of moment tensor location results '''
     name = 'location_mt'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
@@ -650,6 +653,7 @@ class LocationPlot(PlotConfig):
 
 
 class HudsonPlot(PlotConfig):
+    ''' Illustration of the solution distribution of decomposed moment tensor '''
     name = 'hudson'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
