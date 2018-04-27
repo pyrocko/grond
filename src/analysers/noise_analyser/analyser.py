@@ -105,17 +105,18 @@ def seismic_noise_variance(traces, engine, event, targets,
                                 and arrival_time_pre < arrival_time:
 
                             stat_w = 0.
-                            logger.info('Noise Analyser found Event %s \
-                                        phase onset of %s for %s'
-                                         % (ev.name, phase_def, target.name))
+                            logger.info(
+                                'Noise analyser found event %s phase onset of '
+                                '%s for %s' % (
+                                    ev.name, phase_def, target.name))
 
                         if arrival_time_pre > arrival_time-30.*60.\
                                 and arrival_time_pre < arrival_time - \
                                 pre_event_noise_duration:
                             stat_w *= 0.5
-                            logger.info('Noise Analyser found Event %s \
-                                        possibly contanimating the noise'
-                                         % ev.name)
+                            logger.info(
+                                'Noise analyser found event %s possibly '
+                                'contaminating the noise' % ev.name)
 
                             # this should be magnitude dependent
                     except Exception:
@@ -225,9 +226,9 @@ class NoiseAnalyserResult(AnalyserResult):
 class NoiseAnalyserConfig(AnalyserConfig):
     nwindows = Int.T(default=1)
     pre_event_noise_duration = Float.T(default=0.)
-    phase_def = String.T(default='P',
-                            help='Onset of phase_def used \
-                            for upper limit of window')
+    phase_def = String.T(
+        default='P',
+        help='Onset of phase_def used for upper limit of window')
     check_events = Bool.T(default=False)
 
     def get_analyser(self):

@@ -34,21 +34,19 @@ def eigh_sorted(mat):
 
 
 class JointparPlot(PlotConfig):
-    '''Plots of all two-dimensional model parameter distributions
-
-    The JointparPlot reveals relationships between model parameters,
-    like  strong correlations or non-linear trade-offs.
-    A subset of model solutions (from harvest) is shown in two 
-    dimensions for all possible parameter pairs as points. 
-    The point color indicates the misfit for the model solution 
-    with cold colors (blue) for high misfit models and warm colors (red)
-    for low misfit models. The plot extend is defined by the given
-    parameter bounds and shows the model space of the optimsation.
-    Dark gray boxes show the reference solution if given in the
-    event.txt.
-     
-
     '''
+    Plots of all two-dimensional model parameter distributions
+
+    The JointparPlot reveals relationships between model parameters, like
+    strong correlations or non-linear trade-offs. A subset of model solutions
+    (from harvest) is shown in two dimensions for all possible parameter pairs
+    as points. The point color indicates the misfit for the model solution with
+    cold colors (blue) for high misfit models and warm colors (red) for low
+    misfit models. The plot extend is defined by the given parameter bounds and
+    shows the model space of the optimsation. Dark gray boxes show the
+    reference solution if given in the event.txt.
+    '''
+
     name = 'jointpar'
     size_cm = Tuple.T(2, Float.T(), default=(20., 20.))
     misfit_cutoff = Float.T(optional=True)
@@ -294,18 +292,20 @@ class JointparPlot(PlotConfig):
 
 
 class HistogramPlot(PlotConfig):
-    '''Histograms or Gaussian kernel densities (default) of all parameters
+    '''
+    Histograms or Gaussian kernel densities (default) of all parameters
 
-    The histograms (by default shown as Gaussian kernel densities) show 
-    (red curved solid line) the distributions of the parameters (marginals) 
-    along with some characteristics: The red solid vertical line gives 
-    the median of the distribution and the dashed red vertical line the
-    mean value. Dark gray vertical lines show reference values if given in
-    the event.txt file. The overlapping red-shaded areas show the 68% confidence
-    intervals (innermost area), the 90% confidence intervals (middle
-    area) and the minimum and maximum values (widest area). The plot
-    ranges are defined by the given parameter bounds and show the model
-    space.'''
+    The histograms (by default shown as Gaussian kernel densities) show (red
+    curved solid line) the distributions of the parameters (marginals) along
+    with some characteristics: The red solid vertical line gives the median of
+    the distribution and the dashed red vertical line the mean value. Dark gray
+    vertical lines show reference values if given in the event.txt file. The
+    overlapping red-shaded areas show the 68% confidence intervals (innermost
+    area), the 90% confidence intervals (middle area) and the minimum and
+    maximum values (widest area). The plot ranges are defined by the given
+    parameter bounds and show the model space.
+    '''
+
     name = 'histogram'
     size_cm = Tuple.T(2, Float.T(), default=(12.5, 7.5))
     exclude = List.T(String.T())
@@ -429,10 +429,10 @@ class HistogramPlot(PlotConfig):
 
 
 class MTDecompositionPlot(PlotConfig):
-    ''' Moment tensor decomposition plot 
-    
-    
     '''
+    Moment tensor decomposition plot.
+    '''
+
     name = 'mt_decomposition'
     size_cm = Tuple.T(2, Float.T(), default=(15., 5.))
 

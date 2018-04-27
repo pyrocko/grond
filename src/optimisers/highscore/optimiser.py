@@ -325,7 +325,7 @@ class Chains(object):
         return self.chains_m[ichain, :self.nlinks]
 
     def misfit(self, ichain, ilink):
-        assert ilink < nlinks
+        assert ilink < self.nlinks
         return self.chains_m[ichain, ilink]
 
     def mean_model(self, ichain=None):
@@ -524,11 +524,13 @@ class HighScoreOptimiser(Optimiser):
                 hist_data, _, _ = stats.binned_statistic(
                     num.arange(data.size), data,
                     bins=str_length)
-                _, bins = num.histogram(hist_data,
+                _, bins = num.histogram(
+                    hist_data,
                     bins=num.linspace(0., 1., len(sparks)))
                 vec = num.digitize(hist_data, bins)
                 return ''.join([sparks[b-1] for b in vec])
-            except:
+
+            except Exception:
                 return ''
 
         return OptimiserStatus(
