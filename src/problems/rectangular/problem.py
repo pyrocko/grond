@@ -35,7 +35,7 @@ class RectangularProblemConfig(ProblemConfig):
         problem = RectangularProblem(
             name=expand_template(self.name_template, subs),
             apply_balancing_weights=self.apply_balancing_weights,
-            apply_staion_noise_weights=self.apply_station_noise_weights,
+            apply_station_noise_weights=self.apply_station_noise_weights,
             base_source=base_source,
             distance_min=self.distance_min,
             target_groups=target_groups,

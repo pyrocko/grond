@@ -623,11 +623,20 @@ def command_plot(args):
         help_and_die(parser, 'two or three arguments required')
 
     env = Environment(*args[1:])
-
     from grond import plot
     if args[0] == 'list':
-        for plot_name in plot.get_plot_names(env):
-            print(plot_name)
+        print('Usage `grond plot <plot_name>'
+              ' ( <rundir> | <configfile> <eventname> )`')
+        print('Available plots for this rundir:')
+        plot_names, plot_doc = zip(*[(pc.name, pc.__doc__)
+                                     for pc in env.get_plot_classes()])
+        plot_descs = [doc.split('\n')[0].strip() for doc in plot_doc]
+        left_spaces = max([len(pn) for pn in plot_names])
+
+        print()
+        for name, desc in zip(plot_names, plot_descs):
+            print('{name:<{ls}} - {desc}'.format(
+                ls=left_spaces, name=name, desc=desc))
 
     elif args[0] == 'config':
         plot_config_collection = plot.get_plot_config_collection(env)

@@ -25,11 +25,13 @@ The Satellite Target
 --------------------
 
 .. automodule :: grond.targets.satellite
-    :members: SatelliteTargetGroup, SatelliteMisfitTarget, SatelliteMisfitConfig, SatelliteMisfitResult
+    :members: SatelliteTargetGroup, SatelliteMisfitTarget, SatelliteMisfitConfig,
+        SatelliteMisfitResult
 
 
-The GNSS Target
+The GNSS Campaign Target
 -------------------------
 
 .. automodule :: grond.targets.gnss_campaign
-    :members: GNSSTargetGroup, GNSSMisfitTarget, GNSSMisfitConfig, GNSSMisfitResult
+    :members: GNSSCampaignTargetGroup, GNSSCampaignMisfitTarget,
+        GNSSCampaignMisfitConfig, GNSSCampaignMisfitResult

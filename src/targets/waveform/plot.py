@@ -123,9 +123,16 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
 
 
 class CheckWaveformsPlot(PlotConfig):
+    ''' Plot for checking the waveforms fit with a number of synthetics '''
     name = 'check_waveform'
-    size_cm = Tuple.T(2, Float.T(), default=(10., 7.5))
-    n_random_synthetics = Int.T(default=10)
+
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(10., 7.5),
+        help='width and length of the figure in cm')
+    n_random_synthetics = Int.T(
+        default=10,
+        help='Number of Synthetics to generate')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -150,7 +157,10 @@ class CheckWaveformsPlot(PlotConfig):
                 results_list.append(results)
 
         cm.create_group_mpl(self, self.draw_figures(
-            sources, problem.targets, results_list))
+            sources, problem.targets, results_list),
+            title='Waveform Check',
+            section='results.waveform',
+            description=self.__class__.__doc__)
 
     def draw_figures(self, sources, targets, results_list):
         for itarget, target, results in zip(
@@ -250,12 +260,25 @@ class CheckWaveformsPlot(PlotConfig):
 
 
 class FitsWaveformEnsemblePlot(PlotConfig):
+    ''' Plot showing all waveform fits for the ensemble of solutions'''
+    
     name = 'fits_waveform_ensemble'
-    size_cm = Tuple.T(2, Float.T(), default=(29.7, 21.0))
-    misfit_cutoff = Float.T(optional=True)
-    color_parameter = String.T(default='misfit')
-    font_size = Float.T(default=8)
-    font_size_title = Float.T(default=10)
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(29.7, 21.0),
+        help='width and length of the figure in cm')
+    misfit_cutoff = Float.T(
+        optional=True,
+        help='Plot fits for models up to this misfit value')
+    color_parameter = String.T(
+        default='misfit',
+        help='Choice of value to color, options: dist and misfit')
+    font_size = Float.T(
+        default=8,
+        help='Font Size of all fonts, except title')
+    font_size_title = Float.T(
+        default=10,
+        help='Font size of title')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -263,7 +286,12 @@ class FitsWaveformEnsemblePlot(PlotConfig):
         environ.setup_modelling()
         ds = environ.get_dataset()
         history = environ.get_history(subset='harvest')
-        cm.create_group_mpl(self, self.draw_figures(ds, history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(ds, history),
+            title='Waveform fits for the ensemble',
+            section='results.waveform',
+            description=self.__class__.__doc__)
 
     def draw_figures(self, ds, history):
 
@@ -330,8 +358,8 @@ class FitsWaveformEnsemblePlot(PlotConfig):
                     continue
 
                 itarget = target_index[target]
-                w = target.get_combined_weight(problem.apply_balancing_weights)
-
+                w = target.get_combined_weight(problem.apply_balancing_weights, problem.apply_station_noise_weights)
+                
                 if target.misfit_config.domain == 'cc_max_norm':
                     tref = (
                         result.filtered_obs.tmin + result.filtered_obs.tmax) \
@@ -663,10 +691,18 @@ class FitsWaveformEnsemblePlot(PlotConfig):
 
 
 class FitsWaveformPlot(PlotConfig):
+    ''' Plot showing the waveform fits for the best model '''
     name = 'fits_waveform'
-    size_cm = Tuple.T(2, Float.T(), default=(29.7, 21.0))
-    font_size = Float.T(default=8)
-    font_size_title = Float.T(default=10)
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(29.7, 21.),
+        help='width and length of the figure in cm')
+    font_size = Float.T(
+        default=8,
+        help='Font Size of all fonts, except title')
+    font_size_title = Float.T(
+        default=10,
+        help='Font Size of title')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -674,7 +710,12 @@ class FitsWaveformPlot(PlotConfig):
         environ.setup_modelling()
         ds = environ.get_dataset()
         history = environ.get_history(subset='harvest')
-        cm.create_group_mpl(self, self.draw_figures(ds, history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(ds, history),
+            title='Waveform fits for best model',
+            section='results.waveform',
+            description=self.__class__.__doc__)
 
     def draw_figures(self, ds, history):
 
@@ -723,7 +764,7 @@ class FitsWaveformPlot(PlotConfig):
                 continue
 
             itarget = target_index[target]
-            w = target.get_combined_weight(problem.apply_balancing_weights)
+            w = target.get_combined_weight(problem.apply_balancing_weights, problem.apply_station_noise_weights)
 
             if target.misfit_config.domain == 'cc_max_norm':
                 tref = (
