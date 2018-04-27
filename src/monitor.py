@@ -136,8 +136,9 @@ class GrondMonitor(object):
                  col_param_width=col_param_width,
                  col_width=self.col_width))
 
-        lines[0:0] = ['\033[2J']
+        lines[0:0] = ['\033[%i;1H\033[1J\033[1;1H' % (len(lines)+2)]
         lnadd('')
+        lnadd('\033[%i;1H' % (len(lines)+12))
         print('\n'.join(lines))
 
     @classmethod
