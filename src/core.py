@@ -437,7 +437,7 @@ def go(config, event_names=None,
        nparallel=1, status=('state',)):
 
     status = tuple(status)
-    g_data = (config, force, preserve, 
+    g_data = (config, force, preserve,
               status, nparallel, event_names)
     g_state[id(g_data)] = g_data
 
@@ -454,7 +454,8 @@ def go(config, event_names=None,
 
 def process_event(ievent, g_data_id):
 
-    config, force, preserve, status, nparallel, event_names = g_state[g_data_id]
+    config, force, preserve, status, nparallel, event_names = \
+        g_state[g_data_id]
 
     event_name = event_names[ievent]
     nevents = len(event_names)

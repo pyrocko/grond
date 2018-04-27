@@ -9,7 +9,7 @@ import time
 from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, Bool, List, Dict, Int
 
-from ..meta import ADict, Parameter, GrondError, xjoin
+from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
@@ -83,7 +83,6 @@ class Problem(Object):
             if group in p.groups:
                 params.append((p.name, model[ip]))
         return ADict(params)
-
 
     def get_parameter_array(self, d):
         arr = num.zeros(self.nparameters, dtype=num.float)
@@ -207,7 +206,7 @@ class Problem(Object):
 
     def random_uniform(self, xbounds):
         x = num.random.uniform(0., 1., self.nparameters)
-        x *= (xbounds[:, 1] - xbound[:, 0])
+        x *= (xbounds[:, 1] - xbounds[:, 0])
         x += xbounds[:, 0]
         return x
 
@@ -225,11 +224,13 @@ class Problem(Object):
                 xs, self.dependants[i-self.nparameters].name)
 
     def get_target_weights(self):
+        abw = self.apply_balancing_weights
+        abn = self.apply_station_noise_weights
         if self._target_weights is None:
             self._target_weights = num.concatenate(
                 [target.get_combined_weight(
-                    apply_balancing_weights=self.apply_balancing_weights,
-                    apply_station_noise_weights=self.apply_station_noise_weights)
+                    apply_balancing_weights=abw,
+                    apply_station_noise_weights=abn)
                  for target in self.targets])
 
         return self._target_weights
