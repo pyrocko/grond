@@ -59,12 +59,19 @@ class Config(HasPaths):
     engine_config = EngineConfig.T(
         default=EngineConfig.D(),
         help=':class:`pyrocko.gf.LocalEngine` configuration')
+    event_names = List.T(
+        gf.StringID.T(),
+        help='Restrict application to given event names. If empty, all events '
+             'found through the dataset configuration are considered.')
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
 
     def get_event_names(self):
-        return self.dataset_config.get_event_names()
+        if self.event_names:
+            return self.event_names
+        else:
+            return self.dataset_config.get_event_names()
 
     @property
     def nevents(self):
