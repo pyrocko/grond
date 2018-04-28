@@ -542,7 +542,8 @@ def process_event(ievent, g_data_id):
         logger.error(str(e))
 
     finally:
-        monitor.terminate()
+        if monitor:
+            monitor.terminate()
 
     tstop = time.time()
     logger.info(
