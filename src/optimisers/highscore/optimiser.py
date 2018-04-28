@@ -518,20 +518,15 @@ class HighScoreOptimiser(Optimiser):
 
         glob_misfits = chains.misfits(ichain=0)
 
-        def spark_plot(data, str_length=25):
-            try:
-                from scipy import stats
-                hist_data, _, _ = stats.binned_statistic(
-                    num.arange(data.size), data,
-                    bins=str_length)
-                _, bins = num.histogram(
-                    hist_data,
-                    bins=num.linspace(0., 1., len(sparks)))
-                vec = num.digitize(hist_data, bins)
-                return ''.join([sparks[b-1] for b in vec])
+        def spark_plot(data, bins):
+            hist, _ = num.histogram(data, bins)
+            hist_max = num.max(hist)
+            if hist_max == 0.0:
+                hist_max = 1.0
+            hist = hist / hist_max
+            vec = num.digitize(hist, num.linspace(0., 1., len(sparks)))
+            return ''.join([sparks[b-1] for b in vec])
 
-            except Exception:
-                return ''
 
         return OptimiserStatus(
             row_names=row_names,
@@ -540,9 +535,11 @@ class HighScoreOptimiser(Optimiser):
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
             extra_header='Optimiser phase: %s\n'
-                         'Global Chain Misfit Distribution: ₀%s¹'
+                         'Global chain misfit distribution: ₀%s¹'
                          % (phase.__class__.__name__,
-                            spark_plot(glob_misfits)))
+                            spark_plot(
+                                glob_misfits,
+                                num.linspace(0., 1., 25))))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):

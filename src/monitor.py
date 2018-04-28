@@ -120,11 +120,11 @@ class GrondMonitor(threading.Thread):
         def fmt(s):
             return util.gform(s, significant_digits=(self.col_width-1-6)//2)
 
-        lnadd('Problem name: {p.name}'
+        lnadd('Problem:   {p.name}'
               '\t({s.runtime} - remaining {s.runtime_remaining}'
               ' @ {s.iter_per_second:.1f} iter/s)'
               .format(s=self, p=problem))
-        lnadd('Iteration {s.iiter} / {s.niter}'
+        lnadd('Iteration: {s.iiter} / {s.niter}'
               .format(s=self))
         if optimiser_status.extra_header is not None:
             lnadd(optimiser_status.extra_header)
