@@ -190,6 +190,8 @@ def forward(rundir_or_config_path, event_names):
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
+    logger.info('harvesting problem %s...' % problem.name)
+
     if problem is None:
         problem, xs, misfits = load_problem_info_and_data(rundir)
     else:
@@ -239,6 +241,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+
+    logger.info('done harvesting problem %s' % problem.name)
 
 
 def get_event_names(config):
@@ -505,8 +509,9 @@ def process_event(ievent, g_data_id):
 
     problem.dump_problem_info(rundir)
 
+    monitor = None
     if status == 'state':
-        GrondMonitor.watch(rundir)
+        monitor = GrondMonitor.watch(rundir)
 
     xs_inject = None
     synt = ds.synthetic_test
@@ -535,6 +540,9 @@ def process_event(ievent, g_data_id):
 
     except GrondError as e:
         logger.error(str(e))
+
+    finally:
+        monitor.terminate()
 
     tstop = time.time()
     logger.info(

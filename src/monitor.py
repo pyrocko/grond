@@ -57,7 +57,7 @@ class GrondMonitor(threading.Thread):
         self._iter_buffer = RingBuffer(20)
 
     def run(self):
-        logger.info('Waiting to follow %s' % self.rundir)
+        logger.debug('Waiting to follow rundir %s' % self.rundir)
 
         self.history = ModelHistory.follow(self.rundir)
 
@@ -73,14 +73,16 @@ class GrondMonitor(threading.Thread):
         self.history.add_listener(self)
 
         print('\033c')
-        self.start_watch()
 
-    def start_watch(self):
+        ii = 0
         while True:
+            ii += 1
             self.history.update()
-            time.sleep(.1)
+            time.sleep(0.1)
             if self.sig_terminate.is_set():
-                raise AttributeError
+                break
+
+        logger.debug('monitor thread exiting')
 
     @property
     def runtime(self):
@@ -154,21 +156,12 @@ class GrondMonitor(threading.Thread):
         print('\n'.join(lines))
 
     def terminate(self):
-        print('Daring to calm Grond...')
+        logger.debug('setting thread termination flag')
         self.sig_terminate.set()
-        raise ValueError
+        self.join()
 
     @classmethod
     def watch(cls, rundir):
         monitor = cls(rundir)
-
-        def terminate(*args):
-            monitor.terminate()
-            monitor.join()
-
-        signal.signal(signal.SIGINT, terminate)
-        signal.signal(signal.SIGTERM, terminate)
-
         monitor.start()
-
         return monitor
