@@ -163,10 +163,11 @@ class CheckWaveformsPlot(PlotConfig):
             description=self.__class__.__doc__)
 
     def draw_figures(self, sources, targets, results_list):
+        results_list = list(zip(*results_list))
         for itarget, target, results in zip(
                 range(len(targets)), targets, results_list):
 
-            if results:
+            if isinstance(target, WaveformMisfitTarget) and results:
                 item = PlotItem(name='t%i' % itarget)
                 item.attributes['targets'] = [target.string_id()]
                 fig = self.draw_figure(sources, target, results)
