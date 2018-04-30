@@ -108,6 +108,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def weights(self):
+        return num.matrix(self.campaign.get_correlation_matrix())
+
+        # deprecated
         if self._weights is None:
             self._weights = 1./self.obs_sigma
             self._weights[self._weights == num.inf] = 1.
