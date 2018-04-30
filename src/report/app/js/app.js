@@ -16,7 +16,7 @@ function ReportEntry(obj) { copy_properties(obj, this); }
 var yaml_type_map = [
     ['!grond.ReportEntry', Dummy],
     ['!grond.ParameterStats', Dummy],
-    ['!grond.TargetAnalysisResult', Dummy],
+    ['!grond.TargetBalancingAnalyserResult', Dummy],
     ['!grond.ResultStats', Dummy],
     ['!grond.WaveformMisfitTarget', Dummy],
     ['!grond.WaveformMisfitConfig', Dummy],
