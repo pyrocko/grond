@@ -51,7 +51,7 @@ class SatelliteTargetPlot(PlotConfig):
             title='Satellite Surface Displacements',
             section='results.satellite',
             description='Maps showing surface displacements'
-                        ' from satellite and modelled data')
+                        ' from satellite and modelled data.')
 
     def draw_static_fits(self, ds, history, optimiser):
         from pyrocko.orthodrome import latlon_to_ne_numpy

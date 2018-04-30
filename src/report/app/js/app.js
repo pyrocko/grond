@@ -82,16 +82,6 @@ function parse_fields(fields, input, output, error, factor, parse) {
 
 angular.module('reportApp', ['ngRoute'])
 
-    .controller('NavigationController', function($scope, $route, $routeParams, $location) {
-        $scope.$route = $route;
-        $scope.$location = $location;
-        $scope.$routeParams = $routeParams;
-
-        $scope.active = function(path) {
-            return (path === $location.path().substr(0,path.length)) ? 'active' : '';
-        };
-    })
-
     .config(function($routeProvider, $locationProvider) {
         $locationProvider.hashPrefix('');
         $routeProvider
@@ -135,6 +125,17 @@ angular.module('reportApp', ['ngRoute'])
         return funcs;
     })
 
+    .controller('NavigationController', function($scope, $route, YamlDoc, YamlMultiDoc, $routeParams, $location) {
+        $scope.$route = $route;
+        $scope.$location = $location;
+        $scope.$routeParams = $routeParams;
+
+        $scope.active = function(path) {
+            return (path === $location.path().substr(0,path.length)) ? 'active' : '';
+        };
+
+    })
+
     .controller('ReportListController', function($scope, YamlMultiDoc) {
         $scope.report_entries = [];
 
@@ -145,10 +146,11 @@ angular.module('reportApp', ['ngRoute'])
     })
 
     .controller('ReportController', function(
-            $scope, YamlDoc, YamlMultiDoc, $routeParams) {
+            $scope, YamlDoc, YamlMultiDoc, $routeParams, $location, $anchorScroll) {
 
         $scope.stats = null;
         $scope.plot_groups = [];
+        $anchorScroll.yOffset = 60;
 
         $scope.path = $routeParams.report_path;
 
@@ -181,6 +183,14 @@ angular.module('reportApp', ['ngRoute'])
                     query_group);
                 },
             {schema: report_schema});
+
+        $scope.scrollTo = function(id) {
+            var old = $location.hash();
+            $location.hash(id);
+            $anchorScroll();
+            //reset to old to keep any additional routing logic from kicking in
+            $location.hash(old);
+        };
     })
 
     .filter('eround', function() {
@@ -205,4 +215,12 @@ angular.module('reportApp', ['ngRoute'])
             var fill = ' ';
             return fill.repeat(Math.max(0, 5 - dotpos)) + input;
         };
+    })
+
+    .run(function($rootScope, $location, $anchorScroll, $routeParams) {
+      //when the route is changed scroll to the proper element.
+      $rootScope.$on('$routeChangeSuccess', function(newRoute, oldRoute) {
+        $location.hash($routeParams.scrollTo);
+        $anchorScroll();  
+      });
     });

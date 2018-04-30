@@ -50,7 +50,8 @@ class GNSSTargetMisfitPlot(PlotConfig):
             self.draw_gnss_fits(ds, history, optimiser),
             title='Static GNSS Surface Displacements',
             section='results.gnss',
-            description=self.__class__.__doc__)
+            description='Maps showing surface displacements of'
+                        ' GNSS campaigns and the mode.')
 
     def draw_gnss_fits(self, ds, history, optimiser):
         problem = history.problem

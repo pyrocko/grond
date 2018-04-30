@@ -739,12 +739,19 @@ def command_report(args):
     matplotlib.use('Agg')
 
     from grond.environment import Environment
-    from grond.report import report
+    from grond.report import report, report_index
 
     def setup(parser):
-        pass
+        parser.add_option(
+            '--index-only', dest='index_only', action='store_true',
+            help='Create index only.')
 
     parser, options, args = cl_parse('report', args, setup)
+
+    if options.index_only:
+        report_index('reports/')
+        sys.exit(0)
+
     if len(args) < 1:
         help_and_die(parser, 'arguments required')
 
