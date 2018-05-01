@@ -744,7 +744,10 @@ def command_report(args):
     def setup(parser):
         parser.add_option(
             '--index-only', dest='index_only', action='store_true',
-            help='Create index only.')
+            help='Create index only')
+        parser.add_option(
+            '--open', dest='open', action='store_true',
+            help='Open webpage')
 
     parser, options, args = cl_parse('report', args, setup)
 
@@ -780,6 +783,10 @@ def command_report(args):
 
         except grond.GrondError as e:
             die(str(e))
+
+    if options.open:
+        import webbrowser
+        webbrowser.open('report/index.html')
 
 
 def command_qc_polarization(args):
