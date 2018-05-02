@@ -1,6 +1,23 @@
-<div class="container-fluid">
-    <h1>Run {{ path }}</h1>
-
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo03" aria-controls="navbarTogglerDemo03" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand" href="#/list">
+      <!-- <img src="/assets/brand/bootstrap-solid.svg" width="30" height="30" class="d-inline-block align-top" alt=""> -->
+      Grond Reports
+    </a>
+    <div class="collapse navbar-collapse" ng-controller="ReportController">
+        <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+          <li class="nav-item" ng-repeat="group in plot_groups">
+              <a href="" ng-click="scrollTo(group.name)" class="nav-link" >{{ group.name }}</a>
+          </li>
+        </ul>
+        <form class="form-inline my-2 my-lg-0">
+          <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search" ng-model="keyword">
+        </form>
+    </div>
+</nav>
+<div class="container-fluid" style="padding-top: 4rem;">
     <div ng-if="stats">
         <h2>Results</h2>
 
@@ -33,12 +50,12 @@
         </table>
     </div>
 
-    <h2>Plots</h2>
-    <input ng-model="keyword">
-    <div ng-repeat="group in plot_groups">
-        <h3>Plot: {{ plot_group.name }}</h3>
+    <div ng-repeat="group in plot_groups" class="container">
+        <h3 id="{{ group.name }}">{{ group.name }}</h3>
         <span ng-repeat="item in group.items | filter : keyword">
-            <img style="max-width: 100%;" src="{{ image_path(group, item) }}" />
+            <img style="max-width: 100%;" class="img-fluid" src="{{ image_path(group, item) }}" />
         </span>
+        <p>{{ group.description }}</p>
+        <hr />
     </div>
 </div>

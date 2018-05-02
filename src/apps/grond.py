@@ -739,12 +739,22 @@ def command_report(args):
     matplotlib.use('Agg')
 
     from grond.environment import Environment
-    from grond.report import report
+    from grond.report import report, report_index
 
     def setup(parser):
-        pass
+        parser.add_option(
+            '--index-only', dest='index_only', action='store_true',
+            help='Create index only')
+        parser.add_option(
+            '--open', dest='open', action='store_true',
+            help='Open webpage')
 
     parser, options, args = cl_parse('report', args, setup)
+
+    if options.index_only:
+        report_index('reports/')
+        sys.exit(0)
+
     if len(args) < 1:
         help_and_die(parser, 'arguments required')
 
@@ -773,6 +783,10 @@ def command_report(args):
 
         except grond.GrondError as e:
             die(str(e))
+
+    if options.open:
+        import webbrowser
+        webbrowser.open('report/index.html')
 
 
 def command_qc_polarization(args):
