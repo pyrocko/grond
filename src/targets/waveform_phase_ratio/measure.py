@@ -3,7 +3,6 @@ from pyrocko import gf, trace
 from pyrocko.guts import Object, Float, StringChoice, List, String
 from pyrocko.gui import marker
 
-from . import target as base
 
 guts_prefix = 'grond'
 
@@ -121,6 +120,8 @@ class FeatureMeasure(Object):
             trs=None,
             extra_responses=[],
             debug=False):
+
+        from . import target as base
 
         trs_processed = []
         trs_orig = []

@@ -148,12 +148,16 @@ class Problem(Object):
         return len(self.targets)
 
     @property
-    def ntargets_waveform(self):
+    def nwaveform_targets(self):
         return len(self.waveform_targets)
 
     @property
-    def ntargets_static(self):
+    def nsatellite_targets(self):
         return len(self.satellite_targets)
+
+    @property
+    def ngnss_targets(self):
+        return len(self.gnss_targets)
 
     @property
     def nmisfits(self):

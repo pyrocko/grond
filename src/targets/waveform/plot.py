@@ -731,7 +731,7 @@ class FitsWaveformPlot(PlotConfig):
             target.set_dataset(ds)
 
         target_index = dict(
-            (target, i) for (i, target) in enumerate(problem.waveform_targets))
+            (target, i) for (i, target) in enumerate(problem.targets))
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)
@@ -758,11 +758,7 @@ class FitsWaveformPlot(PlotConfig):
 
         dtraces = []
         for target, result in zip(problem.targets, results):
-            if isinstance(result, gf.SeismosizerError):
-                dtraces.append(None)
-                continue
-
-            if not isinstance(target, WaveformMisfitTarget):
+            if not isinstance(result, WaveformMisfitResult):
                 dtraces.append(None)
                 continue
 
