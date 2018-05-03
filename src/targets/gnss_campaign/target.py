@@ -114,7 +114,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         # deprecated
         if self._weights is None:
-            self._weights = 1./self.obs_sigma
+            self._weights = 1./self.obs_sigma**2
             self._weights[self._weights == num.inf] = 1.
         return self._weights
 
@@ -132,9 +132,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         res = obs - syn
 
         misfit_value = num.float(
-            num.sqrt((res * weights) * (res * weights).T))
+            num.sqrt((res * weights) * res.T))
         misfit_norm = num.float(
-            num.sqrt((obs * weights) * (obs * weights).T))
+            num.sqrt((obs * weights) * obs.T))
         result = GNSSCampaignMisfitResult(
             misfits=num.array([misfit_value, misfit_norm], dtype=num.float))
 
