@@ -131,10 +131,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         res = obs - syn
 
-        misfit_value = num.sqrt(
-            num.sum((res * weights)**2))
-        misfit_norm = num.sqrt(
-            num.sum((obs * weights)**2))
+        misfit_value = num.float(
+            num.sqrt((res * weights) * (res * weights).T))
+        misfit_norm = num.float(
+            num.sqrt((obs * weights) * (obs * weights).T))
         result = GNSSCampaignMisfitResult(
             misfits=num.array([misfit_value, misfit_norm], dtype=num.float))
 
