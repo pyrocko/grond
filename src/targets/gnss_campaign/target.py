@@ -94,7 +94,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
             self._obs_data = num.array([
                 [s.north.shift for s in self.campaign.stations],
                 [s.east.shift for s in self.campaign.stations],
-                [s.up.shift for s in self.campaign.stations]])
+                [s.up.shift for s in self.campaign.stations]])\
+              .ravel(order='F')
         return self._obs_data
 
     @property
@@ -103,22 +104,30 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
             self._sigma = num.array([
                 [s.north.sigma for s in self.campaign.stations],
                 [s.east.sigma for s in self.campaign.stations],
-                [s.up.sigma for s in self.campaign.stations]])
-        return self._obs_data
+                [s.up.sigma for s in self.campaign.stations]])\
+              .ravel(order='F')
+        return self._sigma
 
     @property
     def weights(self):
+        return num.matrix(self.campaign.get_correlation_matrix())
+
+        # deprecated
         if self._weights is None:
             self._weights = 1./self.obs_sigma
             self._weights[self._weights == num.inf] = 1.
         return self._weights
 
     def post_process(self, engine, source, statics):
+        # All data is ordered in vectors as
+        # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
         obs = self.obs_data
         weights = self.weights
+
         syn = num.array([statics['displacement.n'],
                          statics['displacement.e'],
-                         -statics['displacement.d']])
+                         -statics['displacement.d']])\
+            .ravel(order='F')
 
         res = obs - syn
 
@@ -127,8 +136,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         misfit_norm = num.sqrt(
             num.sum((obs * weights)**2))
         result = GNSSCampaignMisfitResult(
-            misfits=num.array([misfit_value, misfit_norm],
-                              dtype=num.float))
+            misfits=num.array([misfit_value, misfit_norm], dtype=num.float))
 
         if self._result_mode == 'full':
             result.statics_syn = statics
