@@ -110,7 +110,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def weights(self):
-        return num.matrix(self.campaign.get_correlation_matrix())
+        covar = num.matrix(self.campaign.get_covariance_matrix())
+        
+        return num.linalg.inv(covar)
 
         # deprecated
         if self._weights is None:
@@ -121,15 +123,15 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def post_process(self, engine, source, statics):
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
-        obs = self.obs_data
+        obs = num.matrix(self.obs_data)
         weights = self.weights
 
-        syn = num.array([statics['displacement.n'],
+        syn = num.matrix([statics['displacement.n'],
                          statics['displacement.e'],
                          -statics['displacement.d']])\
             .ravel(order='F')
 
-        res = obs - syn
+        res = num.matrix(obs - syn)
 
         misfit_value = num.float(
             num.sqrt((res * weights) * res.T))
