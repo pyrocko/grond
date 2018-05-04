@@ -30,8 +30,8 @@ class Trace(Object):
 
 
 class WaveformMisfitConfig(MisfitConfig):
-    fmin = Float.T()
-    fmax = Float.T()
+    fmin = Float.T(help='minimum frequency of bandpass filter' )
+    fmax = Float.T(help='maximum frequency of bandpass filter' )
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T(
         optional=True,
@@ -82,14 +82,31 @@ def log_exclude(target, reason):
 
 
 class WaveformTargetGroup(TargetGroup):
-    distance_min = Float.T(optional=True)
-    distance_max = Float.T(optional=True)
-    distance_3d_min = Float.T(optional=True)
-    distance_3d_max = Float.T(optional=True)
-    depth_min = Float.T(optional=True)
-    depth_max = Float.T(optional=True)
+    '''Handles seismogram targets or other targets of dynamic ground motion.
+    '''
+    distance_min = Float.T(
+        optional=True,
+        help='excludes targets nearer to source, along a great circle')
+    distance_max = Float.T(
+        optional=True,
+        help='excludes targets farther from source, along a great circle')
+    distance_3d_min = Float.T(
+        optional=True,
+        help='excludes targets nearer from source (direct distance)')
+    distance_3d_max = Float.T(
+        optional=True,
+        help='excludes targets farther from source (direct distance)')
+    depth_min = Float.T(
+        optional=True,
+        help='excludes targets with smaller depths')
+    depth_max = Float.T(
+        optional=True,
+        help='excludes targets with larger depths')
     limit = Int.T(optional=True)
-    channels = List.T(String.T(), optional=True)
+    channels = List.T(
+        String.T(),
+        optional=True,
+        help='set channels to include, e.g. \[\'Z\',\'T\'\]')
     misfit_config = WaveformMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
@@ -186,6 +203,10 @@ class TraceSpectrum(Object):
 
 
 class WaveformMisfitResult(gf.Result, MisfitResult):
+    '''Carries the observations for a target and corresponding synthetics.
+
+    A number of different waveform  or phase representations are possible.
+    '''
     processed_obs = Trace.T(optional=True)
     processed_syn = Trace.T(optional=True)
     filtered_obs = Trace.T(optional=True)

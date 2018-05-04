@@ -74,27 +74,30 @@ Required input file is a simple ``YAML`` file containing GNSS station positions,
     name: northridge
     stations:
     - !pf.gnss.GNSSStation
-    lat: 18.30
-    lon: -74.22
-    elevation: 0.0
-    depth: 0.0
-    code: ANGL
-    style: static
-    north: !pf.gnss.GNSSComponent
+      lat: 18.30
+      lon: -74.22
+      elevation: 0.0
+      depth: 0.0
+      code: ANGL
+      style: static
+      north: !pf.gnss.GNSSComponent
         unit: m
         shift: 5.7e-06
         sigma: 5.7e-06
-    east: !pf.gnss.GNSSComponent
+      east: !pf.gnss.GNSSComponent
         unit: m
         shift: -7e-07
         sigma: 8.8e-06
-    up: !pf.gnss.GNSSComponent
+      up: !pf.gnss.GNSSComponent
         unit: m
         shift: 2.93e-05
         sigma: 1.11e-05
+      correlation_ne: 0.002
+      correlation_eu: 0.0
+      correlation_nu: 0.0
     - !pf.gnss.GNSSStation
-    lat: 18.28
-    ...
+      lat: 18.28
+      ...
 
 (add more station information in the same manner) 
 
@@ -111,6 +114,7 @@ A Green's functions (GF) database is needed that stores GF for many possible sou
 For a large global earthquakes point-source analysis a global GF store of Green's functions with a sampling frequency of 2 Hz may suffice. 
 
 ::
+
         fomosto download kinherd global_2s store 
 
 You can browse here for more available `GF stores`_.
@@ -150,8 +154,7 @@ The ``targets`` (data and misfit setups for seimsic waveforms, InSAR and or GNSS
 Commented snippets of ``grond`` configuration files explaining all options can be found here for 
     * point-source optimizations based on waveforms: :download:`config_example_waveforms.yaml </../../examples/config_example_waveforms.yaml>`
     * finite source optimizations based on InSAR data: :download:`config_example_static.yaml </../../examples/config_example_static.yaml>`
-    #* full configuration documentation 
-
+    
     
 .. literalinclude :: /../../examples/config_example_static.yaml
     :language: yaml
@@ -174,6 +177,9 @@ Now, you may start the optimization for a given event using:
 	grond go <configfile> <eventname>
 
 During the optimization, results are aggregated in an output directory, referred to `<rundir>`  in the configuration. 
+
+You find detailed information on the misfit configuration and model space 
+sampling in the Chapter `Optimisers`_.
 
 
 Results plots, exports and reports
@@ -201,9 +207,12 @@ Finally, you may run:
 	grond report <rundir>
 	grond report-index reports 
 
-to aggregate all results to a browsable summary, (by default) under the directory `reports`.
+to aggregate all results to a browsable summary, (by default) under the directory `reports`. 
+Please find detailed information on the plots in the Chapter `Result Plots`_. 
 
 
+.. _Optimisers: ../library/optimisers.html
+.. _Result Plots: ./plots_docu.html
 .. _kite documentation: https://pyrocko.org/docs/kite/current/
 .. _downloadwave: https://pyrocko.org/docs/current/library/examples/fdsn_download.html
 .. _qseis: https://pyrocko.org/docs/current/apps/fomosto/tutorial.html#creating-a-new-green-s-function-store

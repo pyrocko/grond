@@ -11,16 +11,27 @@ logger = logging.getLogger('grond.target').getChild('gnss_campaign')
 
 
 class GNSSCampaignMisfitResult(MisfitResult):
+    '''Carries the observations for a target and corresponding synthetics. '''
     statics_syn = Dict.T(optional=True)
     statics_obs = Dict.T(optional=True)
 
 
 class GNSSCampaignMisfitConfig(MisfitConfig):
+
     pass
 
 
 class GNSSCampaignTargetGroup(TargetGroup):
-    gnss_campaigns = List.T(optional=True)
+    '''Handles static displacements from campaign GNSS observations, e.g GPS.
+
+    Station information, displacements and measurement errors are provided in
+    a `yaml`-file (please find an example in the documentation). The
+    measurement errors may consider correlations between components of a
+    station, but correlations between single stations is not considered.
+    '''
+    gnss_campaigns = List.T(
+        optional=True,
+        help='List of individual campaign names (`name` in `gnss.yaml` files).')
     misfit_config = GNSSCampaignMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
@@ -64,6 +75,11 @@ class GNSSCampaignTargetGroup(TargetGroup):
 
 
 class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
+    '''Handles and carries out operations related to the objective functions.
+
+    The objective function is here the weighted misfit between observed
+    and predicted surface displacements.
+    '''
     campaign_name = String.T()
     misfit_config = GNSSCampaignMisfitConfig.T()
 
