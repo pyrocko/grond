@@ -629,7 +629,7 @@ class Dataset(object):
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
 
-
+                try:
                     trs_restituted_group = []
                     trs_raw_group = []
                     if channel in deps:
