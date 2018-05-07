@@ -8,7 +8,7 @@ Grond - The Earthquake Buster's Documentation!
 
 .. toctree::
    install/index
-   documentation/idex
+   documentation/index
    documentation/plots_docu
    library/index
    :maxdepth: 2

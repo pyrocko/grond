@@ -11,16 +11,27 @@ logger = logging.getLogger('grond.target').getChild('gnss_campaign')
 
 
 class GNSSCampaignMisfitResult(MisfitResult):
+    '''Carries the observations for a target and corresponding synthetics. '''
     statics_syn = Dict.T(optional=True)
     statics_obs = Dict.T(optional=True)
 
 
 class GNSSCampaignMisfitConfig(MisfitConfig):
+
     pass
 
 
 class GNSSCampaignTargetGroup(TargetGroup):
-    gnss_campaigns = List.T(optional=True)
+    '''Handles static displacements from campaign GNSS observations, e.g GPS.
+
+    Station information, displacements and measurement errors are provided in
+    a `yaml`-file (please find an example in the documentation). The
+    measurement errors may consider correlations between components of a
+    station, but correlations between single stations is not considered.
+    '''
+    gnss_campaigns = List.T(
+        optional=True,
+        help='List of individual campaign names (`name` in `gnss.yaml` files).')
     misfit_config = GNSSCampaignMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
@@ -64,6 +75,11 @@ class GNSSCampaignTargetGroup(TargetGroup):
 
 
 class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
+    '''Handles and carries out operations related to the objective functions.
+
+    The objective function is here the weighted misfit between observed
+    and predicted surface displacements.
+    '''
     campaign_name = String.T()
     misfit_config = GNSSCampaignMisfitConfig.T()
 
@@ -110,31 +126,33 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def weights(self):
-        return num.matrix(self.campaign.get_correlation_matrix())
+        covar = num.matrix(self.campaign.get_covariance_matrix())
+        
+        return num.linalg.inv(covar)
 
         # deprecated
         if self._weights is None:
-            self._weights = 1./self.obs_sigma
+            self._weights = 1./self.obs_sigma**2
             self._weights[self._weights == num.inf] = 1.
         return self._weights
 
     def post_process(self, engine, source, statics):
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
-        obs = self.obs_data
+        obs = num.matrix(self.obs_data)
         weights = self.weights
 
-        syn = num.array([statics['displacement.n'],
+        syn = num.matrix([statics['displacement.n'],
                          statics['displacement.e'],
                          -statics['displacement.d']])\
             .ravel(order='F')
 
-        res = obs - syn
+        res = num.matrix(obs - syn)
 
-        misfit_value = num.sqrt(
-            num.sum((res * weights)**2))
-        misfit_norm = num.sqrt(
-            num.sum((obs * weights)**2))
+        misfit_value = num.float(
+            num.sqrt((res * weights) * res.T))
+        misfit_norm = num.float(
+            num.sqrt((obs * weights) * obs.T))
         result = GNSSCampaignMisfitResult(
             misfits=num.array([misfit_value, misfit_norm], dtype=num.float))
 

@@ -12,18 +12,42 @@ logger = logging.getLogger('grond.targets.satellite.target')
 
 
 class SatelliteMisfitConfig(MisfitConfig):
-    optimise_orbital_ramp = Bool.T(default=True)
+    '''Carries the misfit configuration.'''
+    optimise_orbital_ramp = Bool.T(
+        default=True,
+        help='Switch to account for a linear orbital ramp or not')
     ranges = Dict.T(
         String.T(), gf.Range.T(),
         default={'offset': '-0.5 .. 0.5',
-                 'ramp_east': '-1e-4 .. 1e-4',
-                 'ramp_north': '-1e-4 .. 1e-4'
-                 })
+                 'ramp_east': '-1e-7 .. 1e-7',
+                 'ramp_north': '-1e-7 .. 1e-7'
+                 },
+        help='These parameters give bounds for an offset [m], a linear \
+             gradient in east direction [m/m] and a linear gradient in north \
+             direction [m/m]. Note, while the optimisation of these ramps \
+             is individual for each target, the ranges set here are common \
+             for all satellite targets.')
 
 
 class SatelliteTargetGroup(TargetGroup):
-    kite_scenes = List.T(optional=True)
-    misfit_config = SatelliteMisfitConfig.T()
+    '''Handles maps of static ground motion from satellite observations (InSAR)
+
+    The InSAR displacement maps post-processed by the `pyrocko` module `kite`
+    are usually `Quadtree` downsampled (Jonsson, 2002). Each data point has a
+    latitude, longitude, Line-of-sight displacement value [m] as well as an
+    orientation and elevation angle, which define the Line-of-Sight. The data
+    are associated with a weight matrix, which is the inverse of a full
+    variance-covariance matrix (Sudhaus \& Jonsson, 2009). In principle, these
+    data sets could stem from pixel offset maps. See also the documentation of
+    the `kite` module.
+    '''
+    kite_scenes = List.T(
+        optional=True,
+        help='List of InSAR data files prepared \
+              by the ``pyrocko`` module ``kite``')
+    misfit_config = SatelliteMisfitConfig.T(
+        help='Carries the settings of the objective function for these targets'
+        )
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting satellite targets...')
@@ -79,18 +103,32 @@ class SatelliteTargetGroup(TargetGroup):
 
 
 class SatelliteMisfitResult(gf.Result, MisfitResult):
-    statics_syn = Dict.T(optional=True)
-    statics_obs = Dict.T(optional=True)
+    '''Carries the observations for a target and corresponding synthetics.'''
+    statics_syn = Dict.T(
+        optional=True,
+        help='Predicted static displacements for a target (synthetics).')
+    statics_obs = Dict.T(
+        optional=True,
+        help='Observed static displacement for a target.')
 
 
 class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
-    scene_id = String.T()
+    '''Handles and carries out operations related to the objective functions.
+
+    Standard operations are the calculation of the weighted misfit between
+    observed and predicted (synthetic) data. If enabled in the misfit
+    configuration, orbital ramps are optimized for.
+    '''
+    scene_id = String.T(
+        help='Identification string that is individual for each single \ '
+             'satellite target. Can be set in the kite data `yaml`-files')
     available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
         Parameter('ramp_east', 'm/m')
         ]
-    misfit_config = SatelliteMisfitConfig.T()
+    misfit_config = SatelliteMisfitConfig.T(
+        help='Carries the settings of the objective function for these targets')
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
