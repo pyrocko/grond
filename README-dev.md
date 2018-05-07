@@ -40,7 +40,7 @@ Additionally,
 * do not abbreviate words unless this would result in ridiculously long names
 * use British english, e.g.
   - 'modelling' rather than 'modeling'
-  - 'analyser' rather than 'analyser'
+  - 'analyser' rather than 'analyzer'
   - 'optimiser' rather than 'optimizer'
 * log messages: TODO
 * docstrings: TODO
