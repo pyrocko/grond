@@ -113,8 +113,7 @@ class MisfitTarget(Object):
     def post_process(self, engine, source, statics):
         raise NotImplementedError()
 
-    def get_combined_weight(self, apply_balancing_weights=False,
-                            apply_station_noise_weights=False):
+    def get_combined_weight(self):
         return num.ones(1, dtype=num.float)
 
     def prepare_modelling(self, engine, source):

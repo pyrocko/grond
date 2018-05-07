@@ -239,13 +239,11 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         plots.extend(plot.get_plot_classes())
         return plots
 
-    def get_combined_weight(
-            self, apply_balancing_weights, apply_station_noise_weights):
-
+    def get_combined_weight(self):
         w = self.manual_weight
-        if apply_balancing_weights:
+        if 'target_balancing' in self.analyser_results:
             w *= self.get_balancing_weight()
-        if apply_station_noise_weights:
+        if 'noise' in self.analyser_results:
             w *= self.get_station_noise_weight()
         return num.array([w], dtype=num.float)
 

@@ -187,8 +187,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         return result
 
-    def get_combined_weight(self, apply_balancing_weights=False,
-                            apply_station_noise_weights=False):
+    def get_combined_weight(self):
         return num.array([self.manual_weight], dtype=num.float)
 
     def prepare_modelling(self, engine, source):

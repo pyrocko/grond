@@ -33,7 +33,6 @@ class DoubleDCProblemConfig(ProblemConfig):
 
         problem = DoubleDCProblem(
             name=expand_template(self.name_template, subs),
-            apply_balancing_weights=self.apply_balancing_weights,
             base_source=base_source,
             target_groups=target_groups,
             targets=targets,

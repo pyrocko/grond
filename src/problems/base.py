@@ -26,8 +26,6 @@ def nextpow2(i):
 
 class ProblemConfig(Object):
     name_template = String.T()
-    apply_balancing_weights = Bool.T(default=True)
-    apply_station_noise_weights = Bool.T(default=False)
     norm_exponent = Int.T(default=2)
 
     def get_problem(self, event, target_groups, targets):
@@ -38,8 +36,6 @@ class Problem(Object):
     name = String.T()
     ranges = Dict.T(String.T(), gf.Range.T())
     dependants = List.T(Parameter.T())
-    apply_balancing_weights = Bool.T(default=True)
-    apply_station_noise_weights = Bool.T(default=False)
     norm_exponent = Int.T(default=2)
     base_source = gf.Source.T(optional=True)
     targets = List.T(MisfitTarget.T())
@@ -228,13 +224,10 @@ class Problem(Object):
                 xs, self.dependants[i-self.nparameters].name)
 
     def get_target_weights(self):
-        abw = self.apply_balancing_weights
-        abn = self.apply_station_noise_weights
+
         if self._target_weights is None:
             self._target_weights = num.concatenate(
-                [target.get_combined_weight(
-                    apply_balancing_weights=abw,
-                    apply_station_noise_weights=abn)
+                [target.get_combined_weight()
                  for target in self.targets])
 
         return self._target_weights
