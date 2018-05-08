@@ -568,7 +568,7 @@ def _process(tr, tmin, tmax, taper, domain):
     elif domain == 'absolute':
         tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
 
-    elif domain == 'frequency_domain':
+    elif domain in ('frequency_domain', 'log_frequency_domain'):
         ndata = tr_proc.ydata.size
         nfft = trace.nextpow2(ndata)
         padded = num.zeros(nfft, dtype=num.float)
