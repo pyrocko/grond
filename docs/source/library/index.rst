@@ -1,9 +1,10 @@
-Grond Library Reference
+Grond library reference
 =======================
 
 .. toctree::
    dataset
-   targets
-   problems
+   targets <targets/index>
+   problems <problems/index>
+   optimisers
    :maxdepth: 2
    :caption: Contents:

@@ -1,3 +1,10 @@
+'''
+Base classes for Grond's problem definition and the model history container.
+
+Common behaviour of all source models offered by Grond is implemented here.
+Source model specific details are implemented in the respective submodules.
+'''
+
 import numpy as num
 import math
 import copy
@@ -25,14 +32,29 @@ def nextpow2(i):
 
 
 class ProblemConfig(Object):
+    '''
+    Base class for config section defining the objective function setup.
+
+    Factory for :py:class:`Problem` objects.
+    '''
     name_template = String.T()
     norm_exponent = Int.T(default=2)
 
     def get_problem(self, event, target_groups, targets):
+        '''
+        Instantiate the problem with a given event and targets.
+
+        :returns: :py:class:`Problem` object
+        '''
         raise NotImplementedError
 
 
 class Problem(Object):
+    '''
+    Base class for objective function setup.
+
+    Defines the *problem* to be solved by the optimiser.
+    '''
     name = String.T()
     ranges = Dict.T(String.T(), gf.Range.T())
     dependants = List.T(Parameter.T())
@@ -457,19 +479,20 @@ class InvalidRundir(Exception):
 
 
 class ModelHistory(object):
+    '''
+    Write, read and follow sequences of models produced in an optimisation run.
+
+    :param problem: :class:`grond.Problem` instance
+    :param path: path to rundir, defaults to None
+    :type path: str, optional
+    :param mode: open mode, 'r': read, 'w': write
+    :type mode: str, optional
+    '''
+
     nmodels_capacity_min = 1024
 
     def __init__(self, problem, path=None, mode='r'):
-        '''Model History lets you write, read and follow new models
 
-        :param problem: The Problem
-        :type problem: :class:`grond.Problem`
-        :param path: Rundir to use, defaults to None
-        :type path: str, optional
-        :param mode: Mode to use, defaults to 'r'.
-            'r': Read, 'w': Write
-        :type mode: str, optional
-        '''
         self.problem = problem
         self.path = path
         self._models_buffer = None
@@ -497,14 +520,14 @@ class ModelHistory(object):
 
     @classmethod
     def follow(cls, path, wait=20.):
-        '''Start following a rundir
+        '''
+        Start following a rundir (constructor).
 
-        :param path: The path to follow, a grond rundir
+        :param path: the path to follow, a grond rundir
         :type path: str, optional
-        :param wait: Wait time until the folder become alive, defaults to 10.
+        :param wait: wait time until the folder become alive
         :type wait: number in seconds, optional
-        :returns: A ModelHistory instance
-        :rtype: :class:`grond.core.ModelHistory`
+        :returns: A :py:class:`ModelHistory` instance
         '''
         start_watch = time.time()
         while (time.time() - start_watch) < wait:
@@ -684,9 +707,9 @@ def load_problem_data(dirname, problem, nmodels_skip=0):
 
 
 __all__ = '''
+    ProblemConfig
     Problem
     ModelHistory
-    ProblemConfig
     load_problem_info
     load_problem_info_and_data
 '''.split()

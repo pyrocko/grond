@@ -1,5 +1,5 @@
-The :mod:`dataset`
-==================
+:mod:`dataset`
+==============
 
 .. automodule :: grond.dataset
     :members:

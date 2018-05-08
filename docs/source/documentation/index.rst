@@ -1,5 +1,5 @@
-Basic Setup 
-===========
+Tutorial
+========
 
 Grond can be run as a command line tool or by calling Grond's library functions from a Python script. To get a brief description on available options of Grond's command line tool, run:
 
@@ -9,8 +9,8 @@ Grond can be run as a command line tool or by calling Grond's library functions 
 	grond <subcommand> --help
 
 
-Structuring your ``grond`` Projects 
------------------------------------
+Project folder layout
+---------------------
 
 To use ``grond`` with your data and the medium model of your choice, we suggest the following folder stucture. Single files listed here are explained below.
 
@@ -41,8 +41,8 @@ To use ``grond`` with your data and the medium model of your choice, we suggest 
         ├── Abruzzo_Ameri_nearfield
         :   └── ...
 
-Preparing your ``grond`` Data
---------------------------------
+Input data preparation
+----------------------
 
 **Seismic Waveforms Data:**
 
@@ -101,10 +101,10 @@ Required input file is a simple ``YAML`` file containing GNSS station positions,
 
 (add more station information in the same manner) 
 
-Setup of Green's Functions Databases defining the Medium
---------------------------------------------------------
+Green's function preparation or download
+----------------------------------------
 
-A Green's functions (GF) database is needed that stores GF for many possible source-receiver configurations. You can either download from the online repository (`online GF databases`_) or compute them with the `fomosto`_ module of ``pyrocko``. Depending on the data sets, different setups of GF stores or methods for calculation are suitable:
+A Green's functions (GF) store is needed that stores GF for many possible source-receiver configurations. You can either download from the online repository (`online GF databases`_) or compute them with the `fomosto`_ module of ``pyrocko``. Depending on the data sets, different setups of GF stores or methods for calculation are suitable:
 
 .. _fomosto: https://pyrocko.org/docs/current/apps/fomosto/index.html
 
@@ -128,8 +128,8 @@ Regional analyses may require smaller and individual medium GF stores. Suitable 
 Near-field static displacements require GF stores with high spatial sampling and mostly only little temporal sampling. With the PSGRN/PSCMP GF method you can build for any given local 1d-layered velocity model your own GF store ``psgrn``.
 
 
-Preparing your ``grond`` Configuration File
--------------------------------------------
+Configuration
+-------------
 
 You can inititiate a ``grond`` configuration file for a centroid moment tensor optimization based on  global seismic waveforms with: 
 
@@ -182,8 +182,8 @@ You find detailed information on the misfit configuration and model space
 sampling in the Chapter `Optimisers`_.
 
 
-Results plots, exports and reports
-----------------------------------
+Results and visualisation
+-------------------------
 
 To visualize the results check your plot options with
 
@@ -220,5 +220,3 @@ Please find detailed information on the plots in the Chapter `Result Plots`_.
 .. _online GF databases: http://kinherd.org:8080/gfws/static/stores/
 .. _GF stores: http://kinherd.org:8080/gfws/
 .. _grond plot details: 
-
-

@@ -1,6 +1,5 @@
+from .base import *  # noqa
 from .waveform import *  # noqa
 from .waveform_phase_ratio import *  # noqa
 from .satellite import *  # noqa
 from .gnss_campaign import *  # noqa
-
-from .base import *  # noqa

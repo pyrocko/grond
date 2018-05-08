@@ -93,6 +93,8 @@ todo_include_todos = True
 # a list of builtin themes.
 html_theme = 'sphinx_sleekcat_theme'
 
+html_show_sphinx = False
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.

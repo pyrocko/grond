@@ -97,10 +97,6 @@ class Forbidden(Exception):
     pass
 
 
-class Path(String):
-    pass
-
-
 class GrondError(Exception):
     pass
 
@@ -207,6 +203,10 @@ class Parameter(Object):
             return x*self.scale_factor
 
 
+class Path(String):
+    pass
+
+
 class HasPaths(Object):
     path_prefix = Path.T(optional=True)
 
@@ -262,3 +262,12 @@ class HasPaths(Object):
                 extra(
                     op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
                 for p in path]
+
+
+__all__ = '''
+    Forbidden
+    GrondError
+    Path
+    HasPaths
+    Parameter
+'''.split()

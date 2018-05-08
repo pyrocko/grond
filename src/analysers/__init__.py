@@ -1,2 +1,3 @@
-from .target_balancing.analyser import TargetBalancingAnalyser, TargetBalancingAnalyserConfig  # noqa
-from .noise_analyser.analyser import NoiseAnalyser, NoiseAnalyserConfig  # noqa
+from .base import *  # noqa
+from .target_balancing.analyser import *  # noqa
+from .noise_analyser.analyser import *  # noqa
