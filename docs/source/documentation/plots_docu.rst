@@ -1,2 +1,2 @@
-``Grond`` Result Plots
-======================
+Result plots
+============

@@ -1,10 +1,11 @@
-Grond library reference
-=======================
+Library reference
+=================
 
 .. toctree::
-   dataset
-   targets <targets/index>
-   problems <problems/index>
-   optimisers
    :maxdepth: 2
    :caption: Contents:
+
+   dataset <dataset>
+   targets <targets/index>
+   problems <problems/index>
+   optimisers <optimisers/index>
