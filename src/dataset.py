@@ -673,6 +673,7 @@ class Dataset(object):
             trs_projected = []
             trs_restituted = []
             trs_raw = []
+            exceptions = []
             for matrix, in_channels, out_channels in projections:
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
@@ -706,8 +707,17 @@ class Dataset(object):
                         trs_restituted.extend(trs_restituted_group)
                         trs_raw.extend(trs_raw_group)
 
-                except NotFound:
-                    pass
+                except NotFound as e:
+                    exceptions.append((in_channels, out_channels, e))
+
+            if not trs_projected:
+                err = []
+                for (in_channels, out_channels, e) in exceptions:
+                    sin = ', '.join(c.name for c in in_channels)
+                    sout = ', '.join(c.name for c in out_channels)
+                    err.append('(%s) -> (%s): %s' % (sin, sout, e))
+
+                raise NotFound('\n'.join(err))
 
             for tr in trs_projected:
                 sc = self.station_corrections.get(tr.nslc_id, None)

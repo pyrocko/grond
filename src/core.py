@@ -394,11 +394,11 @@ def check(
                             target.get_taper_params(engine, source)
 
                         markers.append(pmarker.Marker(
-                            nslc_ids=[('', target.string_id(), '*', '*')],
+                            nslc_ids=[('', target.string_id(), '*_proj', '*')],
                             tmin=tmin_fit, tmax=tmax_fit))
 
                     markers.append(pmarker.Marker(
-                        nslc_ids=[('', target.string_id(), '*', '*')],
+                        nslc_ids=[('', target.string_id(), '*_raw', '*')],
                         tmin=tcut[0]-tobs_shift, tmax=tcut[1]-tobs_shift,
                         kind=1))
 
