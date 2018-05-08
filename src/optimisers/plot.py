@@ -310,7 +310,7 @@ class ContributionsPlot(PlotConfig):
         rel_ms_sum = num.zeros(history.nmodels)
         rel_ms_smooth_sum = num.zeros(history.nmodels)
         ms_smooth_sum = num.zeros(history.nmodels)
-        b = num.hanning(100)
+        b = num.hanning(min(100, history.nmodels//3))
         b /= num.sum(b)
         a = [1]
         ii = 0
