@@ -734,21 +734,22 @@ class Dataset(object):
             if syn_test:
                 trs_projected_synthetic = []
                 for tr in trs_projected:
-                    tr_syn = syn_test.get_waveform(
-                        tr.nslc_id, tmin, tmax,
-                        tfade=tfade, freqlimits=freqlimits)
+                    if tr.channel == channel:
+                        tr_syn = syn_test.get_waveform(
+                            tr.nslc_id, tmin, tmax,
+                            tfade=tfade, freqlimits=freqlimits)
 
-                    if tr_syn:
-                        if syn_test.real_noise_scale != 0.0:
-                            tr_syn = tr_syn.copy()
-                            tr_noise = tr.copy()
-                            tr_noise.set_ydata(
-                                tr_noise.get_ydata()
-                                * syn_test.real_noise_scale)
+                        if tr_syn:
+                            if syn_test.real_noise_scale != 0.0:
+                                tr_syn = tr_syn.copy()
+                                tr_noise = tr.copy()
+                                tr_noise.set_ydata(
+                                    tr_noise.get_ydata()
+                                    * syn_test.real_noise_scale)
 
-                            tr_syn.add(tr_noise)
+                                tr_syn.add(tr_noise)
 
-                        trs_projected_synthetic.append(tr_syn)
+                            trs_projected_synthetic.append(tr_syn)
 
                 trs_projected = trs_projected_synthetic
 
