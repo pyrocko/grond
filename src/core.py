@@ -190,12 +190,12 @@ def forward(rundir_or_config_path, event_names):
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
-    logger.info('harvesting problem %s...' % problem.name)
-
     if problem is None:
         problem, xs, misfits = load_problem_info_and_data(rundir)
     else:
         xs, misfits = load_problem_data(rundir, problem)
+
+    logger.info('harvesting problem %s...' % problem.name)
 
     optimiser = load_optimiser_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
