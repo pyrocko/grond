@@ -20,6 +20,7 @@ class DomainChoice(StringChoice):
     choices = [
         'time_domain',
         'frequency_domain',
+        'log_frequency_domain',
         'envelope',
         'absolute',
         'cc_max_norm']
@@ -491,6 +492,23 @@ tautoshift**2 / tautoshift_max**2``
             b, a = a, b
 
         m, n = trace.Lx_norm(num.abs(a), num.abs(b), norm=exponent)
+
+    elif domain == 'log_frequency_domain':
+        a, b = trspec_proc_syn.ydata, trspec_proc_obs.ydata
+        if flip:
+            b, a = a, b
+
+        a = num.abs(a)
+        b = num.abs(b)
+
+        eps = (num.mean(a) + num.mean(b)) * 1e-7
+        if eps == 0.0:
+            eps = 1e-7
+
+        a = num.log(a + eps)
+        b = num.log(b + eps)
+
+        m, n = trace.Lx_norm(a, b, norm=exponent)
 
     if result_mode == 'full':
         result = WaveformMisfitResult(
