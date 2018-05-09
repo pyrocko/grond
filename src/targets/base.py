@@ -26,9 +26,6 @@ class TargetGroup(Object):
         default=1.0,
         help='Additional manual weight of the target group')
 
-    interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T(optional=True)
-
     def get_targets(self, ds, event, default_path):
         raise NotImplementedError()
 
@@ -116,7 +113,7 @@ class MisfitTarget(Object):
     def get_combined_weight(self):
         return num.ones(1, dtype=num.float)
 
-    def prepare_modelling(self, engine, source):
+    def prepare_modelling(self, engine, source, targets):
         return []
 
     def finalize_modelling(

@@ -15,6 +15,7 @@ setup(
         'grond.targets',
         'grond.targets.waveform',
         'grond.targets.waveform_phase_ratio',
+        'grond.targets.waveform_piggyback',
         'grond.targets.satellite',
         'grond.targets.gnss_campaign',
         'grond.problems',

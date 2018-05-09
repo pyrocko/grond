@@ -14,7 +14,7 @@ import os
 import time
 
 from pyrocko import gf, util, guts
-from pyrocko.guts import Object, String, Bool, List, Dict, Int
+from pyrocko.guts import Object, String, List, Dict, Int
 
 from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
@@ -403,12 +403,29 @@ class Problem(Object):
         modelling_targets = []
         t2m_map = {}
         for itarget, target in enumerate(targets):
-            t2m_map[target] = target.prepare_modelling(engine, source)
+            t2m_map[target] = target.prepare_modelling(engine, source, targets)
             if mask is None or mask[itarget]:
                 modelling_targets.extend(t2m_map[target])
 
-        resp = engine.process(source, modelling_targets)
-        modelling_results = list(resp.results_list[0])
+        u2m_map = {}
+        for imtarget, mtarget in enumerate(modelling_targets):
+            if mtarget not in u2m_map:
+                u2m_map[mtarget] = []
+
+            u2m_map[mtarget].append(imtarget)
+
+        modelling_targets_unique = list(u2m_map.keys())
+
+        resp = engine.process(source, modelling_targets_unique)
+        modelling_results_unique = list(resp.results_list[0])
+
+        modelling_results = [None] * len(modelling_targets)
+
+        for mtarget, mresult in zip(
+                modelling_targets_unique, modelling_results_unique):
+
+            for itarget in u2m_map[mtarget]:
+                modelling_results[itarget] = mresult
 
         imt = 0
         results = []

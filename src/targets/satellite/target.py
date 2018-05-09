@@ -48,6 +48,8 @@ class SatelliteTargetGroup(TargetGroup):
     misfit_config = SatelliteMisfitConfig.T(
         help='Carries the settings of the objective function for these targets'
         )
+    interpolation = gf.InterpolationMethod.T()
+    store_id = gf.StringID.T(optional=True)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting satellite targets...')
@@ -190,7 +192,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def get_combined_weight(self):
         return num.array([self.manual_weight], dtype=num.float)
 
-    def prepare_modelling(self, engine, source):
+    def prepare_modelling(self, engine, source, targets):
         return [self]
 
     def finalize_modelling(

@@ -28,6 +28,8 @@ class PhaseRatioTargetGroup(TargetGroup):
     depth_max = Float.T(optional=True)
     measure_a = fm.FeatureMeasure.T()
     measure_b = fm.FeatureMeasure.T()
+    interpolation = gf.InterpolationMethod.T()
+    store_id = gf.StringID.T(optional=True)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting phase ratio targets...')
@@ -125,9 +127,9 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
         return '.'.join(x for x in (self.path,) + self.codes if x)
 
     def get_plain_targets(self, engine, source):
-        return self.prepare_modelling(engine, source)
+        return self.prepare_modelling(engine, source, None)
 
-    def prepare_modelling(self, engine, source):
+    def prepare_modelling(self, engine, source, targets):
         modelling_targets = []
         for measure in [self.measure_a, self.measure_b]:
             modelling_targets.extend(measure.get_modelling_targets(

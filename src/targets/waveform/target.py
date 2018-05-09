@@ -11,6 +11,7 @@ from grond.dataset import NotFound
 from grond.analysers.base import AnalyserResult
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
+from ..waveform_piggyback.target import WaveformPiggybackSubresult
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -31,8 +32,8 @@ class Trace(Object):
 
 
 class WaveformMisfitConfig(MisfitConfig):
-    fmin = Float.T(help='minimum frequency of bandpass filter' )
-    fmax = Float.T(help='maximum frequency of bandpass filter' )
+    fmin = Float.T(help='minimum frequency of bandpass filter')
+    fmax = Float.T(help='maximum frequency of bandpass filter')
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T(
         optional=True,
@@ -109,6 +110,8 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help='set channels to include, e.g. \[\'Z\',\'T\'\]')
     misfit_config = WaveformMisfitConfig.T()
+    interpolation = gf.InterpolationMethod.T()
+    store_id = gf.StringID.T(optional=True)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting waveform targets...')
@@ -221,6 +224,8 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
     tshift = Float.T(optional=True)
     cc = Trace.T(optional=True)
 
+    piggyback_subresults = List.T(WaveformPiggybackSubresult.T())
+
 
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
@@ -229,9 +234,10 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
+        self._piggyback_subtargets = []
 
     def string_id(self):
-        return '.'.join(x for x in (self.path,) + self.codes if x)
+        return '.'.join(x for x in (self.path,) + self.codes)
 
     @classmethod
     def get_plot_classes(cls):
@@ -379,7 +385,10 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
                 flip=self.flip_norm,
                 result_mode=self._result_mode,
                 tautoshift_max=config.tautoshift_max,
-                autoshift_penalty_max=config.autoshift_penalty_max)
+                autoshift_penalty_max=config.autoshift_penalty_max,
+                subtargets=self._piggyback_subtargets)
+
+            self._piggyback_subtargets = []
 
             mr.tobs_shift = float(tobs_shift)
             mr.tsyn_pick = float_or_none(tsyn)
@@ -390,7 +399,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             logger.debug(str(e))
             raise gf.SeismosizerError('no waveform data, %s' % str(e))
 
-    def prepare_modelling(self, engine, source):
+    def prepare_modelling(self, engine, source, targets):
         return [self]
 
     def finalize_modelling(
@@ -403,10 +412,13 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             (k, getattr(self, k)) for k in gf.Target.T.propnames)
         return [gf.Target(**d)]
 
+    def add_piggyback_subtarget(self, subtarget):
+        self._piggyback_subtargets.append(subtarget)
+
 
 def misfit(
         tr_obs, tr_syn, taper, domain, exponent, tautoshift_max,
-        autoshift_penalty_max, flip, result_mode='sparse'):
+        autoshift_penalty_max, flip, result_mode='sparse', subtargets=[]):
 
     '''
     Calculate misfit between observed and synthetic trace.
@@ -437,6 +449,12 @@ tautoshift**2 / tautoshift_max**2``
 
     tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain)
     tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain)
+
+    piggyback_results = []
+    for subtarget in subtargets:
+        piggyback_results.append(
+            subtarget.evaluate(
+                tr_proc_obs, trspec_proc_obs, tr_proc_syn, trspec_proc_syn))
 
     tshift = None
     ctr = None
@@ -528,6 +546,8 @@ tautoshift**2 / tautoshift_max**2``
             misfits=num.array([[m, n]], dtype=num.float))
     else:
         assert False
+
+    result.piggyback_subresults = piggyback_results
 
     return result
 
