@@ -12,19 +12,16 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform_piggyback.target')
 
 
-def log_exclude(target, reason):
-    logger.debug('excluding potential target %s: %s' % (
-        target.string_id(), reason))
-
-
 class WaveformPiggybackTargetGroup(TargetGroup):
     associated_path = gf.StringID.T()
+    norm_exponent = Int.T(default=2)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting waveform piggyback targets...')
 
         target = WaveformPiggybackTarget(
             path=self.path,
+            norm_exponent=self.norm_exponent,
             associated_path=self.associated_path)
 
         return [target]
@@ -60,6 +57,7 @@ class WaveformPiggybackMisfitResult(MisfitResult):
 
 class WaveformPiggybackTarget(MisfitTarget):
     associated_path = gf.StringID.T()
+    norm_exponent = Int.T(default=2)
 
     _next_piggy_id = 0
 
@@ -122,7 +120,7 @@ class WaveformPiggybackTarget(MisfitTarget):
 
         amp_obs = num.median(amps_obs[num.isfinite(amps_obs)])
         amp_syn = num.median(amps_syn[num.isfinite(amps_syn)])
-        m = num.log(amp_obs / amp_syn)
+        m = num.abs(num.log(amp_obs / amp_syn))**self.norm_exponent
 
         result = WaveformPiggybackMisfitResult(
             misfits=num.array([[m, 1.]], dtype=num.float))
