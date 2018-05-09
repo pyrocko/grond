@@ -12,7 +12,7 @@ logger = logging.getLogger('grond.targets.satellite.target')
 
 
 class SatelliteMisfitConfig(MisfitConfig):
-    '''Carries the misfit configuration.'''
+    """Carries the misfit configuration."""
     optimise_orbital_ramp = Bool.T(
         default=True,
         help='Switch to account for a linear orbital ramp or not')
@@ -30,7 +30,7 @@ class SatelliteMisfitConfig(MisfitConfig):
 
 
 class SatelliteTargetGroup(TargetGroup):
-    '''Handles maps of static ground motion from satellite observations (InSAR)
+    """Handles maps of static ground motion from satellite observations (InSAR)
 
     The InSAR displacement maps post-processed by the `pyrocko` module `kite`
     are usually `Quadtree` downsampled (Jonsson, 2002). Each data point has a
@@ -40,7 +40,7 @@ class SatelliteTargetGroup(TargetGroup):
     variance-covariance matrix (Sudhaus \& Jonsson, 2009). In principle, these
     data sets could stem from pixel offset maps. See also the documentation of
     the `kite` module.
-    '''
+    """
     kite_scenes = List.T(
         optional=True,
         help='List of InSAR data files prepared \
@@ -103,7 +103,7 @@ class SatelliteTargetGroup(TargetGroup):
 
 
 class SatelliteMisfitResult(gf.Result, MisfitResult):
-    '''Carries the observations for a target and corresponding synthetics.'''
+    """Carries the observations for a target and corresponding synthetics."""
     statics_syn = Dict.T(
         optional=True,
         help='Predicted static displacements for a target (synthetics).')
@@ -113,12 +113,12 @@ class SatelliteMisfitResult(gf.Result, MisfitResult):
 
 
 class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
-    '''Handles and carries out operations related to the objective functions.
+    """Handles and carries out operations related to the objective functions.
 
     Standard operations are the calculation of the weighted misfit between
     observed and predicted (synthetic) data. If enabled in the misfit
     configuration, orbital ramps are optimized for.
-    '''
+    """
     scene_id = String.T(
         help='Identification string that is individual for each single \ '
              'satellite target. Can be set in the kite data `yaml`-files')
@@ -155,6 +155,11 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return self._ds.get_kite_scene(self.scene_id)
 
     def post_process(self, engine, source, statics):
+        """Applies the objective function.
+
+        As a result the weighted misfits are given and the observed and
+        synthetic data. For the satellite target the orbital ramp is
+        calculated and applied here."""
         scene = self.scene
         quadtree = scene.quadtree
 

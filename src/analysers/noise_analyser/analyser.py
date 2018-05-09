@@ -43,7 +43,7 @@ def get_phase_arrival_time(engine, source, target, wavename):
 def seismic_noise_variance(traces, engine, event, targets,
                            nwindows, pre_event_noise_duration,
                            check_events, phase_def):
-    '''
+    """
     Calculate variance of noise in a given time before P-Phase onset.
 
     Optionally check the gCMT earthquake catalogue for M>5 events interfering.
@@ -73,7 +73,7 @@ def seismic_noise_variance(traces, engine, event, targets,
     Returns
     -------
     :class:`numpy.ndarray`
-    '''
+    """
 
     var_ds = []
     global_cmt_catalog = catalog.GlobalCMT()
@@ -149,7 +149,7 @@ def seismic_noise_variance(traces, engine, event, targets,
 
 
 class NoiseAnalyser(Analyser):
-    '''From the pre-event station noise variance-based trace weights are formed.
+    """From the pre-event station noise variance-based trace weights are formed.
 
     The trace weights are the inverse of the noise variance. The correlation
     of the noise is neglected.
@@ -158,7 +158,7 @@ class NoiseAnalyser(Analyser):
     a very probable contamination the trace weights are set to zero. In case
     global earthquake phase arrivals are within a 30 min time window before
     the start of the set pre-event noise window, only a warning is thrown.
-    '''
+    """
     def __init__(self, nwindows, pre_event_noise_duration,
                  check_events, phase_def):
         Analyser.__init__(self)
@@ -239,7 +239,7 @@ class NoiseAnalyserResult(AnalyserResult):
 
 
 class NoiseAnalyserConfig(AnalyserConfig):
-    '''Configuration parameters for the pre-event noise analysis.'''
+    """Configuration parameters for the pre-event noise analysis."""
     nwindows = Int.T(default=1,
                      help='number of windows for trace splitting')
     pre_event_noise_duration = Float.T(default=0.,
