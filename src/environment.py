@@ -97,7 +97,8 @@ class Environment(object):
                 self._problem = load_problem_info(self.get_rundir_path())
             except NoRundirAvailable:
                 self._problem = \
-                    self.get_config().get_problem(self.get_event_name())
+                    self.get_config().get_problem(
+                        self.get_dataset().get_event())
 
         return self._problem
 
@@ -150,4 +151,7 @@ class Environment(object):
         return sorted(list(plots), key=lambda plot: plot.name)
 
     def get_plots_path(self):
-        return op.join(self.get_rundir_path(), 'plots')
+        try:
+            return op.join(self.get_rundir_path(), 'plots')
+        except NoRundirAvailable:
+            return 'plots'

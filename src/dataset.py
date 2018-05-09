@@ -777,11 +777,16 @@ class Dataset(object):
                 cache[nslc + cache_k] = e
             raise
 
-    def get_waveform(self, obj, tinc_cache, **kwargs):
+    def get_waveform(self, obj, tinc_cache=None, **kwargs):
         tmin = kwargs['tmin']
         tmax = kwargs['tmax']
-        tmin_r = (math.floor(tmin / tinc_cache) - 1.0) * tinc_cache
-        tmax_r = (math.ceil(tmax / tinc_cache) + 1.0) * tinc_cache
+        if tinc_cache is not None:
+            tmin_r = (math.floor(tmin / tinc_cache) - 1.0) * tinc_cache
+            tmax_r = (math.ceil(tmax / tinc_cache) + 1.0) * tinc_cache
+        else:
+            tmin_r = tmin
+            tmax_r = tmax
+
         kwargs['tmin'] = tmin_r
         kwargs['tmax'] = tmax_r
 
