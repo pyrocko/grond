@@ -9,3 +9,4 @@ Library reference
    targets <targets/index>
    problems <problems/index>
    optimisers <optimisers/index>
+   analysers <analysers/index>

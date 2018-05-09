@@ -358,6 +358,9 @@ class Chains(object):
 
 
 class HighScoreOptimiser(Optimiser):
+    '''Monte-Carlo-based direct search optimisation  
+    
+    '''
 
     sampler_phases = List.T(SamplerPhase.T())
     chain_length_factor = Float.T(default=8.)

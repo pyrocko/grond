@@ -16,7 +16,7 @@ guts_prefix = 'grond'
 
 def get_phase_arrival_time(engine, source, target, wavename):
     """
-    Get arrival time from Greens Function store for respective
+    Get arrival time from Green's Function store for respective
     :class:`pyrocko.gf.seismosizer.Target`,
     :class:`pyrocko.gf.meta.Location` pair.
 
@@ -44,8 +44,9 @@ def seismic_noise_variance(traces, engine, event, targets,
                            nwindows, pre_event_noise_duration,
                            check_events, phase_def):
     '''
-    Calculate variance of noise (half an hour) before P-Phase onset, and check
-    for other events interfering
+    Calculate variance of noise in a given time before P-Phase onset.
+
+    Optionally check the gCMT earthquake catalogue for M>5 events interfering.
 
     Parameters
     ----------
@@ -58,9 +59,12 @@ def seismic_noise_variance(traces, engine, event, targets,
     targets : list
         of :class:`pyrocko.gf.seismosizer.Targets`
     nwindows : integer
-        if given, windowed analysis of noise, else
-        variance is calculated on the entire pre-event
-        noise
+        number of windows in which the noise trace is split. If not 1, the
+        variance is calculated for each window separately and a mean
+        variance is returned. Else, the variance is calculated on the
+        entire pre-event noise window.
+    pre_event_noise_duration : Time before the first arrival to include in the
+        noise analysis
     phase_def : :class:'pyrocko.gf.Timing'
     arrivals : list
         of :class'pyrocko.gf.Timing' arrivals of waveforms
@@ -113,7 +117,7 @@ def seismic_noise_variance(traces, engine, event, targets,
                         if arrival_time_pre > arrival_time-30.*60.\
                                 and arrival_time_pre < arrival_time - \
                                 pre_event_noise_duration:
-                            stat_w *= 0.5
+                            stat_w *= 1.
                             logger.info(
                                 'Noise analyser found event %s possibly '
                                 'contaminating the noise' % ev.name)
@@ -145,7 +149,16 @@ def seismic_noise_variance(traces, engine, event, targets,
 
 
 class NoiseAnalyser(Analyser):
+    '''From the pre-event station noise variance-based trace weights are formed.
 
+    The trace weights are the inverse of the noise variance. The correlation
+    of the noise is neglected.
+    Optionally, using a the gCMT global earthquake catalogue, the station data
+    are checked for theoretical phase arrivals of M>5 earthquakes. In case of
+    a very probable contamination the trace weights are set to zero. In case
+    global earthquake phase arrivals are within a 30 min time window before
+    the start of the set pre-event noise window, only a warning is thrown.
+    '''
     def __init__(self, nwindows, pre_event_noise_duration,
                  check_events, phase_def):
         Analyser.__init__(self)
@@ -220,16 +233,25 @@ class NoiseAnalyser(Analyser):
 
 
 class NoiseAnalyserResult(AnalyserResult):
-    weight = Float.T()
+    weight = Float.T(help='The inverse of the pre-event data variance. If \
+                          traces were checked for other event phase arrivals, \
+                          the weight can be zero for contaminated traces.')
 
 
 class NoiseAnalyserConfig(AnalyserConfig):
-    nwindows = Int.T(default=1)
-    pre_event_noise_duration = Float.T(default=0.)
+    '''Configuration parameters for the pre-event noise analysis.'''
+    nwindows = Int.T(default=1,
+                     help='number of windows for trace splitting')
+    pre_event_noise_duration = Float.T(default=0.,
+                                       help='Total length of noise trace in the\
+                                        analysis')
     phase_def = String.T(
         default='P',
         help='Onset of phase_def used for upper limit of window')
-    check_events = Bool.T(default=False)
+    check_events = Bool.T(default=False,
+                          help='check the gCMT global catalogue for M>5 \
+                               earthquakes that produce phase arrivals \
+                               contaminating and affecting the noise analysis')
 
     def get_analyser(self):
         return NoiseAnalyser(
