@@ -2,40 +2,20 @@ import logging
 
 import numpy as num
 
-from pyrocko.guts import Float, Object, Int
+from pyrocko.guts import Float, Int
 from pyrocko import gf
 
 from ..base import (
     MisfitTarget, TargetGroup, MisfitResult)
 
+from ..waveform.target import WaveformPiggybackSubtarget, \
+    WaveformPiggybackSubresult
+
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform_piggyback.target')
 
 
-class WaveformPiggybackTargetGroup(TargetGroup):
-    associated_path = gf.StringID.T()
-    norm_exponent = Int.T(default=2)
-
-    def get_targets(self, ds, event, default_path):
-        logger.debug('Selecting waveform piggyback targets...')
-
-        target = WaveformPiggybackTarget(
-            path=self.path,
-            norm_exponent=self.norm_exponent,
-            associated_path=self.associated_path)
-
-        return [target]
-
-
-class WaveformPiggybackSubresult(Object):
-    piggy_id = Int.T()
-    amplitude_obs = Float.T()
-    amplitude_syn = Float.T()
-
-
-class WaveformPiggybackSubtarget(Object):
-
-    piggy_id = Int.T()
+class WOACSubtarget(WaveformPiggybackSubtarget):
 
     def evaluate(
             self, tr_proc_obs, trspec_proc_obs, tr_proc_syn, trspec_proc_syn):
@@ -43,7 +23,7 @@ class WaveformPiggybackSubtarget(Object):
         a_obs = num.sqrt(num.mean(num.abs(tr_proc_obs.ydata**2)))
         a_syn = num.sqrt(num.mean(num.abs(tr_proc_syn.ydata**2)))
 
-        res = WaveformPiggybackSubresult(
+        res = WOACSubresult(
             piggy_id=self.piggy_id,
             amplitude_obs=float(a_obs),
             amplitude_syn=float(a_syn))
@@ -51,25 +31,33 @@ class WaveformPiggybackSubtarget(Object):
         return res
 
 
-class WaveformPiggybackMisfitResult(MisfitResult):
-    pass
+class WOACSubresult(WaveformPiggybackSubresult):
+    amplitude_obs = Float.T()
+    amplitude_syn = Float.T()
 
 
-class WaveformPiggybackTarget(MisfitTarget):
+class WaveformOverallAmplitudeConstraint(TargetGroup):
     associated_path = gf.StringID.T()
     norm_exponent = Int.T(default=2)
 
-    _next_piggy_id = 0
+    def get_targets(self, ds, event, default_path):
+        logger.debug('Selecting waveform piggyback targets...')
+
+        target = WOACTarget(
+            path=self.path,
+            norm_exponent=self.norm_exponent,
+            associated_path=self.associated_path)
+
+        return [target]
+
+
+class WOACTarget(MisfitTarget):
+    associated_path = gf.StringID.T()
+    norm_exponent = Int.T(default=2)
 
     def __init__(self, **kwargs):
         MisfitTarget.__init__(self, **kwargs)
         self.piggy_ids = set()
-
-    @classmethod
-    def new_piggy_id(cls):
-        piggy_id = cls._next_piggy_id
-        cls._next_piggy_id += 1
-        return piggy_id
 
     def string_id(self):
         return self.path
@@ -87,14 +75,9 @@ class WaveformPiggybackTarget(MisfitTarget):
             if isinstance(target, WaveformMisfitTarget) \
                     and target.path == self.associated_path:
 
-                piggy_id = self.new_piggy_id()
-
-                self.piggy_ids.add(piggy_id)
-
-                target.add_piggyback_subtarget(
-                    WaveformPiggybackSubtarget(
-                        piggy_id=piggy_id))
-
+                st = WOACSubtarget()
+                self.piggy_ids.add(st.piggy_id)
+                target.add_piggyback_subtarget(st)
                 relevant.append(target)
 
         return relevant
@@ -103,35 +86,41 @@ class WaveformPiggybackTarget(MisfitTarget):
             self, engine, source, modelling_targets, modelling_results):
 
         from ..waveform.target import WaveformMisfitResult
-        amps_obs = []
-        amps_syn = []
+        amps = []
         for mtarget, mresult in zip(modelling_targets, modelling_results):
             if isinstance(mresult, WaveformMisfitResult):
-                for sr in mresult.piggyback_subresults:
+                for sr in list(mresult.piggyback_subresults):
                     try:
                         self.piggy_ids.remove(sr.piggy_id)
-                        amps_obs.append(sr.amplitude_obs)
-                        amps_syn.append(sr.amplitude_syn)
+                        amps.append((sr.amplitude_obs, sr.amplitude_syn))
+                        mresult.piggyback_subresults.remove(sr)
                     except KeyError:
+                        logger.error(
+                            'found inconsistency while gathering piggyback '
+                            'results')
                         pass
 
-        amps_obs = num.array(amps_obs)
-        amps_syn = num.array(amps_syn)
+        amps = num.array(amps, dtype=num.float)
+        mask = num.all(num.isfinite(amps), axis=1)
 
-        amp_obs = num.median(amps_obs[num.isfinite(amps_obs)])
-        amp_syn = num.median(amps_syn[num.isfinite(amps_syn)])
+        amp_obs = num.median(amps[mask, 0])
+        amp_syn = num.median(amps[mask, 1])
         m = num.abs(num.log(amp_obs / amp_syn))**self.norm_exponent
 
-        result = WaveformPiggybackMisfitResult(
+        result = WOACMisfitResult(
             misfits=num.array([[m, 1.]], dtype=num.float))
 
         return result
 
 
+class WOACMisfitResult(MisfitResult):
+    pass
+
+
 __all__ = '''
-    WaveformPiggybackTargetGroup
-    WaveformPiggybackTarget
-    WaveformPiggybackMisfitResult
-    WaveformPiggybackSubtarget
-    WaveformPiggybackSubresult
+    WOACSubtarget
+    WOACSubresult
+    WaveformOverallAmplitudeConstraint
+    WOACTarget
+    WOACMisfitResult
 '''.split()

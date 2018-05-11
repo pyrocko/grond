@@ -11,7 +11,6 @@ from grond.dataset import NotFound
 from grond.analysers.base import AnalyserResult
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
-from ..waveform_piggyback.target import WaveformPiggybackSubresult
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -204,6 +203,33 @@ class TraceSpectrum(Object):
 
     def get_xdata(self):
         return self.fmin + num.arange(self.ydata.size) * self.deltaf
+
+
+class WaveformPiggybackSubtarget(Object):
+    piggy_id = Int.T()
+
+    _next_piggy_id = 0
+
+    @classmethod
+    def new_piggy_id(cls):
+        piggy_id = WaveformPiggybackSubtarget._next_piggy_id
+        WaveformPiggybackSubtarget._next_piggy_id += 1
+        return piggy_id
+
+    def __init__(self, piggy_id=None, **kwargs):
+        if piggy_id is None:
+            piggy_id = self.new_piggy_id()
+
+        Object.__init__(self, piggy_id=piggy_id, **kwargs)
+
+    def evaluate(
+            self, tr_proc_obs, trspec_proc_obs, tr_proc_syn, trspec_proc_syn):
+
+        raise NotImplemented()
+
+
+class WaveformPiggybackSubresult(Object):
+    piggy_id = Int.T()
 
 
 class WaveformMisfitResult(gf.Result, MisfitResult):
@@ -650,4 +676,6 @@ __all__ = '''
     WaveformMisfitConfig
     WaveformMisfitTarget
     WaveformMisfitResult
+    WaveformPiggybackSubtarget
+    WaveformPiggybackSubresult
 '''.split()
