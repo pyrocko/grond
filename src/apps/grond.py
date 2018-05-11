@@ -748,11 +748,24 @@ def command_report(args):
         parser.add_option(
             '--open', dest='open', action='store_true',
             help='Open webpage')
+        parser.add_option(
+            '--config', dest='config',
+            help='Configuration file to use')
+        parser.add_option(
+            '--update-without-plotting',
+            dest='update_without_plotting',
+            action='store_true',
+            help='Quick-and-dirty update parameter files without plotting')
 
     parser, options, args = cl_parse('report', args, setup)
 
+    if options.config:
+        conf = report.read_config(options.config)
+    else:
+        conf = None
+
     if options.index_only:
-        report_index('reports/')
+        report_index(conf)
         sys.exit(0)
 
     if len(args) < 1:
@@ -763,7 +776,9 @@ def command_report(args):
         try:
             for rundir in rundirs:
                 env = Environment(rundir)
-                report(env)
+                report(
+                    env, conf,
+                    update_without_plotting=options.update_without_plotting)
 
         except grond.GrondError as e:
             die(str(e))
@@ -779,14 +794,16 @@ def command_report(args):
             env = Environment(config_path)
             for event_name in event_names:
                 env.set_event_name(event_name)
-                report(env)
+                report(
+                    env, conf,
+                    update_without_plotting=options.update_without_plotting)
 
         except grond.GrondError as e:
             die(str(e))
 
     if options.open:
         import webbrowser
-        webbrowser.open('report/index.html')
+        webbrowser.open(op.join(conf.reports_base_path, 'index.html'))
 
 
 def command_qc_polarization(args):

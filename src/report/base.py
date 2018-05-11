@@ -14,16 +14,17 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
 
 
-class ReportEntry(Object):
+class ReportIndexEntry(Object):
     path = String.T()
 
 
 class ReportConfig(Object):
-    reportdir_template = Path.T(
-        default='reports/${event_name}/${problem_name}')
+    reports_base_path = Path.T(default='reports')
+    report_sub_path = String.T(
+        default='${event_name}/${problem_name}')
 
 
-def report(env, report_config=None):
+def report(env, report_config=None, update_without_plotting=False):
     if report_config is None:
         report_config = ReportConfig()
 
@@ -31,50 +32,60 @@ def report(env, report_config=None):
     problem = env.get_problem()
     logger.info('Creating report for event %s...' % event_name)
 
-    reportdir = expand_template(
-        report_config.reportdir_template,
+    report_path = expand_template(
+        op.join(
+            report_config.reports_base_path,
+            report_config.report_sub_path),
         dict(
             event_name=event_name,
             problem_name=problem.name))
 
-    if op.exists(reportdir):
-        shutil.rmtree(reportdir)
+    if op.exists(report_path) and not update_without_plotting:
+        shutil.rmtree(report_path)
 
-    problem.dump_problem_info(reportdir)
+    problem.dump_problem_info(report_path)
 
-    util.ensuredir(reportdir)
-    plots_dir_out = op.join(reportdir, 'plots')
+    util.ensuredir(report_path)
+    plots_dir_out = op.join(report_path, 'plots')
     util.ensuredir(plots_dir_out)
 
     rundir_path = env.get_rundir_path()
 
+    event = env.get_dataset().get_event()
+    guts.dump(event, filename=op.join(report_path, 'event.reference.yaml'))
+
     core.export(
-        'stats', [rundir_path], filename=op.join(reportdir, 'stats.yaml'))
+        'stats', [rundir_path], filename=op.join(report_path, 'stats.yaml'))
 
-    from grond import plot
-    plot.make_plots(env, plots_path=op.join(reportdir, 'plots'))
+    if not update_without_plotting:
+        from grond import plot
+        plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
 
-    report_index('reports/')
+    report_index(report_config)
 
 
-def report_index(report_base_path):
+def report_index(report_config=None):
+    if report_config is None:
+        report_config = ReportConfig()
+
+    reports_base_path = report_config.reports_base_path
     reports = []
-    for report_path in iter_report_dirs(report_base_path):
+    for report_path in iter_report_dirs(reports_base_path):
         logger.info('Indexing %s...' % report_path)
-        report_relpath = op.relpath(report_path, report_base_path)
-        reports.append(ReportEntry(
+        report_relpath = op.relpath(report_path, reports_base_path)
+        reports.append(ReportIndexEntry(
             path=report_relpath))
 
     guts.dump_all(
         reports,
-        filename=op.join(report_base_path, 'report_list.yaml'))
+        filename=op.join(reports_base_path, 'report_list.yaml'))
 
     app_dir = op.join(op.split(__file__)[0], 'app')
-    copytree(app_dir, report_base_path)
+    copytree(app_dir, reports_base_path)
 
 
-def iter_report_dirs(report_base_path):
-    for path, dirnames, filenames in os.walk(report_base_path):
+def iter_report_dirs(reports_base_path):
+    for path, dirnames, filenames in os.walk(reports_base_path):
         for dirname in dirnames:
             dirpath = op.join(path, dirname)
             stats_path = op.join(dirpath, 'problem.yaml')
@@ -100,5 +111,5 @@ __all__ = '''
     report
     report_index
     ReportConfig
-    ReportEntry
+    ReportIndexEntry
 '''.split()

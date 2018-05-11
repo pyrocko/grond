@@ -11,10 +11,10 @@ function copy_properties(source, target) {
 }
 
 function Dummy(obj) { copy_properties(obj, this); }
-function ReportEntry(obj) { copy_properties(obj, this); }
+function ReportIndexEntry(obj) { copy_properties(obj, this); }
 
 var yaml_type_map = [
-    ['!grond.ReportEntry', Dummy],
+    ['!grond.ReportIndexEntry', Dummy],
     ['!grond.ParameterStats', Dummy],
     ['!grond.TargetBalancingAnalyserResult', Dummy],
     ['!grond.ResultStats', Dummy],
