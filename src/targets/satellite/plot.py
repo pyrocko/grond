@@ -78,6 +78,7 @@ class SatelliteTargetPlot(PlotConfig):
 
         def drawSource(ax):
             fn, fe = source.outline(cs='xy').T
+
             # source is centered
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
             ax.fill(fe, fn,

@@ -15,6 +15,19 @@ guts_prefix = 'grond'
 
 
 class TargetBalancingAnalyser(Analyser):
+    """ Estimating target weights that balance the signal amplitudes.
+
+     Signal amplitudes depend on the source-receiver distance, on the
+     phase type and the taper used. Large signals have in general
+     a higher contribution to the misfit than smaller signals,
+     without carrying more information. With this function, weights are
+     estimated that shall balance the phase contributions.
+
+     The weight estimation is based on synthetic waveforms that stem from
+     a given number of random forward models. The inverse of the mean
+     synthetic signal amplitudes gives the balancing weight. This is
+     described as adaptive station weighting in Heimann (2011).
+     """
 
     def __init__(self, niter):
         Analyser.__init__(self)
@@ -102,7 +115,10 @@ class TargetBalancingAnalyserResult(AnalyserResult):
 
 
 class TargetBalancingAnalyserConfig(AnalyserConfig):
-    niterations = Int.T(default=1000)
+    """Configuration parameters of the target balancing."""
+    niterations = Int.T(default=1000,
+                        help='Number of random forward models for mean \
+                             phase amplitude estimation')
 
     def get_analyser(self):
         return TargetBalancingAnalyser(niter=self.niterations)

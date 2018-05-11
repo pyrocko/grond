@@ -11,9 +11,11 @@ logger = logging.getLogger('grond.target').getChild('gnss_campaign')
 
 
 class GNSSCampaignMisfitResult(MisfitResult):
-    '''Carries the observations for a target and corresponding synthetics. '''
-    statics_syn = Dict.T(optional=True)
-    statics_obs = Dict.T(optional=True)
+    """Carries the observations for a target and corresponding synthetics. """
+    statics_syn = Dict.T(optional=True,
+                         help='synthetic gnss surface displacements')
+    statics_obs = Dict.T(optional=True,
+                         help='observed gnss surface displacements')
 
 
 class GNSSCampaignMisfitConfig(MisfitConfig):
@@ -22,13 +24,13 @@ class GNSSCampaignMisfitConfig(MisfitConfig):
 
 
 class GNSSCampaignTargetGroup(TargetGroup):
-    '''Handles static displacements from campaign GNSS observations, e.g GPS.
+    """Handles static displacements from campaign GNSS observations, e.g GPS.
 
     Station information, displacements and measurement errors are provided in
     a `yaml`-file (please find an example in the documentation). The
     measurement errors may consider correlations between components of a
     station, but correlations between single stations is not considered.
-    '''
+    """
     gnss_campaigns = List.T(
         optional=True,
         help='List of individual campaign names (`name` in `gnss.yaml` files).')
@@ -77,11 +79,11 @@ class GNSSCampaignTargetGroup(TargetGroup):
 
 
 class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
-    '''Handles and carries out operations related to the objective functions.
+    """Handles and carries out operations related to the objective functions.
 
     The objective function is here the weighted misfit between observed
     and predicted surface displacements.
-    '''
+    """
     campaign_name = String.T()
     misfit_config = GNSSCampaignMisfitConfig.T()
 
@@ -128,6 +130,12 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def weights(self):
+        """Weights are the inverse of the data error variance-covariance.
+
+        The single component variances, and if provided the component
+        covariances, are used to build a data variance matrix or
+        variance-covariance matrix. Correlations between stations are
+        not implemented."""
         covar = num.matrix(self.campaign.get_covariance_matrix())
 
         return num.linalg.inv(covar)
@@ -139,6 +147,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         return self._weights
 
     def post_process(self, engine, source, statics):
+        """Applies the objective function.
+
+        As a result the weighted misfits are given and the observed and
+        synthetic data."""
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
         obs = num.matrix(self.obs_data)
@@ -165,6 +177,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         return result
 
     def get_combined_weight(self):
+        """A given manual weight in the configuration is applied."""
         return num.array([self.manual_weight])
 
     def prepare_modelling(self, engine, source, targets):
