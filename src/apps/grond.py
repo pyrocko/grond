@@ -181,38 +181,38 @@ def command_scenario(args):
     def setup(parser):
         parser.add_option(
             '--waveforms', dest='waveforms', action='store_true',
-            help='Add waveform configuration. '
+            help='add waveform configuration. '
                  '(default)')
         parser.add_option(
             '--insar', dest='insar', action='store_true',
-            help='Add InSAR displacement scenes using kite containers. '
+            help='add InSAR displacement scenes using kite containers. '
                  '(see https://pyrocko.org)')
         parser.add_option(
             '--gnss', dest='gnss', action='store_true',
-            help='Add GNSS campaign data using kite containers. '
+            help='add GNSS campaign data using kite containers. '
                  '(see https://pyrocko.org)')
         parser.add_option(
             '--nstations', dest='nstations', type=int, default=20,
-            help='Number of seismic stations to create (default: %default)')
+            help='number of seismic stations to create (default: %default)')
         parser.add_option(
             '--gnss_nstations', dest='gnss_nstations', type=int, default=20,
-            help='Number of GNSS campaign stations to create'
+            help='number of GNSS campaign stations to create'
                  ' (default: %default)')
         parser.add_option(
             '--nevents', dest='nevents', type=int, default=1,
-            help='Number of events to create (default: %default)')
+            help='number of events to create (default: %default)')
         parser.add_option(
             '--lat', dest='lat', type=float, default=41.0,
-            help='Center latitude of the scenario (default: %default)')
+            help='center latitude of the scenario (default: %default)')
         parser.add_option(
             '--lon', dest='lon', type=float, default=33.3,
-            help='Center latitude of the scenario (default: %default)')
+            help='center latitude of the scenario (default: %default)')
         parser.add_option(
             '--radius', dest='radius', type=float, default=200.,
-            help='Radius of the the scenario in [km] (default: %default)')
+            help='radius of the the scenario in [km] (default: %default)')
         parser.add_option(
             '--source', dest='source', type=str, default='dc',
-            help='Source to generate \'dc\' (double couple)'
+            help='source to generate \'dc\' (double couple)'
                  ' or\'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
         parser.add_option(
@@ -227,7 +227,7 @@ def command_scenario(args):
                  '(default: %default)')
         parser.add_option(
             '--force', dest='force', action='store_true',
-            help='Overwrite existing project folder.')
+            help='overwrite existing project folder.')
 
     parser, options, args = cl_parse('scenario', args, setup)
 
@@ -279,15 +279,15 @@ def command_init(args):
     def setup(parser):
         parser.add_option(
             '--waveforms', dest='waveforms', action='store_true',
-            help='Add waveform configuration. '
+            help='add waveform configuration. '
                  '(default)')
         parser.add_option(
             '--insar', dest='insar', action='store_true',
-            help='Add InSAR displacement scenes using kite containers. '
+            help='add InSAR displacement scenes using kite containers. '
                  '(https://pyrocko.org')
         parser.add_option(
             '--force', dest='force', action='store_true',
-            help='Overwrite existing project folder.')
+            help='overwrite existing project folder.')
 
     parser, options, args = cl_parse('init', args, setup)
 
@@ -744,18 +744,18 @@ def command_report(args):
     def setup(parser):
         parser.add_option(
             '--index-only', dest='index_only', action='store_true',
-            help='Create index only')
+            help='create index only')
         parser.add_option(
             '--open', dest='open', action='store_true',
-            help='Open webpage')
+            help='open webpage')
         parser.add_option(
             '--config', dest='config',
-            help='Configuration file to use')
+            help='configuration file to use')
         parser.add_option(
             '--update-without-plotting',
             dest='update_without_plotting',
             action='store_true',
-            help='Quick-and-dirty update parameter files without plotting')
+            help='quick-and-dirty update parameter files without plotting')
 
     parser, options, args = cl_parse('report', args, setup)
 
