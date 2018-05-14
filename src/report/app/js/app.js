@@ -15,6 +15,8 @@ function ReportIndexEntry(obj) { copy_properties(obj, this); }
 
 var yaml_type_map = [
     ['!grond.ReportIndexEntry', Dummy],
+    ['!pf.Event', Dummy],
+    ['!pf.MomentTensor', Dummy],
     ['!grond.ParameterStats', Dummy],
     ['!grond.TargetBalancingAnalyserResult', Dummy],
     ['!grond.ResultStats', Dummy],

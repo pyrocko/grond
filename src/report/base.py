@@ -4,6 +4,7 @@ import shutil
 import os
 
 from pyrocko import guts, util
+from pyrocko.model import Event
 from pyrocko.guts import Object, String
 
 from grond.meta import Path, expand_template
@@ -16,6 +17,9 @@ logger = logging.getLogger('grond.report')
 
 class ReportIndexEntry(Object):
     path = String.T()
+    problem_name = String.T()
+    event_reference = Event.T(optional=True)
+    event_best = Event.T(optional=True)
 
 
 class ReportConfig(Object):
@@ -55,11 +59,29 @@ def report(env, report_config=None, update_without_plotting=False):
     guts.dump(event, filename=op.join(report_path, 'event.reference.yaml'))
 
     core.export(
-        'stats', [rundir_path], filename=op.join(report_path, 'stats.yaml'))
+        'stats', [rundir_path],
+        filename=op.join(report_path, 'stats.yaml'))
+
+    core.export(
+        'best', [rundir_path],
+        filename=op.join(report_path, 'event.solution.best.yaml'),
+        type='event-yaml')
+
+    core.export(
+        'mean', [rundir_path],
+        filename=op.join(report_path, 'event.solution.mean.yaml'),
+        type='event-yaml')
+
+    core.export(
+        'ensemble', [rundir_path],
+        filename=op.join(report_path, 'event.solution.ensemble.yaml'),
+        type='event-yaml')
 
     if not update_without_plotting:
         from grond import plot
         plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
+
+    rie = ReportIndexEntry(path=report_relpath)
 
     report_index(report_config)
 
@@ -72,9 +94,19 @@ def report_index(report_config=None):
     reports = []
     for report_path in iter_report_dirs(reports_base_path):
         logger.info('Indexing %s...' % report_path)
+
         report_relpath = op.relpath(report_path, reports_base_path)
-        reports.append(ReportIndexEntry(
-            path=report_relpath))
+        rie = ReportIndexEntry(path=report_relpath)
+
+        fn = op.join(report_path, 'event.solution.best.yaml')
+        if op.exists(fn):
+            rie.event_best = guts.load(filename=fn)
+
+        fn = op.join(report_path, 'event.reference.yaml')
+        if op.exists(fn):
+            rie.event_reference = guts.load(filename=fn)
+
+        reports.append(rie)
 
     guts.dump_all(
         reports,

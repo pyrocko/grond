@@ -10,9 +10,30 @@
 
 <div class="container">
     <h1>Reports</h1>
-    <div ng-repeat="report_entry in report_entries">
-        <p>
-            <a href="#/reports/{{ report_entry.path }}/">{{ report_entry.path }}</a>
-        </p>
-    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Magnitude</th>
+                <th>Depth [km]</th>
+                <th>Run</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="report_entry in report_entries">
+                <td>
+                    {{ report_entry.event_best.name }}
+                </td>
+                <td>
+                    {{ report_entry.event_best.magnitude | eround:0.1 }}
+                </td>
+                <td>
+                    {{ report_entry.event_best.depth | eround:(report_entry.event_best.depth*0.01) }}
+                </td>
+                <td>
+                    <a href="#/reports/{{ report_entry.path }}/">{{ report_entry.path }}</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </div>
