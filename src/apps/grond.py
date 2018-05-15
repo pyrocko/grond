@@ -37,6 +37,7 @@ subcommand_descriptions = {
     'export': 'export results',
     'report': 'create result report',
     'qc-polarization': 'check sensor orientations with polarization analysis',
+    'upgrade-config': 'upgrade config file to the latest version of Grond',
 }
 
 subcommand_usages = {
@@ -57,6 +58,7 @@ subcommand_usages = {
         'report <configfile> <eventnames> ...'),
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
                        '<target_group_path> [options]',
+    'upgrade-config': 'upgrade-config <configfile>',
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -82,6 +84,7 @@ Subcommands:
     export          %(export)s
     report          %(report)s
     qc-polarization %(qc_polarization)s
+    upgrade-config  %(upgrade_config)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -918,6 +921,20 @@ def command_qc_polarization(args):
 
         die('no target group with path "%s" found. Available: %s' % (
             target_group_path, ', '.join(target_group_paths_avail)))
+
+
+def command_upgrade_config(args):
+    def setup(parser):
+        parser.add_option(
+            '--diff', dest='diff', action='store_true',
+            help='create diff between normalized old and new versions')
+
+    parser, options, args = cl_parse('upgrade-config', args, setup)
+    if len(args) != 1:
+        help_and_die(parser, 'missing argument <configfile>')
+
+    from grond import upgrade
+    upgrade.upgrade_config_file(args[0], diff=options.diff)
 
 
 if __name__ == '__main__':
