@@ -42,7 +42,8 @@ setup(
         'grond': ['report/app/*.html',
                    'report/app/css/*.css',
                    'report/app/css/*.map',
-                   'report/app/js/*.js']},
+                   'report/app/js/*.js',
+                   'report/app/js/*.map']},
 
     data_files=[],
     )
