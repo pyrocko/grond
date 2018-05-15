@@ -10,28 +10,36 @@
 
 <div class="container">
     <h1>Reports</h1>
-    <table>
+    <table class="report-list">
         <thead>
             <tr>
-                <th>Event</th>
-                <th>Magnitude</th>
-                <th>Depth [km]</th>
-                <th>Run</th>
+                <th><a ng-click="set_order('event')">Event</a></th>
+                <th><a ng-click="set_order('time')">Date/Time</a></th>
+                <th><a ng-click="set_order('magnitude')">Magnitude</a></th>
+                <th><a ng-click="set_order('depth')">Depth [km]</a></th>
+                <th><a ng-click="set_order('type')">Type</a></th>
+                <th><a ng-click="set_order('run')">Run</a></th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="report_entry in report_entries">
+            <tr ng-repeat="line in get_ordered_report_entries()" class="{{ line.report_entry.get_solution_type() + ' ' + line.bg_class }}">
                 <td>
-                    {{ report_entry.event_best.name }}
+                    {{ line.report_entry.get_event().name }}
                 </td>
                 <td>
-                    {{ report_entry.event_best.magnitude | eround:0.1 }}
+                    {{ line.report_entry.get_event().time.toISOString().replace('T', ' ').replace('Z', '')  }}
                 </td>
                 <td>
-                    {{ report_entry.event_best.depth | eround:(report_entry.event_best.depth*0.01) }}
+                    {{ line.report_entry.get_event().magnitude | eround:0.1 }}
                 </td>
                 <td>
-                    <a href="#/reports/{{ report_entry.path }}/">{{ report_entry.path }}</a>
+                    {{ line.report_entry.get_event().depth* 0.001 | eround:(line.report_entry.get_event().depth*0.001*0.1) }}
+                </td>
+                <td>
+                    {{ line.report_entry.get_solution_type() }}
+                </td>
+                <td>
+                    <a href="#/reports/{{ line.report_entry.path }}/">{{ line.report_entry.problem_name }}</a>
                 </td>
             </tr>
         </tbody>

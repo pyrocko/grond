@@ -11,10 +11,27 @@ function copy_properties(source, target) {
 }
 
 function Dummy(obj) { copy_properties(obj, this); }
-function ReportIndexEntry(obj) { copy_properties(obj, this); }
+function ReportIndexEntry(obj) {
+    copy_properties(obj, this);
+    this.get_event = function() {
+        if (this.event_best != null) {
+            return this.event_best;
+        } else {
+            return this.event_reference;
+        }
+    }
+
+    this.get_solution_type = function() {
+        if (this.event_best != null) {
+            return 'best';
+        } else {
+            return 'ref';
+        }
+    }
+}
 
 var yaml_type_map = [
-    ['!grond.ReportIndexEntry', Dummy],
+    ['!grond.ReportIndexEntry', ReportIndexEntry],
     ['!pf.Event', Dummy],
     ['!pf.MomentTensor', Dummy],
     ['!grond.ParameterStats', Dummy],
@@ -139,11 +156,80 @@ angular.module('reportApp', ['ngRoute'])
     })
 
     .controller('ReportListController', function($scope, YamlMultiDoc) {
-        $scope.report_entries = [];
+        var report_entries = [];
+
+        var get_order_key = function(x) {
+            return x.get_event().name;
+        };
+
+        $scope.set_order = function(skey) {
+            if (skey == 'event') {
+                get_order_key = function(x) {
+                    return x.get_event().name;
+                };
+            } else if (skey == 'time') {
+                get_order_key = function(x) {
+                    return x.get_event().time;
+                };
+            } else if (skey == 'magnitude') {
+                get_order_key = function(x) {
+                    return x.get_event().magnitude;
+                };
+            } else if (skey == 'depth') {
+                get_order_key = function(x) {
+                    return x.get_event().depth;
+                };
+            } else if (skey == 'type') {
+                get_order_key = function(x) {
+                    return x.get_solution_type() + '.' + x.get_event().name;
+                };
+            } else if (skey == 'run') {
+                get_order_key = function(x) {
+                    return x.problem_name;
+                };
+            }
+        };
+
+        $scope.get_ordered_report_entries = function() {
+            var lines = [];
+            for (var i=0; i<report_entries.length; i++) {
+                var line = {
+                    bg_class: null,
+                    report_entry: report_entries[i]};
+
+                lines.push(line);
+            }
+
+            lines.sort(function(a, b) { 
+                var a_key = get_order_key(a.report_entry);
+                var b_key = get_order_key(b.report_entry);
+
+                if (a_key < b_key) {
+                    return -1;
+                }
+                if (a_key > b_key) {
+                    return 1;
+                }
+                return 0;
+            });
+
+            var i_bg_class = 0;
+            var name = '';
+            var bg_classes = ['even', 'odd'];
+            for (var i=0; i<lines.length; i++) {
+                var rname = lines[i].report_entry.get_event().name;
+                if (rname != name) {
+                    i_bg_class++;
+                    name = rname;
+                }
+                lines[i].bg_class = bg_classes[i_bg_class % 2];
+            }
+            return lines;
+        };
 
         YamlMultiDoc.query(
             'report_list.yaml',
-            function(doc) { $scope.report_entries.push(doc); console.log(doc); },
+            function(doc) { report_entries.push(doc); },
             {schema: report_schema});
     })
 

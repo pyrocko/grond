@@ -74,3 +74,22 @@ tr.has-manual-comments {
 table.stats tt {
     white-space: pre;
 }
+
+table.report-list thead tr:first-child {
+    border-bottom: 1px solid black;
+    border-top: 1px solid black;
+}
+
+table.report-list tbody tr:last-child {
+    border-bottom: 1px solid black;
+}
+
+table.report-list td,
+table.report-list th {
+   padding-left: 1em;
+   padding-right: 1em;
+}
+
+table.report-list tr.odd {
+    background-color: #eee;
+}

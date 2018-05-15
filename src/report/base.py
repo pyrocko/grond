@@ -81,7 +81,18 @@ def report(env, report_config=None, update_without_plotting=False):
         from grond import plot
         plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
 
-    rie = ReportIndexEntry(path=report_relpath)
+    rie = ReportIndexEntry(path='.', problem_name=problem.name)
+
+    fn = op.join(report_path, 'event.solution.best.yaml')
+    if op.exists(fn):
+        rie.event_best = guts.load(filename=fn)
+
+    fn = op.join(report_path, 'event.reference.yaml')
+    if op.exists(fn):
+        rie.event_reference = guts.load(filename=fn)
+
+    fn = op.join(report_path, 'index.yaml')
+    guts.dump(rie, filename=fn)
 
     report_index(report_config)
 
@@ -95,17 +106,10 @@ def report_index(report_config=None):
     for report_path in iter_report_dirs(reports_base_path):
         logger.info('Indexing %s...' % report_path)
 
+        fn = op.join(report_path, 'index.yaml')
+        rie = guts.load(filename=fn)
         report_relpath = op.relpath(report_path, reports_base_path)
-        rie = ReportIndexEntry(path=report_relpath)
-
-        fn = op.join(report_path, 'event.solution.best.yaml')
-        if op.exists(fn):
-            rie.event_best = guts.load(filename=fn)
-
-        fn = op.join(report_path, 'event.reference.yaml')
-        if op.exists(fn):
-            rie.event_reference = guts.load(filename=fn)
-
+        rie.path = report_relpath
         reports.append(rie)
 
     guts.dump_all(
