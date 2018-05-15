@@ -121,7 +121,7 @@ angular.module('reportApp', ['ngRoute'])
 
         var funcs = {};
         funcs.query = function(path, loaded, options) {
-            $http.get(path).then(
+            $http.get(path, {'responseType': 'text'}).then(
                 function(response) {
                     var doc = jsyaml.safeLoad(response.data, options);
                     loaded(doc);
@@ -135,7 +135,7 @@ angular.module('reportApp', ['ngRoute'])
 
         var funcs = {};
         funcs.query = function(path, loaded, options) {
-            $http.get(path, {'responseType': 'application/x-yaml'}).then(
+            $http.get(path, {'responseType': 'text'}).then(
                 function(response) {
                     jsyaml.safeLoadAll(response.data, loaded, options);
                 }
