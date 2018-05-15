@@ -220,13 +220,6 @@ class NoiseAnalyser(Analyser):
         if self.check_events:
             weights = weights*ev_ws
 
-        families, nfamilies = wproblem.get_family_mask()
-
-        for ifamily in range(nfamilies):
-            weights[families == ifamily] /= (
-                num.nansum(weights[families == ifamily]) /
-                num.nansum(num.isfinite(weights[families == ifamily])))
-
         for weight, target in zip(weights, problem.waveform_targets):
             target.analyser_results['noise'] = \
                 NoiseAnalyserResult(weight=float(weight))
