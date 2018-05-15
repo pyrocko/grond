@@ -4,6 +4,26 @@ import difflib
 from pyrocko import guts_agnostic as aguts
 
 
+def color_diff(diff):
+    green = '\x1b[32m'
+    red = '\x1b[31m'
+    blue = '\x1b[34m'
+    dim = '\x1b[2m'
+    reset = '\x1b[0m'
+
+    for line in diff:
+        if line.startswith('+'):
+            yield green + line + reset
+        elif line.startswith('-'):
+            yield red + line + reset
+        elif line.startswith('^'):
+            yield blue + line + reset
+        elif line.startswith('@'):
+            yield dim + line + reset
+        else:
+            yield line
+
+
 def rename_attribute(old, new):
     def func(path, obj):
         if old in obj:
@@ -76,7 +96,10 @@ def upgrade_config_file(fn, diff=True):
             s1.splitlines(1), s2.splitlines(1),
             'normalized old', 'normalized new'))
 
-        sys.stdout.writelines(result)
+        if sys.stdout.isatty():
+            sys.stdout.writelines(color_diff(result))
+        else:
+            sys.stdout.writelines(result)
     else:
         print(aguts.dump(t2, header=True))
 
