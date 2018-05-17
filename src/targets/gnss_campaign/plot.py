@@ -90,10 +90,9 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 radius = camp.get_radius()
 
             if radius == 0.:
-                logger.warn('Campaign radius too small, defaulting to 30 km')
+                logger.warn('Radius of GNSS campaign %s too small, defaulting\
+                to 30 km' % camp.name)
                 radius = 30*km
-
-            print(camp)
 
             model_camp = gnss.GNSSCampaign(
                 stations=copy.deepcopy(camp.stations),
