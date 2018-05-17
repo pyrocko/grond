@@ -358,8 +358,7 @@ class Chains(object):
 
 
 class HighScoreOptimiser(Optimiser):
-    '''Monte-Carlo-based direct search optimisation
-    '''
+    '''Monte-Carlo-based directed search optimisation with bootstrap.'''
 
     sampler_phases = List.T(SamplerPhase.T())
     chain_length_factor = Float.T(default=8.)
@@ -484,7 +483,7 @@ class HighScoreOptimiser(Optimiser):
         return sum([ph.niterations for ph in self.sampler_phases])
 
     def get_status(self, history):
-        sparks = '▁▂▃▅▇'
+        sparks = u'\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'
 
         if self._status_chains is None:
             self._status_chains = self.chains(history.problem, history)
