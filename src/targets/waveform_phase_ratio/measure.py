@@ -121,7 +121,7 @@ class FeatureMeasure(Object):
             extra_responses=[],
             debug=False):
 
-        from . import target as base
+        from ..waveform import target as base
 
         trs_processed = []
         trs_orig = []
