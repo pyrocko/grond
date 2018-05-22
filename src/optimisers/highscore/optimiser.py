@@ -534,8 +534,8 @@ class HighScoreOptimiser(Optimiser):
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_header='Optimiser phase: %s\n'
-                         'Global chain misfit distribution: ₀%s¹'
+            extra_header=u'Optimiser phase: %s\n'
+                         u'Global chain misfit distribution: \u2080%s\xb9'
                          % (phase.__class__.__name__,
                             spark_plot(
                                 glob_misfits,
