@@ -220,7 +220,6 @@ class InSARObservation(Observation):
             store_id=self.store_id,
             kite_scenes=['*all'],
             misfit_config=grond.SatelliteMisfitConfig(
-                use_weight_focal=False,
                 optimise_orbital_ramp=True,
                 ranges={
                     'offset': '-0.5 .. 0.5',
