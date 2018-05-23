@@ -358,8 +358,7 @@ class Chains(object):
 
 
 class HighScoreOptimiser(Optimiser):
-    '''Monte-Carlo-based direct search optimisation  
-    
+    '''Monte-Carlo-based direct search optimisation
     '''
 
     sampler_phases = List.T(SamplerPhase.T())
@@ -529,7 +528,6 @@ class HighScoreOptimiser(Optimiser):
             hist = hist / hist_max
             vec = num.digitize(hist, num.linspace(0., 1., len(sparks)))
             return ''.join([sparks[b-1] for b in vec])
-
 
         return OptimiserStatus(
             row_names=row_names,

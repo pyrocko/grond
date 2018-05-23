@@ -206,15 +206,14 @@ class NoiseAnalyser(Analyser):
                     logger.debug(str(e))
                     traces.append(None)
 
-        wproblem = problem.copy()
         var_ds, ev_ws = seismic_noise_variance(
             traces, engine, event, problem.waveform_targets,
             self.nwindows, self.pre_event_noise_duration,
             self.check_events, self.phase_def)
         norm_noise = num.nanmedian(var_ds)
         if norm_noise == 0:
-                logger.info('Noise Analyser returned a weight of 0 for \
-                            all stations')
+                logger.info(
+                    'Noise Analyser returned a weight of 0 for all stations')
 
         weights = norm_noise/var_ds
         if self.check_events:
@@ -226,25 +225,28 @@ class NoiseAnalyser(Analyser):
 
 
 class NoiseAnalyserResult(AnalyserResult):
-    weight = Float.T(help='The inverse of the pre-event data variance. If \
-                          traces were checked for other event phase arrivals, \
-                          the weight can be zero for contaminated traces.')
+    weight = Float.T(
+        help='The inverse of the pre-event data variance. '
+             'If traces were checked for other event phase arrivals,'
+             ' the weight can be zero for contaminated traces.')
 
 
 class NoiseAnalyserConfig(AnalyserConfig):
     """Configuration parameters for the pre-event noise analysis."""
-    nwindows = Int.T(default=1,
-                     help='number of windows for trace splitting')
-    pre_event_noise_duration = Float.T(default=0.,
-                                       help='Total length of noise trace in the\
-                                        analysis')
+    nwindows = Int.T(
+        default=1,
+        help='number of windows for trace splitting')
+    pre_event_noise_duration = Float.T(
+        default=0.,
+        help='Total length of noise trace in the analysis')
     phase_def = String.T(
         default='P',
         help='Onset of phase_def used for upper limit of window')
-    check_events = Bool.T(default=False,
-                          help='check the gCMT global catalogue for M>5 \
-                               earthquakes that produce phase arrivals \
-                               contaminating and affecting the noise analysis')
+    check_events = Bool.T(
+        default=False,
+        help='check the gCMT global catalogue for M>5 earthquakes'
+             ' that produce phase arrivals'
+             ' contaminating and affecting the noise analysis')
 
     def get_analyser(self):
         return NoiseAnalyser(

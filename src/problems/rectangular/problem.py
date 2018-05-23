@@ -2,7 +2,7 @@ import numpy as num
 import logging
 
 from pyrocko import gf, util
-from pyrocko.guts import String, Bool, Float, Dict, Int
+from pyrocko.guts import String, Float, Dict, Int
 
 from grond.meta import expand_template, Parameter
 

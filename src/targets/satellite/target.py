@@ -122,15 +122,15 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     configuration, orbital ramps are optimized for.
     """
     scene_id = String.T(
-        help='Identification string that is individual for each single \ '
-             'satellite target. Can be set in the kite data `yaml`-files')
+        help='UID string each Kite displacemente scene.'
+             ' Corresponds to Kite scene_id.')
+    misfit_config = SatelliteMisfitConfig.T(
+        help='Configuration of the ``SatelliteTarget``')
+
     available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
-        Parameter('ramp_east', 'm/m')
-        ]
-    misfit_config = SatelliteMisfitConfig.T(
-        help='Carries the settings of the objective function for these targets')
+        Parameter('ramp_east', 'm/m')]
 
     def __init__(self, *args, **kwargs):
         gf.SatelliteTarget.__init__(self, *args, **kwargs)
