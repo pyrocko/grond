@@ -20,7 +20,7 @@ class GrondScenario(object):
     def __init__(self, project_dir,
                  center_lat=23., center_lon=52., radius=230*km,
                  problem=None, observations=[]):
-        self.project_dir = project_dir
+        self.project_dir = op.abspath(project_dir)
         self.data_dir = op.join('events', 'scenario')
 
         self.center_lat = center_lat
