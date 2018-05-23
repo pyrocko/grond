@@ -139,8 +139,13 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         not implemented.
         """
         if self._weights is None:
-            self._weights = num.asmatrix(
-                self.campaign.get_covariance_matrix()).I
+            covar = self.campaign.get_covariance_matrix()
+
+            if not num.all(covar.diagonal()):
+                logger.warning('GNSS Stations have an empty covariance matrix.'
+                               ' Weights will be all equal.')
+                num.fill_diagonal(covar, 1.)
+            self._weights = num.asmatrix(covar).I
         return self._weights
 
     def post_process(self, engine, source, statics):
