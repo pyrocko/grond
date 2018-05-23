@@ -1,12 +1,11 @@
 import logging
 import os
 import shutil
-import sys
 import os.path as op
 
 import grond
 
-from pyrocko import gf, config, scenario, util
+from pyrocko import gf, scenario, util
 
 
 DEFAULT_STATIC_STORE = 'ak135_static'
@@ -49,59 +48,6 @@ class GrondScenario(object):
     def stores_wanted(self):
         return set([obs.store_id for obs in self.observations])
 
-    @property
-    def stores_missing(self):
-        return self.stores_wanted - set(self.engine.get_store_ids())
-
-    def ensure_gfstores(self, interactive=False):
-        if not self.stores_missing:
-            return
-
-        from pyrocko.gf import ws
-
-        cfg = config.config()
-        if len(cfg.gf_store_superdirs) == 0:
-            store_dir = op.expanduser(
-                op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
-            logger.debug('Creating default gf_store_superdirs: %s' % store_dir)
-
-            util.ensuredir(store_dir)
-            cfg.gf_store_superdirs = [store_dir]
-            config.write_config(cfg)
-
-        if interactive:
-            print('\nTo create the example project we need to'
-                  ' download missing Green\'s function stores:\n'
-                  ' %s\n'
-                  'The stores will be downloaded into Pyrockos global cache.\n'
-                  % '\n'.join(self.stores_missing))
-            for idr, dr in enumerate(cfg.gf_store_superdirs):
-                print(' %d. %s' % ((idr+1), dr))
-            s = input('\nIn which cache directory shall the GF store'
-                      ' be downloaded to? Default 1, (C)ancel: ')
-            if s in ['c', 'C']:
-                print('Canceled!')
-                sys.exit(1)
-            elif s == '':
-                s = 0
-            try:
-                s = int(s)
-                if s > len(cfg.gf_store_superdirs):
-                    raise ValueError
-            except ValueError:
-                print('Invalid selection: %s' % s)
-                sys.exit(1)
-        else:
-            s = 1
-
-        download_dir = cfg.gf_store_superdirs[s-1]
-        logger.info('Downloading Green\'s functions stores to %s'
-                    % download_dir)
-
-        for store in self.stores_missing:
-            os.chdir(download_dir)
-            ws.download_gf_store(site='kinherd', store_id=store)
-
     def symlink_gfstores(self):
         logger.info('Symlinking Green\'s function stores...')
         util.ensuredir(op.join(self.project_dir, 'gf_stores'))
@@ -142,10 +88,12 @@ class GrondScenario(object):
                                for obs in self.observations],
             source_generator=self.problem.get_scenario_source_generator())
 
-    def create_scenario(self):
+    def create_scenario(self, interactive=True):
         logger.info('Creating pyrocko.scenario...')
+
         scenario = self.get_scenario()
         scenario.init_modelling(engine=self.engine)
+        scenario.ensure_gfstores(interactive=interactive)
         scenario.dump(filename=op.join(self.project_dir, 'scenario.yml'))
 
         data_dir = op.join(self.project_dir, self.data_dir)
@@ -185,12 +133,11 @@ class GrondScenario(object):
     def build(self, force=False, interactive=False):
         logger.info('Building Grond scenario using pyrocko.scenario...')
 
-        self.ensure_gfstores(interactive)
-
         self.create_project_dir(force)
+
+        self.create_scenario(interactive=interactive)
         self.symlink_gfstores()
 
-        self.create_scenario()
         self.create_grond_files()
 
 
