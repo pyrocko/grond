@@ -139,20 +139,22 @@ Terminology
 -----------
 
 Grond is a rather large system. The following terminology may help to
-understand the underlying concepts and implementation strategies.
+understand its configuration and the underlying concepts and implementation
+strategies.
 
 Event
-    A seismic event which has a unique name among other events available to a
+    A seismic event which has a unique name among all events available to a
     specific configuration of Grond. An event usually has a preliminary origin
     and sometimes a reference mechanism attached to it.
 
 Config file
-    A file, by convention ending with the suffix ``.gronf``, containing a Grond
-    configuration. The config file can be made to work with multiple events.
+    A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing
+    a Grond configuration. The config file can be made to work with multiple
+    events.
 
 Rundir
-    The run directory, by convention ending with the suffix ``.grun``, where
-    Grond stores intermediate and final results during an optimisation. The
+    The directory, by convention ending with the suffix ``.grun``, where Grond
+    stores intermediate and final results during an optimisation run. The
     rundir is created by Grond when running the ``grond go`` subcommand.
 
 Dataset
@@ -162,17 +164,18 @@ Dataset
 
 Misfit
     The misfit is the value of the objective function obtained for a given
-    source model instance. The global misfit may contain weighted contributions of
-    multiple Grond targets (see below).
+    source model instance. The global misfit may by aggregated from weighted
+    contributions of multiple Grond targets (see below).
 
 Target
-    Many modelling targets contribute to the global misfit in a typical Grond
-    set-up. Such a modelling target could be a single component seismogram at a
-    given station, an InSAR scene, or an amplitude ratio at one station. The
-    target knows how to filter, taper, and weight the data. It also contains
-    configuration about how to compare the synthetics with the observation to
-    obtain a misfit value (e.g. time-domain traces/amplitude spectra/cross
-    correlations, L1-norm/L2-norm, etc.).
+    In a typcal Grond set-up, many modelling targets may contribute to the
+    global misfit. For example, An individual modelling target could be a
+    single component seismogram at a given station, an InSAR scene, or an
+    amplitude ratio at one station. The target knows how to filter, taper, and
+    weight the data. It also contains configuration about how to compare
+    synthetics with the observations to obtain a misfit contribution value
+    (e.g. time-domain traces/amplitude spectra/cross correlations,
+    L1-norm/L2-norm, etc.).
 
 Problem
     In the context of a Grond set-up, the "problem" groups the choice of source
@@ -191,7 +194,8 @@ Optimiser
 Engine
     Forward modelling in Grond is done through the Pyrocko GF engine, which
     allows fast forward modelling for arbitrary source models based on
-    pre-calculated Green's functions.
+    pre-calculated Green's functions. Its configuration may contain information
+    about where to find the pre-calculated Pyrocko Green's function stores.
 
 Configuration
 -------------
