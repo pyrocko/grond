@@ -21,8 +21,8 @@ def d2u(d):
 
 
 subcommand_descriptions = {
-    'scenario': 'create an scenario project',
     'init': 'initialise new project structure or print configuration',
+    'scenario': 'create a forward-modelled scenario project',
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimisation',
@@ -38,8 +38,8 @@ subcommand_descriptions = {
 }
 
 subcommand_usages = {
-    'scenario': 'scenario [options] <project_dir>',
     'init': 'init [options] <project_dir>',
+    'scenario': 'scenario [options] <project_dir>',
     'events': 'events <configfile>',
     'check': 'check <configfile> <eventnames> ... [options]',
     'go': 'go <configfile> <eventnames> ... [options]',
