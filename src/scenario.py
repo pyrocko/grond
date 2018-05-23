@@ -5,7 +5,7 @@ import os.path as op
 
 import grond
 
-from pyrocko import gf, scenario, util
+from pyrocko import gf, scenario, util, model
 
 
 DEFAULT_STATIC_STORE = 'ak135_static'
@@ -65,10 +65,12 @@ class GrondScenario(object):
         self.problem = problem
 
     def get_dataset_config(self):
+        events_path = op.join(self.project_dir, self.data_dir, 'events.txt')
+        events = model.load_events(events_path)
         dataset_config = grond.DatasetConfig(
-            events_path=op.join(self.data_dir, 'events.txt'))
+            events_path=events_path)
         for obs in self.observations:
-            obs.update_dataset_config(dataset_config, self.data_dir)
+            obs.update_dataset_config(dataset_config, events, self.data_dir)
         return dataset_config
 
     def get_scenario(self):
@@ -166,10 +168,14 @@ class WaveformObservation(Observation):
         self.nstations = nstations
         self.store_id = store_id
 
-    def update_dataset_config(self, dataset_config, data_dir):
+    def update_dataset_config(self, dataset_config, events, data_dir):
         ds = dataset_config
-        ds.waveform_paths = [op.join(data_dir, 'data/waveforms')]
-        ds.waveform_path = op.join(data_dir, 'data/waveforms')
+        yr = (util.time_to_str(events[0].time)[:4])
+        mo = (util.time_to_str(events[0].time)[5:7])
+        day = (util.time_to_str(events[0].time)[8:10])
+        waveform_path = 'waveforms/'+yr+'/'+mo+'/'+day+'/'
+        ds.waveform_paths = [op.join(data_dir, waveform_path)]
+        ds.waveform_path = op.join(data_dir, waveform_path)
         ds.stations_path = op.join(data_dir, 'meta', 'stations.txt')
         ds.responses_stationxml_paths = [
             op.join(data_dir, 'meta', 'stations.xml')]
