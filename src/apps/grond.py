@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
-import math
 import sys
-import shutil
-import os
 import os.path as op
 import logging
 from optparse import OptionParser
 
 from pyrocko import util, marker
-from pyrocko.gf import Range
 
 import grond
 
@@ -26,7 +22,7 @@ def d2u(d):
 
 subcommand_descriptions = {
     'scenario': 'create an scenario project',
-    'init': 'create project structure or print example configuration',
+    'init': 'initialise new project structure or print configuration',
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimisation',
@@ -36,7 +32,7 @@ subcommand_descriptions = {
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
     'report': 'create result report',
-    'diff': 'compare two configs or other normalized Grond yaml files',
+    'diff': 'compare two configs or other normalized Grond YAML files',
     'qc-polarization': 'check sensor orientations with polarization analysis',
     'upgrade-config': 'upgrade config file to the latest version of Grond',
 }
@@ -282,166 +278,73 @@ def command_scenario(args):
 
 def command_init(args):
 
+    from . import cmd_init as init
+
     def setup(parser):
         parser.add_option(
             '--waveforms', dest='waveforms', action='store_true',
-            help='add waveform configuration. '
+            help='add waveform configuration '
                  '(default)')
         parser.add_option(
             '--insar', dest='insar', action='store_true',
-            help='add InSAR displacement scenes using kite containers. '
+            help='add InSAR displacement scenes using kite containers'
                  '(https://pyrocko.org')
         parser.add_option(
+            '--gnss', dest='gnss', action='store_true',
+            help='add GNSS campaign configuration')
+        parser.add_option(
+            '--full', dest='full', action='store_true',
+            help='create a full configuration, from targets above')
+        parser.add_option(
+            '--problem-cmt', dest='cmt', action='store_true',
+            help='add a CMT source problem')
+        parser.add_option(
+            '--problem-rectangular', dest='rectangular',
+            action='store_true',
+            help='add a finite rectangular source problem')
+        parser.add_option(
             '--force', dest='force', action='store_true',
-            help='overwrite existing project folder.')
+            help='overwrite existing project folder')
 
     parser, options, args = cl_parse('init', args, setup)
 
     project_dir = None
     if len(args) == 1:
         project_dir = op.join(op.curdir, args[0])
-        if op.exists(project_dir) and not options.force:
-            raise EnvironmentError(
-                'Directory %s already exists! Use --force to overwrite'
-                % args[0])
-        elif op.exists(project_dir) and options.force:
-            logger.info('Overwriting directory %s.' % project_dir)
-            shutil.rmtree(project_dir)
 
     if not options.insar and not options.waveforms:
         options.waveforms = True
 
-    config_types = []
-
-    sub_dirs = ['gf_store']
-    empty_files = []
-
-    dataset_config = grond.DatasetConfig(events_path='events.txt')
-    target_groups = []
+    project = init.GrondProject()
 
     if options.waveforms:
-        config_types.append('seismic waveforms')
-
-        sub_dirs += ['data']
-        dataset_config.waveform_paths = ['data']
-
-        empty_files += ['stations.xml']
-        dataset_config.stations_path = 'stations.txt'
-
-        target_groups.append(
-            grond.WaveformTargetGroup(
-                normalisation_family='time_domain',
-                path='all',
-                distance_min=10*km,
-                distance_max=1000*km,
-                channels=['Z', 'R', 'T'],
-                interpolation='multilinear',
-                store_id='gf_store',
-                misfit_config=grond.WaveformMisfitConfig(
-                    fmin=0.01,
-                    fmax=0.1)))
-
-        pi2 = math.pi/2
-        problem_config = grond.CMTProblemConfig(
-            name_template='cmt_${event_name}',
-            distance_min=2.*km,
-            mt_type='deviatoric',
-            ranges=dict(
-                time=Range(0, 10.0, relative='add'),
-                north_shift=Range(-16*km, 16*km),
-                east_shift=Range(-16*km, 16*km),
-                depth=Range(1*km, 11*km),
-                magnitude=Range(4.0, 6.0),
-                rmnn=Range(-pi2, pi2),
-                rmee=Range(-pi2, pi2),
-                rmdd=Range(-pi2, pi2),
-                rmne=Range(-1.0, 1.0),
-                rmnd=Range(-1.0, 1.0),
-                rmed=Range(-1.0, 1.0),
-                duration=Range(1.0, 15.0))
-            )
-
+        project.add_waveforms()
+        project.set_cmt_source()
     if options.insar:
-        config_types.append('InSAR')
+        project.add_insar()
+        project.set_rectangular_source()
+    if options.gnss:
+        project.add_gnss()
+        project.set_rectangular_source()
 
-        sub_dirs += ['scenes', 'gnss']
+    if options.full:
+        project = init.GrondProject()
 
-        dataset_config.kite_scene_paths = ['scenes']
+        project.add_waveforms()
+        project.add_insar()
+        project.add_gnss()
+        project.set_rectangular_source()
 
-        target_groups.append(
-            grond.SatelliteTargetGroup(
-                normalisation_family='insar_target',
-                path='all',
-                interpolation='multilinear',
-                store_id='gf_store',
-                kite_scenes=['*all'],
-                misfit_config=grond.SatelliteMisfitConfig(
-                    use_weight_focal=False,
-                    optimise_orbital_ramp=True,
-                    ranges={
-                        'offset': '-0.5 .. 0.5',
-                        'ramp_north': '-1e-4 .. 1e-4',
-                        'ramp_east': '-1e-4 .. 1e-4'
-                        }
-                    )))
+    if options.cmt:
+        project.set_cmt_source()
+    if options.rectangular:
+        project.set_rectangular_source()
 
-        problem_config = grond.RectangularProblemConfig(
-            name_template='rect_source',
-            ranges=dict(
-                north_shift=Range(-20*km, 20*km),
-                east_shift=Range(-20*km, 20*km),
-                depth=Range(0*km, 10*km),
-                length=Range(20*km, 40*km),
-                width=Range(5*km, 12*km),
-                dip=Range(20, 70),
-                strike=Range(0, 180),
-                rake=Range(0, 90),
-                slip=Range(1, 3))
-            )
-
-    engine_config = grond.EngineConfig(
-        gf_store_superdirs=['.'])
-
-    optimiser_config = grond.HighScoreOptimiserConfig()
-
-    config = grond.Config(
-        rundir_template=op.join('rundir', '${problem_name}.grun'),
-        dataset_config=dataset_config,
-        target_groups=target_groups,
-        problem_config=problem_config,
-        optimiser_config=optimiser_config,
-        engine_config=engine_config)
-
-    events = '''name = 2011-myanmar
-time = 2011-03-24 13:55:12.010
-latitude = 20.687
-longitude = 99.822
-magnitude = 6.9
-moment = 1.9228e+19
-depth = 8000
-region = Myanmar
---------------------------------------------'''
-
-    if project_dir is not None:
-        logger.info('Creating empty project for %s in folder %s'
-                    % (' and '.join(config_types), args[0]))
-
-        def p(fn):
-            return op.join(project_dir, fn)
-
-        os.mkdir(op.abspath(project_dir))
-        for d in sub_dirs:
-            os.mkdir(p(d))
-
-        with open(p('config.yml'), 'w') as cf:
-            cf.write(str(config))
-        with open(p('events.txt'), 'w') as ef:
-            ef.write(events)
-
-        for fn in empty_files:
-            open(p(fn), 'w').close()
+    if len(args) == 1:
+        project_dir = op.join(op.curdir, args[0])
+        project.build(project_dir, options.force)
     else:
-        print(config)
+        sys.stdout.write(project.dump())
 
 
 def command_events(args):
