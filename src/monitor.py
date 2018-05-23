@@ -1,7 +1,6 @@
 import time
 import logging
 import threading
-import signal
 import os.path as op
 import numpy as num
 from datetime import timedelta
@@ -152,7 +151,7 @@ class GrondMonitor(threading.Thread):
 
         lines[0:0] = ['\033[%i;1H\033[1J\033[1;1H' % (len(lines)+2)]
         lnadd('')
-        lnadd('\033[%i;1H' % (len(lines)+12))
+        lnadd('\033[%i;1H' % (len(lines)+1))
         print('\n'.join(lines))
 
     def terminate(self):
