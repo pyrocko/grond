@@ -138,6 +138,8 @@ velocity model.
 Terminology
 -----------
 
+Grond is a rather large system. The following terminology may help to
+understand the underlying concepts and implementation strategies.
 
 Event
     A seismic event which has a unique name among other events available to a
@@ -159,15 +161,37 @@ Dataset
     coordinates, instrument responses, blacklists, picks, event catalogues).
 
 Misfit
-    The misfit is the value of the objective funcion obtained for a concrete
-    source model. The global misfit may contain weighted contributions of
-    multiple targets in Grond terminology (see below).
+    The misfit is the value of the objective function obtained for a given
+    source model instance. The global misfit may contain weighted contributions of
+    multiple Grond targets (see below).
 
-* Target
-* Problem
-* Analyser
-* Optimiser
-* Engine
+Target
+    Many modelling targets contribute to the global misfit in a typical Grond
+    set-up. Such a modelling target could be a single component seismogram at a
+    given station, an InSAR scene, or an amplitude ratio at one station. The
+    target knows how to filter, taper, and weight the data. It also contains
+    configuration about how to compare the synthetics with the observation to
+    obtain a misfit value (e.g. time-domain traces/amplitude spectra/cross
+    correlations, L1-norm/L2-norm, etc.).
+
+Problem
+    In the context of a Grond set-up, the "problem" groups the choice of source
+    model and parameter bounds to be used in the optimisation. 
+
+Analyser
+    Before running the optimisation, station weights and other internal
+    parameters may need to be adapted to the observed data and configured
+    set-up of Grond. Such pre-optimisation tasks are done by one or more of
+    Grond's analysers.
+
+Optimiser
+    This refers to the strategy, how to sample model space to find solutions in
+    a given Grond set-up.
+
+Engine
+    Forward modelling in Grond is done through the Pyrocko GF engine, which
+    allows fast forward modelling for arbitrary source models based on
+    pre-calculated Green's functions.
 
 Configuration
 -------------
@@ -214,8 +238,8 @@ Commented snippets of Grond configuration files explaining all options can be fo
 Optimisation
 ------------
 
-You may want to check your dataset and configuration file (see suggestions above) and debug
-it if needed with the command:
+Before running the optimisation, you may want to check your dataset and
+configuration file and debug it if needed with the command:
 
 ::
 
@@ -227,11 +251,11 @@ Now, you may start the optimization for a given event using
 	
 	grond go <configfile> <eventname>
 
-During the optimization, results are aggregated in an output directory,
+During the optimisation, results are aggregated in an output directory,
 referred to as `<rundir>` in the configuration and documentation.
 
 You find detailed information on the misfit configuration and model space
-sampling in the Chapter :doc:`/optimisers/index`.
+sampling in the section :doc:`/optimisers/index`.
 
 
 Results and visualisation
