@@ -13,6 +13,26 @@ from .targets.base import TargetGroup
 guts_prefix = 'grond'
 
 
+def color_diff(diff):
+    green = '\x1b[32m'
+    red = '\x1b[31m'
+    blue = '\x1b[34m'
+    dim = '\x1b[2m'
+    reset = '\x1b[0m'
+
+    for line in diff:
+        if line.startswith('+'):
+            yield green + line + reset
+        elif line.startswith('-'):
+            yield red + line + reset
+        elif line.startswith('^'):
+            yield blue + line + reset
+        elif line.startswith('@'):
+            yield dim + line + reset
+        else:
+            yield line
+
+
 class EngineConfig(HasPaths):
     gf_stores_from_pyrocko_config = Bool.T(
         default=True,
@@ -125,9 +145,31 @@ def write_config(config, path):
     config.change_basepath(basepath)
 
 
+def diff_configs(path1, path2):
+    import sys
+    import difflib
+    from pyrocko import guts_agnostic as aguts
+
+    t1 = aguts.load(filename=path1)
+    t2 = aguts.load(filename=path2)
+
+    s1 = aguts.dump(t1)
+    s2 = aguts.dump(t2)
+
+    result = list(difflib.unified_diff(
+        s1.splitlines(1), s2.splitlines(1),
+        'left', 'right'))
+
+    if sys.stdout.isatty():
+        sys.stdout.writelines(color_diff(result))
+    else:
+        sys.stdout.writelines(result)
+
+
 __all__ = '''
     EngineConfig
     Config
     read_config
     write_config
+    diff_configs
 '''.split()

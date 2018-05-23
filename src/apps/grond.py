@@ -36,6 +36,7 @@ subcommand_descriptions = {
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
     'report': 'create result report',
+    'diff': 'compare two configs or other normalized Grond yaml files',
     'qc-polarization': 'check sensor orientations with polarization analysis',
     'upgrade-config': 'upgrade config file to the latest version of Grond',
 }
@@ -56,6 +57,7 @@ subcommand_usages = {
     'report': (
         'report <rundir> ... [options]',
         'report <configfile> <eventnames> ...'),
+    'diff': 'diff <left_path> <right_path>',
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
                        '<target_group_path> [options]',
     'upgrade-config': 'upgrade-config <configfile>',
@@ -83,6 +85,7 @@ Subcommands:
     movie           %(movie)s
     export          %(export)s
     report          %(report)s
+    diff            %(diff)s
     qc-polarization %(qc_polarization)s
     upgrade-config  %(upgrade_config)s
 
@@ -935,6 +938,18 @@ def command_upgrade_config(args):
 
     from grond import upgrade
     upgrade.upgrade_config_file(args[0], diff=options.diff)
+
+
+def command_diff(args):
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('diff', args, setup)
+    if len(args) != 2:
+        help_and_die(parser, 'requires exactly two arguments')
+
+    from grond.config import diff_configs
+    diff_configs(*args)
 
 
 if __name__ == '__main__':

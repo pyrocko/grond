@@ -2,26 +2,7 @@ import sys
 import copy
 import difflib
 from pyrocko import guts_agnostic as aguts
-
-
-def color_diff(diff):
-    green = '\x1b[32m'
-    red = '\x1b[31m'
-    blue = '\x1b[34m'
-    dim = '\x1b[2m'
-    reset = '\x1b[0m'
-
-    for line in diff:
-        if line.startswith('+'):
-            yield green + line + reset
-        elif line.startswith('-'):
-            yield red + line + reset
-        elif line.startswith('^'):
-            yield blue + line + reset
-        elif line.startswith('@'):
-            yield dim + line + reset
-        else:
-            yield line
+from .config import color_diff
 
 
 def rename_attribute(old, new):
