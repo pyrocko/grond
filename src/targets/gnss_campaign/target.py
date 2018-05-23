@@ -33,7 +33,8 @@ class GNSSCampaignTargetGroup(TargetGroup):
     """
     gnss_campaigns = List.T(
         optional=True,
-        help='List of individual campaign names (`name` in `gnss.yaml` files).')
+        help='List of individual campaign names'
+             ' (`name` in `gnss.yaml` files).')
     misfit_config = GNSSCampaignMisfitConfig.T()
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T(optional=True)
@@ -135,38 +136,36 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         The single component variances, and if provided the component
         covariances, are used to build a data variance matrix or
         variance-covariance matrix. Correlations between stations are
-        not implemented."""
-        covar = num.matrix(self.campaign.get_covariance_matrix())
-
-        return num.linalg.inv(covar)
-
-        # deprecated
+        not implemented.
+        """
         if self._weights is None:
-            self._weights = 1./self.obs_sigma**2
-            self._weights[self._weights == num.inf] = 1.
+            self._weights = num.asmatrix(
+                self.campaign.get_covariance_matrix()).I
         return self._weights
 
     def post_process(self, engine, source, statics):
         """Applies the objective function.
 
         As a result the weighted misfits are given and the observed and
-        synthetic data."""
-        # All data is ordered in vectors as
-        # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
-        obs = num.matrix(self.obs_data)
+        synthetic data.
+        """
+        obs = self.obs_data
         weights = self.weights
 
-        syn = num.matrix([statics['displacement.n'],
+        # All data is ordered in vectors as
+        # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
+        syn = num.array([statics['displacement.n'],
                          statics['displacement.e'],
                          -statics['displacement.d']])\
             .ravel(order='F')
 
-        res = num.matrix(obs - syn)
+        res = obs - syn
 
-        misfit_value = num.float(
-            num.sqrt((res * weights) * res.T))
-        misfit_norm = num.float(
-            num.sqrt((obs * weights) * obs.T))
+        misfit_value = num.sqrt(
+            num.sum(num.asarray(res * weights)**2))
+        misfit_norm = num.sqrt(
+            num.sum(num.asarray(obs * weights)**2))
+
         result = GNSSCampaignMisfitResult(
             misfits=num.array([misfit_value, misfit_norm], dtype=num.float))
 
