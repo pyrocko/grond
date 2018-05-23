@@ -55,9 +55,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'grond'
-copyright = u'2017, The Pyrocko Developers'
-author = u'The Pyrocko Developers'
+project = u'Grond'
+copyright = u'2017, The Grond Developers'
+author = u'The Grond Developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -86,6 +86,7 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
+modindex_common_prefix = [ 'grond.' ]
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -130,7 +131,8 @@ html_title = u"%s v%s Manual" % (project, release)
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
+html_static_path = []
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -163,8 +165,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'grond.tex', u'grond Documentation',
-     u'The Pyrocko Developers', 'manual'),
+    (master_doc, 'grond.tex', u'Grond Documentation',
+     u'The Grond Developers', 'manual'),
 ]
 
 
@@ -173,7 +175,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'grond', u'grond Documentation',
+    (master_doc, 'grond', u'Grond Documentation',
      [author], 1)
 ]
 
@@ -184,7 +186,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'grond', u'grond Documentation',
+    (master_doc, 'grond', u'Grond Documentation',
      author, 'grond', 'One line description of project.',
      'Miscellaneous'),
 ]

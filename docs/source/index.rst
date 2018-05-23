@@ -2,18 +2,34 @@
 Grond
 =====
 
+A probabilistic earthquake source inversion framework. Designed and crafted in Mordor.
+
+Contents
+--------
+
 .. toctree::
    install/index
-   documentation/index
-   documentation/plots_docu
+   quickstart/index
+   overview/index
+   examples/index
+   method/index
+   dataset/index
+   targets/index
+   problems/index
+   analysers/index
+   optimisers/index
+   report/index
    library/index
    :maxdepth: 2
-   :caption: Contents:
 
 
+Recommended citation
+--------------------
+
+TODO DOI
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
