@@ -165,10 +165,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         scene = self.scene
         quadtree = scene.quadtree
 
-        stat_obs = quadtree.leaf_medians
+        obs = quadtree.leaf_medians
 
         if self.misfit_config.optimise_orbital_ramp:
-            stat_level = num.zeros_like(stat_obs)
+            stat_level = num.zeros_like(obs)
             stat_level.fill(self.parameter_values['offset'])
             stat_level += (quadtree.leaf_center_distance[:, 0]
                            * self.parameter_values['ramp_east'])
@@ -178,12 +178,12 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         stat_syn = statics['displacement.los']
 
-        res = stat_obs - stat_syn
+        res = obs - stat_syn
 
         misfit_value = num.sqrt(
             num.sum((res * scene.covariance.weight_vector)**2))
         misfit_norm = num.sqrt(
-            num.sum((stat_obs * scene.covariance.weight_vector)**2))
+            num.sum((obs * scene.covariance.weight_vector)**2))
 
         result = SatelliteMisfitResult(
             misfits=num.array([[misfit_value, misfit_norm]], dtype=num.float))
