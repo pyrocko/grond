@@ -138,6 +138,8 @@ velocity model.
 Terminology
 -----------
 
+TODO: describe entries
+
 * Rundir
 * Event
 * Misfit

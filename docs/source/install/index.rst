@@ -15,6 +15,9 @@ Next, install the Grond library and command line program with
     sudo python3 setup.py install
 
 
+Updating
+--------
+
 For updating an existing installation of Grond:
 
 .. code-block :: sh
