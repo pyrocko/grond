@@ -39,6 +39,7 @@ setup(
 
     package_data={
         'grond': ['report/app/*.html',
+                  'report/app/favicon.png',
                   'report/app/css/*.css',
                   'report/app/css/*.map',
                   'report/app/js/*.js',

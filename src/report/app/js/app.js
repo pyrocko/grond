@@ -267,11 +267,11 @@ angular.module('reportApp', ['ngRoute'])
         YamlMultiDoc.query(
             $scope.path + '/plots/plot_collection.yaml',
             function(doc) {
-                Array.forEach(
-                    doc.group_refs,
-                    query_group);
-                },
-            {schema: report_schema});
+                for (var i = 0, len = doc.group_refs.length; i < len; i++)
+                    query_group(doc.group_refs[i]);
+            },
+            {schema: report_schema}
+        );
 
         $scope.scrollTo = function(id) {
             var old = $location.hash();
