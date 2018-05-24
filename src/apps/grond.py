@@ -319,36 +319,40 @@ def command_init(args):
     if not options.insar and not options.waveforms:
         options.waveforms = True
 
-    project = init.GrondProject()
-
-    if options.waveforms:
-        project.add_waveforms()
-        project.set_cmt_source()
-    if options.insar:
-        project.add_insar()
-        project.set_rectangular_source()
-    if options.gnss:
-        project.add_gnss()
-        project.set_rectangular_source()
-
-    if options.full:
+    try:
         project = init.GrondProject()
 
-        project.add_waveforms()
-        project.add_insar()
-        project.add_gnss()
-        project.set_rectangular_source()
+        if options.waveforms:
+            project.add_waveforms()
+            project.set_cmt_source()
+        if options.insar:
+            project.add_insar()
+            project.set_rectangular_source()
+        if options.gnss:
+            project.add_gnss()
+            project.set_rectangular_source()
 
-    if options.cmt:
-        project.set_cmt_source()
-    if options.rectangular:
-        project.set_rectangular_source()
+        if options.full:
+            project = init.GrondProject()
 
-    if len(args) == 1:
-        project_dir = op.join(op.curdir, args[0])
-        project.build(project_dir, options.force)
-    else:
-        sys.stdout.write(project.dump())
+            project.add_waveforms()
+            project.add_insar()
+            project.add_gnss()
+            project.set_rectangular_source()
+
+        if options.cmt:
+            project.set_cmt_source()
+        if options.rectangular:
+            project.set_rectangular_source()
+
+        if len(args) == 1:
+            project_dir = args[0]
+            project.build(project_dir, options.force)
+        else:
+            sys.stdout.write(project.dump())
+
+    except grond.GrondError as e:
+        die(str(e))
 
 
 def command_events(args):

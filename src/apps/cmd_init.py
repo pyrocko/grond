@@ -155,8 +155,8 @@ class GrondProject(object):
 
     def build(self, project_dir, force=False):
         if op.exists(project_dir) and not force:
-            raise EnvironmentError(
-                'Directory %s already exists! Use force to overwrite'
+            raise grond.GrondError(
+                'Directory "%s" already exists! Use --force to overwrite'
                 % project_dir)
         elif op.exists(project_dir) and force:
             logger.info('Overwriting directory %s.' % project_dir)
