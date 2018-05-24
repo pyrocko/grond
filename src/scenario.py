@@ -20,8 +20,9 @@ class GrondScenario(object):
     def __init__(self, project_dir,
                  center_lat=23., center_lon=52., radius=230*km,
                  problem=None, observations=[]):
-        self.project_dir = op.abspath(project_dir)
-        self.data_dir = op.join('events', 'scenario')
+
+        self.project_dir = project_dir
+        self.data_dir = op.join('data', 'scenario')
 
         self.center_lat = center_lat
         self.center_lon = center_lon
@@ -65,12 +66,15 @@ class GrondScenario(object):
         self.problem = problem
 
     def get_dataset_config(self):
-        events_path = op.join(self.project_dir, self.data_dir, 'events.txt')
-        events = model.load_events(events_path)
+        events_path = op.join(self.data_dir, 'events.txt')
+        events = model.load_events(op.join(self.project_dir, events_path))
+
         dataset_config = grond.DatasetConfig(
             events_path=events_path)
+
         for obs in self.observations:
-            obs.update_dataset_config(dataset_config, events, self.data_dir)
+            obs.update_dataset_config(dataset_config, self.data_dir)
+
         return dataset_config
 
     def get_scenario(self):
@@ -91,7 +95,7 @@ class GrondScenario(object):
             source_generator=self.problem.get_scenario_source_generator())
 
     def create_scenario(self, interactive=True):
-        logger.info('Creating pyrocko.scenario...')
+        logger.info('Creating scenario...')
 
         scenario = self.get_scenario()
         scenario.init_modelling(engine=self.engine)
@@ -115,7 +119,7 @@ class GrondScenario(object):
         optimiser_config = grond.HighScoreOptimiserConfig()
 
         config = grond.Config(
-            rundir_template=op.join('rundir', '${problem_name}.grun'),
+            rundir_template=op.join('runs', '${problem_name}.grun'),
             dataset_config=self.get_dataset_config(),
             target_groups=[obs.get_grond_target_group()
                            for obs in self.observations],
@@ -123,17 +127,19 @@ class GrondScenario(object):
             optimiser_config=optimiser_config,
             engine_config=engine_config)
 
+        config.set_basepath(self.project_dir)
         return config
 
     def create_grond_files(self):
-        logger.info('Creating grond configuration for %s'
+        logger.info('Creating Grond configuration for %s'
                     % ' and '.join([obs.name for obs in self.observations]))
 
-        with open(op.join(self.project_dir, 'config.yml'), 'w') as cf:
-            cf.write(str(self.get_grond_config()))
+        config_path = op.join(self.project_dir, 'config', 'default.gronf')
+        util.ensuredirs(config_path)
+        grond.write_config(self.get_grond_config(), config_path)
 
     def build(self, force=False, interactive=False):
-        logger.info('Building Grond scenario using pyrocko.scenario...')
+        logger.info('Building scenario...')
 
         self.create_project_dir(force)
 
@@ -150,7 +156,7 @@ class Observation(object):
     def __init__(self, store_id, *args, **kwargs):
         self.store_id = store_id
 
-    def update_dataset_config(self, dataset, data_dir):
+    def update_dataset_config(self, dataset_config, data_dir):
         return dataset
 
     def get_scenario_target_generator(self):
@@ -168,14 +174,9 @@ class WaveformObservation(Observation):
         self.nstations = nstations
         self.store_id = store_id
 
-    def update_dataset_config(self, dataset_config, events, data_dir):
+    def update_dataset_config(self, dataset_config, data_dir):
         ds = dataset_config
-        yr = (util.time_to_str(events[0].time)[:4])
-        mo = (util.time_to_str(events[0].time)[5:7])
-        day = (util.time_to_str(events[0].time)[8:10])
-        waveform_path = 'waveforms/'+yr+'/'+mo+'/'+day+'/'
-        ds.waveform_paths = [op.join(data_dir, waveform_path)]
-        ds.waveform_path = op.join(data_dir, waveform_path)
+        ds.waveform_paths = [op.join(data_dir, 'waveforms')]
         ds.stations_path = op.join(data_dir, 'meta', 'stations.txt')
         ds.responses_stationxml_paths = [
             op.join(data_dir, 'meta', 'stations.xml')]
@@ -291,7 +292,7 @@ class DCSourceProblem(SourceProblem):
 
         pi2 = math.pi/2
         return grond.CMTProblemConfig(
-            name_template='cmt-${event_name}',
+            name_template='cmt_${event_name}',
             distance_min=2.*km,
             mt_type='deviatoric',
             ranges=dict(
@@ -320,7 +321,7 @@ class RectangularSourceProblem(SourceProblem):
 
     def get_grond_problem_config(self):
         return grond.RectangularProblemConfig(
-            name_template='rect-source_${event_name}',
+            name_template='rect_source_${event_name}',
             decimation_factor=8,
             ranges=dict(
                 north_shift=gf.Range(-20*km, 20*km),

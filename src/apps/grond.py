@@ -234,7 +234,7 @@ def command_scenario(args):
     parser, options, args = cl_parse('scenario', args, setup)
 
     if len(args) == 1:
-        project_dir = op.join(op.curdir, args[0])
+        project_dir = args[0]
     else:
         parser.print_help()
         sys.exit(1)
@@ -311,10 +311,6 @@ def command_init(args):
             help='overwrite existing project folder')
 
     parser, options, args = cl_parse('init', args, setup)
-
-    project_dir = None
-    if len(args) == 1:
-        project_dir = op.join(op.curdir, args[0])
 
     if not options.insar and not options.waveforms:
         options.waveforms = True
