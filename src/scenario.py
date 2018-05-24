@@ -3,9 +3,9 @@ import os
 import shutil
 import os.path as op
 
-import grond
-
 from pyrocko import gf, scenario, util, model
+
+import grond
 
 
 DEFAULT_STATIC_STORE = 'ak135_static'
@@ -36,8 +36,8 @@ class GrondScenario(object):
         prj_dir = self.project_dir
 
         if op.exists(prj_dir) and not force:
-            raise EnvironmentError(
-                'Directory %s already exists! Use force to overwrite'
+            raise grond.GrondError(
+                'Directory "%s" already exists! Use --force to overwrite'
                 % prj_dir)
         elif op.exists(prj_dir) and force:
             logger.info('Overwriting directory %s.' % prj_dir)

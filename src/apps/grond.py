@@ -240,40 +240,44 @@ def command_scenario(args):
         sys.exit(1)
 
     from grond import scenario as grond_scenario
-    scenario = grond_scenario.GrondScenario(
-        project_dir,
-        center_lat=options.lat, center_lon=options.lon,
-        radius=options.radius*km)
+    try:
+        scenario = grond_scenario.GrondScenario(
+            project_dir,
+            center_lat=options.lat, center_lon=options.lon,
+            radius=options.radius*km)
 
-    if not options.waveforms and not options.insar and not options.gnss:
-        options.waveforms = True
+        if not options.waveforms and not options.insar and not options.gnss:
+            options.waveforms = True
 
-    if options.waveforms:
-        obs = grond_scenario.WaveformObservation(
-            nstations=options.nstations,
-            store_id=options.store_waveforms)
-        scenario.add_observation(obs)
+        if options.waveforms:
+            obs = grond_scenario.WaveformObservation(
+                nstations=options.nstations,
+                store_id=options.store_waveforms)
+            scenario.add_observation(obs)
 
-    if options.insar:
-        obs = grond_scenario.InSARObservation(
-            store_id=options.store_statics)
-        scenario.add_observation(obs)
+        if options.insar:
+            obs = grond_scenario.InSARObservation(
+                store_id=options.store_statics)
+            scenario.add_observation(obs)
 
-    if options.gnss:
-        obs = grond_scenario.GNSSCampaignObservation(
-            nstations=options.gnss_nstations,
-            store_id=options.store_statics)
-        scenario.add_observation(obs)
+        if options.gnss:
+            obs = grond_scenario.GNSSCampaignObservation(
+                nstations=options.gnss_nstations,
+                store_id=options.store_statics)
+            scenario.add_observation(obs)
 
-    if options.source == 'dc':
-        problem = grond_scenario.DCSourceProblem(
-            nevents=options.nevents)
-    elif options.source == 'rectangular':
-        problem = grond_scenario.RectangularSourceProblem(
-            nevents=options.nevents)
-    scenario.set_problem(problem)
+        if options.source == 'dc':
+            problem = grond_scenario.DCSourceProblem(
+                nevents=options.nevents)
+        elif options.source == 'rectangular':
+            problem = grond_scenario.RectangularSourceProblem(
+                nevents=options.nevents)
+        scenario.set_problem(problem)
 
-    scenario.build(force=options.force, interactive=True)
+        scenario.build(force=options.force, interactive=True)
+
+    except grond.GrondError as e:
+        die(str(e))
 
 
 def command_init(args):
