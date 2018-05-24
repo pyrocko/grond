@@ -10,7 +10,7 @@ are available, run ::
 	grond --help
 
 To get more information about any of the available subcommands and its options,
-try ::
+run ::
 
 	grond <subcommand> --help
 
@@ -20,7 +20,7 @@ The basic work-flow when using Grond is as follows:
 * Set up a configuration file for Grond.
 * Check the set-up with the  ``grond check`` subcommand.
 * Run the optimiser/inversion using the ``grond go`` subcommand.
-* Generate a report and plot results with ``grond report``.
+* Generate a report and plot results using ``grond report``.
 
 Some details on these steps are given in the following sections.
 
@@ -28,40 +28,54 @@ Project folder layout
 ---------------------
 
 To use Grond with your data and the medium model of your choice, we suggest the
-following folder structure. Single files listed here are explained below.
+following folder structure. Single files and data formats listed here are 
+explained below. The folders ``runs`` and ``reports`` are generated during 
+and after the optimisation, respectively, and are explained below with the
+Grond optimisations and results.
 
 .. code-block :: sh
 
     ├── config
-    │   ├── laquila.gronf
+    │   ├── laquila2009_joint.gronf
     │   ├── ...
     │   :
     │
     ├── data
     │   └── events  # several events could be set up here
-    │       ├── laquila2009   # example for the 2009 L'Aquila event
+    │       ├── laquila2009   
     │       │   ├── event.txt
-    │       │   ├── insar      # contains kite-prepared InSAR-data
-    │       │   │   ├── dsc_LAquila2009_Envisat.npz
-    │       │   │   └── dsc_LAquila2009_Envisat.yml
-    │       │   ├── waveforms  # contains seismic waveforms and meta data
-    │       │   │   ├── raw    # raw downloaded data
-    │       │   │   │   └── 2009-04-06_MW6.3_Central_Italy.421793.seed
+    │       │   ├── insar   
+    │       │   │   ├── dsc_insar.npz
+    │       │   │   ├── dsc_insar.yml
+    │       │   │   :
+    │       │   │
+    │       │   ├── waveforms   
+    │       │   │   ├── raw    # contains Mini-SEED files
+    │       │   │   │   ├── trace_BK-CMB--BHE_2009-04-06_00-38-31.mseed 
+    │       │   │   │   ├── trace_BK-CMB--BHN_2009-04-06_00-38-31.mseed     
+    │       │   │   │   :  
     │       │   │   └── stations.xml
+    │       │   │
     │       │   └── gnss
     │       │       └── gnss.yml
     │       :
     │
-    └── gf_stores  # contains Green's function stores for near-field data
-        ├── Abruzzo_Ameri_nearfield
-        :   └── ...
-
-TODO: add runs, reports, sinnvolleres Beispiel
+    ├── gf_stores  # contains Green's functions 
+    │   ├── Abruzzo_Ameri_nearfield # static near-field GF store
+    │   │   └── ...
+    │   ├── global_2s_25km  # dynamic far-field GF store
+    │   │   └── ...
+    │   :	
+    │   
+    ├── runs  # contains individual optimisation results
+    │   └── ...
+    └── reports 
+        └── ...
 
 Input data
 ----------
 
-Grond can combine different observational input data in an inversion.
+Grond can combine different observational input data in an optimisation.
 
 **Seismic waveform data**
 
@@ -150,7 +164,7 @@ Event
 Config file
     A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing
     a Grond configuration. The config file can be made to work with multiple
-    events.
+    events. It can be generated using ``grond init``.
 
 Rundir
     The directory, by convention ending with the suffix ``.grun``, where Grond
@@ -168,7 +182,7 @@ Misfit
     contributions of multiple Grond targets (see below).
 
 Target
-    In a typcal Grond set-up, many modelling targets may contribute to the
+    In a typical Grond set-up, many modelling targets may contribute to the
     global misfit. For example, An individual modelling target could be a
     single component seismogram at a given station, an InSAR scene, or an
     amplitude ratio at one station. The target knows how to filter, taper, and
@@ -258,6 +272,29 @@ Now, you may start the optimization for a given event using
 During the optimisation, results are aggregated in an output directory,
 referred to as `<rundir>` in the configuration and documentation.
 
+.. code-block :: sh
+
+    ├── config
+    │   └── ...
+    ├── data
+    │   └── ...
+    ├── gf_stores      
+    │   └── ...  
+    ├── runs  # contains individual optimisation results
+    │   ├── laquila2009_joint.grun
+    │   │   ├── ... # some bookkeeping yaml-files
+    │   │   ├── optimiser.yaml
+    │   │   ├── models
+    │   │   ├── misfits
+    │   │   └── harvest
+    │   │       ├── misfits
+    │   │       └── models
+    │   :
+    │
+    └── reports 
+        └── ...
+
+
 You find detailed information on the misfit configuration and model space
 sampling in the section :doc:`/optimisers/index`.
 
@@ -273,6 +310,36 @@ Finally, you may run
 
 to aggregate and visualize results to a browsable summary, (by default) under
 the directory `reports`.
+
+.. code-block :: sh
+
+    ├── config
+    │   └── ...
+    ├── data
+    │   └── ...
+    ├── gf_stores
+    │   └── ...
+    ├── runs  
+    │   └── ... 
+    └── reports  # contains all graphical presentations of the results in 'runs'
+        ├── index.html # open in browser to surf through all 'runs'
+        ├── ... # more bookeeping yaml-files
+        │
+        ├── laquila2009 # event-wise organisation of different optimisation runs
+        │   ├── laquila2009_joint # report information of an optimisation run
+        │   │   ├── ...  # some bookkeeping yaml-files
+        │   │   └── plots # individual plots sorted by type
+        │   │       ├── contributions # overview of the target's misfit contributions
+        │   │       │   └── ...
+        │   │       ├── sequence  # parameter value development in the optimisation
+        │   │       │   └── ...
+        │   │       ├── fits_waveforms # visual comparison of data and synthetics
+        │   │       │   └── ...
+        │   │       ├── fits_satellite # visual comparison of data and synthetics
+        │   │       │   └── ...
+        │   │       :
+                                     
+
 
 Please find detailed information on the reports and automatic plots in the
 section :doc:`/report/index`.
