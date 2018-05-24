@@ -47,7 +47,11 @@ subcommand_usages = {
         'forward <rundir> [options]',
         'forward <configfile> <eventnames> ... [options]'),
     'harvest': 'harvest <rundir> [options]',
-    'plot': 'plot <plotnames> <rundir> [options]',
+    'plot': (
+        'plot <plotnames> ( <rundir> | <configfile> <eventname> ) [options]',
+        'plot all ( <rundir> | <configfile> <eventname> ) [options]',
+        'plot list ( <rundir> | <configfile> <eventname> ) [options]',
+        'plot config ( <rundir> | <configfile> <eventname> ) [options]'),
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
     'report': (
@@ -367,6 +371,9 @@ def command_events(args):
 
 
 def command_check(args):
+
+    from grond.environment import Environment
+
     def setup(parser):
         parser.add_option(
             '--target-ids', dest='target_string_ids', metavar='TARGET_IDS',
@@ -386,27 +393,30 @@ def command_check(args):
                  'solution.')
 
     parser, options, args = cl_parse('check', args, setup)
-    if len(args) < 2:
-        help_and_die(parser, 'missing arguments')
 
-    config_path = args[0]
-    event_names = args[1:]
+    try:
+        env = Environment(args)
+        config = env.get_config()
 
-    config = grond.read_config(config_path)
+        target_string_ids = None
+        if options.target_string_ids:
+            target_string_ids = options.target_string_ids.split(',')
 
-    target_string_ids = None
-    if options.target_string_ids:
-        target_string_ids = options.target_string_ids.split(',')
+        grond.check(
+            config,
+            event_names=env.get_selected_event_names(),
+            target_string_ids=target_string_ids,
+            show_waveforms=options.show_waveforms,
+            n_random_synthetics=options.n_random_synthetics)
 
-    grond.check(
-        config,
-        event_names=event_names,
-        target_string_ids=target_string_ids,
-        show_waveforms=options.show_waveforms,
-        n_random_synthetics=options.n_random_synthetics)
+    except grond.GrondError as e:
+        die(str(e))
 
 
 def command_go(args):
+
+    from grond.environment import Environment
+
     def setup(parser):
         parser.add_option(
             '--force', dest='force', action='store_true',
@@ -426,30 +436,11 @@ def command_go(args):
 
     parser, options, args = cl_parse('go', args, setup)
 
-    if len(args) == 1:
-        config_path = args[0]
-        config = grond.read_config(config_path)
-
-        event_names = config.get_event_names()
-        if len(event_names) == 1:
-            args.append(event_names[0])
-        else:
-            help_and_die(
-                parser,
-                'missing <eventnames>, candidates are:\n\n%s' % '\n'.join(
-                    event_names))
-
-    if len(args) < 2:
-        help_and_die(parser, 'missing arguments')
-
-    config_path = args[0]
-    event_names = args[1:]
-
-    config = grond.read_config(config_path)
+    env = Environment(args)
 
     grond.go(
-        config,
-        event_names=event_names,
+        env.get_config(),
+        event_names=env.get_selected_event_names(),
         force=options.force,
         preserve=options.preserve,
         status=options.status,
@@ -519,30 +510,21 @@ def command_plot(args):
     def setup(parser):
         pass
 
-    details = '''Available <plotnames> can be listed with
-
-    `grond plot list ( <rundir> | <configfile> <eventname> )`
-    `grond plot <plotname> ( <rundir> | <configfile> <eventname> )`
-    `grond plot config ( <rundir> | <configfile> <eventname> )`
-'''
+    details = ''
 
     parser, options, args = cl_parse('plot', args, setup, details)
 
     if len(args) not in (2, 3):
         help_and_die(parser, 'two or three arguments required')
 
-    env = Environment(*args[1:])
+    env = Environment(args[1:])
     from grond import plot
     if args[0] == 'list':
-        print('Usage `grond plot <plot_name>'
-              ' ( <rundir> | <configfile> <eventname> )`')
-        print('Available plots for this rundir:')
         plot_names, plot_doc = zip(*[(pc.name, pc.__doc__)
                                      for pc in env.get_plot_classes()])
         plot_descs = [doc.split('\n')[0].strip() for doc in plot_doc]
         left_spaces = max([len(pn) for pn in plot_names])
 
-        print()
         for name, desc in zip(plot_names, plot_descs):
             print('{name:<{ls}} - {desc}'.format(
                 ls=left_spaces, name=name, desc=desc))
@@ -552,8 +534,8 @@ def command_plot(args):
         print(plot_config_collection)
 
     elif args[0] == 'all':
-        plots = plot.get_plot_names(env)
-        plot.make_plots(env, plots)
+        plot_names = plot.get_plot_names(env)
+        plot.make_plots(env, plot_names=plot_names)
 
     elif op.exists(args[0]):
         plots = plot.PlotConfigCollection.load(args[0])
@@ -669,7 +651,7 @@ def command_report(args):
             help='host to start the http server on')
         parser.add_option(
             '--config', dest='config',
-            help='configuration file to use')
+            help='report configuration file to use')
         parser.add_option(
             '--update-without-plotting',
             dest='update_without_plotting',
@@ -694,7 +676,7 @@ def command_report(args):
         rundirs = args
         try:
             for rundir in rundirs:
-                env = Environment(rundir)
+                env = Environment([rundir])
                 report(
                     env, conf,
                     update_without_plotting=options.update_without_plotting)
@@ -703,16 +685,10 @@ def command_report(args):
             die(str(e))
 
     else:
-        if len(args) < 2:
-            help_and_die(parser, 'arguments required')
-
-        config_path = args[0]
-        event_names = args[1:]
-
         try:
-            env = Environment(config_path)
-            for event_name in event_names:
-                env.set_event_name(event_name)
+            env = Environment(args)
+            for event_name in env.get_selected_event_names():
+                env.set_current_event_name(event_name)
                 report(
                     env, conf,
                     update_without_plotting=options.update_without_plotting)

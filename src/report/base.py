@@ -11,7 +11,7 @@ from pyrocko.guts import Object, String
 
 from grond.meta import Path, expand_template
 
-from grond import core
+from grond import core, environment
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -34,7 +34,7 @@ def report(env, report_config=None, update_without_plotting=False):
     if report_config is None:
         report_config = ReportConfig()
 
-    event_name = env.get_event_name()
+    event_name = env.get_current_event_name()
     problem = env.get_problem()
     logger.info('Creating report for event %s...' % event_name)
 
@@ -55,29 +55,33 @@ def report(env, report_config=None, update_without_plotting=False):
     plots_dir_out = op.join(report_path, 'plots')
     util.ensuredir(plots_dir_out)
 
-    rundir_path = env.get_rundir_path()
-
     event = env.get_dataset().get_event()
     guts.dump(event, filename=op.join(report_path, 'event.reference.yaml'))
 
-    core.export(
-        'stats', [rundir_path],
-        filename=op.join(report_path, 'stats.yaml'))
+    try:
+        rundir_path = env.get_rundir_path()
 
-    core.export(
-        'best', [rundir_path],
-        filename=op.join(report_path, 'event.solution.best.yaml'),
-        type='event-yaml')
+        core.export(
+            'stats', [rundir_path],
+            filename=op.join(report_path, 'stats.yaml'))
 
-    core.export(
-        'mean', [rundir_path],
-        filename=op.join(report_path, 'event.solution.mean.yaml'),
-        type='event-yaml')
+        core.export(
+            'best', [rundir_path],
+            filename=op.join(report_path, 'event.solution.best.yaml'),
+            type='event-yaml')
 
-    core.export(
-        'ensemble', [rundir_path],
-        filename=op.join(report_path, 'event.solution.ensemble.yaml'),
-        type='event-yaml')
+        core.export(
+            'mean', [rundir_path],
+            filename=op.join(report_path, 'event.solution.mean.yaml'),
+            type='event-yaml')
+
+        core.export(
+            'ensemble', [rundir_path],
+            filename=op.join(report_path, 'event.solution.ensemble.yaml'),
+            type='event-yaml')
+
+    except environment.NoRundirAvailable:
+        pass
 
     if not update_without_plotting:
         from grond import plot

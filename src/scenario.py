@@ -287,20 +287,20 @@ class DCSourceProblem(SourceProblem):
     def get_grond_problem_config(self):
         import math
 
-        pi2 = math.pi/2
+        s2 = math.sqrt(2.0)
         return grond.CMTProblemConfig(
             name_template='cmt_${event_name}',
             distance_min=2.*km,
-            mt_type='deviatoric',
+            mt_type='full',
             ranges=dict(
-                time=gf.Range(0, 10.0, relative='add'),
+                time=gf.Range(-5.0, 5.0, relative='add'),
                 north_shift=gf.Range(-16*km, 16*km),
                 east_shift=gf.Range(-16*km, 16*km),
                 depth=gf.Range(1*km, 11*km),
-                magnitude=gf.Range(4.0, 6.0),
-                rmnn=gf.Range(-pi2, pi2),
-                rmee=gf.Range(-pi2, pi2),
-                rmdd=gf.Range(-pi2, pi2),
+                magnitude=gf.Range(6.0, 8.0),
+                rmnn=gf.Range(-s2, s2),
+                rmee=gf.Range(-s2, s2),
+                rmdd=gf.Range(-s2, s2),
                 rmne=gf.Range(-1.0, 1.0),
                 rmnd=gf.Range(-1.0, 1.0),
                 rmed=gf.Range(-1.0, 1.0),

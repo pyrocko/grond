@@ -1,5 +1,5 @@
 import logging
-from grond.environment import Environment
+from grond.environment import Environment, GrondEnvironmentError
 from grond.plot.collection import PlotCollectionManager
 from grond.plot.config import PlotConfigCollection
 
@@ -46,11 +46,15 @@ def make_plots(
     env.set_plot_collection_manager(manager)
 
     for plot in plots:
-        plot.make(env)
+        try:
+            plot.make(env)
+        except GrondEnvironmentError as e:
+            logger.warning('cannot create plot %s: %s' % (
+                plot.name, str(e)))
 
 
 def make_movie(dirname, xpar_name, ypar_name, movie_filename):
-    env = Environment(dirname)
+    env = Environment([dirname])
     optimiser = env.get_optimiser()
     problem = env.get_problem()
     history = env.get_history()

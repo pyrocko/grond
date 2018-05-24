@@ -10,33 +10,46 @@ class GrondEnvironmentError(meta.GrondError):
     pass
 
 
-class NoEventSelected(GrondEnvironmentError):
+class EventSelectionFailed(GrondEnvironmentError):
     pass
+
+
+class NoCurrentEventAvailable(GrondEnvironmentError):
+    def __init__(self, message='no current event available'):
+        GrondEnvironmentError.__init__(self, message)
+
+
+class NoEventSelectionAvailable(GrondEnvironmentError):
+    def __init__(self, message='no event selection available'):
+        GrondEnvironmentError.__init__(self, message)
 
 
 class NoRundirAvailable(GrondEnvironmentError):
-    pass
+    def __init__(self, message='no rundir available'):
+        GrondEnvironmentError.__init__(self, message)
 
 
 class NoPlotCollectionManagerAvailable(GrondEnvironmentError):
-    pass
+    def __init__(self, message='no plot collection manager available'):
+        GrondEnvironmentError.__init__(self, message)
 
 
 class Environment(object):
 
-    def __init__(self, rundir_or_config_path=None, event_name=None):
+    def __init__(self, args):
 
-        if op.isdir(rundir_or_config_path):
-            self._rundir_path = rundir_or_config_path
+        if op.isdir(args[0]):
+            self._rundir_path = args[0]
             self._config_path = op.join(self._rundir_path, 'config.yaml')
         else:
             self._rundir_path = None
-            self._config_path = rundir_or_config_path
+            self._config_path = args[0]
 
-        self._event_name = event_name
+        self._current_event_name = None
+        self._selected_event_names = None
         self._config = None
         self._plot_collection_manager = None
-
+        self.set_selected_event_names(args[1:])
         self.reset()
 
     def reset(self):
@@ -51,26 +64,64 @@ class Environment(object):
 
         return self._config
 
-    def get_events_names(self):
+    def get_available_event_names(self):
         return self.get_config().get_event_names()
 
-    def set_event_name(self, event_name):
-        self._event_name = event_name
+    def set_current_event_name(self, event_name):
+        self._current_event_name = event_name
         self.reset()
 
-    def get_event_name(self):
-        if self._event_name is None:
+    def get_current_event_name(self):
+        if self._current_event_name is None:
             try:
                 self.get_rundir_path()
-                self._event_name = self.get_problem().base_source.name
+                self._current_event_name = self.get_problem().base_source.name
             except NoRundirAvailable:
-                raise NoEventSelected()
+                try:
+                    event_names = self.get_selected_event_names()
+                    if len(event_names) == 1:
+                        self._current_event_name = event_names[0]
+                    else:
+                        raise NoCurrentEventAvailable()
 
-        return self._event_name
+                except NoEventSelectionAvailable:
+                    raise NoCurrentEventAvailable()
+
+        return self._current_event_name
+
+    def set_selected_event_names(self, args):
+        event_names = self.get_available_event_names()
+        if len(args) == 0:
+            if len(event_names) == 1:
+                self._selected_event_names = event_names
+            else:
+                raise EventSelectionFailed(
+                    'Ambiguous event selection. Select from available events:'
+                    '\n    %s\n  or \'all\' to use all available events'
+                    % '\n    '.join(event_names))
+
+        elif len(args) == 1 and args[0] == 'all':
+            self._selected_event_names = event_names
+
+        else:
+            self._selected_event_names = []
+            for event_name in args:
+                if event_name not in event_names:
+                    self._selected_event_names = None
+                    raise EventSelectionFailed(
+                        'No such event: %s' % event_name)
+
+                self._selected_event_names.append(event_name)
+
+    def get_selected_event_names(self):
+        if self._selected_event_names is None:
+            raise NoEventSelectionAvailable()
+
+        return self._selected_event_names
 
     def get_dataset(self):
         if self._dataset is None:
-            event_name = self.get_event_name()
+            event_name = self.get_current_event_name()
             self._dataset = self.get_config().get_dataset(event_name)
 
         return self._dataset
