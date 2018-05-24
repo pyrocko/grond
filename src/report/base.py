@@ -164,9 +164,10 @@ def serve_report(host=('127.0.0.1', 8383), report_config=None):
         report_config = ReportConfig()
 
     logger.info('Starting report webserver at http://%s:%d...' % host)
-    with HTTPServer(host, ReportHandler) as http:
-        os.chdir(report_config.reports_base_path)
-        http.serve_forever()
+
+    os.chdir(report_config.reports_base_path)
+    httpd = HTTPServer(host, ReportHandler)
+    httpd.serve_forever()
 
 
 __all__ = '''
