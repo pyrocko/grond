@@ -196,6 +196,8 @@ class WaveformObservation(Observation):
             interpolation='multilinear',
             store_id=self.store_id,
             misfit_config=grond.WaveformMisfitConfig(
+                tmin='vel_surface:5.5',
+                tmax='vel_surface:3.0',
                 fmin=0.01,
                 fmax=0.1))
 
