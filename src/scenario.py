@@ -66,15 +66,12 @@ class GrondScenario(object):
         self.problem = problem
 
     def get_dataset_config(self):
-        events_path = op.join(self.data_dir, 'events.txt')
-        events = model.load_events(op.join(self.project_dir, events_path))
-
+        events_path = op.join(self.project_dir, self.data_dir, 'events.txt')
         dataset_config = grond.DatasetConfig(
             events_path=events_path)
 
         for obs in self.observations:
             obs.update_dataset_config(dataset_config, self.data_dir)
-
         return dataset_config
 
     def get_scenario(self):
@@ -157,7 +154,7 @@ class Observation(object):
         self.store_id = store_id
 
     def update_dataset_config(self, dataset_config, data_dir):
-        return dataset
+        return dataset_config
 
     def get_scenario_target_generator(self):
         pass

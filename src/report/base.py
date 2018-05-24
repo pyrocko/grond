@@ -3,6 +3,8 @@ import os.path as op
 import shutil
 import os
 
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+
 from pyrocko import guts, util
 from pyrocko.model import Event
 from pyrocko.guts import Object, String
@@ -118,6 +120,7 @@ def report_index(report_config=None):
 
     app_dir = op.join(op.split(__file__)[0], 'app')
     copytree(app_dir, reports_base_path)
+    logger.info('Created report in %s/index.html' % reports_base_path)
 
 
 def iter_report_dirs(reports_base_path):
@@ -143,9 +146,29 @@ def copytree(src, dst):
             shutil.copy(srcname, dstname)
 
 
+class ReportHandler(SimpleHTTPRequestHandler):
+
+    def log_error(self, fmt, *args):
+        logger.error(fmt % args)
+
+    def log_message(self, fmt, *args):
+        logger.debug(fmt % args)
+
+
+def serve_report(host=('127.0.0.1', 8383), report_config=None):
+    if report_config is None:
+        report_config = ReportConfig()
+
+    logger.info('Starting report webserver at http://%s:%d...' % host)
+    with HTTPServer(host, ReportHandler) as http:
+        os.chdir(report_config.reports_base_path)
+        http.serve_forever()
+
+
 __all__ = '''
     report
     report_index
     ReportConfig
     ReportIndexEntry
+    serve_report
 '''.split()

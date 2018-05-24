@@ -104,16 +104,16 @@ angular.module('reportApp', ['ngRoute'])
     .config(function($routeProvider, $locationProvider) {
         $locationProvider.hashPrefix('');
         $routeProvider
-            .when('/reports/', {
+            .when('/', {
                 controller: 'ReportListController',
                 templateUrl: 'report_list.html',
             })
-            .when('/reports/:report_path*/', {
+            .when('/:report_path*/', {
                 controller: 'ReportController',
                 templateUrl:'report.html',
             })
             .otherwise({
-                redirectTo: '/reports/',
+                template: '<div class="container">Not found!</div>',
             });
     })
 
