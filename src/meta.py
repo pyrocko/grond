@@ -263,6 +263,9 @@ class HasPaths(Object):
                     op.normpath(xjoin(self._basepath, xjoin(path_prefix, p))))
                 for p in path]
 
+    def rel_path(self, path):
+        return xrelpath(path, self.get_basepath())
+
 
 __all__ = '''
     Forbidden
