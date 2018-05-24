@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 from setuptools import setup
 
 
@@ -40,10 +39,10 @@ setup(
 
     package_data={
         'grond': ['report/app/*.html',
-                   'report/app/css/*.css',
-                   'report/app/css/*.map',
-                   'report/app/js/*.js',
-                   'report/app/js/*.map']},
+                  'report/app/css/*.css',
+                  'report/app/css/*.map',
+                  'report/app/js/*.js',
+                  'report/app/js/*.map']},
 
     data_files=[],
     )
