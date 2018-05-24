@@ -6,5 +6,4 @@ from .targets import *  # noqa
 from .meta import *  # noqa
 from .synthetic_tests import *  # noqa
 from .optimisers import *  # noqa
-
-__version__ = '0.2'
+from .version import __version__
