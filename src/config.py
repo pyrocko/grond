@@ -9,6 +9,7 @@ from .analysers.target_balancing import TargetBalancingAnalyserConfig
 from .problems.base import ProblemConfig
 from .optimisers.base import OptimiserConfig
 from .targets.base import TargetGroup
+from .version import __version__
 
 guts_prefix = 'grond'
 
@@ -141,7 +142,11 @@ def write_config(config, path):
     basepath = config.get_basepath()
     dirname = op.dirname(path) or '.'
     config.change_basepath(dirname)
-    guts.dump(config, filename=path)
+    guts.dump(
+        config,
+        filename=path,
+        header='Grond configuration file, version %s' % __version__)
+
     config.change_basepath(basepath)
 
 
