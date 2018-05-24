@@ -5,7 +5,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Earthquake reports</title>
+        <title>Grond - Earthquake reports</title>
 
         <!-- CSS -->
         <link href="css/bootstrap.min.css" rel="stylesheet">
@@ -23,7 +23,24 @@
 
     <body>
 
-        <div ng-view></div>
+        <div class="container" id="browser-warning" ng-cloak>
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Template Error</h4>
+                <p>
+                    We could not load the template file, propably due to browser security measures.<br />
+                    Please use <b>Mozilla Firefox</b> or start Chrome with <code>--allow-file-access-from-files</code> to view <code>reports/index.html</code>.
+                </p>
+                <hr>
+                <p class="mb-0">
+                    Or start a local webserver with <code>grond report &lt;rundir&gt;</code>.
+                </p>
+            </div>
+        </div>
+
+        <div>
+            <ng-view>
+            </ng-view>
+        </div>
 
         <hr />
         <div class="container footer">

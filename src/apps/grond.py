@@ -641,9 +641,6 @@ def command_report(args):
             '--index-only', dest='index_only', action='store_true',
             help='create index only')
         parser.add_option(
-            '--no-browser', dest='no_browser', action='store_true',
-            help='do not open webbrowser')
-        parser.add_option(
             '--no-serve', dest='no_serve', action='store_true',
             help='do not spin up a local http server')
         parser.add_option(
@@ -696,11 +693,10 @@ def command_report(args):
         except grond.GrondError as e:
             die(str(e))
 
-    if not options.no_browser or options.no_serve:
+    if not options.no_serve:
         import webbrowser
         webbrowser.open('http://' + options.host)
 
-    if not options.no_serve:
         host = options.host.split(':')
         host = tuple([host[0], int(host[1])])
         serve_report(host)

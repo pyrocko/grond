@@ -93,3 +93,8 @@ table.report-list th {
 table.report-list tr.odd {
     background-color: #eee;
 }
+
+div#browser-warning {
+    padding-top: 2em;
+    /*display: none;*/
+}

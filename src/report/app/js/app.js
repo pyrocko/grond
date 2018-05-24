@@ -248,8 +248,8 @@ angular.module('reportApp', ['ngRoute'])
         };
 
         $scope.image_path = function(group, item) {
-            return plot_group_path([group.name, group.variant]) + '.' + item.name + '.d100.png'
-        }
+            return plot_group_path([group.name, group.variant]) + '.' + item.name + '.d100.png';
+        };
 
         YamlDoc.query(
             $scope.path + '/stats.yaml',
