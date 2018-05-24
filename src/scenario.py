@@ -66,7 +66,8 @@ class GrondScenario(object):
         self.problem = problem
 
     def get_dataset_config(self):
-        events_path = op.join(self.project_dir, self.data_dir, 'events.txt')
+        events_path = op.join(self.data_dir, 'events.txt')
+
         dataset_config = grond.DatasetConfig(
             events_path=events_path)
 
