@@ -173,14 +173,22 @@ class ReportHandler(SimpleHTTPRequestHandler):
         logger.debug(fmt % args)
 
 
-def serve_report(host=('127.0.0.1', 8383), report_config=None):
+def serve_report(addr=('127.0.0.1', 8383), report_config=None):
     if report_config is None:
         report_config = ReportConfig()
 
-    logger.info('Starting report webserver at http://%s:%d...' % host)
+    ip, port = addr
 
     os.chdir(report_config.reports_base_path)
-    httpd = HTTPServer(host, ReportHandler)
+
+    while True:
+        try:
+            httpd = HTTPServer((ip, port), ReportHandler)
+            break
+        except OSError:
+            port += 1
+
+    logger.info('Starting report webserver at http://%s:%d...' % (ip, port))
     httpd.serve_forever()
 
 
