@@ -1,62 +1,79 @@
 <script>$("#browser-warning").hide();</script>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo03" aria-controls="navbarTogglerDemo03" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <a class="navbar-brand" href="#/list">
-      <!-- <img src="/assets/brand/bootstrap-solid.svg" width="30" height="30" class="d-inline-block align-top" alt=""> -->
-      Grond Reports
+
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+  <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
+    Grond Results
     </a>
-    <div class="collapse navbar-collapse" ng-controller="ReportController">
-        <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
-          <li class="nav-item" ng-repeat="group in plot_groups">
-              <a href="" ng-click="scrollTo(group.name)" class="nav-link" >{{ group.name }}</a>
-          </li>
-        </ul>
-        <form class="form-inline my-2 my-lg-0">
-            <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search" ng-model="keyword"></input>
-        </form>
-    </div>
+  <input class="form-control form-control-dark w-100" type="text" placeholder="Search" 
+  aria-label="Search" ng-model="keyword">
 </nav>
-<div class="container-fluid" style="padding-top: 4rem;">
-    <div ng-if="stats">
-        <h2>Results</h2>
 
-        <table class="stats">
-            <tr>
-                <th>parameter</th>
-                <th>best</th>
-                <th>mean</th>
-                <th>std</th>
-                <th>min</th>
-                <th>5%</th>
-                <th>16%</th>
-                <th>84%</th>
-                <th>95%</th>
-                <th>max</th>
-            </tr>
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+            <div class="sidebar-sticky" ng-controller="ReportController">
+                <ul class="nav flex-column">
+                  <li class="nav-item" ng-if="stats">
+                    <a href="" ng-click="scrollTo('results')" class="nav-link">
+                        <span data-feather="book-open"></span>
+                        Results
+                    </a>
+                  </li>
+                  <li class="nav-item plot-title" ng-repeat="group in plot_groups">
+                      <a href="" ng-click="scrollTo(group.name)" class="nav-link">
+                        <span data-feather="bar-chart-2"></span>
+                        {{ group.name | nounderscore }}
+                      </a>
+                  </li>
+                </ul>
+            </div>
+        </nav>
+        <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+            <div ng-if="stats">
+                <h2>Results</h2>
 
-            <tr ng-repeat="pstats in stats.parameter_stats_list">
-                <td>{{ pstats.name }}</td>
-                <td><tt>{{ pstats.best | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.mean | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.std | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.minimum | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.percentile5 | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.percentile16 | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.percentile84 | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.percentile95 | eround:pstats.std | dotalign }}</tt></td>
-                <td><tt>{{ pstats.maximum | eround:pstats.std | dotalign }}</tt></td>
-            </tr>
-        </table>
-    </div>
+                <table id="results" class="stats">
+                    <tr>
+                        <th>parameter</th>
+                        <th>best</th>
+                        <th>mean</th>
+                        <th>std</th>
+                        <th>min</th>
+                        <th>5%</th>
+                        <th>16%</th>
+                        <th>84%</th>
+                        <th>95%</th>
+                        <th>max</th>
+                    </tr>
 
-    <div ng-repeat="group in plot_groups" class="container">
-        <h3 id="{{ group.name }}">{{ group.name }}</h3>
-        <span ng-repeat="item in group.items | filter : keyword">
-            <img style="max-width: 100%;" class="img-fluid" ng-src="{{ image_path(group, item); }}" />
-        </span>
-        <p>{{ group.description }}</p>
-        <hr />
-    </div>
+                    <tr ng-repeat="pstats in stats.parameter_stats_list">
+                        <td>{{ pstats.name }}</td>
+                        <td><tt>{{ pstats.best | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.mean | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.std | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.minimum | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.percentile5 | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.percentile16 | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.percentile84 | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.percentile95 | eround:pstats.std | dotalign }}</tt></td>
+                        <td><tt>{{ pstats.maximum | eround:pstats.std | dotalign }}</tt></td>
+                    </tr>
+                </table>
+                <hr />
+            </div>
+
+            <div ng-repeat="group in plot_groups">
+                <h3 id="{{ group.name }}" class="plot-title">{{ group.name | nounderscore }}</h3>
+                <span ng-repeat="item in group.items | filter : keyword">
+                    <img style="max-width: 100%;" class="img-fluid" ng-src="{{ image_path(group, item); }}" />
+                </span>
+                <p>{{ group.description }}</p>
+                <hr />
+            </div>
+        </div>
+    </main>
+    <script>
+      feather.replace()
+    </script>
 </div>
+
