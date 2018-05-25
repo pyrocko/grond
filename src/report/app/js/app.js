@@ -317,6 +317,6 @@ angular.module('reportApp', ['ngRoute'])
 
     .filter('nounderscore', function () {
     return function (value) {
-        return (!value) ? '' : value.replace(/_/g, '');
+        return (!value) ? '' : value.replace(/_/g, ' ');
         };
     });
