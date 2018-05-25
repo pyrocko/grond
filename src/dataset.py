@@ -134,12 +134,13 @@ class Dataset(object):
             self.events.extend(model.load_events(filename))
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
-                      show_progress=True):
-        logger.debug('Loading waveform data from %s' % paths)
+                      show_progress=False):
         cachedirname = config.config().cache_dir
+        logger.debug('Selecting waveform files %s' % paths)
         fns = util.select_files(paths, regex=regex,
                                 show_progress=show_progress)
         cache = pile.get_cache(cachedirname)
+        logger.debug('Scanning waveform files %s' % paths)
         self.pile.load_files(sorted(fns), cache=cache,
                              fileformat=fileformat,
                              show_progress=show_progress)

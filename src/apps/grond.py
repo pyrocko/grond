@@ -442,19 +442,24 @@ def command_go(args):
                  'state)')
         parser.add_option(
             '--parallel', dest='nparallel', type='int', default=1,
-            help='set number of events to process in parallel')
+            help='set number of events to process in parallel, '
+                 'If set to more than one, --status=quiet is implied.')
 
     parser, options, args = cl_parse('go', args, setup)
 
     try:
         env = Environment(args)
 
+        status = options.status
+        if options.nparallel != 1:
+            status = 'quiet'
+
         grond.go(
             env.get_config(),
             event_names=env.get_selected_event_names(),
             force=options.force,
             preserve=options.preserve,
-            status=options.status,
+            status=status,
             nparallel=options.nparallel)
 
     except grond.GrondError as e:
