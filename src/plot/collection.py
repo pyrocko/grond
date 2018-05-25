@@ -47,6 +47,9 @@ class PlotGroup(Object):
         help='plot format')
     variant = StringID.T(
         help='variant of the group')
+    feather_icon = String.T(
+        default='bar-chart-2',
+        help='Feather icon for the HTML report.')
     size_cm = Tuple.T(2, Float.T())
     items = List.T(PlotItem.T())
     attributes = Dict.T(StringID.T(), List.T(String.T()))

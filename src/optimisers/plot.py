@@ -55,7 +55,8 @@ class SequencePlot(PlotConfig):
             title='Sequence Plots',
             section='optimiser',
             description='Sequence plots for all parameters of'
-                        ' the optimisation.')
+                        ' the optimisation.',
+            feather_icon='sliders')
 
     def draw_figures(self, history):
         misfit_cutoff = self.misfit_cutoff

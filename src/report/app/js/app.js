@@ -259,9 +259,9 @@ angular.module('reportApp', ['ngRoute'])
             $scope.plot_groups.push(doc);
             $scope.plot_groups.sort(function(doc1, doc2) {
                 if (doc1.section < doc2.section)
-                    return 1;
-                if (doc1.section > doc2.section)
                     return -1;
+                if (doc1.section > doc2.section)
+                    return 1;
                 return 0;
                 })
         };

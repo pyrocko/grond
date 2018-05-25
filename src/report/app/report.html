@@ -19,8 +19,8 @@
                         Results
                     </a>
                   </li>
-                  <li class="nav-item plot-title" ng-repeat="group in plot_groups">    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                          <span>{{ group.section }}</span>
+                  <li class="nav-item plot-title" ng-repeat="group in plot_groups">    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted" ng-if="plot_groups[$index-1].section !== plot_groups[$index].section">
+                          <span >{{ group.section }}</span>
                       </h6>
                       <a href="" ng-click="scrollTo(group.name)" class="nav-link">
                         <span data-feather="bar-chart-2"></span>
@@ -87,10 +87,12 @@
 
             <div ng-repeat="group in plot_groups">
                 <h3 id="{{ group.name }}" class="plot-title">{{ group.name | nounderscore }}</h3>
-                <span ng-repeat="item in group.items | filter : keyword">
-                    <img style="max-width: 100%;" class="img-fluid" ng-src="{{ image_path(group, item); }}" />
-                </span>
-                <p>{{ group.description }}</p>
+                <figure class="figure">
+                    <img class="figure-img img-fluid" ng-src="{{ image_path(group, item); }}" ng-repeat="item in group.items | filter:keyword" />
+                    <figcaption class="figure-caption">
+                        {{ group.description }}
+                    </figcaption>
+                </figure>
                 <hr />
             </div>
         </div>
