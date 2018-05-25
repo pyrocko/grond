@@ -362,7 +362,7 @@ class HighScoreOptimiser(Optimiser):
 
     sampler_phases = List.T(SamplerPhase.T())
     chain_length_factor = Float.T(default=8.)
-    nbootstrap = Int.T(default=10)
+    nbootstrap = Int.T(default=100)
     bootstrap_type = BootstrapTypeChoice.T(default='bayesian')
     bootstrap_seed = Int.T(default=23)
 
