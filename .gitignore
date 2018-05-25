@@ -4,6 +4,7 @@
 *.log
 /dist
 /*.egg-info
+*.swp
 
 docs/_build
 docs/build
