@@ -159,9 +159,16 @@ def report_index(report_config=None):
     reports_base_path = report_config.reports_base_path
     reports = []
     for report_path in iter_report_dirs(reports_base_path):
-        logger.info('Indexing %s...' % report_path)
 
         fn = op.join(report_path, 'index.yaml')
+        if not os.path.exists(fn):
+            logger.warn(
+                'Skipping indexing of incomplete report: %s' % report_path)
+
+            continue
+
+        logger.info('Indexing %s...' % report_path)
+
         rie = guts.load(filename=fn)
         report_relpath = op.relpath(report_path, reports_base_path)
         rie.path = report_relpath
