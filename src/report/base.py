@@ -166,10 +166,10 @@ def report_archive(report_config):
 
 class ReportHandler(SimpleHTTPRequestHandler):
 
-    def log_error(self, fmt, *args):
+    def _log_error(self, fmt, *args):
         logger.error(fmt % args)
 
-    def log_message(self, fmt, *args):
+    def _log_message(self, fmt, *args):
         logger.debug(fmt % args)
 
 

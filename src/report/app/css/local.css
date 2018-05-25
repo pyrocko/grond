@@ -71,8 +71,21 @@ tr.has-manual-comments {
     font-weight: bold;
 }
 
+table.stats {
+  width: auto;
+}
+
+table.stats td {
+  padding: .25rem;
+}
+
 table.stats tt {
     white-space: pre;
+}
+
+tr.row-parameter {
+  padding: .1rem;
+  line-height: 1.;
 }
 
 table.report-list thead tr:first-child {

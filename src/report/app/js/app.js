@@ -203,12 +203,10 @@ angular.module('reportApp', ['ngRoute'])
                     var a_key = get_order_key(a.report_entry);
                     var b_key = get_order_key(b.report_entry);
 
-                    if (a_key < b_key) {
+                    if (a_key < b_key)
                         return -1;
-                    }
-                    if (a_key > b_key) {
+                    if (a_key > b_key)
                         return 1;
-                    }
                     return 0;
                 });
 
@@ -257,10 +255,24 @@ angular.module('reportApp', ['ngRoute'])
             {schema: report_schema});
 
 
+        var insert_plot_group = function(doc) {
+            $scope.plot_groups.push(doc);
+            $scope.plot_groups.sort(function(doc1, doc2) {
+                if (doc1.section < doc2.section)
+                    return 1;
+                if (doc1.section > doc2.section)
+                    return -1;
+                return 0;
+                })
+        };
+
+
         var query_group = function(group_ref) {
             YamlDoc.query(
                 plot_group_path(group_ref) + '.plot_group.yaml',
-                function(doc) { $scope.plot_groups.push(doc); },
+                function(doc) {
+                    insert_plot_group(doc);
+                },
                 {schema: report_schema});
         };
 

@@ -159,8 +159,9 @@ class CheckWaveformsPlot(PlotConfig):
         cm.create_group_mpl(self, self.draw_figures(
             sources, problem.targets, results_list),
             title='Waveform Check',
-            section='results.waveform',
-            description=self.__class__.__doc__)
+            section='checks',
+            description='Plot for checking the waveforms fit with a'
+                        ' number of synthetics.')
 
     def draw_figures(self, sources, targets, results_list):
         results_list = list(zip(*results_list))
@@ -291,8 +292,9 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             self,
             self.draw_figures(ds, history),
             title='Waveform fits for the ensemble',
-            section='results.waveform',
-            description=self.__class__.__doc__)
+            section='fits',
+            description='Plot showing all waveform fits for the ensemble'
+                        ' of solutions.')
 
     def draw_figures(self, ds, history):
 
@@ -715,8 +717,8 @@ class FitsWaveformPlot(PlotConfig):
             self,
             self.draw_figures(ds, history),
             title='Waveform fits for best model',
-            section='results.waveform',
-            description=self.__class__.__doc__)
+            section='fits',
+            description='Best model\'s waveform fits.')
 
     def draw_figures(self, ds, history):
 

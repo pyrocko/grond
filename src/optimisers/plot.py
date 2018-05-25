@@ -49,7 +49,13 @@ class SequencePlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Sequence Plots',
+            section='optimiser',
+            description='Sequence plots for all parameters of'
+                        ' the optimisation.')
 
     def draw_figures(self, history):
         misfit_cutoff = self.misfit_cutoff
@@ -242,7 +248,12 @@ class ContributionsPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Target Contributions',
+            section='solution',
+            description='Contributions of the targets towards the misfit.')
 
     def draw_figures(self, history):
 
@@ -398,7 +409,12 @@ class BootstrapPlot(PlotConfig):
         history = environ.get_history()
         optimiser = environ.get_optimiser()
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history, optimiser))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history, optimiser),
+            title='Bootstrap Misfit',
+            section='optimiser',
+            description='Evolution of the misfits for all bootstrap chains.')
 
     def draw_figures(self, history, optimiser):
 

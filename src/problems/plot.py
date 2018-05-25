@@ -63,7 +63,12 @@ class JointparPlot(PlotConfig):
         optimiser = environ.get_optimiser()
 
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history, optimiser))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history, optimiser),
+            title='Jointpar Plot',
+            section='solution',
+            description='Source problem parameter\'s tradeoff plots.')
 
     def draw_figures(self, history, optimiser):
 
@@ -319,7 +324,12 @@ class HistogramPlot(PlotConfig):
         history = environ.get_history(subset='harvest')
 
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Solution Histrogram',
+            section='solution',
+            description='Distribution of the problem\'s parameters.')
 
     def draw_figures(self, history):
 
@@ -440,7 +450,13 @@ class MTDecompositionPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Moment Tensor Decomopostion',
+            section='solution',
+            description='Moment tensor decomposition of the best-fitting'
+                        ' solution.')
 
     def draw_figures(self, history):
 
@@ -587,7 +603,12 @@ class MTLocationPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Moment Tensor Location',
+            section='solution',
+            description='Location plots of the best ensemble of solutions.')
 
     def draw_figures(self, history):
         from matplotlib import colors
@@ -692,7 +713,12 @@ class HudsonPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         mpl_init(fontsize=self.font_size)
-        cm.create_group_mpl(self, self.draw_figures(history))
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Hudson Plot',
+            section='solution',
+            description='Hudson plot of the best fitting moment tensor.')
 
     def draw_figures(self, history):
 
