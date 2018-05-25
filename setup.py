@@ -8,16 +8,23 @@ class CustomInstallCommand(install):
     def run(self):
         install.run(self)
 
+
 setup(
     cmdclass={
         'install': CustomInstallCommand,
     },
 
     name='grond',
-    description='What do you want to bust today?!',
+
+    description='A probabilistic earthquake source inversion framework. '
+                'Designed and crafted in Mordor.',
+
     version='0.2',
-    author='Sebastian Heimann',
-    author_email='sebastian.heimann@gfz-potsdam.de',
+
+    author='The Grond Developers',
+
+    author_email='info@pyrocko.org',
+
     packages=[
         'grond',
         'grond.apps',
@@ -48,12 +55,35 @@ setup(
     package_dir={'grond': 'src'},
 
     package_data={
-        'grond': ['report/app/*.html',
-                  'report/app/favicon.png',
-                  'report/app/css/*.css',
-                  'report/app/css/*.map',
-                  'report/app/js/*.js',
-                  'report/app/js/*.map']},
+        'grond': [
+            'report/app/*.html',
+            'report/app/favicon.png',
+            'report/app/css/*.css',
+            'report/app/css/*.map',
+            'report/app/js/*.js',
+            'report/app/js/*.map']},
 
     data_files=[],
+
+    license='GPLv3',
+
+    classifiers=[
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Science/Research',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Operating System :: POSIX',
+        'Operating System :: MacOS',
+        'Topic :: Scientific/Engineering',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Topic :: Scientific/Engineering :: Visualization',
+        'Topic :: Scientific/Engineering :: Information Analysis',
+        'Topic :: Software Development :: Libraries :: Application Frameworks',
+        ],
+
+    keywords=[
+        'seismology, waveform analysis, earthquake modelling, geophysics,'
+        ' geophysical inversion'],
     )
