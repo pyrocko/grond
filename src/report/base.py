@@ -2,6 +2,7 @@ import logging
 import os.path as op
 import shutil
 import os
+import tarfile
 
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
@@ -28,6 +29,29 @@ class ReportConfig(Object):
     reports_base_path = Path.T(default='reports')
     report_sub_path = String.T(
         default='${event_name}/${problem_name}')
+
+
+def iter_report_dirs(reports_base_path):
+    for path, dirnames, filenames in os.walk(reports_base_path):
+        for dirname in dirnames:
+            dirpath = op.join(path, dirname)
+            stats_path = op.join(dirpath, 'problem.yaml')
+            if op.exists(stats_path):
+                yield dirpath
+
+
+def copytree(src, dst):
+    names = os.listdir(src)
+    if not op.exists(dst):
+        os.makedirs(dst)
+
+    for name in names:
+        srcname = op.join(src, name)
+        dstname = op.join(dst, name)
+        if op.isdir(srcname):
+            copytree(srcname, dstname)
+        else:
+            shutil.copy(srcname, dstname)
 
 
 def report(env, report_config=None, update_without_plotting=False):
@@ -101,6 +125,7 @@ def report(env, report_config=None, update_without_plotting=False):
     guts.dump(rie, filename=fn)
 
     report_index(report_config)
+    report_archive(report_config)
 
 
 def report_index(report_config=None):
@@ -127,27 +152,16 @@ def report_index(report_config=None):
     logger.info('Created report in %s/index.html' % reports_base_path)
 
 
-def iter_report_dirs(reports_base_path):
-    for path, dirnames, filenames in os.walk(reports_base_path):
-        for dirname in dirnames:
-            dirpath = op.join(path, dirname)
-            stats_path = op.join(dirpath, 'problem.yaml')
-            if op.exists(stats_path):
-                yield dirpath
+def report_archive(report_config):
+    if report_config is None:
+        report_config = ReportConfig()
 
+    reports_base_path = report_config.reports_base_path
 
-def copytree(src, dst):
-    names = os.listdir(src)
-    if not op.exists(dst):
-        os.makedirs(dst)
-
-    for name in names:
-        srcname = op.join(src, name)
-        dstname = op.join(dst, name)
-        if op.isdir(srcname):
-            copytree(srcname, dstname)
-        else:
-            shutil.copy(srcname, dstname)
+    logger.info('Generating report\'s archive...')
+    with tarfile.open(op.join(reports_base_path, 'grond-reports.tar.gz'),
+                      mode='w:gz') as tar:
+        tar.add(reports_base_path, arcname='grond-reports')
 
 
 class ReportHandler(SimpleHTTPRequestHandler):
