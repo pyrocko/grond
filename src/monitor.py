@@ -57,8 +57,7 @@ class GrondMonitor(threading.Thread):
 
     def run(self):
         logger.debug('Waiting to follow rundir %s' % self.rundir)
-
-        self.history = ModelHistory.follow(self.rundir)
+        self.history = ModelHistory.follow(self.rundir, wait=40.)
 
         optimiser_fn = op.join(self.rundir, 'optimiser.yaml')
         self.optimiser = guts.load(filename=optimiser_fn)
