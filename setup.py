@@ -1,8 +1,18 @@
 #!/usr/bin/env python
-from setuptools import setup
 
+from setuptools import setup
+from setuptools.command.install import install
+
+
+class CustomInstallCommand(install):
+    def run(self):
+        install.run(self)
 
 setup(
+    cmdclass={
+        'install': CustomInstallCommand,
+    },
+
     name='grond',
     description='What do you want to bust today?!',
     version='0.2',
