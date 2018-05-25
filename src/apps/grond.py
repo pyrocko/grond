@@ -653,7 +653,8 @@ def command_report(args):
     matplotlib.use('Agg')
 
     from grond.environment import Environment
-    from grond.report import report, report_index, serve_report
+    from grond.report import \
+        report, report_index, serve_report, read_config, ReportConfig
 
     def setup(parser):
         parser.add_option(
@@ -662,6 +663,9 @@ def command_report(args):
         parser.add_option(
             '--no-serve', dest='no_serve', action='store_true',
             help='do not spin up a local http server')
+        parser.add_option(
+            '--no-open', dest='no_open', action='store_true',
+            help='do not open report web page in browser')
         parser.add_option(
             '--host', dest='host', default='127.0.0.1:8383',
             help='host to start the http server on')
@@ -677,9 +681,10 @@ def command_report(args):
     parser, options, args = cl_parse('report', args, setup)
 
     if options.config:
-        conf = report.read_config(options.config)
+        conf = read_config(options.config)
     else:
-        conf = None
+        conf = ReportConfig()
+        conf.set_basepath('.')
 
     if len(args) < 1:
         help_and_die(parser, 'arguments required')
@@ -718,13 +723,20 @@ def command_report(args):
         except grond.GrondError as e:
             die(str(e))
 
-    if not options.no_serve:
+    if not options.no_serve and not options.no_open:
         import webbrowser
         webbrowser.open('http://' + options.host)
 
         host = options.host.split(':')
         host = tuple([host[0], int(host[1])])
         serve_report(host)
+
+    elif not options.no_open:
+        import webbrowser
+        url = 'file://%s/index.html' % op.abspath(
+            conf.expand_path(conf.reports_base_path))
+
+        webbrowser.open(url)
 
 
 def command_qc_polarization(args):

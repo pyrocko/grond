@@ -10,7 +10,7 @@ from pyrocko import guts, util
 from pyrocko.model import Event
 from pyrocko.guts import Object, String
 
-from grond.meta import Path, expand_template
+from grond.meta import HasPaths, Path, expand_template, GrondError
 
 from grond import core, environment
 from grond.problems import ProblemInfoNotAvailable, ProblemDataNotAvailable
@@ -26,10 +26,20 @@ class ReportIndexEntry(Object):
     event_best = Event.T(optional=True)
 
 
-class ReportConfig(Object):
+class ReportConfig(HasPaths):
     reports_base_path = Path.T(default='reports')
     report_sub_path = String.T(
         default='${event_name}/${problem_name}')
+
+
+def read_config(path):
+    config = guts.load(filename=path)
+    if not isinstance(config, ReportConfig):
+        raise GrondError(
+            'invalid Grond report configuration in file "%s"' % path)
+
+    config.set_basepath(op.dirname(path) or '.')
+    return config
 
 
 def iter_report_dirs(reports_base_path):
@@ -58,14 +68,16 @@ def copytree(src, dst):
 def report(env, report_config=None, update_without_plotting=False):
     if report_config is None:
         report_config = ReportConfig()
+        report_config.set_basepath('.')
 
     event_name = env.get_current_event_name()
     problem = env.get_problem()
     logger.info('Creating report for event %s...' % event_name)
 
+    fp = report_config.expand_path
     report_path = expand_template(
         op.join(
-            report_config.reports_base_path,
+            fp(report_config.reports_base_path),
             report_config.report_sub_path),
         dict(
             event_name=event_name,
@@ -210,4 +222,5 @@ __all__ = '''
     ReportConfig
     ReportIndexEntry
     serve_report
+    read_config
 '''.split()
