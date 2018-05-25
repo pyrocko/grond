@@ -35,6 +35,7 @@ subcommand_descriptions = {
     'diff': 'compare two configs or other normalized Grond YAML files',
     'qc-polarization': 'check sensor orientations with polarization analysis',
     'upgrade-config': 'upgrade config file to the latest version of Grond',
+    'version': 'print version number of Grond and its main dependencies',
 }
 
 subcommand_usages = {
@@ -61,6 +62,7 @@ subcommand_usages = {
     'qc-polarization': 'qc-polarization <configfile> <eventname> '
                        '<target_group_path> [options]',
     'upgrade-config': 'upgrade-config <configfile>',
+    'version': 'version',
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -69,8 +71,14 @@ program_name = 'grond'
 
 usage_tdata = d2u(subcommand_descriptions)
 usage_tdata['program_name'] = program_name
+usage_tdata['version_number'] = grond.__version__
+
 
 usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
+
+Grond is a probabilistic earthquake source inversion framework.
+
+This is Grond version %(version_number)s.
 
 Subcommands:
 
@@ -88,11 +96,13 @@ Subcommands:
     diff            %(diff)s
     qc-polarization %(qc_polarization)s
     upgrade-config  %(upgrade_config)s
+    version         %(version)s
 
 To get further help and a list of available options for any subcommand run:
 
     %(program_name)s <subcommand> --help
 
+What do you want to bust today?!
 ''' % usage_tdata
 
 
@@ -840,6 +850,56 @@ def command_diff(args):
 
     from grond.config import diff_configs
     diff_configs(*args)
+
+
+def command_version(args):
+    def setup(parser):
+        parser.add_option(
+            '--short', dest='short', action='store_true',
+            help='only print Grond\'s version number')
+
+    parser, options, args = cl_parse('version', args, setup)
+
+    if options.short:
+        print(grond.__version__)
+        return
+
+    print("grond: %s" % grond.__version__)
+
+    try:
+        import pyrocko
+        print('pyrocko: %s' % pyrocko.long_version)
+    except ImportError:
+        print('pyrocko: N/A')
+
+    try:
+        import numpy
+        print('numpy: %s' % numpy.__version__)
+    except ImportError:
+        print('numpy: N/A')
+
+    try:
+        import scipy
+        print('scipy: %s' % scipy.__version__)
+    except ImportError:
+        print('scipy: N/A')
+
+    try:
+        import matplotlib
+        print('matplotlib: %s' % matplotlib.__version__)
+    except ImportError:
+        print('matplotlib: N/A')
+
+    try:
+        from pyrocko.gui.qt_compat import Qt
+        print('PyQt: %s' % Qt.PYQT_VERSION_STR)
+        print('Qt: %s' % Qt.QT_VERSION_STR)
+    except ImportError:
+        print('PyQt: N/A')
+        print('Qt: N/A')
+
+    import sys
+    print('python: %s.%s.%s' % sys.version_info[:3])
 
 
 if __name__ == '__main__':
