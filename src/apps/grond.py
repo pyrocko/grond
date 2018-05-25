@@ -446,15 +446,19 @@ def command_go(args):
 
     parser, options, args = cl_parse('go', args, setup)
 
-    env = Environment(args)
+    try:
+        env = Environment(args)
 
-    grond.go(
-        env.get_config(),
-        event_names=env.get_selected_event_names(),
-        force=options.force,
-        preserve=options.preserve,
-        status=options.status,
-        nparallel=options.nparallel)
+        grond.go(
+            env.get_config(),
+            event_names=env.get_selected_event_names(),
+            force=options.force,
+            preserve=options.preserve,
+            status=options.status,
+            nparallel=options.nparallel)
+
+    except grond.GrondError as e:
+        die(str(e))
 
 
 def command_forward(args):

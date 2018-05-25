@@ -1,0 +1,30 @@
+--- !pf.gnss.GNSSCampaign
+name: northridge
+stations:
+- !pf.gnss.GNSSStation
+  lat: 18.30
+  lon: -74.22
+  elevation: 0.0
+  depth: 0.0
+  code: ANGL
+  style: static
+  north: !pf.gnss.GNSSComponent
+    unit: m
+    shift: 5.7e-06
+    sigma: 5.7e-06
+  east: !pf.gnss.GNSSComponent
+    unit: m
+    shift: -7e-07
+    sigma: 8.8e-06
+  up: !pf.gnss.GNSSComponent
+    unit: m
+    shift: 2.93e-05
+    sigma: 1.11e-05
+  correlation_ne: 0.002
+  correlation_eu: 0.0
+  correlation_nu: 0.0
+- !pf.gnss.GNSSStation
+  lat: 18.28
+  lon: -74.23
+  # ...
+  # (add more station information in the same manner) 
