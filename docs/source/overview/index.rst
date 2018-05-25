@@ -24,6 +24,9 @@ The basic work-flow when using Grond is as follows:
 
 Some details on these steps are given in the following sections.
 
+
+.. _project-layout:
+
 Project folder layout
 ---------------------
 
