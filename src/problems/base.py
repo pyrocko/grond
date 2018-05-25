@@ -491,7 +491,11 @@ class Problem(Object):
                 pass
 
 
-class InvalidRundir(Exception):
+class ProblemInfoNotAvailable(GrondError):
+    pass
+
+
+class ProblemDataNotAvailable(GrondError):
     pass
 
 
@@ -530,10 +534,11 @@ class ModelHistory(object):
         _rundir_files = ['misfits', 'models']
 
         if not op.exists(rundir):
-            raise OSError('Rundir %s does not exist!' % rundir)
+            raise ProblemDataNotAvailable(
+                'Directory %s does not exist!' % rundir)
         for f in _rundir_files:
             if not op.exists(op.join(rundir, f)):
-                raise InvalidRundir('File %s not found!' % f)
+                raise ProblemDataNotAvailable('File %s not found!' % f)
 
     @classmethod
     def follow(cls, path, wait=20.):
@@ -552,7 +557,7 @@ class ModelHistory(object):
                 cls.verify_rundir(path)
                 problem = load_problem_info(path)
                 return cls(problem, path, mode='r')
-            except (InvalidRundir, OSError):
+            except (ProblemDataNotAvailable, OSError):
                 time.sleep(.25)
 
     @property
@@ -692,33 +697,44 @@ def load_optimiser_info(dirname):
 
 
 def load_problem_info(dirname):
-    fn = op.join(dirname, 'problem.yaml')
-    return guts.load(filename=fn)
+    try:
+        fn = op.join(dirname, 'problem.yaml')
+        return guts.load(filename=fn)
+    except OSError as e:
+        logger.debug(e)
+        raise ProblemInfoNotAvailable(
+            'no problem info available (%s)' % dirname)
 
 
 def load_problem_data(dirname, problem, nmodels_skip=0):
 
-    nmodels = get_nmodels(dirname, problem) - nmodels_skip
+    try:
+        nmodels = get_nmodels(dirname, problem) - nmodels_skip
 
-    fn = op.join(dirname, 'models')
-    with open(fn, 'r') as f:
-        f.seek(nmodels_skip * problem.nparameters * 8)
-        models = num.fromfile(
-                f, dtype='<f8',
-                count=nmodels * problem.nparameters)\
-            .astype(num.float)
+        fn = op.join(dirname, 'models')
+        with open(fn, 'r') as f:
+            f.seek(nmodels_skip * problem.nparameters * 8)
+            models = num.fromfile(
+                    f, dtype='<f8',
+                    count=nmodels * problem.nparameters)\
+                .astype(num.float)
 
-    models = models.reshape((nmodels, problem.nparameters))
+        models = models.reshape((nmodels, problem.nparameters))
 
-    fn = op.join(dirname, 'misfits')
-    with open(fn, 'r') as f:
-        f.seek(nmodels_skip * problem.ntargets * 2 * 8)
-        misfits = num.fromfile(
-                f, dtype='<f8',
-                count=nmodels*problem.ntargets*2)\
-            .astype(num.float)
+        fn = op.join(dirname, 'misfits')
+        with open(fn, 'r') as f:
+            f.seek(nmodels_skip * problem.ntargets * 2 * 8)
+            misfits = num.fromfile(
+                    f, dtype='<f8',
+                    count=nmodels*problem.ntargets*2)\
+                .astype(num.float)
 
-    misfits = misfits.reshape((nmodels, problem.ntargets, 2))
+        misfits = misfits.reshape((nmodels, problem.ntargets, 2))
+
+    except OSError as e:
+        logger.debug(str(e))
+        raise ProblemDataNotAvailable(
+            'no problem data available (%s)' % dirname)
 
     return models, misfits
 
@@ -727,6 +743,8 @@ __all__ = '''
     ProblemConfig
     Problem
     ModelHistory
+    ProblemInfoNotAvailable
+    ProblemDataNotAvailable
     load_problem_info
     load_problem_info_and_data
 '''.split()

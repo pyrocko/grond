@@ -690,15 +690,21 @@ def command_report(args):
 
     if all(op.isdir(rundir) for rundir in args):
         rundirs = args
-        try:
-            for rundir in rundirs:
+        all_failed = True
+        for rundir in rundirs:
+            try:
                 env = Environment([rundir])
                 report(
                     env, conf,
                     update_without_plotting=options.update_without_plotting)
 
-        except grond.GrondError as e:
-            die(str(e))
+                all_failed = False
+
+            except grond.GrondError as e:
+                logger.error(str(e))
+
+        if all_failed:
+            die('no reports generated')
 
     else:
         try:

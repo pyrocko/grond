@@ -1,4 +1,5 @@
 import logging
+from grond.meta import GrondError
 from grond.environment import Environment, GrondEnvironmentError
 from grond.plot.collection import PlotCollectionManager
 from grond.plot.config import PlotConfigCollection
@@ -48,7 +49,7 @@ def make_plots(
     for plot in plots:
         try:
             plot.make(env)
-        except GrondEnvironmentError as e:
+        except (GrondEnvironmentError, GrondError) as e:
             logger.warning('cannot create plot %s: %s' % (
                 plot.name, str(e)))
 

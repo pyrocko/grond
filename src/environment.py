@@ -38,18 +38,20 @@ class Environment(object):
 
     def __init__(self, args):
 
-        if op.isdir(args[0]):
-            self._rundir_path = args[0]
-            self._config_path = op.join(self._rundir_path, 'config.yaml')
-        else:
-            self._rundir_path = None
-            self._config_path = args[0]
-
         self._current_event_name = None
         self._selected_event_names = None
         self._config = None
         self._plot_collection_manager = None
-        self.set_selected_event_names(args[1:])
+
+        if op.isdir(args[0]):
+            self._rundir_path = args[0]
+            self._config_path = op.join(self._rundir_path, 'config.yaml')
+
+        else:
+            self._rundir_path = None
+            self._config_path = args[0]
+            self.set_selected_event_names(args[1:])
+
         self.reset()
 
     def reset(self):

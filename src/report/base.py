@@ -13,6 +13,7 @@ from pyrocko.guts import Object, String
 from grond.meta import Path, expand_template
 
 from grond import core, environment
+from grond.problems import ProblemInfoNotAvailable, ProblemDataNotAvailable
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -73,59 +74,70 @@ def report(env, report_config=None, update_without_plotting=False):
     if op.exists(report_path) and not update_without_plotting:
         shutil.rmtree(report_path)
 
-    problem.dump_problem_info(report_path)
-
-    util.ensuredir(report_path)
-    plots_dir_out = op.join(report_path, 'plots')
-    util.ensuredir(plots_dir_out)
-
-    event = env.get_dataset().get_event()
-    guts.dump(event, filename=op.join(report_path, 'event.reference.yaml'))
-
     try:
-        rundir_path = env.get_rundir_path()
+        problem.dump_problem_info(report_path)
 
-        core.export(
-            'stats', [rundir_path],
-            filename=op.join(report_path, 'stats.yaml'))
+        util.ensuredir(report_path)
+        plots_dir_out = op.join(report_path, 'plots')
+        util.ensuredir(plots_dir_out)
 
-        core.export(
-            'best', [rundir_path],
-            filename=op.join(report_path, 'event.solution.best.yaml'),
-            type='event-yaml')
+        event = env.get_dataset().get_event()
+        guts.dump(event, filename=op.join(report_path, 'event.reference.yaml'))
 
-        core.export(
-            'mean', [rundir_path],
-            filename=op.join(report_path, 'event.solution.mean.yaml'),
-            type='event-yaml')
+        try:
+            rundir_path = env.get_rundir_path()
 
-        core.export(
-            'ensemble', [rundir_path],
-            filename=op.join(report_path, 'event.solution.ensemble.yaml'),
-            type='event-yaml')
+            core.export(
+                'stats', [rundir_path],
+                filename=op.join(report_path, 'stats.yaml'))
 
-    except environment.NoRundirAvailable:
-        pass
+            core.export(
+                'best', [rundir_path],
+                filename=op.join(report_path, 'event.solution.best.yaml'),
+                type='event-yaml')
 
-    if not update_without_plotting:
-        from grond import plot
-        plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
+            core.export(
+                'mean', [rundir_path],
+                filename=op.join(report_path, 'event.solution.mean.yaml'),
+                type='event-yaml')
 
-    rie = ReportIndexEntry(path='.', problem_name=problem.name)
+            core.export(
+                'ensemble', [rundir_path],
+                filename=op.join(report_path, 'event.solution.ensemble.yaml'),
+                type='event-yaml')
 
-    fn = op.join(report_path, 'event.solution.best.yaml')
-    if op.exists(fn):
-        rie.event_best = guts.load(filename=fn)
+        except (environment.NoRundirAvailable, ProblemInfoNotAvailable,
+                ProblemDataNotAvailable):
 
-    fn = op.join(report_path, 'event.reference.yaml')
-    if op.exists(fn):
-        rie.event_reference = guts.load(filename=fn)
+            pass
 
-    fn = op.join(report_path, 'index.yaml')
-    guts.dump(rie, filename=fn)
+        if not update_without_plotting:
+            from grond import plot
+            plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
 
-    report_index(report_config)
-    report_archive(report_config)
+        rie = ReportIndexEntry(path='.', problem_name=problem.name)
+
+        fn = op.join(report_path, 'event.solution.best.yaml')
+        if op.exists(fn):
+            rie.event_best = guts.load(filename=fn)
+
+        fn = op.join(report_path, 'event.reference.yaml')
+        if op.exists(fn):
+            rie.event_reference = guts.load(filename=fn)
+
+        fn = op.join(report_path, 'index.yaml')
+        guts.dump(rie, filename=fn)
+
+        report_index(report_config)
+        report_archive(report_config)
+
+    except Exception:
+        logger.warn(
+            'report generation failed, removing incomplete report dir: %s'
+            % report_path)
+
+        if op.exists(report_path):
+            shutil.rmtree(report_path)
 
 
 def report_index(report_config=None):
