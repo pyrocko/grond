@@ -1,15 +1,19 @@
 Quickstart
 ==========
 
-Grond ships with a two options to quickstart a new project:
+Grond ships with a two options to quickstart a new project.
 
-1. Blank project layout can be initialized with:
+Initialise an empty project
+---------------------------
+
+To create an 
 
 .. code-block:: sh
     
     grond init [--waveforms, --gnss, --insar, --waveforms] <project-folder>
 
-2. Forward-model a scenario and fill in the project structure:
+Forward-model a scenario-project
+--------------------------------
 
 .. code-block:: sh
     
