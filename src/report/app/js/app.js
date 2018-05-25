@@ -312,4 +312,11 @@ angular.module('reportApp', ['ngRoute'])
         $location.hash($routeParams.scrollTo);
         $anchorScroll();  
       });
+    })
+
+
+    .filter('nounderscore', function () {
+    return function (value) {
+        return (!value) ? '' : value.replace(/_/g, '');
+        };
     });
