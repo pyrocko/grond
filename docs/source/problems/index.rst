@@ -1,11 +1,9 @@
 Problems and problem configuration
 ==================================
 
-(unfinished)
-
-A problem is a task to optimise a specific source in Grond given certain conditions that can be configured
-rather flexibly. So far defined problems in Grond are the optimisations of different 
-source types, which are derived from `Pyrocko Sources`_. 
+A problem in Grond is a task to optimise a specific source model in Grond given certain conditions. 
+These conditions can be configured rather flexibly. So far defined problems in Grond are the optimisations 
+of different source types, which are derived from `Pyrocko Sources`_. 
 
 These problems are in short (more details in the corresponding sections below):
 
@@ -29,21 +27,19 @@ To define and configure a problem the part called ``problem_config`` in the conf
 General configuration
 ---------------------
 
-The general problem configuration contains the following parameters:
+The following problem parameters are shared by all problems and are part of all
+problem configurations:
 
-``name_template``:
-    can be any string and provides a stem for the result folders 
+``name_template``: can be any string and provides a stem for the result folders 
     `runs` and `reports` to identify different optimisations. 
     Meaningful is to use short event and problem identifications 
     in this string.
 
-``norm_exponent``:
-    defines the norm of combining several `normalization_family` in the
+``norm_exponent``: defines the norm of combining several `normalization_family` in the
     global misfit. This integer value is 1 or larger. Please find here
     more information on the global `misfit calculation in Grond`_.   
 
-``ranges``
-    defines the bounds of individual and specific source model parameters.
+``ranges``: defines the bounds of individual and specific source model parameters.
     See the details for the source ranges of different problems in the sections below. 
  
 An example for the configuration of a rectangular fault problem is given here:
@@ -65,15 +61,18 @@ An example for the configuration of a rectangular fault problem is given here:
       dip: '0 .. 60'
       rake: '60 .. 90'
 
-CMTProblem source configuration
--------------------------------
+``CMTProblem`` configuration
+----------------------------
 
-description: general earthquake source problem.  
+The Grond CMTProblem represents one of most popular problems in seismology.  
+Sought-after are moment tensor source models that well fit the observed seismic waveforms. The 
+waveforms are usually far-field observations such that this point-source approximation
+is well suited. The ``CMTProblem`` can be configured to a pure double-couple problem. 
+The source time function is fixed to half-sinusoid (see the documentation of 
+`Pyrocko Sources`_ for details on the source time function).
 
-- full moment tensor
-
-Here are non-general parameters and their description for the ``RectangularProblem`` in particular
-with a concise example at the end.
+Configuration parameters that common for all problems are listed above and following are parameters 
+particularly for the ``CMTProblem``.
 
 **Non-general problem parameters**:
 
@@ -82,13 +81,18 @@ with a concise example at the end.
     Finite-rupture effects on near targets may be excluded efficiently with a meaning setting 
     for this parameter. 
     
-``distance_min``: is a maximum target distance to the source used to exclude targets farther than this. 
+``distance_max``: is a maximum target distance to the source used to exclude targets farther than this. 
     Tailored to the problem, too far away targets will not be considered in the misfit evaluation. 
     Like this certain phase interferences may be efficiently excluded. 
 
-``mt_type``: configures the type of moment tensor. The source can be a full moment tensor (`` mtfull`, or a 'deviatoric'
+``mt_type``: configures the type of moment tensor. The source model can be set to be a full moment tensor 
+    (`` mt_type: full``) or can be constrained to a deviatoric moment tensor (``mt_type: deviatoric``) or 
+    even to a pure double couple source (``mt_type: dc``).
 
 **Source parameters**:
+
+(Please check for more details the description of the `Pyrocko Sources`_.)
+
 
 ``ranges``:
     ``east_shift`` is a relative position in east direction to the reference location 
@@ -102,9 +106,18 @@ with a concise example at the end.
     ``time``: is the relative time to the origin time given in 'event.txt' in seconds.
 
     ``magnitude``: is the earthquake moment magnitude.
+    
+    ``rmnn`` & 
+    ``rmee`` &
+    ``rmdd`` &
+    ``rmne`` &
+    ``rmnd`` &
+    ``rmed`` & are the moment tensor components.
 
-
-
+    ``duration``: is the duration of the source time function in seconds.
+    
+**Example configuration**:
+    
 .. code-block :: sh
 
   problem_config: !grond.CMTProblemConfig
@@ -127,48 +140,129 @@ with a concise example at the end.
       duration: '0. .. 0.'
 
 
+``DoubleDCProblem`` configuration
+---------------------------------
 
+This problem has two double-couple point sources (derived from ``DoubleDCSource``). They are 
+dependent in location and relative timing to avoid overlapping in either space or time. The 
+mechanisms, the durations and the moments of the two sources are indepedent.
+Using this model more complex eartquakes with two prominent rupture phases or with a 
+change of mechanism along the rupture plane can be studied. Or simply the potenial of a major source 
+complexity of an earthquake can be tested.
 
-DoubleDCProblem configuration
------------------------------
-
-TODO: alles, problem description
-
-Here are non-general parameters and their description for the ``DoubleDCProblem`` 
-in particular with a concise example at the end.
-
-``DoubleDC`` stands for two double-couple sources. This problem 
-
-
-**Non-general problem parameters**:
-
-``distance_min``: 0
-
-``mt_type``: 'deviatoric'
-
-
-TODO: example
-
-RectangularProblem configuration
---------------------------------
-
-TODO: problem description
-
-Here are non-general parameters and their description for 
-the ``RectangularProblem`` in particular with a concise 
-example at the end.
-
+Configuration parameters that common for all problems are listed above and following are parameters 
+particularly for the ``DoubleDCProblem``.
 
 **Non-general problem parameters**:
 
-``decimation_factor``
-    is only valid for finite sources. It defines a reduced number
+``distance_min``: is a minimum target distance to the source used to exclude targets closer than this. 
+    Tailored to the problem, too close targets will not be considered in the misfit evaluation. 
+    Finite-rupture effects on near targets may be excluded efficiently with a meaning setting 
+    for this parameter.
+    
+    
+**Source parameters**:
+
+(Please check for more details the description of the `Pyrocko Sources`_.)
+
+``ranges``:
+    ``east_shift``: is a relative position in east direction to the reference location 
+        given in 'event.txt'. It is given in meters.
+
+    ``north_shift``: is a relative position in north direction to the reference location
+        given in 'event.txt'. It is given in meters.
+
+    ``depth``: is the depth of the starting point source in meters.
+    
+    ``time``: is the relative time to the origin time given in 'event.txt' in seconds.
+
+    ``magnitude``: is the total earthquake moment magnitude.
+
+    ``strike1`` &
+    ``dip1`` &
+    ``rake1`` constrain the mechanism of the first double-couple source.
+    
+    ``strike2`` &
+    ``dip2`` &
+    ``rake2`` constrain the mechanism of the second double-couple source. 
+    
+    ``delta_time``: is the time difference between the two sources in seconds. Needs to be larger
+        than zero to separate the sources in time and to make source 2 the later source.
+        
+    ``delta_depth``: is the depth difference of the two sources in meters.
+    
+    ``azimuth``: the azimuth of source 2 with respect to source 1 (clockwise from north) in degrees.
+    
+    ``distance``: is the distance between the two sources in meters. Needs to be larger than 
+        zero to separate the sources in space.
+    
+    ``mix``: is a value between ``0`` and ``1`` that defines the relative moment contributions of the sources to the 
+        total moment. In the extreme, with ``mix=0`` all the moment is in the first source and none in the second or else  
+        ``mix=1`` put all moment in the second source which leaves none for the first source. ``mix=0.25`` defines three 
+        quarters of the total moment on the first source and one quarter on the second, while obviously ``mix=0.5`` gives
+        two sources of the same strength.
+        
+    ``duration1`` & ``duration2``: are the durations of the first and second source's source time functions, 
+        respectively, in seconds.
+        
+**Example configuration**:
+        
+.. code-block :: sh
+
+  problem_config: !grond.CMTProblemConfig
+    name_template: '${event_name}_regional_mt'
+    norm_exponent: 1
+    distance_min: 0
+    mt_type: 'deviatoric'
+    ranges:
+      time: '-10 .. 10 | add'
+      north_shift: '-40e3 .. 40e3'
+      east_shift: '-40e3 .. 40e3'
+      depth: '4e3 .. 50e3'
+      magnitude: '4.0 .. 7.0'
+      strike1: '30. .. 180.'
+      dip1: '30. .. 90.'
+      rake1: '20. .. 150.'
+      strike2: '30. .. 180.'
+      dip2: '30. .. 90.'
+      rake2: '20. .. 150.'
+      delta_time: '5. .. 10.'
+      delta_depth: '0. .. 10000.'
+      azimuth: '0. .. 360.'
+      distance: '10000. .. 40000.' 
+      mix: '0.2 .. 0.8'
+      duration1: '5. .. 10.'
+      duration2: '5. .. 10.'
+
+``RectangularProblem`` configuration
+------------------------------------
+
+The rectangular source is a simple finite source model with a rectangular shape and uniform moment or 
+slip across the rupture plane. It resembles the source model defined by `Haskell (1964)`_, but has a nucleation point
+from which spreads a circular rupture. The position of the nucleation point on the rupture plane can 
+be part of the problem. Uniform and bilateral ruptures are therefore possible. With the ``RectangularProblem``
+also directivity effects in the observations of large earthquake may be predicted. 
+
+The static rectangular source is very similar to the analytical rectangular dislocation source as
+described by `Okada (1985)`_, which is embedded in an isotropic elastic half-space. The ``RectangularProblem`` is
+therefore well suited to predict near-field static surface displacements observed at GNSS stations or with InSAR. 
+For a joint optimisation of seismic waveforms and near-field static surface displacements a ``RectangularProblem``
+is the appropriate choice.
+
+Configuration parameters that common for all problems are listed above and following are parameters 
+particularly for the ``RectangularProblem``.
+
+**Non-general problem parameters**:
+
+``decimation_factor``: is only valid for finite sources. It defines a reduced number
     of sub-sources that build the finite source rectangle. A reduced
     number speeds up the forward modelling but may lead to artefacts 
     in the source near-field. Default is no decimation 
     (``decimation_factor: 1``)
 
 **Source parameters**:
+
+(Please check for more details the description of the `Pyrocko Sources`_.)
 
 For the source parameter configuration, please note that the 
 last three parameters
@@ -218,7 +312,7 @@ are ignored.
 .. code-block :: sh
 
   problem_config: !grond.RectangularProblemConfig
-    name_template: '${event_name}_static'
+    name_template: '${event_name}_joint'
     norm_exponent: 1
     decimation_factor: 4
     ranges:
@@ -238,3 +332,5 @@ are ignored.
 
 .. _misfit calculation in Grond: ../method/index.html#Misfit calculation
 .. _Pyrocko Sources: _https://pyrocko.org/docs/current/library/reference/gf.html#module-pyrocko.gf.seismosizer
+.. _Haskell (1964): https://pubs.geoscienceworld.org/ssa/bssa/article/54/6A/1811/116295/total-energy-and-energy-spectral-density-of 
+.. _Okada (1985): https://pubs.geoscienceworld.org/ssa/bssa/article/75/4/1135/118782/surface-deformation-due-to-shear-and-tensile
