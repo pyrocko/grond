@@ -140,9 +140,6 @@ def report(env, report_config=None, update_without_plotting=False):
         fn = op.join(report_path, 'index.yaml')
         guts.dump(rie, filename=fn)
 
-        report_index(report_config)
-        report_archive(report_config)
-
     except Exception:
         logger.warn(
             'report generation failed, removing incomplete report dir: %s'
@@ -150,6 +147,9 @@ def report(env, report_config=None, update_without_plotting=False):
 
         if op.exists(report_path):
             shutil.rmtree(report_path)
+
+    report_index(report_config)
+    report_archive(report_config)
 
 
 def report_index(report_config=None):
