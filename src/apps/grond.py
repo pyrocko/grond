@@ -654,21 +654,34 @@ def command_report(args):
 
     from grond.environment import Environment
     from grond.report import \
-        report, report_index, serve_report, read_config, ReportConfig
+        report, report_index, serve_address, serve_report, read_config, \
+        ReportConfig
 
     def setup(parser):
         parser.add_option(
             '--index-only', dest='index_only', action='store_true',
             help='create index only')
         parser.add_option(
-            '--no-serve', dest='no_serve', action='store_true',
-            help='do not spin up a local http server')
+            '--serve', '-s', dest='serve', action='store_true',
+            help='start http service')
         parser.add_option(
-            '--no-open', dest='no_open', action='store_true',
-            help='do not open report web page in browser')
+            '--serve-external', '-S',  dest='serve_external', action='store_true',
+            help='shortcut for --serve --host=default --fixed-port')
         parser.add_option(
-            '--host', dest='host', default='127.0.0.1:8383',
-            help='host to start the http server on')
+            '--host', dest='host', default='localhost',
+            help='<ip> to start the http server on. Special values for '
+                 '<ip>: "*" binds to all available interfaces, "default" '
+                 'to default external interface, "localhost" to "127.0.0.1".')
+        parser.add_option(
+            '--port', dest='port', default='8383',
+            help='set default http server port. Will count up if port is '
+                 'already in use unless --fixed-port is given.')
+        parser.add_option(
+            '--fixed-port', dest='fixed_port', action='store_true',
+            help='fail if port is already in use')
+        parser.add_option(
+            '--open', '-o', dest='open', action='store_true',
+            help='open report in browser')
         parser.add_option(
             '--config', dest='config',
             help='report configuration file to use')
@@ -686,14 +699,17 @@ def command_report(args):
         conf = ReportConfig()
         conf.set_basepath('.')
 
-    if len(args) < 1:
-        help_and_die(parser, 'arguments required')
-
     if options.index_only:
         report_index(conf)
-        sys.exit(1)
+        sys.exit(0)
 
-    if all(op.isdir(rundir) for rundir in args):
+    reports_generated = False
+
+    if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
+        conf.reports_base_path = conf.rel_path(args[0])
+        pass
+
+    elif args and all(op.isdir(rundir) for rundir in args):
         rundirs = args
         all_failed = True
         for rundir in rundirs:
@@ -704,6 +720,7 @@ def command_report(args):
                     update_without_plotting=options.update_without_plotting)
 
                 all_failed = False
+                reports_generated = True
 
             except grond.GrondError as e:
                 logger.error(str(e))
@@ -711,7 +728,7 @@ def command_report(args):
         if all_failed:
             die('no reports generated')
 
-    else:
+    elif args:
         try:
             env = Environment(args)
             for event_name in env.get_selected_event_names():
@@ -720,23 +737,36 @@ def command_report(args):
                     env, conf,
                     update_without_plotting=options.update_without_plotting)
 
+                reports_generated = True
+
         except grond.GrondError as e:
             die(str(e))
 
-    if not options.no_serve and not options.no_open:
+    if options.serve or options.serve_external:
+        if options.serve_external:
+            host = 'default'
+        else:
+            host = options.host
+
         import webbrowser
-        webbrowser.open('http://' + options.host)
+        addr = serve_address(host + ':' + options.port)
+        if options.open:
+            webbrowser.open('http://%s:%d' % addr)
 
-        host = options.host.split(':')
-        host = tuple([host[0], int(host[1])])
-        serve_report(host)
+        serve_report(
+            addr,
+            report_config=conf,
+            fixed_port=options.fixed_port or options.serve_external)
 
-    elif not options.no_open:
+    elif options.open:
         import webbrowser
         url = 'file://%s/index.html' % op.abspath(
             conf.expand_path(conf.reports_base_path))
 
         webbrowser.open(url)
+
+    elif not reports_generated:
+        logger.info('nothing to do')
 
 
 def command_qc_polarization(args):

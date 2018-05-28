@@ -3,6 +3,9 @@ import os.path as op
 import shutil
 import os
 import tarfile
+import threading
+import signal
+import time
 
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
@@ -195,6 +198,23 @@ def report_archive(report_config):
         tar.add(reports_base_path, arcname='grond-reports')
 
 
+def serve_address(host_port):
+    host, port = host_port.split(':')
+    if host == 'localhost':
+        ip = '127.0.0.1'
+    elif host == 'default':
+        import socket
+        ip = [
+            (s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close())
+            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
+    elif host == '*':
+        ip = ''
+    else:
+        ip = host
+
+    return ip, int(port)
+
+
 class ReportHandler(SimpleHTTPRequestHandler):
 
     def _log_error(self, fmt, *args):
@@ -204,23 +224,70 @@ class ReportHandler(SimpleHTTPRequestHandler):
         logger.debug(fmt % args)
 
 
-def serve_report(addr=('127.0.0.1', 8383), report_config=None):
+g_terminate = False
+def serve_report(
+        addr=('127.0.0.1', 8383),
+        report_config=None,
+        fixed_port=False,
+        open=False):
+
     if report_config is None:
         report_config = ReportConfig()
 
-    ip, port = addr
+    path = report_config.expand_path(report_config.reports_base_path)
+    os.chdir(path)
 
-    os.chdir(report_config.reports_base_path)
+    host, port = addr
+    if fixed_port:
+        ports = [port]
+    else:
+        ports = range(port, port+20)
 
-    while True:
+    httpd = None
+    for port in ports:
         try:
-            httpd = HTTPServer((ip, port), ReportHandler)
+            httpd = HTTPServer((host, port), ReportHandler)
             break
-        except OSError:
-            port += 1
+        except OSError as e:
+            logger.warn(str(e))
 
-    logger.info('Starting report webserver at http://%s:%d...' % (ip, port))
-    httpd.serve_forever()
+    if httpd:
+        logger.info(
+            'Starting report web service at http://%s:%d' % (host, port))
+
+        thread = threading.Thread(None, httpd.serve_forever)
+        thread.start()
+
+        if open:
+            import webbrowser
+            if open:
+                webbrowser.open('http://%s:%d' % (host, port))
+
+
+        def handler(signum, frame):
+            global g_terminate
+            g_terminate = True
+
+        signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
+
+        while not g_terminate:
+            time.sleep(0.1)
+
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        logger.info(
+            'Stopping report web service...')
+
+        httpd.shutdown()
+        thread.join()
+
+        logger.info(
+            ' ... done')
+
+    else:
+        logger.error('Failed to start web service.')
 
 
 __all__ = '''
@@ -228,6 +295,7 @@ __all__ = '''
     report_index
     ReportConfig
     ReportIndexEntry
+    serve_address
     serve_report
     read_config
 '''.split()
