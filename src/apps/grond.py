@@ -747,15 +747,11 @@ def command_report(args):
         else:
             host = options.host
 
-        import webbrowser
-        addr = serve_address(host + ':' + options.port)
-        if options.open:
-            webbrowser.open('http://%s:%d' % addr)
-
         serve_report(
             addr,
             report_config=conf,
-            fixed_port=options.fixed_port or options.serve_external)
+            fixed_port=options.fixed_port or options.serve_external,
+            open=options.open)
 
     elif options.open:
         import webbrowser
