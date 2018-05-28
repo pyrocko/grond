@@ -5,6 +5,7 @@
 /dist
 /*.egg-info
 *.swp
+*-swp
 
 docs/_build
 docs/build
