@@ -678,8 +678,10 @@ def command_report(args):
                  '<ip>: "*" binds to all available interfaces, "default" '
                  'to default external interface, "localhost" to "127.0.0.1".')
         parser.add_option(
-            '--port', dest='port',
-            default='8383',
+            '--port',
+            dest='port',
+            type=int,
+            default=8383,
             help='set default http server port. Will count up if port is '
                  'already in use unless --fixed-port is given.')
         parser.add_option(
@@ -759,8 +761,12 @@ def command_report(args):
         else:
             host = options.host
 
+<<<<<<< HEAD
         addr = serve_ip(host), int(options.port)
 
+=======
+        addr = serve_ip(host), options.port
+>>>>>>> 4938f26... grond-cli: bugfix
         serve_report(
             addr,
             report_config=conf,
