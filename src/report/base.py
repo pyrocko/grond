@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 import os.path as op
 import shutil
@@ -225,6 +226,15 @@ class ReportHandler(SimpleHTTPRequestHandler):
 
     def _log_message(self, fmt, *args):
         logger.debug(fmt % args)
+
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-cache')
+        SimpleHTTPRequestHandler.end_headers(self)
+
+
+ReportHandler.extensions_map.update({
+    '.yaml': 'application/x-yaml',
+    '.yml': 'application/x-yaml'})
 
 
 g_terminate = False
