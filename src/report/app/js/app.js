@@ -10,7 +10,10 @@ function copy_properties(source, target) {
     }
 }
 
-function Dummy(obj) { copy_properties(obj, this); }
+function Dummy(obj) {
+    copy_properties(obj, this);
+}
+
 function ReportIndexEntry(obj) {
     copy_properties(obj, this);
     this.get_event = function() {
@@ -233,11 +236,11 @@ angular.module('reportApp', ['ngRoute'])
     })
 
     .controller('ReportController', function(
-            $scope, YamlDoc, YamlMultiDoc, $routeParams, $location, $anchorScroll) {
+            $scope, YamlDoc, YamlMultiDoc, $routeParams, $timeout, $http) {
 
         $scope.stats = null;
-        $scope.plot_groups = [];
-        $anchorScroll.yOffset = 60;
+        $scope.groups = [];
+        $scope.groups_selected = [];
 
         $scope.path = $routeParams.report_path;
 
@@ -249,15 +252,9 @@ angular.module('reportApp', ['ngRoute'])
             return plot_group_path([group.name, group.variant]) + '.' + item.name + '.d100.png';
         };
 
-        YamlDoc.query(
-            $scope.path + '/stats.yaml',
-            function(doc) { $scope.stats = doc; },
-            {schema: report_schema});
-
-
-        var insert_plot_group = function(doc) {
-            $scope.plot_groups.push(doc);
-            $scope.plot_groups.sort(function(doc1, doc2) {
+        var insert_group = function(doc) {
+            $scope.groups.push(doc);
+            $scope.groups.sort(function(doc1, doc2) {
                 if (doc1.section < doc2.section)
                     return -1;
                 if (doc1.section > doc2.section)
@@ -266,32 +263,74 @@ angular.module('reportApp', ['ngRoute'])
                 })
         };
 
-
-        var query_group = function(group_ref) {
+        var load_group = function(group_ref) {
             YamlDoc.query(
                 plot_group_path(group_ref) + '.plot_group.yaml',
                 function(doc) {
-                    insert_plot_group(doc);
+                    doc.template = 'group-plots';
+                    insert_group(doc);
                 },
                 {schema: report_schema});
         };
+
+        YamlDoc.query(
+            $scope.path + '/stats.yaml',
+            function(doc) {
+                doc.name = 'parameter results';
+                doc.section = 'run';
+                doc.feather_icon = 'book';
+                doc.template = 'parameter-table';
+
+                insert_group(doc);
+            },
+            {schema: report_schema});
 
         YamlMultiDoc.query(
             $scope.path + '/plots/plot_collection.yaml',
             function(doc) {
                 for (var i = 0, len = doc.group_refs.length; i < len; i++)
-                    query_group(doc.group_refs[i]);
+                    load_group(doc.group_refs[i]);
             },
             {schema: report_schema}
         );
 
-        $scope.scrollTo = function(id) {
-            var old = $location.hash();
-            $location.hash(id);
-            $anchorScroll();
-            //reset to old to keep any additional routing logic from kicking in
-            $location.hash(old);
+        $http.get($scope.path + '/config.yaml').then(function(data) {
+            var doc = new Dummy({
+                'name': 'config',
+                'section': 'run',
+                'feather_icon': 'code',
+                'template': 'config-file',
+                'raw_config': data
+            });
+
+            insert_group(doc);
+        });
+
+        $scope.select_group_by_name = function(group_name) {
+            $scope.groups_selected = $scope.groups.filter(
+                function(group) {
+                    if(group.name == group_name)
+                        return true;
+                    return false;
+                })
         };
+
+        $scope.select_group_by_section_name = function(section_name) {
+            $scope.groups_selected = $scope.groups.filter(
+                function(group) {
+                    if(group.section == section_name)
+                        return true;
+                    return false;
+                })
+        };
+
+        $scope.$on('$viewContentLoaded', function(event)
+        { 
+            $timeout(function() {
+                feather.replace();
+            }, 100.);
+         });
+
     })
 
     .filter('eround', function() {
@@ -318,6 +357,14 @@ angular.module('reportApp', ['ngRoute'])
         };
     })
 
+    .filter('newlines', function () {
+        return function(text) {
+            if(text)
+                return text.replace(/\n/g, '<br/>');
+            return '';
+        }
+    })
+
     .run(function($rootScope, $location, $anchorScroll, $routeParams) {
       //when the route is changed scroll to the proper element.
       $rootScope.$on('$routeChangeSuccess', function(newRoute, oldRoute) {
@@ -331,4 +378,23 @@ angular.module('reportApp', ['ngRoute'])
     return function (value) {
         return (!value) ? '' : value.replace(/_/g, ' ');
         };
+    })
+
+    .directive('groupPlots', function() {
+      return {
+        templateUrl: 'templates/group_plots.tmpl.html'
+         };
+    })
+
+    .directive('parameterTable', function() {
+      return {
+        templateUrl: 'templates/parameter_table.tmpl.html'
+         };
+    })
+
+    .directive('configFile', function() {
+      return {
+        templateUrl: 'templates/config_file.tmpl.html'
+         };
     });
+

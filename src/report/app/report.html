@@ -11,7 +11,7 @@
 <div class="container-fluid">
     <div class="row">
         <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-            <div class="sidebar-sticky" ng-controller="ReportController">
+            <div class="sidebar-sticky" ng-cloak>
                 <ul class="nav flex-column">
                   <li class="nav-item" ng-if="stats">
                     <a href="" ng-click="scrollTo('results')" class="nav-link">
@@ -19,86 +19,27 @@
                         Results
                     </a>
                   </li>
-                  <li class="nav-item plot-title" ng-repeat="group in plot_groups">    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted" ng-if="plot_groups[$index-1].section !== plot_groups[$index].section">
-                          <span >{{ group.section }}</span>
-                      </h6>
-                      <a href="" ng-click="scrollTo(group.name)" class="nav-link">
-                        <span data-feather="bar-chart-2"></span>
+                  <li class="nav-item plot-title" ng-repeat="group in groups">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted clickable" ng-if="groups[$index-1].section !== groups[$index].section"
+                    ng-click="select_group_by_section_name(group.section)">
+                          <span>{{ group.section }}</span>
+                    </h6>
+                    <a href="" ng-click="select_group_by_name(group.name)" class="nav-link">
+                        <span data-feather="{{ group.feather_icon }}"></span>
                         {{ group.name | nounderscore }}
-                      </a>
+                    </a>
                   </li>
                 </ul>
             </div>
         </nav>
+
         <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
-            <div ng-if="stats">
-                <h2>Results</h2>
-
-                <table id="results" class="stats table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Parameter</th>
-                            <th>Best</th>
-                            <th>Mean</th>
-                            <th>Std</th>
-                            <th>Min</th>
-                            <th>5%</th>
-                            <th>16%</th>
-                            <th>84%</th>
-                            <th>95%</th>
-                            <th>max</th>
-                        </tr>
-                    <thead>
-                    <tbody>
-                        <tr ng-repeat="pstats in stats.parameter_stats_list" class="row-parameter">
-                            <td>{{ pstats.name }}</td>
-                            <td>
-                                <tt>{{ pstats.best | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.mean | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.std | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.minimum | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.percentile5 | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.percentile16 | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.percentile84 | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.percentile95 | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                            <td>
-                                <tt>{{ pstats.maximum | eround:pstats.std | dotalign }}</tt>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <hr />
-            </div>
-
-            <div ng-repeat="group in plot_groups">
-                <h3 id="{{ group.name }}" class="plot-title">{{ group.name | nounderscore }}</h3>
-                <figure class="figure">
-                    <img class="figure-img img-fluid" ng-src="{{ image_path(group, item); }}" ng-repeat="item in group.items | filter:keyword" />
-                    <figcaption class="figure-caption">
-                        {{ group.description }}
-                    </figcaption>
-                </figure>
-                <hr />
+            <div ng-repeat="group in groups_selected">
+                <div ng-if="group.template == 'group-plots'" group-plots></div>
+                <div ng-if="group.template == 'parameter-table'" parameter-table></div>
+                <div ng-if="group.template == 'config-file'" config-file></div>
             </div>
         </div>
     </main>
-    <script>
-      feather.replace()
-    </script>
 </div>
 

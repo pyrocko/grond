@@ -1,0 +1,8 @@
+<h3 id="{{ group.title }}" class="plot-title">{{ group.name | nounderscore }}</h3>
+<figure class="figure">
+    <img class="figure-img img-fluid" ng-src="{{ image_path(group, item); }}" ng-repeat="item in group.items" />
+    <figcaption class="figure-caption">
+        {{ group.description }}
+    </figcaption>
+</figure>
+<hr />

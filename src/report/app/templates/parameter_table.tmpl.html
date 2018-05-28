@@ -1,0 +1,51 @@
+<h2>Results</h2>
+
+<table id="results" class="stats table table-hover">
+    <thead>
+        <tr>
+            <th>Parameter</th>
+            <th>Best</th>
+            <th>Mean</th>
+            <th>Std</th>
+            <th>Min</th>
+            <th>5%</th>
+            <th>16%</th>
+            <th>84%</th>
+            <th>95%</th>
+            <th>max</th>
+        </tr>
+    <thead>
+    <tbody>
+        <tr ng-repeat="pstats in group.parameter_stats_list" class="row-parameter">
+            <td>{{ pstats.name }}</td>
+            <td>
+                <tt>{{ pstats.best | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.mean | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.std | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.minimum | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.percentile5 | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.percentile16 | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.percentile84 | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.percentile95 | eround:pstats.std | dotalign }}</tt>
+            </td>
+            <td>
+                <tt>{{ pstats.maximum | eround:pstats.std | dotalign }}</tt>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<hr />

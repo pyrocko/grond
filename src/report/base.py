@@ -92,6 +92,10 @@ def report(env, report_config=None, update_without_plotting=False):
     try:
         problem.dump_problem_info(report_path)
 
+        guts.dump(env.get_config(),
+                  filename=op.join(report_path, 'config.yaml'),
+                  header=True)
+
         util.ensuredir(report_path)
         plots_dir_out = op.join(report_path, 'plots')
         util.ensuredir(plots_dir_out)

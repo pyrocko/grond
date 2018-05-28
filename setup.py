@@ -58,10 +58,10 @@ setup(
         'grond': [
             'report/app/*.html',
             'report/app/favicon.png',
+            'report/app/templates/*.html',
             'report/app/css/*.css',
-            'report/app/css/*.map',
-            'report/app/js/*.js',
-            'report/app/js/*.map']},
+            'report/app/css/highlight/*.css',
+            'report/app/js/*.js']},
 
     data_files=[],
 

@@ -1,0 +1,10 @@
+<pre>
+    <code class="YAML" ng-bind-html='group.raw_config'><code>
+</pre>
+<script>
+    $(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });
+</script>
