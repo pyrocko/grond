@@ -652,37 +652,49 @@ def command_report(args):
 
     from grond.environment import Environment
     from grond.report import \
-        report, report_index, serve_address, serve_report, read_config, \
+        report, report_index, serve_ip, serve_report, read_config, \
         ReportConfig
 
     def setup(parser):
         parser.add_option(
-            '--index-only', dest='index_only', action='store_true',
+            '--index-only',
+            dest='index_only',
+            action='store_true',
             help='create index only')
         parser.add_option(
-            '--serve', '-s', dest='serve', action='store_true',
+            '--serve', '-s',
+            dest='serve',
+            action='store_true',
             help='start http service')
         parser.add_option(
-            '--serve-external', '-S',  dest='serve_external',
+            '--serve-external', '-S',
+            dest='serve_external',
             action='store_true',
             help='shortcut for --serve --host=default --fixed-port')
         parser.add_option(
-            '--host', dest='host', default='localhost',
+            '--host', dest='host',
+            default='localhost',
             help='<ip> to start the http server on. Special values for '
                  '<ip>: "*" binds to all available interfaces, "default" '
                  'to default external interface, "localhost" to "127.0.0.1".')
         parser.add_option(
-            '--port', dest='port', default='8383',
+            '--port', dest='port',
+            default='8383',
             help='set default http server port. Will count up if port is '
                  'already in use unless --fixed-port is given.')
         parser.add_option(
-            '--fixed-port', dest='fixed_port', action='store_true',
+            '--fixed-port',
+            dest='fixed_port',
+            action='store_true',
             help='fail if port is already in use')
         parser.add_option(
-            '--open', '-o', dest='open', action='store_true',
+            '--open', '-o',
+            dest='open',
+            action='store_true',
             help='open report in browser')
         parser.add_option(
-            '--config', dest='config',
+            '--config',
+            dest='config',
             help='report configuration file to use')
         parser.add_option(
             '--update-without-plotting',
@@ -746,6 +758,8 @@ def command_report(args):
             host = 'default'
         else:
             host = options.host
+
+        addr = serve_ip(host), int(options.port)
 
         serve_report(
             addr,

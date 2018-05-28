@@ -198,8 +198,7 @@ def report_archive(report_config):
         tar.add(reports_base_path, arcname='grond-reports')
 
 
-def serve_address(host_port):
-    host, port = host_port.split(':')
+def serve_ip(host):
     if host == 'localhost':
         ip = '127.0.0.1'
     elif host == 'default':
@@ -212,7 +211,7 @@ def serve_address(host_port):
     else:
         ip = host
 
-    return ip, int(port)
+    return ip
 
 
 class ReportHandler(SimpleHTTPRequestHandler):
@@ -225,6 +224,8 @@ class ReportHandler(SimpleHTTPRequestHandler):
 
 
 g_terminate = False
+
+
 def serve_report(
         addr=('127.0.0.1', 8383),
         report_config=None,
@@ -263,7 +264,6 @@ def serve_report(
             if open:
                 webbrowser.open('http://%s:%d' % (host, port))
 
-
         def handler(signum, frame):
             global g_terminate
             g_terminate = True
@@ -295,7 +295,7 @@ __all__ = '''
     report_index
     ReportConfig
     ReportIndexEntry
-    serve_address
+    serve_ip
     serve_report
     read_config
 '''.split()
