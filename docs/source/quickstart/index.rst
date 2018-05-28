@@ -23,7 +23,7 @@ The scenario can contain the following synthetic observations:
 
 .. code-block:: sh
     
-    grond scenario <project-folder>
+    grond scenario --targets=waveforms,insar <project-folder>
 
 A map of the random scenario is plotted in :file:`scenario_map.pdf`.
 

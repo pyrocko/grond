@@ -3,7 +3,7 @@
 import sys
 import os.path as op
 import logging
-from optparse import OptionParser
+from optparse import OptionParser, OptionValueError
 
 from pyrocko import util, marker
 
@@ -189,6 +189,15 @@ def help_and_die(parser, message):
     die(message)
 
 
+def multiple_choice(option, opt_str, value, parser, choices):
+    options = value.split(',')
+    for opt in options:
+        if opt not in choices:
+            raise OptionValueError('invalid option %s - valid options are: %s'
+                                   % (opt, ', '.join(choices)))
+    setattr(parser.values, option.dest, options)
+
+
 def command_scenario(args):
 
     STORE_STATIC = 'crust2_ib_static'
@@ -196,17 +205,20 @@ def command_scenario(args):
 
     def setup(parser):
         parser.add_option(
-            '--waveforms', dest='waveforms', action='store_true',
-            help='add waveform configuration. '
-                 '(default)')
+            '--targets', action='callback', dest='targets', type='string',
+            callback=multiple_choice, callback_kwargs={
+                'choices': ('waveforms', 'gnss', 'insar')
+            },
+            default='waveforms',
+            help='forward modelling targets for the scenario. Select from:'
+                 ' waveforms, gnss and insar. '
+                 '(default: --targets=waveforms,'
+                 ' multiple selection by --targets=waveform,gnss,insar)')
         parser.add_option(
-            '--insar', dest='insar', action='store_true',
-            help='add InSAR displacement scenes using kite containers. '
-                 '(see https://pyrocko.org)')
-        parser.add_option(
-            '--gnss', dest='gnss', action='store_true',
-            help='add GNSS campaign data using kite containers. '
-                 '(see https://pyrocko.org)')
+            '--problem', dest='problem', type=str, default='dc',
+            help='problem to generate: \'dc\' (double couple)'
+                 ' or\'rectangular\' (rectangular finite fault)'
+                 ' (default: \'%default\')')
         parser.add_option(
             '--nstations', dest='nstations', type=int, default=20,
             help='number of seismic stations to create (default: %default)')
@@ -226,11 +238,6 @@ def command_scenario(args):
         parser.add_option(
             '--radius', dest='radius', type=float, default=200.,
             help='radius of the the scenario in [km] (default: %default)')
-        parser.add_option(
-            '--source', dest='source', type=str, default='dc',
-            help='source to generate \'dc\' (double couple)'
-                 ' or\'rectangular\' (rectangular finite fault)'
-                 ' (default: \'%default\')')
         parser.add_option(
             '--gf_waveforms', dest='store_waveforms', type=str,
             default=STORE_WAVEFORMS,
@@ -260,30 +267,27 @@ def command_scenario(args):
             center_lat=options.lat, center_lon=options.lon,
             radius=options.radius*km)
 
-        if not options.waveforms and not options.insar and not options.gnss:
-            options.waveforms = True
-
-        if options.waveforms:
+        if 'waveforms' in options.targets:
             obs = grond_scenario.WaveformObservation(
                 nstations=options.nstations,
                 store_id=options.store_waveforms)
             scenario.add_observation(obs)
 
-        if options.insar:
+        if 'insar' in options.targets:
             obs = grond_scenario.InSARObservation(
                 store_id=options.store_statics)
             scenario.add_observation(obs)
 
-        if options.gnss:
+        if 'gnss' in options.targets:
             obs = grond_scenario.GNSSCampaignObservation(
                 nstations=options.gnss_nstations,
                 store_id=options.store_statics)
             scenario.add_observation(obs)
 
-        if options.source == 'dc':
+        if options.problem == 'dc':
             problem = grond_scenario.DCSourceProblem(
                 nevents=options.nevents)
-        elif options.source == 'rectangular':
+        elif options.problem == 'rectangular':
             problem = grond_scenario.RectangularSourceProblem(
                 nevents=options.nevents)
         scenario.set_problem(problem)
@@ -300,45 +304,39 @@ def command_init(args):
 
     def setup(parser):
         parser.add_option(
-            '--waveforms', dest='waveforms', action='store_true',
-            help='add waveform configuration '
-                 '(default)')
+            '--targets', action='callback', dest='targets', type='string',
+            callback=multiple_choice, callback_kwargs={
+                'choices': ('waveforms', 'gnss', 'insar')
+            },
+            default='waveforms',
+            help='select from:'
+                 ' waveforms, gnss and insar. '
+                 '(default: --targets=waveforms,'
+                 ' multiple selection by --targets=waveform,gnss,insar)')
         parser.add_option(
-            '--insar', dest='insar', action='store_true',
-            help='add InSAR displacement scenes using kite containers'
-                 '(https://pyrocko.org')
-        parser.add_option(
-            '--gnss', dest='gnss', action='store_true',
-            help='add GNSS campaign configuration')
+            '--problem', dest='problem', type=str, default='dc',
+            help='problem to generate: \'dc\' (double couple)'
+                 ' or\'rectangular\' (rectangular finite fault)'
+                 ' (default: \'%default\')')
         parser.add_option(
             '--full', dest='full', action='store_true',
             help='create a full configuration, from targets above')
-        parser.add_option(
-            '--problem-cmt', dest='cmt', action='store_true',
-            help='add a CMT source problem')
-        parser.add_option(
-            '--problem-rectangular', dest='rectangular',
-            action='store_true',
-            help='add a finite rectangular source problem')
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing project folder')
 
     parser, options, args = cl_parse('init', args, setup)
 
-    if not options.insar and not options.waveforms:
-        options.waveforms = True
-
     try:
         project = init.GrondProject()
 
-        if options.waveforms:
+        if 'waveform' in options.targets:
             project.add_waveforms()
             project.set_cmt_source()
-        if options.insar:
+        if 'insar' in options.targets:
             project.add_insar()
             project.set_rectangular_source()
-        if options.gnss:
+        if 'gnss' in options.targets:
             project.add_gnss()
             project.set_rectangular_source()
 
@@ -350,9 +348,9 @@ def command_init(args):
             project.add_gnss()
             project.set_rectangular_source()
 
-        if options.cmt:
+        if options.problem == 'dc':
             project.set_cmt_source()
-        if options.rectangular:
+        elif options.problem == 'rectangular':
             project.set_rectangular_source()
 
         if len(args) == 1:
@@ -665,7 +663,8 @@ def command_report(args):
             '--serve', '-s', dest='serve', action='store_true',
             help='start http service')
         parser.add_option(
-            '--serve-external', '-S',  dest='serve_external', action='store_true',
+            '--serve-external', '-S',  dest='serve_external',
+            action='store_true',
             help='shortcut for --serve --host=default --fixed-port')
         parser.add_option(
             '--host', dest='host', default='localhost',
