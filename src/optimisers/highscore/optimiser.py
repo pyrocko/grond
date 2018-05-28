@@ -556,7 +556,7 @@ class HighScoreOptimiserConfig(OptimiserConfig):
         default=[UniformSamplerPhase(niterations=1000),
                  DirectedSamplerPhase(niterations=5000)])
     chain_length_factor = Float.T(default=8.)
-    nbootstrap = Int.T(default=10)
+    nbootstrap = Int.T(default=100)
 
     def get_optimiser(self):
         return HighScoreOptimiser(
