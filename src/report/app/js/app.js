@@ -236,7 +236,7 @@ angular.module('reportApp', ['ngRoute'])
     })
 
     .controller('ReportController', function(
-            $scope, YamlDoc, YamlMultiDoc, $routeParams, $timeout, $http) {
+            $scope, YamlDoc, YamlMultiDoc, $routeParams, $timeout, $http, $sce) {
 
         $scope.stats = null;
         $scope.groups = [];
@@ -300,7 +300,7 @@ angular.module('reportApp', ['ngRoute'])
                 'section': 'run',
                 'feather_icon': 'code',
                 'template': 'config-file',
-                'raw_config': data
+                'raw_config': data.data
             });
 
             insert_group(doc);
@@ -335,7 +335,6 @@ angular.module('reportApp', ['ngRoute'])
 
     .filter('eround', function() {
         return function(input, std) {
-            console.log(input);
             if (input === null || input === undefined) {
                 return '-';
             } else if (std > 0) {
@@ -348,7 +347,7 @@ angular.module('reportApp', ['ngRoute'])
         };
     })
 
-    .filter('dotalign', function() {
+    .filter('dotalign', function () {
         return function(input) {
             input = input.toString();
             var dotpos = input.indexOf('.');
@@ -360,12 +359,21 @@ angular.module('reportApp', ['ngRoute'])
         };
     })
 
-    .filter('newlines', function () {
-        return function(text) {
-            if(text)
-                return text.replace(/\n/g, '<br/>');
-            return '';
-        }
+    .filter('highlight', function($sce) {
+      return function(input, lang) {
+        if (lang && input) return hljs.highlight(lang, input).value;
+        return input;
+      }
+    })
+
+    .filter('unsafe', function($sce)
+        { return $sce.trustAsHtml; })
+
+
+    .filter('nounderscore', function () {
+        return function (value) {
+            return (!value) ? '' : value.replace(/_/g, ' ');
+            };
     })
 
     .run(function($rootScope, $location, $anchorScroll, $routeParams) {
@@ -374,13 +382,6 @@ angular.module('reportApp', ['ngRoute'])
         $location.hash($routeParams.scrollTo);
         $anchorScroll();  
       });
-    })
-
-
-    .filter('nounderscore', function () {
-    return function (value) {
-        return (!value) ? '' : value.replace(/_/g, ' ');
-        };
     })
 
     .directive('groupPlots', function() {
