@@ -130,7 +130,12 @@ class Config(HasPaths):
 
 
 def read_config(path):
-    config = guts.load(filename=path)
+    try:
+        config = guts.load(filename=path)
+    except OSError:
+        raise GrondError(
+            'cannot read Grond configuration file: %s' % path)
+
     if not isinstance(config, Config):
         raise GrondError('invalid Grond configuration in file "%s"' % path)
 
@@ -139,15 +144,20 @@ def read_config(path):
 
 
 def write_config(config, path):
-    basepath = config.get_basepath()
-    dirname = op.dirname(path) or '.'
-    config.change_basepath(dirname)
-    guts.dump(
-        config,
-        filename=path,
-        header='Grond configuration file, version %s' % __version__)
+    try:
+        basepath = config.get_basepath()
+        dirname = op.dirname(path) or '.'
+        config.change_basepath(dirname)
+        guts.dump(
+            config,
+            filename=path,
+            header='Grond configuration file, version %s' % __version__)
 
-    config.change_basepath(basepath)
+        config.change_basepath(basepath)
+
+    except OSError:
+        raise GrondError(
+            'cannot write Grond configuration file: %s' % path)
 
 
 def diff_configs(path1, path2):

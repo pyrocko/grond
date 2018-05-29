@@ -18,6 +18,7 @@ from grond.meta import HasPaths, Path, expand_template, GrondError
 
 from grond import core, environment
 from grond.problems import ProblemInfoNotAvailable, ProblemDataNotAvailable
+from grond.version import __version__
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -37,13 +38,35 @@ class ReportConfig(HasPaths):
 
 
 def read_config(path):
-    config = guts.load(filename=path)
+    try:
+        config = guts.load(filename=path)
+    except OSError:
+        raise GrondError(
+            'cannot read Grond report configuration file: %s' % path)
+
     if not isinstance(config, ReportConfig):
         raise GrondError(
             'invalid Grond report configuration in file "%s"' % path)
 
     config.set_basepath(op.dirname(path) or '.')
     return config
+
+
+def write_config(config, path):
+    try:
+        basepath = config.get_basepath()
+        dirname = op.dirname(path) or '.'
+        config.change_basepath(dirname)
+        guts.dump(
+            config,
+            filename=path,
+            header='Grond report configuration file, version %s' % __version__)
+
+        config.change_basepath(basepath)
+
+    except OSError:
+        raise GrondError(
+            'cannot write Grond report configuration file: %s' % path)
 
 
 def iter_report_dirs(reports_base_path):
@@ -312,4 +335,5 @@ __all__ = '''
     serve_ip
     serve_report
     read_config
+    write_config
 '''.split()

@@ -372,10 +372,14 @@ def command_events(args):
         help_and_die(parser, 'missing arguments')
 
     config_path = args[0]
-    config = grond.read_config(config_path)
+    try:
+        config = grond.read_config(config_path)
 
-    for event_name in grond.get_event_names(config):
-        print(event_name)
+        for event_name in grond.get_event_names(config):
+            print(event_name)
+
+    except grond.GrondError as e:
+        die(str(e))
 
 
 def command_check(args):
@@ -653,7 +657,7 @@ def command_report(args):
     from grond.environment import Environment
     from grond.report import \
         report, report_index, serve_ip, serve_report, read_config, \
-        ReportConfig
+        write_config, ReportConfig
 
     def setup(parser):
         parser.add_option(
@@ -672,7 +676,8 @@ def command_report(args):
             action='store_true',
             help='shortcut for --serve --host=default --fixed-port')
         parser.add_option(
-            '--host', dest='host',
+            '--host',
+            dest='host',
             default='localhost',
             help='<ip> to start the http server on. Special values for '
                  '<ip>: "*" binds to all available interfaces, "default" '
@@ -699,6 +704,11 @@ def command_report(args):
             dest='config',
             help='report configuration file to use')
         parser.add_option(
+            '--write-config',
+            dest='write_config',
+            metavar='FILE',
+            help='write configuration (or default configuration) to FILE')
+        parser.add_option(
             '--update-without-plotting',
             dest='update_without_plotting',
             action='store_true',
@@ -706,23 +716,48 @@ def command_report(args):
 
     parser, options, args = cl_parse('report', args, setup)
 
+    s_conf = ''
     if options.config:
-        conf = read_config(options.config)
+        try:
+            conf = read_config(options.config)
+        except grond.GrondError as e:
+            die(str(e))
+
+        s_conf = ' --config="%s"' % options.config
     else:
         conf = ReportConfig()
         conf.set_basepath('.')
 
+    if options.write_config:
+        try:
+            write_config(conf, options.write_config)
+            sys.exit(0)
+
+        except grond.GrondError as e:
+            die(str(e))
+
+    if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
+        conf.reports_base_path = conf.rel_path(args[0])
+        s_conf = ' %s' % args[0]
+        args = []
+
+    reports_base_path = conf.expand_path(conf.reports_base_path)
+
+    s_open_hint = '''Hint:
+
+To open the reports in your web browser, run
+
+    grond -so%s
+''' % s_conf
+
     if options.index_only:
         report_index(conf)
+        logger.info(s_open_hint)
         sys.exit(0)
 
     reports_generated = False
 
-    if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
-        conf.reports_base_path = conf.rel_path(args[0])
-        pass
-
-    elif args and all(op.isdir(rundir) for rundir in args):
+    if args and all(op.isdir(rundir) for rundir in args):
         rundirs = args
         all_failed = True
         for rundir in rundirs:
@@ -775,13 +810,14 @@ def command_report(args):
 
     elif options.open:
         import webbrowser
-        url = 'file://%s/index.html' % op.abspath(
-            conf.expand_path(conf.reports_base_path))
-
+        url = 'file://%s/index.html' % op.abspath(reports_base_path)
         webbrowser.open(url)
 
-    elif not reports_generated:
-        logger.info('nothing to do')
+    else:
+        if not reports_generated:
+            logger.info('nothing to do')
+
+        logger.info(s_open_hint)
 
 
 def command_qc_polarization(args):
@@ -842,7 +878,10 @@ def command_qc_polarization(args):
 
     config_path, event_name, target_group_path = args
 
-    config = grond.read_config(config_path)
+    try:
+        config = grond.read_config(config_path)
+    except grond.GrondError as e:
+        die(str(e))
 
     ds = config.get_dataset(event_name)
 
