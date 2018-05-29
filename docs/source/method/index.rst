@@ -161,10 +161,31 @@ Weighting
 .........
 
 
+Grond implements several different kinds of weights. 
 
-Grond implements several different kinds of weights. There are data weight 
-factors or weight matrices based on empirical data error estimates - sometimes 
-including  data error correlation (``station_noise_weight``, 
+* empirical noise-based data weights
+* user-defined manual weights
+* normalisation in data groups
+* `Bayesian bootstrap weights`
+* `noise bootstrap data weights`
+
+
+**Data weights based on the data error**
+
+There are direct data weight vectors or weight matrices based on empirical 
+data error variance estimates :math:`\bf{v}`. Partly, e.g. for InSAR and GNSS 
+data, these include data error 
+correlation expressed in the data error variance-covariance matrix 
+:math:`\bf{\Sigma}`. 
+
+W_i = \frac{1}{Var(X_i)} W = \Sigma^{-1}The data weights are applied `target`-wise 
+
+**User-defined data weight**
+
+
+
+TODO link to the target sheet
+(``station_noise_weight``, 
 ``variance_covariance_matrix``). There are data weight factors to balance the 
 signal amplitudes of waveforms (``target_balancing_weight``). And there are 
 arbitrary, user-defined data weights (``manual_weight``).
