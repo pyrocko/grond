@@ -324,8 +324,10 @@ angular.module('reportApp', ['ngRoute'])
                 })
         };
 
+
         $scope.$on('$viewContentLoaded', function(event)
         { 
+            $scope.select_group_by_section_name('optimiser');
             $timeout(function() {
                 feather.replace();
             }, 100.);
@@ -359,13 +361,6 @@ angular.module('reportApp', ['ngRoute'])
         };
     })
 
-    .filter('highlight', function($sce) {
-      return function(input, lang) {
-        if (lang && input) return hljs.highlight(lang, input).value;
-        return input;
-      }
-    })
-
     .filter('unsafe', function($sce)
         { return $sce.trustAsHtml; })
 
@@ -383,6 +378,17 @@ angular.module('reportApp', ['ngRoute'])
         $anchorScroll();  
       });
     })
+
+    .directive('prism', [function() {
+            return {
+                restrict: 'A',
+                link: function ($scope, element, attrs) {
+                    element.ready(function() {
+                        Prism.highlightElement(element[0], Prism.languages.yaml, 'YAML');
+                    });
+                }
+            }
+    }])
 
     .directive('groupPlots', function() {
       return {

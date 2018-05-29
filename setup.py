@@ -60,7 +60,6 @@ setup(
             'report/app/favicon.png',
             'report/app/templates/*.html',
             'report/app/css/*.css',
-            'report/app/css/highlight/*.css',
             'report/app/js/*.js']},
 
     data_files=[],
