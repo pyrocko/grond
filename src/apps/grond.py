@@ -747,7 +747,7 @@ def command_report(args):
 
 To open the reports in your web browser, run
 
-    grond -so%s
+    grond report -so%s
 ''' % s_conf
 
     if options.index_only:
