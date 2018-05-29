@@ -106,6 +106,38 @@ What do you want to bust today?!
 ''' % usage_tdata
 
 
+class CLIHints(object):
+    init = '''
+We created a folder structure in {project_dir}, the structure with data and run
+
+    grond go {config}
+'''
+    scenario = '''
+To start the scenario's optimisation, change into folder {project_dir} and run
+
+    grond go {config}
+'''
+    report = '''
+To open the reports in your web browser, run
+
+    grond report -so {config}
+'''
+    check = '''
+To start the optimisation, run
+
+    grond go {config}
+'''
+    go = '''
+To look at the results, run
+
+    grond report {config}
+'''
+
+    def __new__(cls, command, **kwargs):
+        return 'Hint:\n' +\
+            getattr(cls, command).format(**kwargs)
+
+
 def main(args=None):
     if not args:
         args = sys.argv
@@ -198,6 +230,22 @@ def multiple_choice(option, opt_str, value, parser, choices):
     setattr(parser.values, option.dest, options)
 
 
+def magnitude_range(option, opt_str, value, parser):
+    mag_range = value.split('-')
+    if len(mag_range) != 2:
+        raise OptionValueError(
+            'invalid magnitude %s - valid range is e.g. 6-7' % value)
+    try:
+        mag_range = tuple(map(float, mag_range))
+    except ValueError:
+        raise OptionValueError('magnitudes must be numbers.')
+
+    if mag_range[0] > mag_range[1]:
+        raise OptionValueError('minimum magnitude must be larger than'
+                               ' maximum magnitude.')
+    setattr(parser.values, option.dest, mag_range)
+
+
 def command_scenario(args):
 
     STORE_STATIC = 'crust2_ib_static'
@@ -205,20 +253,24 @@ def command_scenario(args):
 
     def setup(parser):
         parser.add_option(
-            '--targets', action='callback', dest='targets', type='string',
+            '--targets', action='callback', dest='targets', type=str,
             callback=multiple_choice, callback_kwargs={
                 'choices': ('waveforms', 'gnss', 'insar')
             },
             default='waveforms',
             help='forward modelling targets for the scenario. Select from:'
                  ' waveforms, gnss and insar. '
-                 '(default: --targets=waveforms,'
+                 '(default: --targets=%default,'
                  ' multiple selection by --targets=waveform,gnss,insar)')
         parser.add_option(
             '--problem', dest='problem', type=str, default='dc',
             help='problem to generate: \'dc\' (double couple)'
                  ' or\'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
+        parser.add_option(
+            '--magnitude-range', dest='magnitude_range', type=str,
+            action='callback', callback=magnitude_range, default='6.0-7.0',
+            help='Magnitude range min_mag-max_mag (default: %default)')
         parser.add_option(
             '--nstations', dest='nstations', type=int, default=20,
             help='number of seismic stations to create (default: %default)')
@@ -239,12 +291,12 @@ def command_scenario(args):
             '--radius', dest='radius', type=float, default=200.,
             help='radius of the the scenario in [km] (default: %default)')
         parser.add_option(
-            '--gf_waveforms', dest='store_waveforms', type=str,
+            '--gf-waveforms', dest='store_waveforms', type=str,
             default=STORE_WAVEFORMS,
             help='Green\'s function store for waveform modelling, '
                  '(default: %default)')
         parser.add_option(
-            '--gf_static', dest='store_statics', type=str,
+            '--gf-static', dest='store_statics', type=str,
             default=STORE_STATIC,
             help='Green\'s function store for static modelling, '
                  '(default: %default)')
@@ -286,13 +338,18 @@ def command_scenario(args):
 
         if options.problem == 'dc':
             problem = grond_scenario.DCSourceProblem(
-                nevents=options.nevents)
+                nevents=options.nevents,
+                magnitude_min=options.magnitude_range[0],
+                magnitude_max=options.magnitude_range[1])
         elif options.problem == 'rectangular':
             problem = grond_scenario.RectangularSourceProblem(
                 nevents=options.nevents)
         scenario.set_problem(problem)
 
         scenario.build(force=options.force, interactive=True)
+        logger.info(CLIHints('scenario',
+                             config=scenario.get_grond_config_path(),
+                             project_dir=project_dir))
 
     except grond.GrondError as e:
         die(str(e))
@@ -304,14 +361,14 @@ def command_init(args):
 
     def setup(parser):
         parser.add_option(
-            '--targets', action='callback', dest='targets', type='string',
+            '--targets', action='callback', dest='targets', type=str,
             callback=multiple_choice, callback_kwargs={
                 'choices': ('waveforms', 'gnss', 'insar')
             },
             default='waveforms',
             help='select from:'
                  ' waveforms, gnss and insar. '
-                 '(default: --targets=waveforms,'
+                 '(default: --targets=%default,'
                  ' multiple selection by --targets=waveform,gnss,insar)')
         parser.add_option(
             '--problem', dest='problem', type=str, default='dc',
@@ -358,6 +415,7 @@ def command_init(args):
             project.build(project_dir, options.force)
         else:
             sys.stdout.write(project.dump())
+        logger.info(CLIHints('init', project_dir=project_dir))
 
     except grond.GrondError as e:
         die(str(e))
@@ -420,6 +478,7 @@ def command_check(args):
             target_string_ids=target_string_ids,
             show_waveforms=options.show_waveforms,
             n_random_synthetics=options.n_random_synthetics)
+        logger.info(CLIHints('check', config=env.get_config_path()))
 
     except grond.GrondError as e:
         die(str(e))
@@ -463,6 +522,7 @@ def command_go(args):
             preserve=options.preserve,
             status=status,
             nparallel=options.nparallel)
+        logger.info(CLIHints('go', config=env.get_config_path()))
 
     except grond.GrondError as e:
         die(str(e))
@@ -743,16 +803,9 @@ def command_report(args):
 
     reports_base_path = conf.expand_path(conf.reports_base_path)
 
-    s_open_hint = '''Hint:
-
-To open the reports in your web browser, run
-
-    grond report -so%s
-''' % s_conf
-
     if options.index_only:
         report_index(conf)
-        logger.info(s_open_hint)
+        logger.info(CLIHints('report', config=s_conf))
         sys.exit(0)
 
     reports_generated = False
@@ -817,7 +870,7 @@ To open the reports in your web browser, run
         if not reports_generated:
             logger.info('nothing to do')
 
-        logger.info(s_open_hint)
+        logger.info(CLIHints('report', config=s_conf))
 
 
 def command_qc_polarization(args):

@@ -43,6 +43,9 @@ class Environment(object):
         self._config = None
         self._plot_collection_manager = None
 
+        if not args:
+            args.append(op.curdir)
+
         if op.isdir(args[0]):
             self._rundir_path = args[0]
             self._config_path = op.join(self._rundir_path, 'config.yaml')
@@ -208,3 +211,6 @@ class Environment(object):
             return op.join(self.get_rundir_path(), 'plots')
         except NoRundirAvailable:
             return 'plots'
+
+    def get_config_path(self):
+        return self._config_path
