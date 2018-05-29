@@ -128,11 +128,14 @@ class GrondScenario(object):
         config.set_basepath(self.project_dir)
         return config
 
+    def get_grond_config_path(self):
+        return op.join('config', 'scenario.gronf')
+
     def create_grond_files(self):
         logger.info('Creating Grond configuration for %s'
                     % ' and '.join([obs.name for obs in self.observations]))
 
-        config_path = op.join(self.project_dir, 'config', 'default.gronf')
+        config_path = op.join(self.project_dir, self.get_grond_config_path())
         util.ensuredirs(config_path)
         grond.write_config(self.get_grond_config(), config_path)
 
@@ -332,5 +335,8 @@ class RectangularSourceProblem(SourceProblem):
                 dip=gf.Range(20, 70),
                 strike=gf.Range(0, 180),
                 rake=gf.Range(0, 90),
-                slip=gf.Range(1, 3))
+                slip=gf.Range(1, 3),
+                nucleation_x=gf.Range(-1., 1.),
+                nucleation_y=gf.Range(-1., 1.),
+                time=gf.Range(-5., 5.))
             )
