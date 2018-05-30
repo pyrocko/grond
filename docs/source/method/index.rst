@@ -5,14 +5,17 @@ TODO: (general) this section should be as self-contained as possible, describe
 the method in general - give references to other sections how things are
 implemented in Grond.
 
-The very core of the optimisation is the data-point-wise calculation of the 
-difference between observed and predicted data: 
-:math:`{\bf d}_{obs} - {\bf d}_{synth}`.
-Here described is the method on:
+The very core of the optimisation is the evaluation of a misfit between 
+observed and predicted data. This is most often the difference  
+:math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be another comparision,
+like a correlation measure for examples.
+
+This sheet describes the method on:
 
 1. what exactly are the observed data :math:`{\bf d}_{obs}` and the synthetic 
    data :math:`{\bf d}_{synth}`
-2. how handles Grond the difference :math:`{\bf d}_{obs} - {\bf d}_{synth}` 
+2. how handles Grond the differences between :math:`{\bf d}_{obs}` and
+   :math:`{\bf d}_{synth}` 
    with respect to defining the objective functions through misfits and data
    weighting,
 3. how the optimisation is set up to search the model space to find the 
@@ -24,13 +27,10 @@ phases, restituted and filtered. `Synthetic waveforms` are the forward-
 modelled waveforms that are tapered and filtered in the same way as the 
 observed waveforms. 
 
-From the difference :math:`{\bf d}_{obs} - {\bf d}_{synth}` the 
-`misfit` is defined based
+From the difference :math:`{\bf d}_{obs} - {\bf d}_{synth}` or any other
+quantitative comparison (e.g. correlation) the `misfit` is defined based
 on a certain L-norm and by the use of certain data weights. Then there are 
 the objective functions defined in Grond that determine the ...
-
-
-
 
 
 Forward modelling with pre-calculated Green's functions
@@ -94,9 +94,24 @@ Misfit calculation
 ..................
 
 
-The core of the optimisation is the data-point-wise  calculation of the 
+The usual core of an optimisation is the data-point-wise calculation of the 
 difference between observed and predicted data: 
-:math:`|{\bf d}_{obs} - {\bf d}_{synth}|`. Not entire traces and and not the
+:math:`|{\bf d}_{obs} - {\bf d}_{synth}|`. 
+
+In Grond :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` can be
+
+* seismic waveforms traces in time domain
+* seismic waveforms in spectral domain
+* seismic waveforms in logarithmic spectral domain
+* static surface displacements measured by using InSAR or from pixel offsets
+* static surface displacements measured by using GNSS sensors
+
+TODO: add spectral phase ratio and more?
+
+The misfit in Grond can further be based on the maximum waveform correlation. 
+
+
+Not entire traces and and not the
 full spectrum of a trace are modelled. Before, observed and synthetic data 
 are tapered and filtered.
 
@@ -158,31 +173,47 @@ predicitions that manage to explain parts of the observed data holds
 :math:`\lVert e_{\mathrm{0}} \rVert_x` is used in the normalization of data
 groups.
 
-
-
-Weighting
-.........
-
-
-Grond implements several different kinds of weights:
-
-* target balancing (for waveforms ony)
-* noise-based data weights
-* user-defined, manual weights
-* normalisation within data groups
-
-These weights are applied as factors to the misfits, optionally as a products
-of a combination of several of these weights.
-Generally, the misfit and data norm calculations with a data weights vector 
-:math:`\bf{w}` change to:
+For waveform data correlation the misift function is based on the maximum
+correlation :math:`\mathrm{max}(C)` of :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` defined as:
 
 .. math::
   :nowrap:
   
   \begin{align*}
-    \lVert e \rVert_x &= (\sum{ ({w_i}|{{d}}_{i,obs} - \
+    e &= \frac{1}{2} - \frac{1}{2}\, \mathrm{max}(C), \, \mathrm{with} \,\,\,
+    e_0 = \frac{1}{2} \,\, , \mathrm{such\,\, that}  \\
+    e_{\mathrm{norm}} &= 1 - \mathrm{max}(C).
+  \end{align*}  
+
+
+Weighting
+.........
+
+Grond implements several different kinds of weights:
+
+* :math:`w_{\mathrm{tba},i}` - target balancing (for waveforms only)
+* :math:`w_{\mathrm{noi},i}` - noise-based data weights
+* :math:`w_{\mathrm{man},i}` - user-defined, manual weights
+* normalisation within data groups (leads to balancing of data groups)
+
+These weights are applied as factors to the misfits, optionally as a product
+of weight combinations. E.g. for a waveform all data weights combined means:
+
+.. math::
+
+   w_{\mathrm{comb},i} = w_{\mathrm{tba},i} \cdot w_{\mathrm{noi},i} \
+   \cdot w_{\mathrm{man},i}.
+
+The misfit and data norm calculations with data weights 
+:math:`w_{\mathrm{comb},i}` change to:
+
+.. math::
+  :nowrap:
+  
+  \begin{align*}
+    \lVert e \rVert_x &= (\sum{ ({w_{\mathrm{comb},i}} \cdot |{{d}}_{i,obs} - \
   {{ d}}_{i,synth}|)^{x}})^{\frac{1}{x}}\\
-    \lVert e_{\mathrm{0}} \rVert_x  &= (\sum{ ({w_i} \ 
+    \lVert e_{\mathrm{0}} \rVert_x  &= (\sum{ ({w_{\mathrm{comb},i}} \cdot \ 
        |{{d}}_{i,obs} |)^{x}})^{\frac{1}{x}}
   \end{align*}
   
@@ -251,7 +282,12 @@ No rules apply other from the user's rationale. In Grond they are called
 
 TODO link to the target sheet
 
-**normalization of data groups** 
+**Normalization of data and data groups**
+
+The normalization in Grond is applied to data groups. E.g. to all weighted waveform misfits the single targets done 
+
+
+
 
 
 TODO: weights as factors (balancing manual bootstrap), 
