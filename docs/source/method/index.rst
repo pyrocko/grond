@@ -27,6 +27,37 @@ phases, restituted and filtered. `Synthetic waveforms` are the forward-
 modelled waveforms that are tapered and filtered in the same way as the 
 observed waveforms. 
 
+
+**Tapering**:
+    Tapering is done on the waveform targets and means that parts of the 
+    recorded waveforms are cut out. Here the taper applies to specific seismic
+    phases in both the raw synthetic waveforms calculated 
+    :math:`{\bf d}_{raw, synth}` and 
+    the recorded, restituted waveforms. Only these parts are then used in the 
+    misfit calculation. 
+    The taper window duration is configured ( target config link) as well as 
+    the time. 
+
+    TODO: set link (line above)
+
+    The tapering is source-model dependent, since the tapering time is given 
+    with respect to the theoretic phase arrival
+    time. This arrival time depends on the source location, which is often part of 
+    the optimisation itself and therefore may change continuously. Therefore, 
+    restitution, tapering and filtering are done for each misfit calculation anew.
+    Grond uses the pyrocko `CosTaper`_ taper, which is a taper-function with 
+    Cosine-shaped fade-outs. The `fade-out` time can be configured or it is 
+    calculated as the inverse of the minimum frequency of the chosen bandbass 
+    filter.
+
+
+**Filtering**: 
+    Filtering to the desired frequency band is part of the 
+    restitution. Minimum and maximum frequencies are configured.
+
+    TODO Explain the ffactor: filter factor fmin/ffactor  fmax ffactor
+
+
 From the difference :math:`{\bf d}_{obs} - {\bf d}_{synth}` or any other
 quantitative comparison (e.g. correlation) the `misfit` is defined based
 on a certain L-norm and by the use of certain data weights. Then there are 
@@ -110,40 +141,9 @@ TODO: add spectral phase ratio and more?
 
 The misfit in Grond can further be based on the maximum waveform correlation. 
 
-
 Not entire traces and and not the
-full spectrum of a trace are modelled. Before, observed and synthetic data 
-are tapered and filtered.
-
-**Tapering**:
-    Tapering is done on the waveform targets and means that parts of the 
-    recorded waveforms are cut out. Here the taper applies to specific seismic
-    phases in both the raw synthetic waveforms calculated 
-    :math:`{\bf d}_{raw, synth}` and 
-    the recorded, restituted waveforms. Only these parts are then used in the 
-    misfit calculation. 
-    The taper window duration is configured ( target config link) as well as 
-    the time. 
-
-    TODO: set link (line above)
-
-    The tapering is source-model dependent, since the tapering time is given 
-    with respect to the theoretic phase arrival
-    time. This arrival time depends on the source location, which is often part of 
-    the optimisation itself and therefore may change continuously. Therefore, 
-    restitution, tapering and filtering are done for each misfit calculation anew.
-    Grond uses the pyrocko `CosTaper`_ taper, which is a taper-function with 
-    Cosine-shaped fade-outs. The `fade-out` time can be configured or it is 
-    calculated as the inverse of the minimum frequency of the chosen bandbass 
-    filter.
-
-
-**Filtering**: 
-    Filtering to the desired frequency band is part of the 
-    restitution. Minimum and maximum frequencies are configured.
-
-    TODO Explain the ffactor: filter factor fmin/ffactor  fmax ffactor
-
+full spectrum of a trace are compared for the misfit evaluation. 
+Before, observed and synthetic data are tapered and filtered (see above).
 
 The misfit is based on the configurable :math:`L_x`-norm with 
 :math:`x \,\, \epsilon \,\, [1, 2, 3, ...]`:
@@ -155,7 +155,7 @@ The misfit is based on the configurable :math:`L_x`-norm with
         (\sum{|{ d}_{i, obs} - {d}_{i, synth}|^x})^{\frac{1}{x}}.
         
 Also the norm of the data is associated with each misfit. This measure will be 
-used to normalize the misfit values:
+used to normalise the misfit values:
         
 .. math::
   :label: ns
@@ -163,7 +163,7 @@ used to normalize the misfit values:
     \lVert e_{\mathrm{0}} \rVert_x = \lVert {\bf{d}}_{obs}  \rVert_x  = \
         (\sum{|{d}_{i, obs}|^x})^{\frac{1}{x}}.
 
-The normalized misfit
+The normalised misfit
 
 .. math::
   :label: ms_ns
@@ -174,7 +174,7 @@ The normalized misfit
 is a useful measure to evaluate the data fit at a glance. Only for model
 predicitions that manage to explain parts of the observed data holds
 :math:`\lVert e_{\mathrm{norm}} \rVert_x <1`. Furthermore, the data norm 
-:math:`\lVert e_{\mathrm{0}} \rVert_x` is used in the normalization of data
+:math:`\lVert e_{\mathrm{0}} \rVert_x` is used in the normalisation of data
 groups.
 
 For waveform data correlation the misift function is based on the maximum
@@ -250,7 +250,7 @@ signal are enhanced in the
 objective function and large signals supressed. This is described as 
 `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23).
 In Grond they are called ``balancing weights`` and are received from the
-``TargetBalancingAnalyser`` before the optimization.
+``TargetBalancingAnalyser`` before the optimisation.
   
 **Data weights based on data error statistics**
 
@@ -270,7 +270,7 @@ For a ``WaveformTarget``  the data error statistics stem from real recordings
 of noise before the first phase arrival as described e.g. in 
 `Duputel et al.`_ (2012). From the noise traces the inverse of their
 standard deviation is used. In Grond they are called `station_noise_weights`` 
-and are received from the ``Noise_Analyser`` before the optimization.
+and are received from the ``Noise_Analyser`` before the optimisation.
 
 For a ``SatelliteTarget`` the data error statistics are loaded with the data 
 sets. The estimation of the noise statistics has to be done before Grond
@@ -294,9 +294,9 @@ No rules apply other from the user's rationale. In Grond they are called
 
 TODO link to the target sheet
 
-**Normalization of data and data groups**
+**Normalisation of data and data groups**
 
-The normalization in Grond is applied to data groups that are member of the so
+The normalisation in Grond is applied to data groups that are member of the so
 called ``normalisation_family``. A `normalisation family` in Grond can be 
 composed in many ways. However, it is often meaningful to put data of the same 
 kind and with similar weights into the same `normalisation family`. This 
@@ -343,7 +343,7 @@ for a source model
     }
 
     
-**Example 2:** Fitting waveforms of P waves and static surface displacements
+*Example 2:* Fitting waveforms of P waves and static surface displacements
 to solve for a source model 
     
     Let's say we use P waveforms in the time domain 
