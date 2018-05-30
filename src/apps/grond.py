@@ -113,8 +113,9 @@ We created a folder structure in {project_dir}, the structure with data and run
     grond go {config}
 '''
     scenario = '''
-To start the scenario's optimisation, change into folder {project_dir} and run
+To start the scenario's optimisation, run
 
+    cd {project_dir}
     grond go {config}
 '''
     report = '''
@@ -130,7 +131,7 @@ To start the optimisation, run
     go = '''
 To look at the results, run
 
-    grond report {config}
+    grond report {rundir}
 '''
 
     def __new__(cls, command, **kwargs):
@@ -516,13 +517,14 @@ def command_go(args):
             status = 'quiet'
 
         grond.go(
-            env.get_config(),
-            event_names=env.get_selected_event_names(),
+            env,
             force=options.force,
             preserve=options.preserve,
             status=status,
             nparallel=options.nparallel)
-        logger.info(CLIHints('go', config=env.get_config_path()))
+        if len(env.get_selected_event_names()) == 1:
+            logger.info(CLIHints(
+                'go', rundir=env.get_rundir_path()))
 
     except grond.GrondError as e:
         die(str(e))
@@ -554,7 +556,7 @@ def command_harvest(args):
             help='overwrite existing harvest directory')
         parser.add_option(
             '--neach', dest='neach', type=int, default=10,
-            help='take NEACH best samples from each chain (default: 10)')
+            help='take NEACH best samples from each chain (default: %default)')
         parser.add_option(
             '--weed', dest='weed', type=int, default=0,
             help='weed out bootstrap samples with bad global performance. '
@@ -868,8 +870,9 @@ def command_report(args):
 
     else:
         if not reports_generated:
-            logger.info('nothing to do')
+            logger.info('nothing to do, see: grond report --help')
 
+    if reports_generated and not (options.serve or options.serve_external):
         logger.info(CLIHints('report', config=s_conf))
 
 

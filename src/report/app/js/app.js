@@ -43,11 +43,16 @@ var yaml_type_map = [
     ['!grond.WaveformMisfitTarget', Dummy],
     ['!grond.WaveformMisfitConfig', Dummy],
     ['!grond.WaveformTargetGroup', Dummy],
+    ['!grond.GNSSCampaignMisfitTarget', Dummy],
+    ['!grond.GNSSCampaignMisfitConfig', Dummy],
+    ['!grond.GNSSCampaignTargetGroup', Dummy],
     ['!grond.PhaseRatioTarget', Dummy],
     ['!grond.PhaseRatioTargetGroup', Dummy],
     ['!grond.FeatureMeasure', Dummy],
     ['!grond.CMTProblem', Dummy],
+    ['!grond.RectangularProblem', Dummy],
     ['!pf.MTSource', Dummy],
+    ['!pf.RectangularSource', Dummy],
     ['!pf.HalfSinusoidSTF', Dummy],
     ['!grond.PlotCollection', Dummy],
     ['!grond.PlotGroup', Dummy],
@@ -324,10 +329,8 @@ angular.module('reportApp', ['ngRoute'])
                 })
         };
 
-
         $scope.$on('$viewContentLoaded', function(event)
         { 
-            $scope.select_group_by_section_name('optimiser');
             $timeout(function() {
                 feather.replace();
             }, 100.);

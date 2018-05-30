@@ -68,6 +68,7 @@ class JointparPlot(PlotConfig):
             self.draw_figures(history, optimiser),
             title='Jointpar Plot',
             section='solution',
+            feather_icon='crosshair',
             description='Source problem parameter\'s tradeoff plots.')
 
     def draw_figures(self, history, optimiser):
@@ -329,6 +330,7 @@ class HistogramPlot(PlotConfig):
             self.draw_figures(history),
             title='Solution Histrogram',
             section='solution',
+            feather_icon='bar-chart-2',
             description='Distribution of the problem\'s parameters.')
 
     def draw_figures(self, history):
@@ -455,6 +457,7 @@ class MTDecompositionPlot(PlotConfig):
             self.draw_figures(history),
             title='Moment Tensor Decomopostion',
             section='solution',
+            feather_icon='sun',
             description='Moment tensor decomposition of the best-fitting'
                         ' solution.')
 
@@ -608,6 +611,7 @@ class MTLocationPlot(PlotConfig):
             self.draw_figures(history),
             title='Moment Tensor Location',
             section='solution',
+            feather_icon='target',
             description='Location plots of the best ensemble of solutions.')
 
     def draw_figures(self, history):
@@ -718,6 +722,7 @@ class HudsonPlot(PlotConfig):
             self.draw_figures(history),
             title='Hudson Plot',
             section='solution',
+            feather_icon='box',
             description='Hudson plot of the best fitting moment tensor.')
 
     def draw_figures(self, history):

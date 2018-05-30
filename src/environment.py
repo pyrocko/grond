@@ -118,6 +118,10 @@ class Environment(object):
 
                 self._selected_event_names.append(event_name)
 
+    @property
+    def nevents_selected(self):
+        return len(self.get_selected_event_names())
+
     def get_selected_event_names(self):
         if self._selected_event_names is None:
             raise NoEventSelectionAvailable()
@@ -130,6 +134,9 @@ class Environment(object):
             self._dataset = self.get_config().get_dataset(event_name)
 
         return self._dataset
+
+    def set_rundir_path(self, path):
+        self._rundir_path = path
 
     def get_rundir_path(self):
         if self._rundir_path is None:

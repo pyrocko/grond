@@ -98,11 +98,11 @@ class GrondScenario(object):
         scenario = self.get_scenario()
         scenario.init_modelling(engine=self.engine)
         scenario.ensure_gfstores(interactive=interactive)
-        scenario.dump(filename=op.join(self.project_dir, 'scenario.yml'))
 
         data_dir = op.join(self.project_dir, self.data_dir)
         util.ensuredir(data_dir)
 
+        scenario.dump(filename=op.join(data_dir, 'scenario.yml'))
         scenario.dump_data(path=data_dir)
         scenario.make_map(op.join(self.project_dir, 'scenario_map.pdf'))
 
@@ -338,5 +338,5 @@ class RectangularSourceProblem(SourceProblem):
                 slip=gf.Range(1, 3),
                 nucleation_x=gf.Range(-1., 1.),
                 nucleation_y=gf.Range(-1., 1.),
-                time=gf.Range(-5., 5.))
+                time=gf.Range(-5.0, 5.0, relative='add'))
             )

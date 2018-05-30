@@ -49,7 +49,8 @@ class GNSSTargetMisfitPlot(PlotConfig):
             self,
             self.draw_gnss_fits(ds, history, optimiser),
             title='Static GNSS Surface Displacements',
-            section='results.gnss',
+            section='results',
+            feather_icon='map',
             description='Maps showing surface displacements of'
                         ' GNSS campaigns and the mode.')
 

@@ -160,6 +160,7 @@ class CheckWaveformsPlot(PlotConfig):
             sources, problem.targets, results_list),
             title='Waveform Check',
             section='checks',
+            feather_icon='activity',
             description='Plot for checking the waveforms fit with a'
                         ' number of synthetics.')
 
@@ -293,6 +294,7 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             self.draw_figures(ds, history),
             title='Waveform fits for the ensemble',
             section='fits',
+            feather_icon='activity',
             description='Plot showing all waveform fits for the ensemble'
                         ' of solutions.')
 
@@ -718,6 +720,7 @@ class FitsWaveformPlot(PlotConfig):
             self.draw_figures(ds, history),
             title='Waveform fits for best model',
             section='fits',
+            feather_icon='activity',
             description='Best model\'s waveform fits.')
 
     def draw_figures(self, ds, history):

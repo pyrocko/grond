@@ -49,7 +49,8 @@ class SatelliteTargetPlot(PlotConfig):
             self,
             self.draw_static_fits(ds, history, optimiser),
             title='Satellite Surface Displacements',
-            section='results.satellite',
+            section='results',
+            feather_icon='navigation',
             description='Maps showing surface displacements'
                         ' from satellite and modelled data.')
 
@@ -70,14 +71,22 @@ class SatelliteTargetPlot(PlotConfig):
         source = problem.get_source(xbest)
         results = problem.evaluate(xbest, targets=sat_targets)
 
-        def decorateAxes(ax, title):
+        def decorateAxes(ax, scene, title):
             ax.set_title(title)
-            ax.set_xlabel('[km]')
-            scale_axes(ax, 1. / km)
+            if scene.frame.isMeter():
+                ax.set_xlabel('[km]')
+                scale_axes(ax, 1. / km)
+            elif scene.frame.isDegree():
+                ax.set_xlabel('[°]')
             ax.set_aspect('equal')
 
-        def drawSource(ax):
-            fn, fe = source.outline(cs='xy').T
+        def drawSource(ax, scene):
+            if scene.frame.isMeter():
+                fn, fe = source.outline(cs='xy').T
+            elif scene.frame.isDegree():
+                fn, fe = source.outline(cs='latlon').T
+                fn -= source.lat
+                fe -= source.lon
 
             # source is centered
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
@@ -111,16 +120,22 @@ class SatelliteTargetPlot(PlotConfig):
 
         urE, urN, llE, llN = (0., 0., 0., 0.)
         for target in sat_targets:
-            off_n, off_e = map(float, latlon_to_ne_numpy(
-                target.scene.frame.llLat, target.scene.frame.llLon,
-                source.lat, source.lon))
+
+            if target.scene.frame.isMeter():
+                off_n, off_e = map(float, latlon_to_ne_numpy(
+                    target.scene.frame.llLat, target.scene.frame.llLon,
+                    source.lat, source.lon))
+            if target.scene.frame.isDegree():
+                off_n = source.lat - target.scene.frame.llLat
+                off_e = source.lon - target.scene.frame.llLon
+
             turE, turN, tllE, tllN = zip(
                 *[(l.gridE.max()-off_e,
                    l.gridN.max()-off_n,
                    l.gridE.min()-off_e,
                    l.gridN.min()-off_n)
-                  for l in
-                  target.scene.quadtree.leaves])
+                  for l in target.scene.quadtree.leaves])
+
             turE, turN = map(max, (turE, turN))
             tllE, tllN = map(min, (tllE, tllN))
             urE, urN = map(max, ((turE, urE), (urN, turN)))
@@ -135,7 +150,7 @@ class SatelliteTargetPlot(PlotConfig):
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
                 1, 3,
-                hspace=.0001, left=.06, bottom=.1,
+                wspace=.05, left=.1, bottom=.175,
                 right=.9)
 
             item = PlotItem(
@@ -152,9 +167,13 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
             stat_syn = result.statics_syn['displacement.los']
             res = stat_obs - stat_syn
 
-            offset_n, offset_e = map(float, latlon_to_ne_numpy(
-                scene.frame.llLat, scene.frame.llLon,
-                source.lat, source.lon))
+            if scene.frame.isMeter():
+                offset_n, offset_e = map(float, latlon_to_ne_numpy(
+                    scene.frame.llLat, scene.frame.llLon,
+                    source.lat, source.lon))
+            elif scene.frame.isDegree():
+                offset_n = source.lat - scene.frame.llLat
+                offset_e = source.lon - scene.frame.llLon
 
             im_extent = (scene.frame.E.min() - offset_e,
                          scene.frame.E.max() - offset_e,
@@ -176,9 +195,13 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                       vmin=-abs_displ, vmax=abs_displ,
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax)
-            decorateAxes(ax, 'Data')
-            ax.set_ylabel('[km]')
+            drawSource(ax, scene)
+            decorateAxes(ax, scene, 'Data')
+
+            if scene.frame.isDegree():
+                ax.set_ylabel('[°]')
+            elif scene.frame.isMeter():
+                ax.set_ylabel('[km]')
 
             ax = axes[1]
             ax.imshow(mapDisplacementGrid(stat_syn, scene),
@@ -186,8 +209,8 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                       vmin=-abs_displ, vmax=abs_displ,
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax)
-            decorateAxes(ax, 'Model')
+            drawSource(ax, scene)
+            decorateAxes(ax, scene, 'Model')
             ax.get_yaxis().set_visible(False)
 
             ax = axes[2]
@@ -196,18 +219,17 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                       vmin=-abs_displ, vmax=abs_displ,
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax)
-            decorateAxes(ax, 'Residual')
+            drawSource(ax, scene)
+            decorateAxes(ax, scene, 'Residual')
             ax.get_yaxis().set_visible(False)
 
             for ax in axes:
                 ax.set_xlim(llE, urE)
                 ax.set_ylim(llN, urN)
 
-            pos = ax.get_position()
-            cax = fig.add_axes([pos.x1 + .01, pos.y0, 0.015, pos.y1 - pos.y0])
-            cbar = fig.colorbar(cmw, cax=cax, orientation='vertical')
-            cbar.set_label('[m]')
+            cax = fig.add_axes([.1, .15, .8, .025])
+            cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal')
+            cbar.set_label('LOS Displacement [m]')
 
             yield (item, fig)
 

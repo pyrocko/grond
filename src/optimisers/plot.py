@@ -56,7 +56,7 @@ class SequencePlot(PlotConfig):
             section='optimiser',
             description='Sequence plots for all parameters of'
                         ' the optimisation.',
-            feather_icon='sliders')
+            feather_icon='fast-forward')
 
     def draw_figures(self, history):
         misfit_cutoff = self.misfit_cutoff
@@ -254,6 +254,7 @@ class ContributionsPlot(PlotConfig):
             self.draw_figures(history),
             title='Target Contributions',
             section='solution',
+            feather_icon='thermometer',
             description='Contributions of the targets towards the misfit.')
 
     def draw_figures(self, history):
@@ -415,6 +416,7 @@ class BootstrapPlot(PlotConfig):
             self.draw_figures(history, optimiser),
             title='Bootstrap Misfit',
             section='optimiser',
+            feather_icon='trending-down',
             description='Evolution of the misfits for all bootstrap chains.')
 
     def draw_figures(self, history, optimiser):

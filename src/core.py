@@ -436,19 +436,18 @@ def check(
 g_state = {}
 
 
-def go(config, event_names=None,
+def go(environment,
        force=False, preserve=False,
        nparallel=1, status='state'):
 
-    g_data = (config, force, preserve,
-              status, nparallel, event_names)
+    g_data = (environment, force, preserve,
+              status, nparallel)
     g_state[id(g_data)] = g_data
 
-    nevents = len(event_names)
-
+    nevents = environment.nevents_selected
     for x in parimap.parimap(
             process_event,
-            range(nevents),
+            range(environment.nevents_selected),
             [id(g_data)] * nevents,
             nprocs=nparallel):
 
@@ -457,11 +456,12 @@ def go(config, event_names=None,
 
 def process_event(ievent, g_data_id):
 
-    config, force, preserve, status, nparallel, event_names = \
+    environment, force, preserve, status, nparallel = \
         g_state[g_data_id]
 
-    event_name = event_names[ievent]
-    nevents = len(event_names)
+    config = environment.get_config()
+    event_name = environment.get_selected_event_names()[ievent]
+    nevents = environment.nevents_selected
     tstart = time.time()
 
     ds = config.get_dataset(event_name)
@@ -477,6 +477,7 @@ def process_event(ievent, g_data_id):
     rundir = expand_template(
         config.rundir_template,
         dict(problem_name=problem.name))
+    environment.set_rundir_path(rundir)
 
     if op.exists(rundir):
         if preserve:

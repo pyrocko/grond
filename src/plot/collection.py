@@ -15,7 +15,7 @@ logger = logging.getLogger('grond.plot.collection')
 
 
 class StringID(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,64}$'
+    pattern = r'^[A-Za-z][A-Za-z0-9._-]{0,64}$'
 
 
 class PlotItem(Object):
