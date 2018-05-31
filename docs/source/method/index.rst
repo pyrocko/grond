@@ -117,13 +117,20 @@ The `objective function` gives a scalar value based on which a source model is
 evaluated to be better (smaller values) or worse (larger value) than other
 source models. It is often called `misfit function`. The source model that 
 results in the smallest values of the `objective function` is the global 
-minimum of the misfit function optimum model
+minimum of the misfit function optimum model.
+
+The objective function defines what a `model fit` is and how `good` or
+`poor` models are scaled with respect to others. Furthermore, the
+objective function has rules how different data sets are handled and how data 
+errors are considered in optimisations. 
 
 
 .. figure:: ../images/illu_combi_weights.svg
     :height: 500px
     :align: center
     :alt: alternate text
+    
+    Illustration of the GROND objective function. Details follow.
 
 TODO: there is nothing about the L-norms in the grafic, Is that misleading or formation the sake of generalization ok or is there a nice way for that?  
     
@@ -401,46 +408,60 @@ The bootstrap method
 `Bootstrapping` in Grond (see also `Bootstrapping in wikipedia`_)  enables to 
 surpress some types of bias in the 
 optimization results. Observations that are affected by signals other than 
-from the anaylsed source process often have a high misfit. Also observations
-for which the Green's functions based on a medium model that is at the 
+from the anaylsed source process often show a high misfits. Also observations
+for which the Green's functions based on a medium model, which is at this 
 particular site not a good approximation of the underground, can result in 
-high misfit values. Few high misfit values may pull the optimisation to a 
-biased optimium.
+high misfit values. Already a few high misfit values may pull the optimisation 
+to a biased optimium. With bootstrapping we can further estimate model 
+parameter uncertainties in an efficient way, which include the propagation of
+the data error, but also modelling errors are assessed to some extent.  
 
-In Grond **two** different bootatrapping
+In Grond the bootstrapping is applied in a 
+number of parallel `bootstrapping chains` where individual bootstrapping is applied to the model misfits. Basically, individual optimization are 
+carried out in each bootstrap chain. Find more below for the `BABO Optimiser`.
 
-In Grond the bootstrapping is applied through `bootstrapping weights`. In a 
-number of parallel `bootstrapping chains` sets of the `bootstrapping weights`
-are applied to the misfits of models. All bootstrap chains share the same 
-forward models, which makes the setup computationally very effcient.
+In Grond **two** different bootstrapping types are implemented. There is 
+`Bayesian bootstrapping`, which is realized through misfit weights, and there 
+is `Residual bootstrapping`, which is realized by adding noise to the 
+residuals.
 
-**bootstrapping weights**:
+**Bayesian bootstrap**:
+   
+random weighting 
+Assumes the error is uniformly distributed (? really)
+
+**Residual bootstrap**:
     
-
-.. figure:: ../images/illu_bootstrap_weights.svg
-    :height: 200px
-    :align: left
-    :alt: alternate text
-    :figclass: align-center
-
-``bootstrap_weights``
-
-
-seed 
-Bayesian bootstrap
-
-Residual bootstrap is a  computationally more light version of the 
-`randomize-then-optimize` procedure. With empirical estimates of the data 
+Residual bootstrap actually is a computationally more efficient version of the 
+`Randomize-then-optimize`_ procedure. With empirical estimates of the data 
 error statistics we add synthetic random noise to all residuals to evaluate the
-misfit anew. 
+misfit anew. The random noise here is correlated data noise that follows the 
+same statistics as the estimated empirical data noise. The big advantage of the residual bootsrapping compared to the
 keeping 
 
 
 Optimisation 
 ------------
 
+high score 
+
+
 The BABO optimiser
 ..................
+
+ 
+.. figure:: ../images/illu_bootstrap_weights.svg
+    :height: 300px
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+
+One history of smapling the model space. N misfit spaces
+
+All bootstrap chains share the misfits of the 
+same forward models. The misfit is re-evaluated without the sampling of new
+models and new forward modelling. This makes the bootstrapping setup in Grond computationally very effcient.
 
 .. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace
@@ -455,3 +476,4 @@ The BABO optimiser
 .. _Pyrocko tutorial: https://pyrocko.org/docs/current/library/examples/gnss_data.html
 .. _thesis by Heimann: http://ediss.sub.uni-hamburg.de/volltexte/2011/5357/pdf/Dissertation.pdf
 .. _Bootstrapping in wikipedia: https://en.wikipedia.org/wiki/Bootstrapping_(statistics)
+.. _Randomize-then-optimize: https://epubs.siam.org/doi/abs/10.1137/140964023
