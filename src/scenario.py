@@ -218,11 +218,14 @@ class InSARObservation(Observation):
         return dataset_config
 
     def get_scenario_target_generator(self):
-        logger.warning('Inspect the InSAR scenes, covariance and quadtree!')
         return scenario.targets.InSARGenerator(
                 store_id=self.store_id)
 
     def get_grond_target_group(self):
+        logger.info('''Hint:
+
+Use kite's `spool` to configure the InSAR scene's quadtree and covariance!
+''')
         return grond.SatelliteTargetGroup(
             normalisation_family='insar_target',
             path='all',
