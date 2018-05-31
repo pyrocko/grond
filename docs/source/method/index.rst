@@ -120,7 +120,13 @@ results in the smallest values of the `objective function` is the global
 minimum of the misfit function optimum model
 
 
+.. figure:: ../images/illu_combi_weights.svg
+    :height: 500px
+    :align: center
+    :alt: alternate text
 
+TODO: there is nothing about the L-norms in the grafic, Is that misleading or formation the sake of generalization ok or is there a nice way for that?  
+    
 Misfit calculation
 ..................
 
@@ -200,7 +206,7 @@ Grond implements several different kinds of weights:
 
 * :math:`w_{\mathrm{tba},i}` - target balancing (for waveforms only)
 * :math:`w_{\mathrm{noi},i}` - noise-based data weights
-* :math:`w_{\mathrm{man},i}` - user-defined, manual weights
+* :math:`w_{\mathrm{man},i}` - user-defined, manual weights of data groups
 * normalisation within data groups (leads to balancing of data groups)
 
 These weights are applied as factors to the misfits, optionally as a product
@@ -228,9 +234,15 @@ The misfit and data norm calculations with data weights
   
 **Target balancing weights**
 
+.. figure:: ../images/illu_target_balancing.svg
+    :width: 300px
+    :align: left
+    :alt: alternate text
+    :figclass: align-center
+
 With these weights waveforms are `balanced` with respect to the expected signal
 amplitude. 
-Signal amplitudes in a trace :math:`|s_j|` depend on the source-receiver 
+Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the source-receiver 
 distance, on the phase type and the taper used. The problem tackled 
 with this weight is that
 large signal amplitude have higher contributions to the misfit than smaller
@@ -241,8 +253,9 @@ for each trace is simply the inverse of these mean signal amplitudes:
 
 .. math::
   :label: wtba
-    
-    w_j = 1 / \sum_{i=1}^{N}|s_{ji}|.
+     
+    {\bf w}_{\mathrm{tba}} = 1/ \lVert {\bf{d}}_{synth}  \rVert_x  = \
+        (\sum^{N}{|{d}_{i, synth}|^x})^{\frac{1}{x}}.
 
 
 Like this small 
@@ -285,10 +298,11 @@ the data set. They have to be estimated before and given in the GNSS data
 `YAML`-file describing the data set. For details visit the corresponding 
 chapter in the `Pyrocko tutorial`_. 
 
-**manual data weight**
+**manual data weighting**
 
-User-defined manual data weights enable an arbitrary weighting of data sets. 
-No rules apply other from the user's rationale. In Grond they are called 
+User-defined manual data weights enable an arbitrary weighting of data sets in contrast to balancing of single observations through target balancing and 
+noise-based data weights. 
+No rules apply other than from the user's rationale. In Grond they are called 
 ``manual_weight`` and are given in the configuration file.
 
 
@@ -384,8 +398,35 @@ to solve for a source model
 The bootstrap method
 --------------------
 
+`Bootstrapping` in Grond (see also `Bootstrapping in wikipedia`_)  enables to 
+surpress some types of bias in the 
+optimization results. Observations that are affected by signals other than 
+from the anaylsed source process often have a high misfit. Also observations
+for which the Green's functions based on a medium model that is at the 
+particular site not a good approximation of the underground, can result in 
+high misfit values. Few high misfit values may pull the optimisation to a 
+biased optimium.
+
+In Grond **two** different bootatrapping
+
+In Grond the bootstrapping is applied through `bootstrapping weights`. In a 
+number of parallel `bootstrapping chains` sets of the `bootstrapping weights`
+are applied to the misfits of models. All bootstrap chains share the same 
+forward models, which makes the setup computationally very effcient.
+
+**bootstrapping weights**:
+    
+
+.. figure:: ../images/illu_bootstrap_weights.svg
+    :height: 200px
+    :align: left
+    :alt: alternate text
+    :figclass: align-center
+
 ``bootstrap_weights``
 
+
+seed 
 Bayesian bootstrap
 
 Residual bootstrap is a  computationally more light version of the 
@@ -413,3 +454,4 @@ The BABO optimiser
 .. _YAML: http://yaml.org/
 .. _Pyrocko tutorial: https://pyrocko.org/docs/current/library/examples/gnss_data.html
 .. _thesis by Heimann: http://ediss.sub.uni-hamburg.de/volltexte/2011/5357/pdf/Dissertation.pdf
+.. _Bootstrapping in wikipedia: https://en.wikipedia.org/wiki/Bootstrapping_(statistics)

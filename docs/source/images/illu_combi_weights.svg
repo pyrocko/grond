@@ -1,0 +1,829 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1250.09"
+   height="851.35999"
+   id="svg4027"
+   version="1.1"
+   inkscape:version="0.48.5 r10040"
+   sodipodi:docname="illu_combi_weights.svg">
+  <defs
+     id="defs4029">
+    <marker
+       inkscape:stockid="Arrow2Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow2Lend"
+       style="overflow:visible">
+      <path
+         id="path5725"
+         style="fill-rule:evenodd;stroke-width:0.625;stroke-linejoin:round"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         transform="matrix(-1.1,0,0,-1.1,-1.1,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="555.88819"
+     inkscape:cy="303.25853"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1315"
+     inkscape:window-height="838"
+     inkscape:window-x="10"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata4032">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-201.002)">
+    <rect
+       y="284.94946"
+       x="14.562628"
+       height="166.94699"
+       width="1215.7971"
+       id="rect4917"
+       style="fill:#f1e900;fill-opacity:0.11111109;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <rect
+       style="fill:#722bcf;fill-opacity:0.06222223;stroke:#000000;stroke-width:1.74300015;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect4969"
+       width="1215.6442"
+       height="309.62057"
+       x="16.13378"
+       y="735.45386" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text4711"
+       y="242.349"
+       x="42.079784"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:32px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="242.349"
+         x="42.079784"
+         id="tspan4713"
+         sodipodi:role="line">Objective function design in Grond</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="45.95063"
+       y="319.61945"
+       id="text4735"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4737"
+         x="45.95063"
+         y="319.61945"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">weighted misfit of data<tspan
+   style="font-weight:bold;-inkscape-font-specification:Sans Bold"
+   id="tspan5102"> waveform</tspan> group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4995">1</tspan> in bootstrap chain b<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4993">1 </tspan></tspan></text>
+    <rect
+       y="347.93085"
+       x="34.641388"
+       height="68.593933"
+       width="201.45108"
+       id="rect4919"
+       style="fill:#729fcf;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none" />
+    <rect
+       style="fill:#ef2929;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect4921"
+       width="198.59393"
+       height="68.593933"
+       x="766.83691"
+       y="347.71027" />
+    <rect
+       y="346.30634"
+       x="514.28363"
+       height="68.593925"
+       width="197.16536"
+       id="rect4923"
+       style="fill:#f57900;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74299991;stroke-miterlimit:4;stroke-dasharray:none" />
+    <text
+       sodipodi:linespacing="0%"
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       x="852.24011"
+       y="372.91791"
+       id="text4925"><tspan
+         sodipodi:role="line"
+         id="tspan4927"
+         x="852.24011"
+         y="372.91791"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif">noise</tspan><tspan
+         id="tspan4929"
+         sodipodi:role="line"
+         x="852.24011"
+         y="397.91791"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif">weight vector</tspan></text>
+    <text
+       id="text4931"
+       y="374.37115"
+       x="608.80273"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       xml:space="preserve"
+       sodipodi:linespacing="0%"><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="374.37115"
+         x="608.80273"
+         sodipodi:role="line"
+         id="tspan4933">target-balancing</tspan><tspan
+         id="tspan4935"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="399.37115"
+         x="608.80273"
+         sodipodi:role="line">weight vector</tspan></text>
+    <rect
+       y="348.61136"
+       x="282.16107"
+       height="67.142838"
+       width="195.52307"
+       id="rect4955"
+       style="fill:#1af900;fill-opacity:0.36000001;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <text
+       id="text4937"
+       y="374.56708"
+       x="363.89624"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       xml:space="preserve"
+       sodipodi:linespacing="0%"><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="374.56708"
+         x="363.89624"
+         id="tspan4939"
+         sodipodi:role="line">manual</tspan><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="399.56708"
+         x="363.89624"
+         sodipodi:role="line"
+         id="tspan4941">weights</tspan></text>
+    <rect
+       y="346.71234"
+       x="1017.8159"
+       height="68.593933"
+       width="177.16536"
+       id="rect4943"
+       style="fill:#292929;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text4945"
+       y="398.07477"
+       x="982.01465"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="398.07477"
+         x="982.01465"
+         id="tspan4947"
+         sodipodi:role="line">*</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="1105.0504"
+       y="374.95233"
+       id="text4949"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4951"
+         x="1105.0504"
+         y="374.95233"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;text-anchor:middle;font-family:Sans;-inkscape-font-specification:Sans">data group</tspan><tspan
+         id="tspan4953"
+         sodipodi:role="line"
+         x="1105.0504"
+         y="404.95233"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;text-anchor:middle;font-family:Sans;-inkscape-font-specification:Sans">misfit vector</tspan></text>
+    <text
+       id="text4957"
+       y="377.59955"
+       x="132.29649"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       xml:space="preserve"
+       sodipodi:linespacing="0%"><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="377.59955"
+         x="135.48009"
+         id="tspan4959"
+         sodipodi:role="line">chain b<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4991">1</tspan> bootstrap </tspan><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="402.59955"
+         x="132.29649"
+         sodipodi:role="line"
+         id="tspan4961">weight vector</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="247.1252"
+       y="783.7298"
+       id="text4963"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         x="247.1252"
+         y="783.7298"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;text-anchor:middle;font-family:Sans;-inkscape-font-specification:Sans"
+         id="tspan4967">global misfit of bootstrap chain b<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan5108">1</tspan></tspan></text>
+    <rect
+       y="821.07703"
+       x="72.78315"
+       height="71.428551"
+       width="224.0945"
+       id="rect4729"
+       style="fill:#f1e900;fill-opacity:0.2;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text4741"
+       y="848.21985"
+       x="82.783134"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="848.21985"
+         x="82.783134"
+         id="tspan4743"
+         sodipodi:role="line">weighted misfits</tspan><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="878.21985"
+         x="82.783134"
+         sodipodi:role="line"
+         id="tspan4745"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4757">1</tspan></tspan></text>
+    <rect
+       style="fill:#f1e900;fill-opacity:0.2;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect4747"
+       width="224.0945"
+       height="71.428551"
+       x="340.49744"
+       y="822.50562" />
+    <rect
+       y="913.93408"
+       x="71.926018"
+       height="71.428551"
+       width="224.0945"
+       id="rect4749"
+       style="fill:#1af900;fill-opacity:0.36000001;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="80.497429"
+       y="939.64844"
+       id="text4751"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4753"
+         x="80.497429"
+         y="939.64844"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">weighted norm</tspan><tspan
+         id="tspan4755"
+         sodipodi:role="line"
+         x="80.497429"
+         y="969.64844"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4769">1</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="351.92599"
+       y="848.21985"
+       id="text4759"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4761"
+         x="351.92599"
+         y="848.21985"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">weighted misfits</tspan><tspan
+         id="tspan4763"
+         sodipodi:role="line"
+         x="351.92599"
+         y="878.21985"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4767">2</tspan></tspan></text>
+    <rect
+       style="fill:#1af900;fill-opacity:0.36000001;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect4771"
+       width="224.0945"
+       height="71.428551"
+       x="340.49744"
+       y="913.93408" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text4773"
+       y="939.64844"
+       x="349.06885"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="939.64844"
+         x="349.06885"
+         id="tspan4775"
+         sodipodi:role="line">weighted norm</tspan><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="969.64844"
+         x="349.06885"
+         sodipodi:role="line"
+         id="tspan4777"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4907">2</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text4833"
+       y="874.79126"
+       x="303.35455"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="874.79126"
+         x="303.35455"
+         id="tspan4835"
+         sodipodi:role="line">+</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="301.92599"
+       y="961.93408"
+       id="text4837"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4839"
+         x="301.92599"
+         y="961.93408"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">+</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.70000005;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       d="m 42.211717,902.50551 c 554.307003,0 554.307003,0 554.307003,0"
+       id="path4843"
+       inkscape:connector-curvature="0" />
+    <rect
+       style="fill:#f1e900;fill-opacity:0.2;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect4845"
+       width="224.0945"
+       height="71.428551"
+       x="684.21173"
+       y="822.50562" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="694.21173"
+       y="849.64844"
+       id="text4847"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4849"
+         x="694.21173"
+         y="849.64844"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">weighted misfits</tspan><tspan
+         id="tspan4851"
+         sodipodi:role="line"
+         x="694.21173"
+         y="879.64844"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4899">3</tspan></tspan></text>
+    <rect
+       y="823.9342"
+       x="951.92596"
+       height="71.428551"
+       width="224.0945"
+       id="rect4855"
+       style="fill:#f1e900;fill-opacity:0.2;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <rect
+       style="fill:#1af900;fill-opacity:0.36000001;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect4857"
+       width="224.0945"
+       height="71.428551"
+       x="683.35461"
+       y="915.36267" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text4859"
+       y="941.07703"
+       x="691.92603"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="941.07703"
+         x="691.92603"
+         id="tspan4861"
+         sodipodi:role="line">weighted norm</tspan><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="971.07703"
+         x="691.92603"
+         sodipodi:role="line"
+         id="tspan4863"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4901">3</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text4867"
+       y="849.64844"
+       x="963.35455"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="849.64844"
+         x="963.35455"
+         id="tspan4869"
+         sodipodi:role="line">weighted misfits</tspan><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="879.64844"
+         x="963.35455"
+         sodipodi:role="line"
+         id="tspan4871"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4903">4</tspan></tspan></text>
+    <rect
+       y="915.36267"
+       x="951.92596"
+       height="71.428551"
+       width="224.0945"
+       id="rect4875"
+       style="fill:#1af900;fill-opacity:0.36000001;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="960.49738"
+       y="941.07703"
+       id="text4877"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4879"
+         x="960.49738"
+         y="941.07703"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">weighted norm</tspan><tspan
+         id="tspan4881"
+         sodipodi:role="line"
+         x="960.49738"
+         y="971.07703"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"> of data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan4905">4</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="914.7832"
+       y="876.21985"
+       id="text4885"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4887"
+         x="914.7832"
+         y="876.21985"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">+</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text4889"
+       y="963.36267"
+       x="913.35461"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="963.36267"
+         x="913.35461"
+         id="tspan4891"
+         sodipodi:role="line">+</tspan></text>
+    <path
+       inkscape:connector-curvature="0"
+       id="path4893"
+       d="m 652.74269,903.93411 c 541.46901,0 541.46901,0 541.46901,0"
+       style="fill:none;stroke:#000000;stroke-width:1.70000005;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="609.35461"
+       y="912.79126"
+       id="text4895"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4897"
+         x="609.35461"
+         y="912.79126"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">+</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="191.3343"
+       y="1019.515"
+       id="text4909"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4911"
+         x="191.3343"
+         y="1019.515"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">normalisation family 1</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text4913"
+       y="1019.515"
+       x="791.68091"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="1019.515"
+         x="791.68091"
+         id="tspan4915"
+         sodipodi:role="line">normalisation family 2</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="722.01465"
+       y="398.07477"
+       id="text4979"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4981"
+         x="722.01465"
+         y="398.07477"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">*</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text4983"
+       y="398.07477"
+       x="486.01465"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="398.07477"
+         x="486.01465"
+         id="tspan4985"
+         sodipodi:role="line">*</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="246.01465"
+       y="398.07477"
+       id="text4987"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4989"
+         x="246.01465"
+         y="398.07477"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">*</tspan></text>
+    <rect
+       style="fill:#f1e900;fill-opacity:0.11111109;fill-rule:evenodd;stroke:#000000;stroke-width:1.74300003;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="rect4997"
+       width="1215.7971"
+       height="166.94699"
+       x="14.562628"
+       y="466.88855" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text4999"
+       y="513.55853"
+       x="57.95063"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="513.55853"
+         x="57.95063"
+         id="tspan5001"
+         sodipodi:role="line">weighted misfit of <tspan
+   style="font-weight:bold;-inkscape-font-specification:Sans Bold"
+   id="tspan5104">static </tspan>data group X<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan5106">3</tspan> in bootstrap chain b<tspan
+   id="tspan5005"
+   style="font-size:65.00091553%;baseline-shift:sub">1 </tspan></tspan></text>
+    <rect
+       style="fill:#729fcf;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect5007"
+       width="201.45108"
+       height="68.593933"
+       x="767.99182"
+       y="541.86993" />
+    <rect
+       y="541.64935"
+       x="514.83691"
+       height="68.593933"
+       width="198.59393"
+       id="rect5009"
+       style="fill:#ef2929;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none" />
+    <text
+       id="text5013"
+       y="566.85699"
+       x="600.24011"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       xml:space="preserve"
+       sodipodi:linespacing="0%"><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="566.85699"
+         x="600.24011"
+         id="tspan5015"
+         sodipodi:role="line">noise</tspan><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="591.85699"
+         x="600.24011"
+         sodipodi:role="line"
+         id="tspan5017">weight vector</tspan></text>
+    <rect
+       y="542.57074"
+       x="272.58728"
+       height="67.142838"
+       width="207.6449"
+       id="rect5080"
+       style="fill:#1af900;fill-opacity:0.36000001;fill-rule:evenodd;stroke:#000000;stroke-width:1.74299991;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+    <text
+       sodipodi:linespacing="0%"
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       x="365.89624"
+       y="568.50616"
+       id="text5025"><tspan
+         sodipodi:role="line"
+         id="tspan5027"
+         x="365.89624"
+         y="568.50616"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif">manual</tspan><tspan
+         id="tspan5029"
+         sodipodi:role="line"
+         x="365.89624"
+         y="593.50616"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif">weights</tspan></text>
+    <rect
+       style="fill:#292929;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect5031"
+       width="177.16536"
+       height="68.593933"
+       x="1019.8159"
+       y="540.65143" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="978.01465"
+       y="588.01385"
+       id="text5033"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan5035"
+         x="978.01465"
+         y="588.01385"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">+</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text5037"
+       y="568.89142"
+       x="1107.0504"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;text-anchor:middle;font-family:Sans;-inkscape-font-specification:Sans"
+         y="568.89142"
+         x="1107.0504"
+         id="tspan5039"
+         sodipodi:role="line">data group</tspan><tspan
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;text-anchor:middle;font-family:Sans;-inkscape-font-specification:Sans"
+         y="598.89142"
+         x="1107.0504"
+         sodipodi:role="line"
+         id="tspan5041">misfit vector</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text5053"
+       y="592.01385"
+       x="486.01465"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="592.01385"
+         x="486.01465"
+         id="tspan5055"
+         sodipodi:role="line">*</tspan></text>
+    <text
+       id="text5082"
+       y="569.53864"
+       x="868.29651"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       xml:space="preserve"
+       sodipodi:linespacing="0%"><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="569.53864"
+         x="871.4801"
+         id="tspan5084"
+         sodipodi:role="line">chain b<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan5086">1</tspan> bootstrap </tspan><tspan
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif"
+         y="594.53864"
+         x="868.29651"
+         sodipodi:role="line"
+         id="tspan5088">correlated noise</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="724.01465"
+       y="592.01385"
+       id="text5090"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan5092"
+         x="724.01465"
+         y="592.01385"
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans">*</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:18.14686966px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       x="1126.7501"
+       y="394.09851"
+       id="text5094"
+       sodipodi:linespacing="125%"
+       transform="scale(0.66127109,1.5122391)"><tspan
+         sodipodi:role="line"
+         id="tspan5096"
+         x="1126.7501"
+         y="394.09851"
+         style="font-size:60.48956299px">(</tspan></text>
+    <text
+       transform="scale(-0.66127109,1.5122391)"
+       sodipodi:linespacing="125%"
+       id="text5098"
+       y="394.09851"
+       x="-1839.3943"
+       style="font-size:18.14686966px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:60.48956299px"
+         y="394.09851"
+         x="-1839.3943"
+         id="tspan5100"
+         sodipodi:role="line">(</tspan></text>
+    <rect
+       style="fill:#729fcf;fill-opacity:0.31372549;stroke:#000000;stroke-width:1.74300003;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect5684"
+       width="201.45108"
+       height="68.593933"
+       x="32.621082"
+       y="539.8598" />
+    <text
+       sodipodi:linespacing="0%"
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:0%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:sans-serif;-inkscape-font-specification:Sans"
+       x="130.27618"
+       y="569.5285"
+       id="text5686"><tspan
+         sodipodi:role="line"
+         id="tspan5688"
+         x="133.45978"
+         y="569.5285"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif">chain b<tspan
+   id="tspan5690"
+   style="font-size:65.00091553%;baseline-shift:sub">1</tspan> bootstrap </tspan><tspan
+         id="tspan5692"
+         sodipodi:role="line"
+         x="130.27618"
+         y="594.5285"
+         style="font-size:20px;text-align:center;line-height:1.25;text-anchor:middle;font-family:sans-serif">weight vector</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text5694"
+       y="590.00372"
+       x="243.99434"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Rekha;-inkscape-font-specification:Rekha Medium"
+       xml:space="preserve"><tspan
+         style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Sans;-inkscape-font-specification:Sans"
+         y="590.00372"
+         x="243.99434"
+         id="tspan5696"
+         sodipodi:role="line">*</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:2.29999995;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow2Lend)"
+       d="m 608.11183,658.40252 c 0,46.46702 0,46.46702 0,46.46702"
+       id="path5698"
+       inkscape:connector-curvature="0" />
+  </g>
+</svg>
