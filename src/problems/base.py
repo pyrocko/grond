@@ -98,7 +98,7 @@ class Problem(Object):
     def get_parameter_dict(self, model, group=None):
         params = []
         for ip, p in enumerate(self.parameters):
-            if group in p.groups:
+            if group in p.groups or group is None:
                 params.append((p.name, model[ip]))
         return ADict(params)
 

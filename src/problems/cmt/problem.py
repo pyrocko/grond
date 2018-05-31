@@ -156,7 +156,7 @@ class CMTProblem(Problem):
 
     def random_uniform(self, xbounds):
         x = num.zeros(self.nparameters)
-        for i in [0, 1, 2, 3, 4, 11]:
+        for i in range(self.nparameters):
             x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
 
         x[5:11] = mtm.random_m6()
@@ -164,7 +164,6 @@ class CMTProblem(Problem):
         return x.tolist()
 
     def preconstrain(self, x):
-
         d = self.get_parameter_dict(x)
         m6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
                        dtype=num.float)

@@ -89,30 +89,15 @@ class DoubleDCProblem(Problem):
         raise KeyError(pname)
 
     def pack(self, source):
-
-        dur1 = source.stf1.duration if source.stf1 else 0.0
-        dur2 = source.stf2.duration if source.stf2 else 0.0
-        x = num.array([
-            source.time - self.base_source.time,
-            source.north_shift,
-            source.east_shift,
-            source.depth,
-            source.magnitude,
-            source.strike1,
-            source.dip1,
-            source.rake1,
-            source.strike2,
-            source.dip2,
-            source.rake2,
-            source.delta_time,
-            source.delta_depth,
-            source.azimuth,
-            source.distance,
-            source.mix,
-            dur1,
-            dur2], dtype=num.float)
-
-        return x
+        arr = self.get_parameter_array(source)
+        for ip, p in enumerate(self.parameters):
+            if p.name == 'time':
+                arr[ip] -= self.base_source.time
+            if p.name == 'duration1':
+                arr[ip] = source.stf1.duration if source.stf1 else 0.0
+            if p.name == 'duration2':
+                arr[ip] = source.stf2.duration if source.stf2 else 0.0
+        return arr
 
     def random_uniform(self, xbounds):
         x = num.zeros(self.nparameters)
