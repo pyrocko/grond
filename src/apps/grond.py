@@ -807,8 +807,7 @@ def command_report(args):
 
     if options.index_only:
         report_index(conf)
-        logger.info(CLIHints('report', config=s_conf))
-        sys.exit(0)
+        args = []
 
     reports_generated = False
 
@@ -865,7 +864,7 @@ def command_report(args):
         webbrowser.open(url)
 
     else:
-        if not reports_generated:
+        if not reports_generated and not options.index_only:
             logger.info('nothing to do, see: grond report --help')
 
     if reports_generated and not (options.serve or options.serve_external):
