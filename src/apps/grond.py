@@ -851,12 +851,8 @@ def command_report(args):
         else:
             host = options.host
 
-<<<<<<< HEAD
-        addr = serve_ip(host), int(options.port)
-
-=======
         addr = serve_ip(host), options.port
->>>>>>> 4938f26... grond-cli: bugfix
+
         serve_report(
             addr,
             report_config=conf,
