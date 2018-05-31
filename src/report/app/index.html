@@ -33,24 +33,21 @@
             <div class="alert alert-warning" role="alert">
                 <h4 class="alert-heading">Template Error</h4>
                 <p>
-                    We could not load the template file, propably due to browser security measures.<br />
+                    We could not load the template file, probably due to browser security measures.<br />
                     Please use <b>Mozilla Firefox</b> or start Chrome with <code>--allow-file-access-from-files</code> to view <code>reports/index.html</code>.
                 </p>
-                <hr>
+                <hr />
                 <p class="mb-0">
-                    Or start a local webserver with <code>grond report &lt;rundir&gt;</code>.
+                    Or start a local webserver with <code>grond report -so</code>.
                 </p>
             </div>
         </div>
 
-        <div>
-            <ng-view>
-            </ng-view>
-        </div>
+        <ng-view>
+        </ng-view>
 
-        <hr />
         <div class="container footer">
-                <p class="text-center">Busted with Grond - <a href="https://pyrocko.org/" target="_blank">pyrocko.org</a></p>
+            <p class="text-center">Busted with Grond - <a href="https://pyrocko.org/" target="_blank">pyrocko.org</a></p>
         </div>
     </body>
 </html>

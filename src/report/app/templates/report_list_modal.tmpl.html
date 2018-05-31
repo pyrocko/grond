@@ -1,0 +1,83 @@
+
+<div class="modal" id="report-list-modal" tabindex="-1" role="dialog" aria-labelledby="ReportListLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" ng-controller="ReportListController">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ReportListLabel">Open</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-hover report-list">
+            <thead>
+                <tr>
+                    <th><a href ng-click="set_order('event')">Event</a></th>
+                    <th><a href ng-click="set_order('time')">Date/Time</a></th>
+                    <th><a href ng-click="set_order('magnitude')">Magnitude</a></th>
+                    <th><a href ng-click="set_order('depth')">Depth [km]</a></th>
+                    <th><a href ng-click="set_order('type')">Type</a></th>
+                    <th><a href ng-click="set_order('run')">Run</a></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="line in get_ordered_report_entries()" class="{{ line.report_entry.get_solution_type() + ' ' + line.bg_class }}" ng-click="rl.selected_add(line.report_entry.problem_name)" ng-dblclick="rl.selected_add_and_close_modal(line.report_entry.problem_name);">
+                    <td>
+                        {{ line.report_entry.get_event().name }}
+                    </td>
+                    <td>
+                        {{ line.report_entry.get_event().time.toISOString().replace('T', ' ').replace('Z', '')  }}
+                    </td>
+                    <td>
+                        {{ line.report_entry.get_event().magnitude | eround:0.1 }}
+                    </td>
+                    <td>
+                        {{ line.report_entry.get_event().depth* 0.001 | eround:(line.report_entry.get_event().depth*0.001*0.1) }}
+                    </td>
+                    <td>
+                        {{ line.report_entry.get_solution_type() }}
+                    </td>
+                    <td>
+                        {{ line.report_entry.problem_name }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div ng-show="rl.get_selected().length == 0">
+            <p>
+                <strong>Select one or more Grond runs.</strong>
+            </p>
+        </div>
+
+        <div ng-show="rl.get_selected().length != 0">
+            <p>
+                <strong>Selected:</strong>
+            </p>
+
+            <div style="margin-top: 1em; margin-bottom: 1em;">
+                <div ng-repeat="problem_name in rl.get_selected()" style="display:inline; margin-right:0.5em;" class="alert alert-primary alert-dismissible fade show" role="alert">
+                    <strong>{{ problem_name }}</strong>
+                    <button type="button" class="close" ng-click="rl.selected_remove(problem_name)" aria-label="Remove">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+      </div>
+      <div class="modal-footer d-flex">
+        <button type="button" class="btn btn-secondary" ng-click="rl.reload()">
+            <span style="width: 1em; height: 1em; margin: 0.2em;" data-feather="refresh-cw"></span> Reload
+        </button>
+        <button type="button" class="btn btn-secondary" ng-click="rl.selected_all()">
+           Select all
+        </button>
+        <button type="button" class="btn btn-secondary" ng-click="rl.selected_none()">
+           Deselect all
+        </button>
+        <button type="button" class="btn btn-primary ml-auto" data-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,8 +1,24 @@
-<h3 id="{{ group.title }}" class="plot-title">{{ group.name | nounderscore }}</h3>
-<figure class="figure">
-    <img class="figure-img img-fluid" ng-src="{{ image_path(group, item); }}" ng-repeat="item in group.items" />
-    <figcaption class="figure-caption">
-        {{ group.description }}
-    </figcaption>
-</figure>
-<hr />
+
+<div class="row m-3">
+    <div class="col">
+        <h3 class="plot-title">{{ group.name | nounderscore }}</h3>
+
+        <p ng-if="!group.pri || !group.sec || group.pri.description == group.sec.description">
+            {{ group.pri.description }}
+        </p>
+    </div>
+</div>
+
+<div class="row m-3">
+    <div class="col" ng-repeat="doc in unfold_docs(group) track by $index">
+        <p ng-if="doc && !(!group.pri || !group.sec || group.pri.description == group.sec.description)">
+            {{ doc.description }}
+        </p>
+        <div ng-if="doc" class="{{ compare_mode ? 'text-center' : '' }}">
+            <h6 ng-if="compare_mode">{{ doc.problem_name }}</h6>
+            <figure ng-if="doc" class="figure">
+                <img class="figure-img img-fluid" ng-src="{{ image_path(doc, item); }}" ng-repeat="item in doc.items" />
+            </figure>
+        </div>
+    </div>
+</div>

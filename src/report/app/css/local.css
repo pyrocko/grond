@@ -72,39 +72,62 @@ tr.has-manual-comments {
 }
 
 table.stats {
-  width: auto;
-}
-
-table.stats td {
-  padding: .25rem;
+    margin-bottom: 2rem;
+    margin-top: 1rem;
 }
 
 table.stats tt {
     white-space: pre;
 }
 
-tr.row-parameter {
-  padding: .1rem;
-  line-height: 1.;
+table.stats td,
+table.stats th {
+   padding-left: 1em;
+   padding-right: 1em;
+   padding-bottom: 0.2em;
+   padding-top: 0.2em;
+   white-space: nowrap;
+   border-top: none;
 }
 
-table.report-list thead tr:first-child {
+/*tr.row-parameter {*/
+/*  padding: .1rem;*/
+/*  line-height: 1;*/
+/*}*/
+
+/*table.report-list thead tr:first-child {
     border-bottom: 1px solid black;
     border-top: 1px solid black;
-}
+}*/
 
-table.report-list tbody tr:last-child {
+/*table.report-list tbody tr:last-child {
     border-bottom: 1px solid black;
-}
+}*/
 
 table.report-list td,
 table.report-list th {
    padding-left: 1em;
    padding-right: 1em;
+   padding-bottom: 0.2em;
+   padding-top: 0.2em;
+   white-space: nowrap;
+   border-top: none;
 }
 
-table.report-list tr.odd {
-    background-color: #eee;
+table.report-list tr {
+    cursor: pointer;
+}
+
+table.report-list tr.even {
+    background-color: #f6f6f6;
+}
+
+table.report-list tr.even:hover {
+    background-color: #e6e6e6;
+}
+
+table.report-list tr.ref {
+    color: #ff3333;
 }
 
 div#browser-warning {
@@ -132,7 +155,7 @@ div#browser-warning {
   bottom: 0;
   left: 0;
   z-index: 100; /* Behind the navbar */
-  padding: 48px 0 0; /* Height of navbar */
+  padding: 5.5rem 0 0; /* Height of navbar */
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
 }
 
@@ -152,9 +175,15 @@ div#browser-warning {
   }
 }
 
-.sidebar .nav-link {
+
+.sidebar .nav-link, .nav-tabs .nav-link {
+  padding: 0.1rem 1rem;
   font-weight: 500;
   color: #333;
+}
+
+.sidebar a.disabled {
+  color: #999;
 }
 
 .sidebar .nav-link .feather {
@@ -169,6 +198,7 @@ div#browser-warning {
 .sidebar .nav-link:hover .feather,
 .sidebar .nav-link.active .feather {
   color: inherit;
+  background-color: white;
 }
 
 .sidebar-heading {
@@ -181,13 +211,13 @@ div#browser-warning {
  */
 
 [role="main"] {
-  padding-top: 48px; /* Space for fixed navbar */
+  padding-top: 5.5rem; /* Space for fixed navbar */
 }
 
 /*
  * Navbar
  */
-
+/*
 .navbar-brand {
   padding-top: .75rem;
   padding-bottom: .75rem;
@@ -195,11 +225,23 @@ div#browser-warning {
   background-color: rgba(0, 0, 0, .25);
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
 }
-
-.navbar .form-control {
+*/
+/*.navbar .form-control {
   padding: .75rem 1rem;
   border-width: 0;
   border-radius: 0;
+} */
+
+.navbar-main {
+    height: 3.5rem;
+}
+
+.navbar-tabs {
+    height: 2rem;
+}
+
+.nav a:focus {
+    outline: none;
 }
 
 .form-control-dark {
@@ -210,5 +252,31 @@ div#browser-warning {
 
 .form-control-dark:focus {
   border-color: transparent;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+/*  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);*/
+}
+
+.navbar .nav-tabs a.nav-link {
+    color: white;
+}
+
+.navbar .nav-tabs a.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.navbar .nav-tabs {
+    border: none;
+}
+
+.navbar .nav-tabs .nav-item {
+    margin-bottom: 0px;
+}
+
+/*
+ * Modal
+ */
+
+.modal-lg {
+    max-width: 1100px;
 }
