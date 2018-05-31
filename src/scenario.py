@@ -3,7 +3,7 @@ import os
 import shutil
 import os.path as op
 
-from pyrocko import gf, scenario, util, model
+from pyrocko import gf, scenario, util
 
 import grond
 
@@ -294,9 +294,6 @@ class DCSourceProblem(SourceProblem):
             nevents=self.nevents)
 
     def get_grond_problem_config(self):
-        import math
-
-        s2 = math.sqrt(2.0)
         return grond.CMTProblemConfig(
             name_template='cmt_${event_name}',
             distance_min=2.*km,
@@ -307,9 +304,9 @@ class DCSourceProblem(SourceProblem):
                 east_shift=gf.Range(-16*km, 16*km),
                 depth=gf.Range(1*km, 11*km),
                 magnitude=gf.Range(6.0, 8.0),
-                rmnn=gf.Range(-s2, s2),
-                rmee=gf.Range(-s2, s2),
-                rmdd=gf.Range(-s2, s2),
+                rmnn=gf.Range(-1.0, 1.0),
+                rmee=gf.Range(-1.0, 1.0),
+                rmdd=gf.Range(-1.0, 1.0),
                 rmne=gf.Range(-1.0, 1.0),
                 rmnd=gf.Range(-1.0, 1.0),
                 rmed=gf.Range(-1.0, 1.0),
