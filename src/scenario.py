@@ -291,6 +291,8 @@ class DCSourceProblem(SourceProblem):
         return scenario.sources.DCSourceGenerator(
             magnitude_min=self.magnitude_min,
             magnitude_max=self.magnitude_max,
+            depth_min=5*km,
+            depth_max=20*km,
             nevents=self.nevents)
 
     def get_grond_problem_config(self):
@@ -300,9 +302,9 @@ class DCSourceProblem(SourceProblem):
             mt_type='full',
             ranges=dict(
                 time=gf.Range(-5.0, 5.0, relative='add'),
-                north_shift=gf.Range(-16*km, 16*km),
-                east_shift=gf.Range(-16*km, 16*km),
-                depth=gf.Range(1*km, 11*km),
+                north_shift=gf.Range(-15*km, 15*km),
+                east_shift=gf.Range(-15*km, 15*km),
+                depth=gf.Range(5*km, 20*km),
                 magnitude=gf.Range(6.0, 8.0),
                 rmnn=gf.Range(-1.0, 1.0),
                 rmee=gf.Range(-1.0, 1.0),

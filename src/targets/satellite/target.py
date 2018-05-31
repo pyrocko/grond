@@ -168,8 +168,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         obs = quadtree.leaf_medians
 
         if self.misfit_config.optimise_orbital_ramp:
-            stat_level = num.zeros_like(obs)
-            stat_level.fill(self.parameter_values['offset'])
+            stat_level = num.full_like(obs, self.parameter_values['offset'])
+
             stat_level += (quadtree.leaf_center_distance[:, 0]
                            * self.parameter_values['ramp_east'])
             stat_level += (quadtree.leaf_center_distance[:, 1]
