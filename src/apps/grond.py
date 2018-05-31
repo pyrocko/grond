@@ -270,7 +270,7 @@ def command_scenario(args):
                  ' (default: \'%default\')')
         parser.add_option(
             '--magnitude-range', dest='magnitude_range', type=str,
-            action='callback', callback=magnitude_range, default='6.0-7.0',
+            action='callback', callback=magnitude_range, default=[6.0, 7.0],
             help='Magnitude range min_mag-max_mag (default: %default)')
         parser.add_option(
             '--nstations', dest='nstations', type=int, default=20,
