@@ -322,6 +322,8 @@ class RectangularSourceProblem(SourceProblem):
         return scenario.sources.RectangularSourceGenerator(
             magnitude_min=self.magnitude_min,
             magnitude_max=self.magnitude_max,
+            depth_min=5*km,
+            depth_max=15*km,
             nevents=self.nevents)
 
     def get_grond_problem_config(self):
@@ -331,9 +333,9 @@ class RectangularSourceProblem(SourceProblem):
             ranges=dict(
                 north_shift=gf.Range(-20*km, 20*km),
                 east_shift=gf.Range(-20*km, 20*km),
-                depth=gf.Range(0*km, 10*km),
+                depth=gf.Range(5*km, 15*km),
                 length=gf.Range(20*km, 40*km),
-                width=gf.Range(5*km, 12*km),
+                width=gf.Range(5*km, 10*km),
                 dip=gf.Range(20, 70),
                 strike=gf.Range(0, 180),
                 rake=gf.Range(0, 90),
