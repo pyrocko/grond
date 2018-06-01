@@ -108,20 +108,24 @@ What do you want to bust today?!
 
 class CLIHints(object):
     init = '''
-We created a folder structure in {project_dir}, the structure with data and run
+We created a folder structure in {project_dir}.
+Check out the YAML configuration in {config} and start the optimisation by:
 
     grond go {config}
 '''
     scenario = '''
-To start the scenario's optimisation, run
+To start the scenario's optimisation, change to folder
 
     cd {project_dir}
+
+Check out the YAML configuration in {config} and start the optimisation by:
+
     grond go {config}
 '''
     report = '''
 To open the reports in your web browser, run
 
-    grond report -so {config}
+    grond report -s --open {config}
 '''
     check = '''
 To start the optimisation, run
