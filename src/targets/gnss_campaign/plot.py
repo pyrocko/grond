@@ -5,6 +5,7 @@ from pyrocko.model import gnss
 from pyrocko.plot import automap
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
+from grond.problems import CMTProblem, RectangularProblem
 
 import copy
 from pyrocko.guts import Tuple, Float, Bool
@@ -67,7 +68,8 @@ class GNSSTargetMisfitPlot(PlotConfig):
         models = history.models[isort, :]
         xbest = models[0, :]
 
-        # source = problem.get_source(xbest)
+        source = problem.get_source(xbest)
+
         results = problem.evaluate(
             xbest, result_mode='full', targets=gnss_targets)
 
@@ -131,6 +133,36 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 't': 30,
                 },
                 labels=False)
+
+            if isinstance(problem, CMTProblem):
+                from pyrocko import moment_tensor
+                from pyrocko.plot import gmtpy
+
+                event = source.pyrocko_event()
+                mt = event.moment_tensor.m_up_south_east()
+
+                xx = num.trace(mt) / 3.
+                mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
+                mc = mt - mc
+                mc = mc / event.moment_tensor.scalar_moment() * \
+                    moment_tensor.magnitude_to_moment(5.0)
+                m6 = tuple(moment_tensor.to6(mc))
+                symbol_size = 20.
+                m.gmt.psmeca(
+                    S='%s%g' % ('d', symbol_size / gmtpy.cm),
+                    in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
+                    M=True,
+                    *m.jxyr)
+
+            elif isinstance(problem, RectangularProblem):
+                m.gmt.psxy(
+                    in_rows=source.outline(cs='lonlat'),
+                    L='+p2p,black',
+                    W='1p,black',
+                    G='black',
+                    t=60,
+                    *m.jxyr)
+
             yield (item, m)
 
 
