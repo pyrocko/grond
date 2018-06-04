@@ -268,7 +268,8 @@ def command_scenario(args):
                  '(default: --targets=%default,'
                  ' multiple selection by --targets=waveform,gnss,insar)')
         parser.add_option(
-            '--problem', dest='problem', type=str, default='dc',
+            '--problem', dest='problem', default='cmt',
+            type='choice', choices=['cmt', 'rectangular'],
             help='problem to generate: \'dc\' (double couple)'
                  ' or\'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
@@ -341,7 +342,7 @@ def command_scenario(args):
                 store_id=options.store_statics)
             scenario.add_observation(obs)
 
-        if options.problem == 'dc':
+        if options.problem == 'cmt':
             problem = grond_scenario.DCSourceProblem(
                 nevents=options.nevents,
                 magnitude_min=options.magnitude_range[0],
@@ -376,7 +377,8 @@ def command_init(args):
                  '(default: --targets=%default,'
                  ' multiple selection by --targets=waveform,gnss,insar)')
         parser.add_option(
-            '--problem', dest='problem', type=str, default='dc',
+            '--problem', dest='problem', default='cmt',
+            type='choice', choices=['cmt', 'rectangular'],
             help='problem to generate: \'dc\' (double couple)'
                  ' or\'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
@@ -410,7 +412,7 @@ def command_init(args):
             project.add_gnss()
             project.set_rectangular_source()
 
-        if options.problem == 'dc':
+        if options.problem == 'cmt':
             project.set_cmt_source()
         elif options.problem == 'rectangular':
             project.set_rectangular_source()
@@ -461,7 +463,7 @@ def command_check(args):
             help='show raw, restituted, projected, and processed waveforms')
 
         parser.add_option(
-            '--nrandom', dest='n_random_synthetics', metavar='N', type='int',
+            '--nrandom', dest='n_random_synthetics', metavar='N', type=int,
             default=10,
             help='set number of random synthetics to forward model (default: '
                  '10). If set to zero, create synthetics for the reference '
@@ -502,12 +504,11 @@ def command_go(args):
             help='preserve old rundir')
         parser.add_option(
             '--status', dest='status', default='state',
-            type='choice',
-            choices=['state', 'quiet'],
+            type='choice', choices=['state', 'quiet'],
             help='status output selection (choices: state, quiet, default: '
                  'state)')
         parser.add_option(
-            '--parallel', dest='nparallel', type='int', default=1,
+            '--parallel', dest='nparallel', type=int, default=1,
             help='set number of events to process in parallel, '
                  'If set to more than one, --status=quiet is implied.')
 
