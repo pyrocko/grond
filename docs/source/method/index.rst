@@ -126,13 +126,16 @@ errors are considered in optimisations.
 
 
 .. figure:: ../images/illu_combi_weights.svg
+    :name: Fig. 1
     :height: 500px
     :align: center
     :alt: alternate text
     
-    Illustration of the GROND objective function. Details follow.
+    Fig. 1: Overview illustration of the GROND objective function. Details 
+    follow.
 
-TODO: there is nothing about the L-norms in the grafic, Is that misleading or formation the sake of generalization ok or is there a nice way for that?  
+TODO: there is nothing about the L-norms in the grafic, Is that misleading or 
+formation the sake of generalization ok or is there a nice way for that?  
     
 Misfit calculation
 ..................
@@ -385,7 +388,7 @@ to solve for a source model
     surface displacement data themselves should be comparable, even though
     InSAR and GNSS positing are very different measuring techniques. 
     
-    The **global misfit** of in this example is then:
+    The **global misfit** in this example is then:
     
 .. math::
   :label: norm_ex2
@@ -408,7 +411,7 @@ The bootstrap method
 `Bootstrapping` in Grond (see also `Bootstrapping in wikipedia`_)  enables to 
 surpress some types of bias in the 
 optimization results. Observations that are affected by signals other than 
-from the anaylsed source process often show a high misfits. Also observations
+from the analysed source process often show a high misfits. Also observations
 for which the Green's functions based on a medium model, which is at this 
 particular site not a good approximation of the underground, can result in 
 high misfit values. Already a few high misfit values may pull the optimisation 
@@ -417,15 +420,20 @@ parameter uncertainties in an efficient way, which include the propagation of
 the data error, but also modelling errors are assessed to some extent.  
 
 In Grond the bootstrapping is applied in a 
-number of parallel `bootstrapping chains` where individual bootstrapping is applied to the model misfits. Basically, individual optimization are 
-carried out in each bootstrap chain. Find more below for the `BABO Optimiser`.
+number of parallel `bootstrapping chains` where individual bootstrap weights
+or bootstrap noise is applied to the model misfits. Basically, individual 
+optimization are carried out in each bootstrap chain. Find more below for the 
+`BABO Optimiser`.
 
 In Grond **two** different bootstrapping types are implemented. There is 
-`Bayesian bootstrapping`, which is realized through misfit weights, and there 
-is `Residual bootstrapping`, which is realized by adding noise to the 
-residuals.
+bootstrapping realised through misfit weights, called `Classic` and `Bayesian
+bootstrapping`, and there is bootstrapping realised adding noise to the 
+residuals, which is the so-called  `Residual bootstrapping` 
+(`Fig. 1`).
 
-**Bayesian bootstrap**:
+**Classic and Bayesian bootstrap**:
+
+
    
 random weighting 
 Assumes the error is uniformly distributed (? really)
@@ -436,7 +444,8 @@ Residual bootstrap actually is a computationally more efficient version of the
 `Randomize-then-optimize`_ procedure. With empirical estimates of the data 
 error statistics we add synthetic random noise to all residuals to evaluate the
 misfit anew. The random noise here is correlated data noise that follows the 
-same statistics as the estimated empirical data noise. The big advantage of the residual bootsrapping compared to the
+same statistics as the estimated empirical data noise. The big advantage of 
+the residual bootsrapping compared to the
 keeping 
 
 
@@ -462,6 +471,12 @@ One history of smapling the model space. N misfit spaces
 All bootstrap chains share the misfits of the 
 same forward models. The misfit is re-evaluated without the sampling of new
 models and new forward modelling. This makes the bootstrapping setup in Grond computationally very effcient.
+ 
+.. figure:: ../images/illu_babo_chains.svg
+    :height: 300px
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
 
 .. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace
