@@ -35,10 +35,8 @@ observed waveforms.
     :math:`{\bf d}_{raw, synth}` and 
     the recorded, restituted waveforms. Only these parts are then used in the 
     misfit calculation. 
-    The taper window duration is configured ( target config link) as well as 
-    the time. 
-
-    TODO: set link (line above)
+    The taper window duration is configured with the waveform `targets`_ as 
+    well as the time. 
 
     The tapering is source-model dependent, since the tapering time is given 
     with respect to the theoretic phase arrival
@@ -131,10 +129,10 @@ errors are considered in optimisations.
     :align: center
     :alt: alternate text
     
-    **Figure 1**: Overview illustration of the GROND objective function. 
+    **Figure 1**: GROND objective function design in an overview illustration. 
     Details on how each function and weight vectors are formed follow below.
 
-TODO: there is nothing about the L-norms in the grafic, Is that misleading or 
+TODO: there is nothing about the L-norms in the graphic, Is that misleading or 
 formation the sake of generalization ok or is there a nice way for that?  
     
 Misfit calculation
@@ -318,18 +316,16 @@ chapter in the `Pyrocko tutorial`_.
 User-defined manual data weights enable an arbitrary weighting of data sets in contrast to balancing of single observations through target balancing and 
 noise-based data weights. 
 No rules apply other than from the user's rationale. In Grond they are called 
-``manual_weight`` and are given in the configuration file.
-
-
-TODO link to the target sheet
+``manual_weight`` and are given in the configuration file of the `targets`_.
 
 **Normalisation of data and data groups**
 
 The normalisation in Grond is applied to data groups that are member of the so
 called ``normalisation_family``. A `normalisation family` in Grond can be 
 composed in many ways. However, it is often meaningful to put data of the same 
-kind and with similar weights into the same `normalisation family`. This 
-could be P and S waves, or two InSAR data sets. As an explanation some 
+kind and with similar weighting schemes into the same `normalisation family`
+(see also Fig. 1). 
+This could be P and S waves, or two InSAR data sets. As an explanation some 
 examples are given here:
 
 **Example 1:** Fitting waveforms of P and S waves to solve 
@@ -372,7 +368,7 @@ for a source model
     }
 
     
-*Example 2:* Fitting waveforms of P waves and static surface displacements
+**Example 2:** Fitting waveforms of P waves and static surface displacements
 to solve for a source model 
     
     Let's say we use P waveforms in the time domain 
@@ -449,7 +445,7 @@ final misfit values are comparable even without normalisation.
 **Classic weights**
 
 For `classic` bootstrap weights we draw :math:`N_{\mathrm{targets}}` 
-random integer numbers :math:`{\bf r} \, \epsilon \, [0 \quad N_{\mathrm{targets}}]`
+random integer numbers :math:`{\bf r} \, \epsilon \, [0 \,\, N_{\mathrm{targets}}]`
 from a uniform distribution (Fig. 2, left). 
 We then sort these in :math:`N_{\mathrm{targets}}` bins (Fig. 2, right).
 The frequency in each bin forms the bootstrap target weights.
@@ -469,7 +465,7 @@ The frequency in each bin forms the bootstrap target weights.
 **Bayesian weights**
 
 For `Bayesian` bootstrap weights we draw :math:`N_{\mathrm{targets}}+1` 
-random real numbers :math:`{\bf r} \, \epsilon \, [0 N_{\mathrm{targets}}]`
+random real numbers :math:`{\bf r} \, \epsilon \, [0 \,\, N_{\mathrm{targets}}]`
 from a uniform distribution (Fig. 4, left). 
 We then sort the obtained random values in an ascending order (Fig. 4, middle) 
 and calculate the bootstrap weights as the differences 
@@ -514,13 +510,40 @@ TODO: Fig.5 residual bootstrap
 Optimisation 
 ------------
 
-high score 
-
+Grond is open for many different optimisation schemes. So far implemented is 
+the so-called `Bayesian Bootstrap Optimisation` (BABO). The `Optimiser` defines
+the particular objective function or objective functions or options for them. 
+The optimiser also defines the model space sampling schemes. 
 
 The BABO optimiser
 ..................
 
- 
+BABO stands for `Bayesian Bootstrap Optimisation` that is done if the 
+optimiser is configured to the full extent. As the name says, BABO allows for 
+a source optimisation while providing the full information in the results for 
+a fully Bayesian analysis. BABO is based on `Direct Search`, meaning model
+parameters are drawn in a randomised way from the defined model space 
+and synthetic data are then calculated to be compared with the observed data. 
+This needs no assumptions on the topology of
+the misfit space and is appropriate also for highly non-linear problems.
+
+BABO can turn into a simple Monte-Carlo random direct search if some options 
+are switched off. It can also resemble a simlutated annealing optimisation 
+approach using a certain problem configuration.
+
+Note:
+*Weights* are explained above. The specific
+weighting is configured with the `targets`_ used and also with the `problem`_.
+The *model space* in which the optimisation takes place is 
+defined with the `problem`_.
+Here described is the sampling and in the context of the multiple objective 
+functions given by the bootstrapping.
+
+Sampling schemes
+................
+
+**phases**
+
 .. figure:: ../images/illu_bootstrap_weights.svg
     :name: Fig. 6
     :height: 300px
@@ -528,7 +551,7 @@ The BABO optimiser
     :alt: alternate text
     :figclass: align-center
     
-    **Figure 6**:  Illustration of bootrap weights and their influence on the 
+    **Figure 6**:  Illustration of bootsrap weights and their influence on the 
     convergence in the model parameter space due to the differing misfit 
     function for each bootstrap chain.
 
@@ -564,3 +587,6 @@ models and new forward modelling. This makes the bootstrapping setup in Grond co
 .. _Bootstrapping in wikipedia: https://en.wikipedia.org/wiki/Bootstrapping_(statistics)
 .. _Randomize-then-optimize: https://epubs.siam.org/doi/abs/10.1137/140964023
 .. _Jonsson et al.: http://adsabs.harvard.edu/abs/2014AGUFM.S51C..05J
+
+.. _targets: ../targets/index.html
+.. _problem: problems/index.html
