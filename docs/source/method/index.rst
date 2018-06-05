@@ -131,8 +131,8 @@ errors are considered in optimisations.
     :align: center
     :alt: alternate text
     
-    Fig. 1: Overview illustration of the GROND objective function. Details 
-    follow.
+    **Figure 1**: Overview illustration of the GROND objective function. 
+    Details on how each function and weight vectors are formed follow below.
 
 TODO: there is nothing about the L-norms in the grafic, Is that misleading or 
 formation the sake of generalization ok or is there a nice way for that?  
@@ -245,10 +245,15 @@ The misfit and data norm calculations with data weights
 **Target balancing weights**
 
 .. figure:: ../images/illu_target_balancing.svg
+    :name: Fig. 2
     :width: 300px
     :align: left
     :alt: alternate text
     :figclass: align-center
+    
+    **Figure 2**: Qualitative sketch how target balancing weight increasse with 
+    source distance to balance amplitude decrease caused by geometrical 
+    spreading. 
 
 With these weights waveforms are `balanced` with respect to the expected signal
 amplitude. 
@@ -429,25 +434,82 @@ In Grond **two** different bootstrapping types are implemented. There is
 bootstrapping realised through misfit weights, called `Classic` and `Bayesian
 bootstrapping`, and there is bootstrapping realised adding noise to the 
 residuals, which is the so-called  `Residual bootstrapping` 
-(`Fig. 1`).
+(Fig. 1).
 
-**Classic and Bayesian bootstrap**:
+Classic and Bayesian bootstrap
+..............................
 
-
+These bootstrap types are based on weighting. We 
+divert from the physics-related and noise-related target weights and create
+additional random weight factors for each target. Virtually equal weights 
+of 1 for each target are redistributed to new random weights, which add up
+to equal the number of targets. In this way the 
+final misfit values are comparable even without normalisation.
    
-random weighting 
-Assumes the error is uniformly distributed (? really)
+**Classic weights**
 
-**Residual bootstrap**:
+For `classic` bootstrap weights we draw :math:`N_{\mathrm{targets}}` 
+random integer numbers :math:`{\bf r} \, \epsilon \, [0 \quad N_{\mathrm{targets}}]`
+from a uniform distribution (Fig. 2, left). 
+We then sort these in :math:`N_{\mathrm{targets}}` bins (Fig. 2, right).
+The frequency in each bin forms the bootstrap target weights.
+
+
+.. figure:: ../images/classic_bootstrap_weights.svg
+    :name: Fig. 3
+    :width: 1400px
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+    
+    **Figure 3**: Formation of `classical` bootstrap weights. Uniformely random
+    samples (left) and the corresponding histogram (right) with the frequencies
+    being used as bootstrap weights.  
+
+**Bayesian weights**
+
+For `Bayesian` bootstrap weights we draw :math:`N_{\mathrm{targets}}+1` 
+random real numbers :math:`{\bf r} \, \epsilon \, [0 N_{\mathrm{targets}}]`
+from a uniform distribution (Fig. 4, left). 
+We then sort the obtained random values in an ascending order (Fig. 4, middle) 
+and calculate the bootstrap weights as the differences 
+:math:`w_{\mathrm{bootstr},\,i}=r_{i+1}-r_i`.
+
+.. figure:: ../images/bayesian_bootstrap_weights.svg
+    :name: Fig. 4
+    :width: 1400px
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    **Figure 4**: Formation of `Bayesian` bootstrap weights. Uniformely random
+    samples (left) are sorted (middle) and the differences of neighbouring 
+    points (right) are being used as bootstrap weights.  
+    
+Residual bootstrap
+..................
     
 Residual bootstrap actually is a computationally more efficient version of the 
-`Randomize-then-optimize`_ procedure. With empirical estimates of the data 
-error statistics we add synthetic random noise to all residuals to evaluate the
-misfit anew. The random noise here is correlated data noise that follows the 
-same statistics as the estimated empirical data noise. The big advantage of 
-the residual bootsrapping compared to the
-keeping 
+`Randomize-then-optimize`_ procedure. The name of the latter method describes
+the procedure - with empirical estimates of the data 
+error statistics individual realisations of synthetic correlated random noise 
+are added to the data for many slightly differing optimisations. Source 
+parameter distributions retrieved with the `Randomize-then-optimize`_ method 
+based on the data error variance-covariance matrix have been shown to match the 
+model parameter distributions obtained from Marcov Chain Monte Carlo sampling
+of the model spaces by `Jonsson et al.`_ (2014).
+In `residual bootstrap` we add such individual realisations of synthetic 
+correlated random noise to the misfits to evaluate individual `global misfits`
+(Fig. 1). Like this we save the calculation of many forward models compared to 
+`Randomize-then-optimize`_, while obtaining the same result.
 
+To generate random noise we use functions of the `kite`_ module. From the 
+noise estimation region defined in the `kite`_ scenes, the noise power spectrum
+is used directly with a randomised phase spectrum to create new random noise
+with common characteristics in the spatial domain. The noise is then subsampled
+exactly like the data to be used on the model residuals.
+
+TODO: Fig.5 residual bootstrap
 
 Optimisation 
 ------------
@@ -460,10 +522,15 @@ The BABO optimiser
 
  
 .. figure:: ../images/illu_bootstrap_weights.svg
+    :name: Fig. 6
     :height: 300px
     :align: center
     :alt: alternate text
     :figclass: align-center
+    
+    **Figure 6**:  Illustration of bootrap weights and their influence on the 
+    convergence in the model parameter space due to the differing misfit 
+    function for each bootstrap chain.
 
 
 One history of smapling the model space. N misfit spaces
@@ -473,10 +540,14 @@ same forward models. The misfit is re-evaluated without the sampling of new
 models and new forward modelling. This makes the bootstrapping setup in Grond computationally very effcient.
  
 .. figure:: ../images/illu_babo_chains.svg
+    :name: Fig. 7
     :height: 300px
     :align: center
     :alt: alternate text
     :figclass: align-center
+    
+    **Figure 7**: Drawing new candiate models based on the existing solution 
+    space. (...)
 
 .. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace
@@ -492,3 +563,4 @@ models and new forward modelling. This makes the bootstrapping setup in Grond co
 .. _thesis by Heimann: http://ediss.sub.uni-hamburg.de/volltexte/2011/5357/pdf/Dissertation.pdf
 .. _Bootstrapping in wikipedia: https://en.wikipedia.org/wiki/Bootstrapping_(statistics)
 .. _Randomize-then-optimize: https://epubs.siam.org/doi/abs/10.1137/140964023
+.. _Jonsson et al.: http://adsabs.harvard.edu/abs/2014AGUFM.S51C..05J
