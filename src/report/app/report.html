@@ -63,10 +63,10 @@
         <nav class="col-2 bg-light sidebar">
             <div class="sidebar-sticky ng-cloak">
                 <ul class="nav flex-column">
-                  <li class="nav-item" ng-if="stats">
-                    <a href="" ng-click="scrollTo('results')" class="nav-link">
+                  <li ng-if="have_groups_avail()" class="nav-item">
+                    <a href="" ng-click="select_groups_all()" class="nav-link">
                         <span data-feather="book-open"></span>
-                        Results
+                        All
                     </a>
                   </li>
                   <li class="nav-item plot-title" ng-repeat="group in get_groups_avail()">
@@ -75,7 +75,7 @@
                             ng-click="select_group_by_section_name(group.section)">
                         <span>{{ group.section }}</span>
                     </h6>
-                    <a href="" ng-click="select_group_by_name(group.name)" class="nav-link {{ group.can_compare ? '' : 'disabled' }}">
+                    <a href="" ng-click="select_group_by_name(group.name)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
                         <span data-feather="{{ group.feather_icon }}"></span>
                         {{ group.name | nounderscore }}
                     </a>

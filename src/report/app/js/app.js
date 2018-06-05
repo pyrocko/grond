@@ -314,9 +314,8 @@ angular.module('reportApp', ['ngRoute'])
     })
 
     .controller('ReportController', function(
-            $scope, YamlDoc, YamlMultiDoc, $timeout, $http, $sce, ReportList) {
+            $scope, YamlDoc, YamlMultiDoc, $timeout, $filter, $http, $sce, ReportList) {
 
-        $scope.stats = null;
         var groups = {};
         $scope.groups_selected = function() { return []; };
         var rl = ReportList;
@@ -501,6 +500,11 @@ angular.module('reportApp', ['ngRoute'])
             return o;
         }
 
+        $scope.have_groups_avail = function () {
+            load($scope.primary_problem);
+            return groups.hasOwnProperty($scope.primary_problem)
+        };
+
         var tid = null;
 
         $scope.get_groups_avail = function() {
@@ -570,7 +574,23 @@ angular.module('reportApp', ['ngRoute'])
                 return [group.pri];
             }
         };
+
+        $scope.group_matches_keyword = function(group) {
+            var r1 = $filter('filter')(group.pri.items, $scope.keyword);
+            if ($scope.compare_mode) {
+                var r2 = $filter('filter')(group.sec.items, $scope.keyword);
+                return (group.pri && (r1 && r1.length > 0))
+                    || (group.sec && (r2 && r2.length > 0));
+            } else {
+                return (group.pri && (r1 && r1.length > 0));
+            }
+        };
+
+        $scope.doc_matches_keyword = function(doc) {
+            return ($filter('filter')(doc.items, $scope.keyword)).length > 0;
+        };
     })
+
 
     .filter('eround', function() {
         return function(input, std) {
