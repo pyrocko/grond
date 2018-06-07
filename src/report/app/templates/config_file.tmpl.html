@@ -1,12 +1,15 @@
-<div class="row m-3">
-    <div class="col">
-        <h3 class="plot-title">Config</h3>
-    </div>
-</div>
 
-<div class="row m-3">
-    <div class="col text-center" ng-repeat="doc in unfold_docs(group) track by $index">
-        <h6 ng-if="compare_mode">{{ doc.problem_name }}</h6>
-        <pre><code class="language-yaml" prism>{{ doc.raw_config }}</code></pre>
+<div ng-if="group_matches_keyword(group)">
+    <div class="row m-3">
+        <div class="col">
+            <h3 class="plot-title">Config</h3>
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <div class="col text-center" ng-repeat="doc in unfold_docs(group) track by $index">
+            <h6 ng-if="compare_mode">{{ doc.problem_name }}</h6>
+            <pre><code class="language-yaml" prism>{{ doc.raw_config }}</code></pre>
+        </div>
     </div>
 </div>

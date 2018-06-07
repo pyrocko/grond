@@ -578,13 +578,28 @@ angular.module('reportApp', ['ngRoute'])
         };
 
         $scope.group_matches_keyword = function(group) {
-            var r1 = $filter('filter')(group.pri.items, $scope.keyword);
-            if ($scope.compare_mode) {
-                var r2 = $filter('filter')(group.sec.items, $scope.keyword);
-                return (group.pri && (r1 && r1.length > 0))
-                    || (group.sec && (r2 && r2.length > 0));
+            if ($scope.keyword === null || $scope.keyword === undefined || $scope.keyword === '') {
+                return true;
+            }
+            var r1;
+            if (group.pri && group.pri.items) {
+                r1 = $filter('filter')(group.pri.items, $scope.keyword);
             } else {
-                return (group.pri && (r1 && r1.length > 0));
+                r1 = null;
+            }
+
+            if ($scope.compare_mode) {
+                var r2;
+                if (group.sec && group.sec.items) {
+                    r2 = $filter('filter')(group.sec.items, $scope.keyword);
+                } else {
+                    r2 = null;
+                }
+
+                return (r1 && r1.length > 0)
+                    || (r2 && r2.length > 0);
+            } else {
+                return (r1 && r1.length > 0);
             }
         };
 
