@@ -325,6 +325,13 @@ class Problem(Object):
         else:
             self.raise_invalid_norm_exponent()
 
+    def bootstrapped_misfits(self, misfits):
+        res = []
+        for it, t in enumerate(self.targets):
+            res.append(t.bootstrapped_misfit(misfits[it]))
+
+        return num.array(res)
+
     def combine_misfits(
             self, misfits,
             extra_weights=None,

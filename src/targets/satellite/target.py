@@ -96,7 +96,8 @@ class SatelliteTargetGroup(TargetGroup):
                 store_id=self.store_id,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                misfit_config=self.misfit_config)
+                misfit_config=self.misfit_config,
+                enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
 
             sat_target.set_dataset(ds)
             targets.append(sat_target)
