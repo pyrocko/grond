@@ -1,4 +1,4 @@
-Method
+﻿Method
 ======
 
 TODO: (general) this section should be as self-contained as possible, describe 
@@ -7,7 +7,7 @@ implemented in Grond.
 
 The very core of the optimisation is the evaluation of a misfit between 
 observed and predicted data. This is most often the difference  
-:math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be another comparision,
+:math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be another comparison,
 like a correlation measure for examples.
 
 This sheet describes the method on:
@@ -45,7 +45,7 @@ observed waveforms.
     restitution, tapering and filtering are done for each misfit calculation anew.
     Grond uses the pyrocko `CosTaper`_ taper, which is a taper-function with 
     Cosine-shaped fade-outs. The `fade-out` time can be configured or it is 
-    calculated as the inverse of the minimum frequency of the chosen bandbass 
+    calculated as the inverse of the minimum frequency of the chosen bandpass 
     filter.
 
 
@@ -186,12 +186,12 @@ The normalised misfit
     \frac{\lVert e \rVert_x}{ \lVert e_{\mathrm{0}} \rVert_x}.
 
 is a useful measure to evaluate the data fit at a glance. Only for model
-predicitions that manage to explain parts of the observed data holds
+predictions that manage to explain parts of the observed data holds
 :math:`\lVert e_{\mathrm{norm}} \rVert_x <1`. Furthermore, the data norm 
 :math:`\lVert e_{\mathrm{0}} \rVert_x` is used in the normalisation of data
 groups.
 
-For waveform data correlation the misift function is based on the maximum
+For waveform data correlation the misfit function is based on the maximum
 correlation :math:`\mathrm{max}(C)` of :math:`{\bf d}_{obs}` and 
 :math:`{\bf d}_{synth}` defined as:
 
@@ -240,93 +240,89 @@ The misfit and data norm calculations with data weights
        |{{d}}_{i,obs} |)^{x}})^{\frac{1}{x}}
   \end{align*}
   
-**Target balancing weights**
+**Target balancing weights**:
+    With these weights waveforms are `balanced` with respect to the expected 
+    signal amplitude. 
+    Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the 
+    source-receiver distance, on the phase type and the taper used. The problem 
+    tackled with this weight is that
+    large signal amplitude have higher contributions to the misfit than smaller
+    signal amplitudes, without carrying more information. From synthetic 
+    waveforms of `N` forward models that have been randomly drawn from the 
+    defined model space the mean signal amplitude of the traces is derived. 
+    The weight for each trace is simply the inverse of these mean signal 
+    amplitudes:
 
-.. figure:: ../images/illu_target_balancing.svg
-    :name: Fig. 2
-    :width: 300px
-    :align: left
-    :alt: alternate text
-    :figclass: align-center
+    .. math::
+      :label: wtba
+        
+      {\bf w}_{\mathrm{tba}} = 1/ \lVert {\bf{d}}_{synth}  \rVert_x  = \
+            (\sum^{N}{|{d}_{i, synth}|^x})^{\frac{1}{x}}.
+
+    Like this small 
+    signal are enhanced in the
+    objective function and large signals suppressed. This is described as 
+    `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23).
+    In Grond they are called ``balancing weights`` and are received from the
+    ``TargetBalancingAnalyser`` before the optimisation.
+
+    .. figure:: ../images/illu_target_balancing.svg
+        :name: Fig. 2
+        :width: 300px
+        :align: left
+        :alt: alternate text
+        :figclass: align-center
+        
+        **Figure 2**: Qualitative sketch how target balancing weight increases with 
+        source distance to balance amplitude decrease caused by geometrical 
+        spreading. 
+
+**Data weights based on data error statistics**:
+    There are direct data weight vectors :math:`\bf{w}` or weight matrices
+    :math:`\bf{W}` based on empirical data error variance estimates. Partly,
+    e.g. for InSAR and GNSS data, these can include data error 
+    correlations expressed in the data error variance-covariance matrix 
+    :math:`\bf{\Sigma}`: 
     
-    **Figure 2**: Qualitative sketch how target balancing weight increasse with 
-    source distance to balance amplitude decrease caused by geometrical 
-    spreading. 
+    .. math::
+      :label: wnoi
 
-With these weights waveforms are `balanced` with respect to the expected signal
-amplitude. 
-Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the source-receiver 
-distance, on the phase type and the taper used. The problem tackled 
-with this weight is that
-large signal amplitude have higher contributions to the misfit than smaller
-signal amplitudes, without carrying more information. From synthetic 
-waveforms of `N` forward models that have been randomly drawn from the defined 
-model space the mean signal amplitude of the traces is derived. The weight 
-for each trace is simply the inverse of these mean signal amplitudes:
+      {\bf w} = \frac{1}{{\bf \sigma}}, \quad  \bf{W} = \sqrt{{\bf \Sigma}^{-1}}.
 
-.. math::
-  :label: wtba
-     
-    {\bf w}_{\mathrm{tba}} = 1/ \lVert {\bf{d}}_{synth}  \rVert_x  = \
-        (\sum^{N}{|{d}_{i, synth}|^x})^{\frac{1}{x}}.
+    For a ``WaveformTarget``  the data error statistics stem from real recordings 
+    of noise before the first phase arrival as described e.g. in 
+    `Duputel et al.`_ (2012). From the noise traces the inverse of their
+    standard deviation is used. In Grond they are called `station_noise_weights`` 
+    and are received from the ``Noise_Analyser`` before the optimisation.
 
+    For a ``SatelliteTarget`` the data error statistics are loaded with the data 
+    sets. The estimation of the noise statistics has to be done before Grond
+    by using `kite`_.
+    In `kite`_ the noise estimation can be done in areas of the displacement map
+    that are not affected by coseismic deformation by using spatial sampling
+    methods and semi-variogram and covariogram formation, described e.g. in
+    `Sudhaus and Jonsson`_ (2009).
 
-Like this small 
-signal are enhanced in the
-objective function and large signals supressed. This is described as 
-`adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23).
-In Grond they are called ``balancing weights`` and are received from the
-``TargetBalancingAnalyser`` before the optimisation.
-  
-**Data weights based on data error statistics**
+    For a ``GNSSCampaignTarget`` the data error statistics are also loaded with
+    the data set. They have to be estimated before and given in the GNSS data 
+    `YAML`-file describing the data set. For details visit the corresponding 
+    chapter in the `Pyrocko tutorial`_. 
 
-There are direct data weight vectors :math:`\bf{w}` or weight matrices
-:math:`\bf{W}` based on empirical data error variance estimates. Partly, e.g. 
-for InSAR and GNSS data, these can include data error 
-correlations expressed in the data error variance-covariance matrix 
-:math:`\bf{\Sigma}`: 
+**manual data weighting**:
+    User-defined manual data weights enable an arbitrary weighting of data sets 
+    in contrast to balancing of single observations through target balancing and 
+    noise-based data weights. 
+    No rules apply other than from the user's rationale. In Grond they are called 
+    ``manual_weight`` and are given in the configuration file of the `targets`_.
 
-.. math::
-  :label: wnoi
-    
-    {\bf w} = \frac{1}{{\bf \sigma}}, \quad  \bf{W} = \sqrt{{\bf \Sigma}^{-1}}.
-
-  
-For a ``WaveformTarget``  the data error statistics stem from real recordings 
-of noise before the first phase arrival as described e.g. in 
-`Duputel et al.`_ (2012). From the noise traces the inverse of their
-standard deviation is used. In Grond they are called `station_noise_weights`` 
-and are received from the ``Noise_Analyser`` before the optimisation.
-
-For a ``SatelliteTarget`` the data error statistics are loaded with the data 
-sets. The estimation of the noise statistics has to be done before Grond
-by using `kite`_.
-In `kite`_ the noise estimation can be done in areas of the displacement map
-that are not affected by coseismic deformation by using spatial sampling
-methods and semi-variogram and covariogram formation, described e.g. in
-`Sudhaus and Jonsson`_ (2009).
-
-For a ``GNSSCampaignTarget`` the data error statistics are also loaded with
-the data set. They have to be estimated before and given in the GNSS data 
-`YAML`-file describing the data set. For details visit the corresponding 
-chapter in the `Pyrocko tutorial`_. 
-
-**manual data weighting**
-
-User-defined manual data weights enable an arbitrary weighting of data sets in contrast to balancing of single observations through target balancing and 
-noise-based data weights. 
-No rules apply other than from the user's rationale. In Grond they are called 
-``manual_weight`` and are given in the configuration file of the `targets`_.
-
-**Normalisation of data and data groups**
-
-The normalisation in Grond is applied to data groups that are member of the so
-called ``normalisation_family``. A `normalisation family` in Grond can be 
-composed in many ways. However, it is often meaningful to put data of the same 
-kind and with similar weighting schemes into the same `normalisation family`
-(see also Fig. 1). 
-This could be P and S waves, or two InSAR data sets. As an explanation some 
-examples are given here:
+**Normalisation of data and data groups**:
+    The normalisation in Grond is applied to data groups that are member of the
+    so called ``normalisation_family``. A `normalisation family` in Grond can 
+    be composed in many ways. However, it is often meaningful to put data of 
+    the same kind and with similar weighting schemes into the same 
+    `normalisation family` (see also Fig. 1). 
+    This could be P and S waves, or two InSAR data sets. As an explanation some 
+    examples are given here:
 
 **Example 1:** Fitting waveforms of P and S waves to solve 
 for a source model 
@@ -410,13 +406,13 @@ The bootstrap method
 --------------------
 
 `Bootstrapping` in Grond (see also `Bootstrapping in wikipedia`_)  enables to 
-surpress some types of bias in the 
+suppress some types of bias in the 
 optimization results. Observations that are affected by signals other than 
 from the analysed source process often show a high misfits. Also observations
 for which the Green's functions based on a medium model, which is at this 
 particular site not a good approximation of the underground, can result in 
 high misfit values. Already a few high misfit values may pull the optimisation 
-to a biased optimium. With bootstrapping we can further estimate model 
+to a biased optimum. With bootstrapping we can further estimate model 
 parameter uncertainties in an efficient way, which include the propagation of
 the data error, but also modelling errors are assessed to some extent.  
 
@@ -442,13 +438,13 @@ of 1 for each target are redistributed to new random weights, which add up
 to equal the number of targets. In this way the 
 final misfit values are comparable even without normalisation.
    
-**Classic weights**
-
-For `classic` bootstrap weights we draw :math:`N_{\mathrm{targets}}` 
-random integer numbers :math:`{\bf r} \, \epsilon \, [0 \,\, N_{\mathrm{targets}}]`
-from a uniform distribution (Fig. 2, left). 
-We then sort these in :math:`N_{\mathrm{targets}}` bins (Fig. 2, right).
-The frequency in each bin forms the bootstrap target weights.
+**Classic weights**:
+    For `classic` bootstrap weights we draw :math:`N_{\mathrm{targets}}` 
+    random integer numbers 
+    :math:`{\bf r} \, \epsilon \, [0 \,\, N_{\mathrm{targets}}]`
+    from a uniform distribution (Fig. 2, left). 
+    We then sort these in :math:`N_{\mathrm{targets}}` bins (Fig. 2, right).
+    The frequency in each bin forms the bootstrap target weights.
 
 
 .. figure:: ../images/classic_bootstrap_weights.svg
@@ -458,18 +454,18 @@ The frequency in each bin forms the bootstrap target weights.
     :alt: alternate text
     :figclass: align-center
     
-    **Figure 3**: Formation of `classical` bootstrap weights. Uniformely random
+    **Figure 3**: Formation of `classical` bootstrap weights. Uniformly random
     samples (left) and the corresponding histogram (right) with the frequencies
     being used as bootstrap weights.  
 
 **Bayesian weights**
-
-For `Bayesian` bootstrap weights we draw :math:`N_{\mathrm{targets}}+1` 
-random real numbers :math:`{\bf r} \, \epsilon \, [0 \,\, N_{\mathrm{targets}}]`
-from a uniform distribution (Fig. 4, left). 
-We then sort the obtained random values in an ascending order (Fig. 4, middle) 
-and calculate the bootstrap weights as the differences 
-:math:`w_{\mathrm{bootstr},\,i}=r_{i+1}-r_i`.
+    For `Bayesian` bootstrap weights we draw :math:`N_{\mathrm{targets}}+1` 
+    random real numbers :math:`{\bf r} \, \epsilon \, [0 \,\, N_{\mathrm{targets}}]`
+    from a uniform distribution (Fig. 4, left). 
+    We then sort the obtained random values in an ascending order (Fig. 4, 
+    middle) 
+    and calculate the bootstrap weights as the differences 
+    :math:`w_{\mathrm{bootstr},\,i}=r_{i+1}-r_i`.
 
 .. figure:: ../images/bayesian_bootstrap_weights.svg
     :name: Fig. 4
@@ -478,7 +474,7 @@ and calculate the bootstrap weights as the differences
     :alt: alternate text
     :figclass: align-center
 
-    **Figure 4**: Formation of `Bayesian` bootstrap weights. Uniformely random
+    **Figure 4**: Formation of `Bayesian` bootstrap weights. Uniformly random
     samples (left) are sorted (middle) and the differences of neighbouring 
     points (right) are being used as bootstrap weights.  
     
@@ -528,7 +524,7 @@ This needs no assumptions on the topology of
 the misfit space and is appropriate also for highly non-linear problems.
 
 BABO can turn into a simple Monte-Carlo random direct search if some options 
-are switched off. It can also resemble a simlutated annealing optimisation 
+are switched off. It can also resemble a simulated annealing optimisation 
 approach using a certain problem configuration.
 
 Note:
@@ -539,37 +535,100 @@ defined with the `problem`_.
 Here described is the sampling and in the context of the multiple objective 
 functions given by the bootstrapping.
 
-Sampling schemes
-................
 
-**phases**
 
-.. figure:: ../images/illu_bootstrap_weights.svg
+
+Sampling scheme and sampling phases
+...................................
+
+Like in any `direct search` optimisation models are drawn from the model space.
+Here we form from all visited and evaluated models a so-called `highscore` 
+list. 
+
+**highscore list**: 
+    This list contains a defined number of the current best (lowest misfit)
+    models. It is continuously updated. The ``highscore`` list length 
+    :math:`L_{hs}` (number of member models) is `problem`_ dependend. It 
+    is 
+    :math:`L_{hs} = f_{\mathrm{len}} \cdot (N_{\mathrm{par}} -1)`, 
+    with
+    :math:`N_{\mathrm{par}}` being the number of model paramters.
+    
+    
+    A configurable
+    ``chain_length_factor`` (default is 8) times the number of model
+    parameters length 
+
+
+There are three sampling phases defined, based on which models are drawn from
+the model space:
+
+* ``UniformSamplerPhase`` - models are drawn randomly
+* ``InjectionSamplerPhase`` - allows to inject specific models 
+* ``DirectedSamplerPhase`` - existing low-misfit models `direct` the sampling
+
+.. figure:: ../images/illu_sampling_phases.svg
     :name: Fig. 6
     :height: 300px
     :align: center
     :alt: alternate text
     :figclass: align-center
+
+    **Figure 7**: Sketch of model parameter sampling 
     
-    **Figure 6**:  Illustration of bootsrap weights and their influence on the 
-    convergence in the model parameter space due to the differing misfit 
-    function for each bootstrap chain.
+    
+**UniformSamplerPhase**:
+    This is a starting sampler phase of the optimisation. Models are drawn 
+    randomly from the entire model space based on a uniform distribution.
+
+**InjectionSamplerPhase**:
+    This is a starting sampler phase of the 
+    optimisation in case it should not start blind. It allows to inject 
+    specific models at the start of the optimisation. These models could 
+    stem from a previous optimisation.
+
+**DirectedSamplerPhase**: 
+    This sampling phase follows any starting phase. From the distribution of
+    existing low-misfit models this phase draws new models. Like this 
+    convergence to low-misfit regions is enabled. There are quite some 
+    noteworthy details.
+    
+    Low misfit models 
+    
+    `directed sampling`: The directed sampling considers the 
+    
 
 
-One history of smapling the model space. N misfit spaces
+Bootstrap chains
+................
 
-All bootstrap chains share the misfits of the 
-same forward models. The misfit is re-evaluated without the sampling of new
-models and new forward modelling. This makes the bootstrapping setup in Grond computationally very effcient.
- 
-.. figure:: ../images/illu_babo_chains.svg
+.. figure:: ../images/illu_bootstrap_weights.svg
     :name: Fig. 7
     :height: 300px
     :align: center
     :alt: alternate text
     :figclass: align-center
     
-    **Figure 7**: Drawing new candiate models based on the existing solution 
+    **Figure 7**:  Illustration of bootstrap weights and their influence on the 
+    convergence in the model parameter space due to the differing misfit 
+    function for each bootstrap chain.
+
+
+One history of sampling the model space. N misfit spaces
+
+All bootstrap chains share the misfits of the 
+same forward models. The misfit is re-evaluated without the sampling of new
+models and new forward modelling. This makes the bootstrapping setup in Grond 
+computationally very efficient.
+ 
+.. figure:: ../images/illu_babo_chains.svg
+    :name: Fig. 8
+    :height: 300px
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+    
+    **Figure 8**: Drawing new candidate models based on the existing solution 
     space. (...)
 
 .. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
