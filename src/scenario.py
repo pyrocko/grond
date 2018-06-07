@@ -4,6 +4,7 @@ import shutil
 import os.path as op
 
 from pyrocko import gf, scenario, util
+import math
 
 import grond
 
@@ -296,6 +297,7 @@ class DCSourceProblem(SourceProblem):
             nevents=self.nevents)
 
     def get_grond_problem_config(self):
+        s2 = math.sqrt(2)
         return grond.CMTProblemConfig(
             name_template='cmt_${event_name}',
             distance_min=2.*km,
@@ -305,13 +307,13 @@ class DCSourceProblem(SourceProblem):
                 north_shift=gf.Range(-15*km, 15*km),
                 east_shift=gf.Range(-15*km, 15*km),
                 depth=gf.Range(5*km, 20*km),
-                magnitude=gf.Range(6.0, 8.0),
+                magnitude=gf.Range(self.magnitude_min, self.magnitude_max),
                 rmnn=gf.Range(-1.0, 1.0),
                 rmee=gf.Range(-1.0, 1.0),
                 rmdd=gf.Range(-1.0, 1.0),
-                rmne=gf.Range(-1.0, 1.0),
-                rmnd=gf.Range(-1.0, 1.0),
-                rmed=gf.Range(-1.0, 1.0),
+                rmne=gf.Range(-s2, s2),
+                rmnd=gf.Range(-s2, s2),
+                rmed=gf.Range(-s2, s2),
                 duration=gf.Range(1.0, 15.0))
             )
 
@@ -331,15 +333,15 @@ class RectangularSourceProblem(SourceProblem):
             name_template='rect_source_${event_name}',
             decimation_factor=8,
             ranges=dict(
-                north_shift=gf.Range(-20*km, 20*km),
-                east_shift=gf.Range(-20*km, 20*km),
+                north_shift=gf.Range(-15*km, 15*km),
+                east_shift=gf.Range(-15*km, 15*km),
                 depth=gf.Range(5*km, 15*km),
                 length=gf.Range(20*km, 40*km),
                 width=gf.Range(5*km, 10*km),
-                dip=gf.Range(20, 70),
+                dip=gf.Range(0, 90),
                 strike=gf.Range(0, 180),
                 rake=gf.Range(0, 90),
-                slip=gf.Range(1, 3),
+                magnitude=gf.Range(0, 3),
                 nucleation_x=gf.Range(-1., 1.),
                 nucleation_y=gf.Range(-1., 1.),
                 time=gf.Range(-5.0, 5.0, relative='add'))

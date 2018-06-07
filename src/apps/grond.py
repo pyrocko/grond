@@ -135,7 +135,7 @@ To start the optimisation, run
     go = '''
 To look at the results, run
 
-    grond report {rundir}
+    grond report -so {rundir}
 '''
 
     def __new__(cls, command, **kwargs):
