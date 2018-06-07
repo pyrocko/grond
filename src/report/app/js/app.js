@@ -1,5 +1,7 @@
 'use strict';
 
+var REPORT_APP_VERSION = 'v0.2';
+
 function copy_properties(source, target) {
     for (var prop in source) {
         if (source.hasOwnProperty(prop)) {
@@ -669,4 +671,9 @@ angular.module('reportApp', ['ngRoute'])
         return {
             templateUrl: 'templates/report_list_modal.tmpl.html'
         };
+    })
+
+    .controller('Info', function(
+            $scope) {
+        $scope.version = REPORT_APP_VERSION;
     });

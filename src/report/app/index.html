@@ -46,8 +46,18 @@
         <ng-view>
         </ng-view>
 
-        <div class="container footer">
-            <p class="text-center">Busted with Grond - <a href="https://pyrocko.org/" target="_blank">pyrocko.org</a></p>
+        <hr />
+
+
+        <div ng-controller="Info" class="container footer">
+
+            <div class="row no-gutters">
+                <div class="col-2">
+                </div>
+                <div class="col-10">
+                    <p class="text-center">Busted with Grond - {{ version }} - <a href="https://pyrocko.org/" target="_blank">pyrocko.org</a></p>
+                </div>
+            </div>
         </div>
     </body>
 </html>
