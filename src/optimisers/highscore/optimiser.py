@@ -72,8 +72,10 @@ class SamplerPhase(Object):
     niterations = Int.T()
     ntries_preconstrain_limit = Int.T(default=1000)
 
-    def get_sample(self, problem, iiter, chains):
+    def get_raw_sample(self, problem, iiter, chains):
+        raise NotImplementedError
 
+    def get_sample(self, problem, iiter, chains):
         assert 0 <= iiter < self.niterations
 
         ntries_preconstrain = 0
@@ -225,9 +227,11 @@ class DirectedSamplerPhase(SamplerPhase):
         return x
 
 
-def make_bootstrap_weights(nbootstrap, ntargets, type='bayesian', seed=None):
+def make_bootstrap_weights(nbootstrap, ntargets, type='bayesian', rstate=None):
     ws = num.zeros((nbootstrap, ntargets))
-    rstate = num.random.RandomState(seed)
+    if rstate is None:
+        rstate = num.random.RandomState()
+
     for ibootstrap in range(nbootstrap):
         if type == 'classic':
             ii = rstate.randint(0, ntargets, size=ntargets)
@@ -242,7 +246,6 @@ def make_bootstrap_weights(nbootstrap, ntargets, type='bayesian', seed=None):
             ws[ibootstrap, :] = g * ntargets
         else:
             assert False
-
     return ws
 
 
@@ -283,12 +286,13 @@ class Chains(object):
 
             self.chains_m[:, self.nlinks] = gbms
             self.chains_i[:, self.nlinks] = n-1
+            nbootstrap = self.chains_m.shape[0]
 
             self.nlinks += 1
             chains_m = self.chains_m
             chains_i = self.chains_i
 
-            for ichain in range(chains_m.shape[0]):
+            for ichain in range(nbootstrap):
                 isort = num.argsort(chains_m[ichain, :self.nlinks])
                 chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
@@ -368,22 +372,39 @@ class HighScoreOptimiser(Optimiser):
 
     def __init__(self, **kwargs):
         Optimiser.__init__(self, **kwargs)
-        self._bootstrap_weights = {}
+        self._bootstrap_weights = None
         self._status_chains = None
 
+    def init_bootstrap_weights(self, problem):
+        logger.info('Initializing Bayesian bootstrap weights')
+        rstate = num.random.RandomState(self.bootstrap_seed)
+
+        targets = [t for t in problem.targets
+                   if t.enable_bayesian_bootstraps]
+        ntargets = len(targets)
+
+        ws = make_bootstrap_weights(
+            self.nbootstrap,
+            ntargets=ntargets,
+            rstate=rstate)
+        for it, t in enumerate(targets):
+            t.set_bootstrap_weights(ws[:, it])
+
     def get_bootstrap_weights(self, problem):
-        k = (problem,
-             self.nbootstrap,
-             self.bootstrap_type,
-             self.bootstrap_seed)
+        if self._bootstrap_weights is None:
+            self.init_bootstrap_weights(problem)
+            self._bootstrap_weights = num.vstack(
+                [t.get_bootstrap_weights()
+                 for t in problem.targets]).T
 
-        if k not in self._bootstrap_weights:
-            self._bootstrap_weights[k] = make_bootstrap_weights(
-                self.nbootstrap, problem.ntargets,
-                type=self.bootstrap_type,
-                seed=self.bootstrap_seed)
-
-        return self._bootstrap_weights[k]
+        # testing
+        num.testing.assert_array_equal(
+            self._bootstrap_weights,
+            make_bootstrap_weights(
+                self.nbootstrap,
+                ntargets=problem.ntargets,
+                rstate=num.random.RandomState(self.bootstrap_seed)))
+        return self._bootstrap_weights
 
     def bootstrap_misfits(self, problem, misfits, ibootstrap):
         bweights = self.get_bootstrap_weights(problem)

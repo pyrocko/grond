@@ -96,7 +96,8 @@ class SatelliteTargetGroup(TargetGroup):
                 store_id=self.store_id,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                misfit_config=self.misfit_config)
+                misfit_config=self.misfit_config,
+                enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
 
             sat_target.set_dataset(ds)
             targets.append(sat_target)
@@ -195,7 +196,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return result
 
     def get_combined_weight(self):
-        return num.array([self.manual_weight], dtype=num.float)
+        if self._combined_weight is None:
+            self._combined_weight = num.array([self.manual_weight],
+                                              dtype=num.float)
+        return self._combined_weight
 
     def prepare_modelling(self, engine, source, targets):
         return [self]
@@ -203,6 +207,20 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
         return modelling_results[0]
+
+    def init_bootstrap(self, nbootstraps, rstate=None):
+        logger.info('Bootstrapping noise pertubation...')
+        if rstate is None:
+            rstate = num.random.RandomState()
+
+        qt = self.scene.quadtree
+        cov = self.scene.covariance
+        bootstraps = num.empty((nbootstraps, qt.nleaves))
+
+        for ibs in range(nbootstraps):
+            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
+
+        return bootstraps
 
     @classmethod
     def get_plot_classes(cls):

@@ -212,7 +212,7 @@ class Problem(Object):
                 if isinstance(t, WaveformMisfitTarget)]
 
     @property
-    def has_statics(self):
+    def has_satellite(self):
         if self.satellite_targets:
             return True
         return False
@@ -246,7 +246,6 @@ class Problem(Object):
                 xs, self.dependants[i-self.nparameters].name)
 
     def get_target_weights(self):
-
         if self._target_weights is None:
             self._target_weights = num.concatenate(
                 [target.get_combined_weight()
@@ -326,6 +325,13 @@ class Problem(Object):
         else:
             self.raise_invalid_norm_exponent()
 
+    def bootstrapped_misfits(self, misfits):
+        res = []
+        for it, t in enumerate(self.targets):
+            res.append(t.bootstrapped_misfit(misfits[it]))
+
+        return num.array(res)
+
     def combine_misfits(
             self, misfits,
             extra_weights=None,
@@ -338,7 +344,6 @@ class Problem(Object):
             return self.combine_misfits(
                 misfits, extra_weights,
                 get_contributions=get_contributions)[0, ...]
-
         assert misfits.ndim == 3
         assert extra_weights is None or extra_weights.ndim == 2
 
@@ -373,11 +378,13 @@ class Problem(Object):
 
     def make_family_mask(self):
         family_names = set()
-        families = num.zeros(len(self.targets), dtype=num.int)
+        families = num.zeros(self.nmisfits, dtype=num.int)
 
+        idx = 0
         for itarget, target in enumerate(self.targets):
             family_names.add(target.normalisation_family)
-            families[itarget] = len(family_names) - 1
+            families[idx:idx + target.nmisfits] = len(family_names) - 1
+            idx += target.nmisfits
 
         return families, len(family_names)
 
@@ -448,9 +455,9 @@ class Problem(Object):
 
     def misfits(self, x, mask=None):
         results = self.evaluate(x, mask=mask, result_mode='sparse')
+        misfits = num.full((self.nmisfits, 2), num.nan)
+
         imisfit = 0
-        misfits = num.zeros((self.nmisfits, 2))
-        misfits.fill(None)
         for target, result in zip(self.targets, results):
             if isinstance(result, MisfitResult):
                 misfits[imisfit:imisfit+target.nmisfits, :] = result.misfits
@@ -458,6 +465,19 @@ class Problem(Object):
             imisfit += target.nmisfits
 
         return misfits
+
+    def bootstrap_misfits(self, x, extra_weights=None, mask=None):
+        results = self.evaluate(x, mask=mask, result_mode='sparse')
+        misfits = num.full((self.nmisfits, 2), num.nan)
+
+        imisfit = 0
+        for target, result in zip(self.targets, results):
+            if isinstance(result, MisfitResult):
+                misfits[imisfit:imisfit+target.nmisfits, :] = result.misfits
+
+            imisfit += target.nmisfits
+
+        return self.combine_misfits(misfits, extra_weights)
 
     def forward(self, x):
         source = self.get_source(x)
@@ -583,12 +603,12 @@ class ModelHistory(object):
     @nmodels_capacity.setter
     def nmodels_capacity(self, nmodels_capacity_new):
         if self.nmodels_capacity != nmodels_capacity_new:
+
             models_buffer = num.zeros(
                 (nmodels_capacity_new, self.problem.nparameters),
                 dtype=num.float)
-
             misfits_buffer = num.zeros(
-                (nmodels_capacity_new, self.problem.ntargets, 2),
+                (nmodels_capacity_new, self.problem.nmisfits, 2),
                 dtype=num.float)
 
             ncopy = min(self.nmodels, nmodels_capacity_new)
@@ -680,7 +700,7 @@ def get_nmodels(dirname, problem):
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
-        nmodels2 = os.fstat(f.fileno()).st_size // (problem.ntargets * 2 * 8)
+        nmodels2 = os.fstat(f.fileno()).st_size // (problem.nmisfits * 2 * 8)
 
     return min(nmodels1, nmodels2)
 
@@ -723,13 +743,13 @@ def load_problem_data(dirname, problem, nmodels_skip=0):
 
         fn = op.join(dirname, 'misfits')
         with open(fn, 'r') as f:
-            f.seek(nmodels_skip * problem.ntargets * 2 * 8)
+            f.seek(nmodels_skip * problem.nmisfits * 2 * 8)
             misfits = num.fromfile(
                     f, dtype='<f8',
-                    count=nmodels*problem.ntargets*2)\
+                    count=nmodels*problem.nmisfits*2)\
                 .astype(num.float)
 
-        misfits = misfits.reshape((nmodels, problem.ntargets, 2))
+        misfits = misfits.reshape((nmodels, problem.nmisfits, 2))
 
     except OSError as e:
         logger.debug(str(e))
