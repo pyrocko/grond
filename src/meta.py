@@ -37,7 +37,7 @@ def xrelpath(path, start):
 
 def ordersort(x):
     isort = num.argsort(x)
-    iorder = num.empty(isort.size)
+    iorder = num.empty(isort.size, dtype=num.int)
     iorder[isort] = num.arange(isort.size)
     return iorder
 

@@ -100,7 +100,10 @@ class PhaseRatioTargetGroup(TargetGroup):
 
 
 class PhaseRatioResult(MisfitResult):
-    pass
+    a_obs = Float.T(optional=True)
+    b_obs = Float.T(optional=True)
+    a_syn = Float.T(optional=True)
+    b_syn = Float.T(optional=True)
 
 
 class PhaseRatioTarget(gf.Location, MisfitTarget):
@@ -123,8 +126,15 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
         gf.Location.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
 
+    @classmethod
+    def get_plot_classes(cls):
+        from . import plot
+        plots = super(PhaseRatioTarget, cls).get_plot_classes()
+        plots.extend(plot.get_plot_classes())
+        return plots
+
     def string_id(self):
-        return '.'.join(x for x in (self.path,) + self.codes if x)
+        return '.'.join(x for x in (self.path,) + self.codes)
 
     def get_plain_targets(self, engine, source):
         return self.prepare_modelling(engine, source, None)
@@ -172,7 +182,11 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
             norm = 1.0
 
             result = PhaseRatioResult(
-                misfits=num.array([[misfit, norm]], dtype=num.float))
+                misfits=num.array([[misfit, norm]], dtype=num.float),
+                a_obs=a_obs,
+                b_obs=b_obs,
+                a_syn=a_syn,
+                b_syn=b_syn)
 
             return result
 
