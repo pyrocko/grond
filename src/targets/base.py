@@ -25,9 +25,14 @@ class TargetGroup(Object):
     weight = Float.T(
         default=1.0,
         help='Additional manual weight of the target group')
+    enable_bayesian_bootstraps = Bool.T(
+        default=True,
+        optional=True,
+        help='Enable Bayesian bootstrapping.')
 
     def get_targets(self, ds, event, default_path):
-        raise NotImplementedError()
+        if not self._targets:
+            raise NotImplementedError()
 
 
 class MisfitResult(Object):
@@ -48,7 +53,7 @@ class MisfitTarget(Object):
     analyser_results = Dict.T(
         gf.StringID.T(),
         AnalyserResult.T(),
-        help='Analysers put their results here')
+        help='Dictionary of analyser results')
     normalisation_family = gf.StringID.T(
         optional=True,
         help='Normalisation family of this misfit target')
@@ -57,6 +62,10 @@ class MisfitTarget(Object):
     misfit_config = MisfitConfig.T(
         default=MisfitConfig.D(),
         help='Misfit configuration')
+    enable_bayesian_bootstraps = Bool.T(
+        default=True,
+        optional=True,
+        help='Enable Bayesian bootstrapping.')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -67,6 +76,9 @@ class MisfitTarget(Object):
 
         self._target_parameters = None
         self._target_ranges = None
+
+        self._bootstrap_weights = None
+        self._combined_weight = None
 
     @classmethod
     def get_plot_classes(cls):
@@ -111,7 +123,20 @@ class MisfitTarget(Object):
         raise NotImplementedError()
 
     def get_combined_weight(self):
-        return num.ones(1, dtype=num.float)
+        if self._combined_weight is None:
+            self._combined_weight = num.ones(1, dtype=num.float)
+        return self._combined_weight
+
+    def set_bootstrap_weights(self, weights):
+        self._bootstrap_weights = weights
+
+    def get_bootstrap_weights(self):
+        if self._bootstrap_weights is None:
+            raise Exception('Bootstrap weights have not been set!')
+        return self._bootstrap_weights
+
+    def bootstrap_misfits(self, misfit):
+        return misfit * self._bootstrap_weights
 
     def prepare_modelling(self, engine, source, targets):
         return []

@@ -46,7 +46,8 @@ class WaveformOverallAmplitudeConstraint(TargetGroup):
         target = WOACTarget(
             path=self.path,
             norm_exponent=self.norm_exponent,
-            associated_path=self.associated_path)
+            associated_path=self.associated_path,
+            enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
 
         return [target]
 
