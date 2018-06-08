@@ -5,22 +5,25 @@ TODO: (general) this section should be as self-contained as possible, describe
 the method in general - give references to other sections how things are
 implemented in Grond.
 
-The very core of the optimisation is the evaluation of a misfit between 
-observed and predicted data. This is most often the difference  
-:math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be another comparison,
-like a correlation measure for examples.
+The very core of any optimisation is the evaluation of a misfit value between
+observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`, This
+is most often based on the difference  :math:`{\bf d}_{obs} - {\bf d}_{synth}`,
+but can also be any other comparison, like a correlation measure for example.
 
 This sheet describes the method on:
 
-1. what exactly are the observed data :math:`{\bf d}_{obs}` and the synthetic 
+1. what exactly are the observed :math:`{\bf d}_{obs}` and the synthetic 
    data :math:`{\bf d}_{synth}`
-2. how handles Grond the differences between :math:`{\bf d}_{obs}` and
+2. how does Grond handle the differences between :math:`{\bf d}_{obs}` and
    :math:`{\bf d}_{synth}` 
    with respect to defining the objective functions through misfits and data
    weighting,
 3. how the optimisation is set up to search the model space to find the 
    optimum models and 
 4. which methods are used to estimate model uncertainties.
+
+
+TODO: move the following into objective function design section?
 
 `Observed data` here means full waveforms that are tapered to the defined 
 phases, restituted and filtered. `Synthetic waveforms` are the forward-
@@ -65,17 +68,16 @@ the objective functions defined in Grond that determine the ...
 Forward modelling with pre-calculated Green's functions
 -------------------------------------------------------
 
-The forward modelling of raw synthetic data  :math:`{\bf d}_{raw, synth}` for 
-earthquake source models requires the calculation of the Green's functions
-(GF) between all source points and 
-receiver positions based on a medium model. In the general source problem, 
-the positions of the sources change during the optimisation because the 
-misfit is calculated for many different source receiver configurations. 
-The calculation of the GFs for each specific source-receiver 
-pair would be a significant part of the computational effort in the 
-optimisation and make is rather slow.
-Therefore, in Grond pre-calculated GFs, stored in a database called 'GF store`,
-are used that have been created with the `Pyrocko fomosto module`_. 
+The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for
+earthquake source models requires the calculation of the Green's function (GF)
+between all source points and receiver positions involved, based on a medium
+model. In the general source problem, the positions of the sources change
+during the optimisation because the misfit is calculated for many different
+source receiver configurations. The calculation of the GFs for each specific
+source-receiver pair is computationally demanding and would be a significant
+contribution to the total computational cost of an optimisation. Therefore, in
+Grond pre-calculated GFs, stored in a database called 'GF store`, are used that
+have been created with the `Pyrocko fomosto module`_. 
 
 Generally, we distinguish different types of GF stores (for detail see the 
 `Pyrocko fomosto module`_ documentation). For the options possible in Grond
