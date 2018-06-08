@@ -268,7 +268,7 @@ class Chains(object):
         history.add_listener(self)
 
         self.bootstrap_weights = num.vstack((
-            num.ones((1, self.problem.ntargets)),
+            num.ones((1, self.problem.nmisfits)),
             bootstrap_weights))
 
     def goto(self, n=None):
@@ -381,28 +381,31 @@ class HighScoreOptimiser(Optimiser):
 
         targets = [t for t in problem.targets
                    if t.enable_bayesian_bootstraps]
-        ntargets = len(targets)
 
         ws = make_bootstrap_weights(
             self.nbootstrap,
-            ntargets=ntargets,
+            ntargets=problem.nmisfits,
             rstate=rstate)
+
+        imf = 0
         for it, t in enumerate(targets):
-            t.set_bootstrap_weights(ws[:, it])
+            t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
+            imf += t.nmisfits
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
             self.init_bootstrap_weights(problem)
+
             self._bootstrap_weights = num.vstack(
                 [t.get_bootstrap_weights()
-                 for t in problem.targets]).T
+                 for t in problem.targets])
 
         # testing
         num.testing.assert_array_equal(
             self._bootstrap_weights,
             make_bootstrap_weights(
                 self.nbootstrap,
-                ntargets=problem.ntargets,
+                ntargets=problem.nmisfits,
                 rstate=num.random.RandomState(self.bootstrap_seed)))
         return self._bootstrap_weights
 
