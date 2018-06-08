@@ -536,29 +536,26 @@ Here described is the sampling and in the context of the multiple objective
 functions given by the bootstrapping.
 
 
-
-
 Sampling scheme and sampling phases
 ...................................
 
 Like in any `direct search` optimisation models are drawn from the model space.
-Here we form from all visited and evaluated models a so-called `highscore` 
-list. 
+From all visited and evaluated models we form and keep a so-called `highscore` 
+list. The sampling is set up to progressively converge to the low-misfit 
+regions efficiently.
+However, for multi-modal model parameters distributions an 
+efficient sampling can loose sight of multiple minima with significantly
+low misfits. In Grond we can use measures to nurse these multiples.   
 
 **highscore list**: 
     This list contains a defined number of the current best (lowest misfit)
-    models. It is continuously updated. The ``highscore`` list length 
-    :math:`L_{hs}` (number of member models) is `problem`_ dependend. It 
-    is 
+    models. It is continuously updated. The `highscore` list length 
+    :math:`L_{hs}` (i.e. number of member models) is `problem`_ dependend:
     :math:`L_{hs} = f_{\mathrm{len}} \cdot (N_{\mathrm{par}} -1)`, 
     with
     :math:`N_{\mathrm{par}}` being the number of model paramters.
-    
-    
-    A configurable
-    ``chain_length_factor`` (default is 8) times the number of model
-    parameters length 
-
+    :math:`f_{\mathrm{len}}` is configurable
+    (``chain_length_factor``, default is 8).
 
 There are three sampling phases defined, based on which models are drawn from
 the model space:
@@ -578,7 +575,8 @@ the model space:
     
     
 **UniformSamplerPhase**:
-    This is a starting sampler phase of the optimisation. Models are drawn 
+    This is a starting sampler phase of the optimisation. A configurable number
+    of models are drawn 
     randomly from the entire model space based on a uniform distribution.
 
 **InjectionSamplerPhase**:
@@ -588,16 +586,63 @@ the model space:
     stem from a previous optimisation.
 
 **DirectedSamplerPhase**: 
-    This sampling phase follows any starting phase. From the distribution of
-    existing low-misfit models this phase draws new models. Like this 
-    convergence to low-misfit regions is enabled. There are quite some 
-    noteworthy details.
+    This sampler phase follows any starting phase. Using the positions and/or
+    the distribution of the
+    current `highscore` models the `directed` sampler draws a configurable 
+    number of new models. 
+    Like this convergence to low-misfit regions is enabled. There are quite 
+    some noteworthy details to this sampler phase.
     
-    Low misfit models 
+    **sampling distributions**: For drawing new models normal distributions
+    are used. The standard deviations for the sampler are derived from the 
+    `highscore` model parameter standard deviations by using a configurable 
+    value (`scatter scale`, see below). Optionally, the covariance of model parameter 
+    distributions is
+    taken into account by configuring a ``multivariate_normal`` sampler
+    distribtion instead of a ``normal`` sampler distribution. 
+    The center points for the sampling distribution is configurable to be 
+    the ``mean`` of the `highscore`` model parameter distributions, 
+    to a ``random`` model of the `highscore` models or an 
+    ``excentricity_compensated`` draw (see below). 
     
-    `directed sampling`: The directed sampling considers the 
-    
+    **scatter scale**: This scale defines the search radius around the current
+    `highscore` models. With a scatter scale of 2 the search for new models
+    has a distribution with twice the standard deviation as estimated for the 
+    current `highscore` models. It is possible to define a beginning scatter
+    scale and an ending scatter scale. When defining a larger value for the 
+    beginning scatter scale and a smaller value for the ending scatter scale,
+    during the progressing optimisation, the search gets more and more 
+    confined. In other words, the sampling evolves from being more explorative 
+    to being more exploitive.
 
+    **excentricity compensation**: This method applies to the center value of 
+    the sampler distribution. Taking this option, the center point of the 
+    sampler distribution is with an increased likelihood a `highscore` member 
+    model off-center to the `highscore` model mean value compared to a random
+    choice. The probability of drawing a model from the 
+    `highscore` list is derived from distances the `highscore` models have
+    to other `highscore` models in the model parameter space. 
+    Excentricity is therefore compensated, because models with few neighbours 
+    at larger distances have an increased likelihood to be drawn. 
+    
+    What's the use? Convergence is slowed down, yes, but to the benefit of 
+    low-misfit region represented by only a few models drawn up 
+    to the current point. 
+    
+    Let's say there are two separated groups of 
+    low-misfit models in our `highscore` list, with one group forming the 75%
+    majority. 
+    In the directed sampler phase the choices of a mean center point
+    for the distribution as well as a random starting point for the sampler 
+    distribution would favour new samples in the region of the 
+    `highscore` model majority. Models in the low-misfit region may be dying
+    out in the `highscore` list due to favorism and related sparse sampling.
+    `excentricity compensations` can help is these cases and keep models with 
+    not significantly higher misfits in the game and in sight.
+    
+    TODO: correct? too much explaination? Sebastian,
+    here is the perfect place for one of your movies.
+ 
 
 Bootstrap chains
 ................
