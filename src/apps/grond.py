@@ -266,7 +266,7 @@ def command_scenario(args):
             help='forward modelling targets for the scenario. Select from:'
                  ' waveforms, gnss and insar. '
                  '(default: --targets=%default,'
-                 ' multiple selection by --targets=waveform,gnss,insar)')
+                 ' multiple selection by --targets=waveforms,gnss,insar)')
         parser.add_option(
             '--problem', dest='problem', type=str, default='dc',
             help='problem to generate: \'dc\' (double couple)'
