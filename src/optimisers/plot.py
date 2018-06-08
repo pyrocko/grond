@@ -327,9 +327,16 @@ class ContributionsPlot(PlotConfig):
         b /= num.sum(b)
         a = [1]
         ii = 0
-        for itarget in jsort:
-            target = problem.targets[itarget]
-            ms = gcms[:, itarget]
+
+        target_idx = [str(it)*t.nmisfits
+                      for it, t in enumerate(problem.targets)]
+        target_idx = num.fromiter(map(float, ''.join(target_idx)),
+                                  dtype=int)
+
+        for idx in jsort:
+            target = problem.targets[target_idx[idx]]
+            ms = gcms[:, idx]
+
             ms = num.where(num.isfinite(ms), ms, 0.0)
             if num.all(ms == 0.0):
                 continue
