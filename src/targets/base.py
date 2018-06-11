@@ -25,10 +25,6 @@ class TargetGroup(Object):
     weight = Float.T(
         default=1.0,
         help='Additional manual weight of the target group')
-    enable_bayesian_bootstraps = Bool.T(
-        default=True,
-        optional=True,
-        help='Enable Bayesian bootstrapping.')
 
     def get_targets(self, ds, event, default_path):
         if not self._targets:
@@ -62,10 +58,8 @@ class MisfitTarget(Object):
     misfit_config = MisfitConfig.T(
         default=MisfitConfig.D(),
         help='Misfit configuration')
-    enable_bayesian_bootstraps = Bool.T(
-        default=True,
-        optional=True,
-        help='Enable Bayesian bootstrapping.')
+
+    is_bayesian_bootstrapable = False
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)

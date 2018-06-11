@@ -380,7 +380,7 @@ class HighScoreOptimiser(Optimiser):
         rstate = num.random.RandomState(self.bootstrap_seed)
 
         targets = [t for t in problem.targets
-                   if t.enable_bayesian_bootstraps]
+                   if t.is_bayesian_bootstrapable]
 
         ws = make_bootstrap_weights(
             self.nbootstrap,
@@ -396,7 +396,7 @@ class HighScoreOptimiser(Optimiser):
         if self._bootstrap_weights is None:
             self.init_bootstrap_weights(problem)
 
-            self._bootstrap_weights = num.vstack(
+            self._bootstrap_weights = num.hstack(
                 [t.get_bootstrap_weights()
                  for t in problem.targets])
 
