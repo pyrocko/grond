@@ -71,8 +71,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
                 store_id=self.store_id,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                misfit_config=self.misfit_config,
-                enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
+                misfit_config=self.misfit_config)
 
             gnss_target.set_dataset(ds)
             targets.append(gnss_target)
@@ -88,6 +87,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     """
     campaign_name = String.T()
     misfit_config = GNSSCampaignMisfitConfig.T()
+
+    is_bayesian_bootstrapable = True
 
     def __init__(self, **kwargs):
         gf.GNSSCampaignTarget.__init__(self, **kwargs)
