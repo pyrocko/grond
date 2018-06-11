@@ -132,8 +132,7 @@ class WaveformTargetGroup(TargetGroup):
                     misfit_config=self.misfit_config,
                     manual_weight=self.weight,
                     normalisation_family=self.normalisation_family,
-                    path=self.path or default_path,
-                    enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
+                    path=self.path or default_path)
 
                 if ds.is_blacklisted((st.nsl() + (cha,))):
                     log_exclude(target, 'blacklisted')
@@ -256,6 +255,8 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()
+
+    is_bayesian_bootstrapable = True
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)

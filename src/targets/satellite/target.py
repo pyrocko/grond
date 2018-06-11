@@ -96,8 +96,7 @@ class SatelliteTargetGroup(TargetGroup):
                 store_id=self.store_id,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                misfit_config=self.misfit_config,
-                enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
+                misfit_config=self.misfit_config)
 
             sat_target.set_dataset(ds)
             targets.append(sat_target)
@@ -127,6 +126,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
              ' Corresponds to Kite scene_id.')
     misfit_config = SatelliteMisfitConfig.T(
         help='Configuration of the ``SatelliteTarget``')
+
+    is_bayesian_bootstrapable = False
 
     available_parameters = [
         Parameter('offset', 'm'),

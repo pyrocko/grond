@@ -55,8 +55,7 @@ class PhaseRatioTargetGroup(TargetGroup):
                 manual_weight=self.weight,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                backazimuth=0.0,
-                enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
+                backazimuth=0.0)
 
             if blacklisted:
                 log_exclude(target, 'blacklisted')
@@ -122,6 +121,8 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
 
     measure_a = fm.FeatureMeasure.T()
     measure_b = fm.FeatureMeasure.T()
+
+    is_bayesian_bootstrapable = True
 
     def __init__(self, **kwargs):
         gf.Location.__init__(self, **kwargs)
