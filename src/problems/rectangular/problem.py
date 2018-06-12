@@ -58,6 +58,10 @@ class RectangularProblem(Problem):
         Parameter('strike', 'deg', label='Strike'),
         Parameter('dip', 'deg', label='Dip'),
         Parameter('rake', 'deg', label='Rake'),
+        Parameter('gaussian_cutoff', 'perc', label='Gaussian Cutoff'),
+        Parameter('rupture_plane_rake', 'deg', label='Rupture Plane Rake'),
+        Parameter('depth_min', 'm', label='Depth min', **as_km),
+        Parameter('depth_max', 'm', label='Depth max', **as_km),
         ]
 
     problem_waveform_parameters = [
