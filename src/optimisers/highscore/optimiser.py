@@ -227,7 +227,8 @@ class DirectedSamplerPhase(SamplerPhase):
         return x
 
 
-def make_bootstrap_weights(nbootstrap, ntargets, type='bayesian', rstate=None):
+def make_bayesian_weights(
+        nbootstrap, ntargets, type='bayesian', rstate=None):
     ws = num.zeros((nbootstrap, ntargets))
     if rstate is None:
         rstate = num.random.RandomState()
@@ -374,40 +375,67 @@ class HighScoreOptimiser(Optimiser):
         Optimiser.__init__(self, **kwargs)
         self._bootstrap_weights = None
         self._status_chains = None
+        self.rstate = num.RandomState(self.bootstrap_seed)
 
-    def init_bootstrap_weights(self, problem):
+    def init_bootstraps(self, problem):
+        self.init_bayesian_bootstraps(problem)
+
+    def init_bayesian_bootstraps(self, problem):
         logger.info('Initializing Bayesian bootstrap weights')
-        rstate = num.random.RandomState(self.bootstrap_seed)
+        bootstrap_targets = set([t for t in problem.targets
+                                 if t.is_bayesian_bootstrapable])
 
-        targets = [t for t in problem.targets
-                   if t.is_bayesian_bootstrapable]
-
-        ws = make_bootstrap_weights(
+        ws = make_bayesian_weights(
             self.nbootstrap,
             ntargets=problem.nmisfits,
-            rstate=rstate)
+            rstate=self.rstate)
 
         imf = 0
-        for it, t in enumerate(targets):
-            t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
+        for it, t in enumerate(bootstrap_targets):
+            t.set_bayesian_weights(ws[:, imf:imf+t.nmisfits])
             imf += t.nmisfits
+
+        for t in set(problem.target) - bootstrap_targets:
+            t.set_bayesian_weights(
+                num.ones((self.nbootstrap, t.nmisfits)))
+
+    def init_residual_bootstraps(self, problem):
+        bootstrap_targets = set([t for t in problem.targets
+                                 if t.has_bayesian_residuals])
+
+        for t in bootstrap_targets:
+            t.init_residual_bootstraps(self.rstate, self.nbootstrap)
+
+        for t in set(problem.targets) - bootstrap_targets:
+            t.set_bayesian_residuals(num.ones((self.nbootstrap, t.nmisfits)))
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
-            self.init_bootstrap_weights(problem)
+            self.init_bootstrap(problem)
 
             self._bootstrap_weights = num.hstack(
-                [t.get_bootstrap_weights()
+                [t.get_bayesian_weights()
                  for t in problem.targets])
 
         # testing
         num.testing.assert_array_equal(
-            self._bootstrap_weights,
-            make_bootstrap_weights(
+            make_bayesian_weights(
                 self.nbootstrap,
                 ntargets=problem.nmisfits,
-                rstate=num.random.RandomState(self.bootstrap_seed)))
+                rstate=num.random.RandomState(self.bootstrap_seed)),
+            self._bootstrap_weights)
+
         return self._bootstrap_weights
+
+    def get_bootstrap_residuals(self, problem):
+        if self._bootstrap_residuals is None:
+            self.init_bootstraps(problem)
+
+            self._bootstrap_residuals = num.hstack(
+                [t.get_bayesian_residuals()
+                 for t in problem.targets])
+
+        return self._bootstrap_residuals
 
     def bootstrap_misfits(self, problem, misfits, ibootstrap):
         bweights = self.get_bootstrap_weights(problem)
