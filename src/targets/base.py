@@ -60,6 +60,7 @@ class MisfitTarget(Object):
         help='Misfit configuration')
 
     is_bayesian_bootstrapable = False
+    has_bayesian_residuals = False
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -72,6 +73,7 @@ class MisfitTarget(Object):
         self._target_ranges = None
 
         self._bootstrap_weights = None
+        self._bootstrap_residuals = None
         self._combined_weight = None
 
     @classmethod
@@ -121,16 +123,24 @@ class MisfitTarget(Object):
             self._combined_weight = num.ones(1, dtype=num.float)
         return self._combined_weight
 
-    def set_bootstrap_weights(self, weights):
+    def set_bayesian_weights(self, weights):
         self._bootstrap_weights = weights
 
-    def get_bootstrap_weights(self):
+    def get_bayesian_weights(self):
         if self._bootstrap_weights is None:
             raise Exception('Bootstrap weights have not been set!')
         return self._bootstrap_weights
 
-    def bootstrap_misfits(self, misfit):
-        return misfit * self._bootstrap_weights
+    def set_bayesian_residuals(self, residuals):
+        self._bootstrap_residuals = residuals
+
+    def get_bayesian_residuals(self):
+        if self._bootstrap_residuals is None:
+            raise Exception('Bootstrap weights have not been set!')
+        return self._bootstrap_residuals
+
+    # def bootstrap_misfits(self, misfit):
+    #     return misfit * self._bootstrap_weights
 
     def prepare_modelling(self, engine, source, targets):
         return []
