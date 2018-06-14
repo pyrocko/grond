@@ -2,7 +2,7 @@ import logging
 
 import numpy as num
 
-from pyrocko.guts import Float, Tuple, String
+from pyrocko.guts import Float, Tuple, String, Bool
 from pyrocko import gf
 
 from ..base import (
@@ -20,6 +20,18 @@ def log_exclude(target, reason):
 
 
 class PhaseRatioTargetGroup(TargetGroup):
+
+    '''
+    Generate targets to compare ratios or log ratios of two seismic phases.
+
+      misfit = | a_obs / (a_obs + b_obs)  - a_syn / (a_syn + b_syn) |
+
+    or
+
+      misfit = | log(a_obs / (a_obs + b_obs) + waterlevel)  -
+                 log(a_syn / (a_syn + b_syn) + waterlevel) |
+    '''
+
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
     distance_3d_min = Float.T(optional=True)
@@ -30,6 +42,15 @@ class PhaseRatioTargetGroup(TargetGroup):
     measure_b = fm.FeatureMeasure.T()
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T(optional=True)
+
+    fit_log_ratio = Bool.T(
+        default=True,
+        help='if true, compare synthetic and observed log ratios')
+
+    fit_log_ratio_waterlevel = Float.T(
+        default=0.01,
+        help='waterlevel added to both ratios when comparing on logarithmic '
+             'scale, to avoid log(0)')
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting phase ratio targets...')
@@ -55,7 +76,9 @@ class PhaseRatioTargetGroup(TargetGroup):
                 manual_weight=self.weight,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                backazimuth=0.0)
+                backazimuth=0.0,
+                fit_log_ratio=self.fit_log_ratio,
+                fit_log_ratio_waterlevel=self.fit_log_ratio_waterlevel)
 
             if blacklisted:
                 log_exclude(target, 'blacklisted')
@@ -108,6 +131,13 @@ class PhaseRatioResult(MisfitResult):
 
 class PhaseRatioTarget(gf.Location, MisfitTarget):
 
+    '''
+    Target to compare ratios or log ratios of two seismic phases.
+
+      misfit = | a_obs / (a_obs + b_obs)  - a_syn / (a_syn + b_syn) |
+
+    '''
+
     codes = Tuple.T(
         3, String.T(),
         help='network, station, location codes.')
@@ -121,6 +151,15 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
 
     measure_a = fm.FeatureMeasure.T()
     measure_b = fm.FeatureMeasure.T()
+
+    fit_log_ratio = Bool.T(
+        default=True,
+        help='if true, compare synthetic and observed log ratios')
+
+    fit_log_ratio_waterlevel = Float.T(
+        default=0.01,
+        help='waterlevel added to both ratios when comparing on logarithmic '
+             'scale, to avoid log(0)')
 
     def __init__(self, **kwargs):
         gf.Location.__init__(self, **kwargs)
@@ -176,7 +215,12 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
 
             (a_obs, a_syn), (b_obs, b_syn) = amps
 
-            res_a = a_obs / (a_obs + b_obs) - a_syn / (a_syn + b_syn)
+            eps = self.fit_log_ratio_waterlevel
+            if self.fit_log_ratio:
+                res_a = num.log(a_obs / (a_obs + b_obs) + eps) \
+                    - num.log(a_syn / (a_syn + b_syn) + eps)
+            else:
+                res_a = a_obs / (a_obs + b_obs) - a_syn / (a_syn + b_syn)
 
             misfit = num.abs(res_a)
             norm = 1.0
