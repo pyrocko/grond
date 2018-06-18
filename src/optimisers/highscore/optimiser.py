@@ -253,7 +253,7 @@ def make_bayesian_weights(
 class Chains(object):
     def __init__(
             self, problem, history, nchains, nlinks_cap,
-            bootstrap_weights):
+            bootstrap_weights, bootstrap_residuals=None):
 
         self.problem = problem
         self.history = history
@@ -271,6 +271,9 @@ class Chains(object):
         self.bootstrap_weights = num.vstack((
             num.ones((1, self.problem.nmisfits)),
             bootstrap_weights))
+        self.bootstrap_residuals = num.vstack((
+            num.zeros((1, self.problem.nmisfits)),
+            bootstrap_residuals))
 
     def goto(self, n=None):
         if n is None:
@@ -283,7 +286,7 @@ class Chains(object):
         while self.nread < n:
             misfits = self.history.misfits[self.nread, :]
             gbms = self.problem.combine_misfits(
-                misfits, self.bootstrap_weights)
+                misfits, self.bootstrap_weights, self.bootstrap_residuals)
 
             self.chains_m[:, self.nlinks] = gbms
             self.chains_i[:, self.nlinks] = n-1
@@ -374,6 +377,7 @@ class HighScoreOptimiser(Optimiser):
     def __init__(self, **kwargs):
         Optimiser.__init__(self, **kwargs)
         self._bootstrap_weights = None
+        self._bootstrap_residuals = None
         self._status_chains = None
         self.rstate = num.random.RandomState(self.bootstrap_seed)
 
@@ -401,6 +405,7 @@ class HighScoreOptimiser(Optimiser):
                 num.ones((self.nbootstrap, t.nmisfits)))
 
     def init_bootstrap_residuals(self, problem):
+        logger.info('Initializing Bayesian bootstrap residuals')
         residual_targets = set([t for t in problem.targets
                                 if t.can_bootstrap_residuals])
 
@@ -446,13 +451,15 @@ class HighScoreOptimiser(Optimiser):
 
     def chains(self, problem, history):
         bootstrap_weights = self.get_bootstrap_weights(problem)
+        bootstrap_residuals = self.get_bootstrap_residuals(problem)
 
         nlinks_cap = int(round(
             self.chain_length_factor * problem.nparameters + 1))
 
         return Chains(
             problem, history, self.nbootstrap+1, nlinks_cap,
-            bootstrap_weights=bootstrap_weights)
+            bootstrap_weights=bootstrap_weights,
+            bootstrap_residuals=bootstrap_residuals)
 
     def get_sampler_phase(self, iiter):
         niter = 0

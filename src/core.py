@@ -508,6 +508,8 @@ def process_event(ievent, g_data_id):
     guts.dump(config, filename=op.join(rundir, 'config.yaml'))
     config.change_basepath(basepath)
 
+    optimiser = config.optimiser_config.get_optimiser()
+    optimiser.init_bootstraps(problem)
     problem.dump_problem_info(rundir)
 
     monitor = None
@@ -520,7 +522,6 @@ def process_event(ievent, g_data_id):
         xs_inject = synt.get_x()[num.newaxis, :]
 
     try:
-        optimiser = config.optimiser_config.get_optimiser()
         if xs_inject is not None:
             from .optimisers import highscore
             if not isinstance(optimiser, highscore.HighScoreOptimiser):

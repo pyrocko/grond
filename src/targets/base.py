@@ -59,12 +59,12 @@ class MisfitTarget(Object):
         default=MisfitConfig.D(),
         help='Misfit configuration')
     bootstrap_weights = Array.T(
-        shape=(None, None),
-        dtype='<f8',
+        dtype=num.float,
+        serialize_as='base64',
         optional=True)
     bootstrap_residuals = Array.T(
-        shape=(None, None),
-        dtype='<f8',
+        dtype=num.float,
+        serialize_as='base64',
         optional=True)
 
     can_bootstrap_weights = False
@@ -135,7 +135,8 @@ class MisfitTarget(Object):
     def get_bootstrap_weights(self):
         if self.bootstrap_weights is None:
             raise Exception('Bootstrap weights have not been set!')
-        return self.bootstrap_weights
+        nbootstraps = self.bootstrap_weights.size // self.nmisfits
+        return self.bootstrap_weights.reshape(nbootstraps, self.nmisfits)
 
     def init_bootstrap_residuals(self, nbootstrap, rstate=None):
         raise NotImplementedError
@@ -146,7 +147,8 @@ class MisfitTarget(Object):
     def get_bootstrap_residuals(self):
         if self.bootstrap_residuals is None:
             raise Exception('Bootstrap residuals have not been set!')
-        return self.bootstrap_residuals
+        nbootstraps = self.bootstrap_residuals.size // self.nmisfits
+        return self.bootstrap_residuals.reshape(nbootstraps, self.nmisfits)
 
     def prepare_modelling(self, engine, source, targets):
         return []

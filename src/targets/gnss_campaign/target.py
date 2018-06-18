@@ -195,7 +195,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def get_combined_weight(self):
         """A given manual weight in the configuration is applied."""
         if self._combined_weight is None:
-            self._combined_weight = num.array([self.manual_weight])
+            self._combined_weight = num.full(self.nmisfits, self.manual_weight)
 
         return self._combined_weight
 
