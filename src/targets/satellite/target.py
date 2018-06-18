@@ -192,8 +192,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         print(misfit_value)
 
         result = SatelliteMisfitResult(
-            misfits=num.array([[misfit_value.ravel(), misfit_norm.ravel()]],
-                              dtype=num.float)).T
+            misfits=num.array([misfit_value.ravel(), misfit_norm.ravel()],
+                              dtype=num.float).T)
 
         if self._result_mode == 'full':
             result.statics_syn = statics
@@ -225,8 +225,9 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
-            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
-                * cov.weight_vector
+            bootstraps[ibs, :] = num.ones(self.nmisfits)
+            # bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
+            #     * cov.weight_vector
 
         return bootstraps
 

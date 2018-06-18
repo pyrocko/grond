@@ -367,7 +367,7 @@ class Problem(Object):
 
             return root(
                 num.nansum(exp(w*(misfits[:, num.newaxis, :, 0]+r)), axis=2) /
-                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1]+r)), axis=2))
+                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1])), axis=2))
         else:
             w = self.get_target_weights()[num.newaxis, :] \
                 * self.inter_family_weights2(misfits[:, :, 1])
@@ -470,20 +470,8 @@ class Problem(Object):
 
             imisfit += target.nmisfits
 
+        print(misfits)
         return misfits
-
-    def bootstrap_misfits(self, x, extra_weights=None, mask=None):
-        results = self.evaluate(x, mask=mask, result_mode='sparse')
-        misfits = num.full((self.nmisfits, 2), num.nan)
-
-        imisfit = 0
-        for target, result in zip(self.targets, results):
-            if isinstance(result, MisfitResult):
-                misfits[imisfit:imisfit+target.nmisfits, :] = result.misfits
-
-            imisfit += target.nmisfits
-
-        return self.combine_misfits(misfits, extra_weights)
 
     def forward(self, x):
         source = self.get_source(x)
