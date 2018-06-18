@@ -128,7 +128,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     misfit_config = SatelliteMisfitConfig.T(
         help='Configuration of the ``SatelliteTarget``')
 
-    can_bootstrap_residuals = False
+    can_bootstrap_residuals = True
 
     available_parameters = [
         Parameter('offset', 'm'),
@@ -210,8 +210,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
             self, engine, source, modelling_targets, modelling_results):
         return modelling_results[0]
 
-    def init_bootstrap(self, nbootstraps, rstate=None):
-        logger.info('Bootstrapping noise pertubation...')
+    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+        logger.info('Bootstrapping residuals from noise pertubation...')
         if rstate is None:
             rstate = num.random.RandomState()
 

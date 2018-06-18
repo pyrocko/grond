@@ -129,18 +129,21 @@ class MisfitTarget(Object):
             self._combined_weight = num.ones(1, dtype=num.float)
         return self._combined_weight
 
-    def set_bayesian_weights(self, weights):
+    def set_bootstrap_weights(self, weights):
         self.bootstrap_weights = weights
 
-    def get_bayesian_weights(self):
+    def get_bootstrap_weights(self):
         if self.bootstrap_weights is None:
             raise Exception('Bootstrap weights have not been set!')
         return self.bootstrap_weights
 
-    def set_bayesian_residuals(self, residuals):
+    def init_bootstrap_residuals(self, nbootstrap, rstate=None):
+        raise NotImplementedError
+
+    def set_bootstrap_residuals(self, residuals):
         self.bootstrap_residuals = residuals
 
-    def get_bayesian_residuals(self):
+    def get_bootstrap_residuals(self):
         if self.bootstrap_residuals is None:
             raise Exception('Bootstrap residuals have not been set!')
         return self.bootstrap_residuals
