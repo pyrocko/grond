@@ -256,7 +256,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()
 
-    is_bayesian_bootstrapable = True
+    can_bootstrap_weights = True
 
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)

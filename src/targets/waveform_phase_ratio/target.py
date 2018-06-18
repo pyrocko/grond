@@ -122,7 +122,7 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
     measure_a = fm.FeatureMeasure.T()
     measure_b = fm.FeatureMeasure.T()
 
-    is_bayesian_bootstrapable = True
+    can_bootstrap_weights = True
 
     def __init__(self, **kwargs):
         gf.Location.__init__(self, **kwargs)
