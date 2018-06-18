@@ -148,9 +148,6 @@ class MisfitTarget(Object):
             raise Exception('Bootstrap residuals have not been set!')
         return self.bootstrap_residuals
 
-    # def bootstrap_misfits(self, misfit):
-    #     return misfit * self.bootstrap_weights
-
     def prepare_modelling(self, engine, source, targets):
         return []
 
