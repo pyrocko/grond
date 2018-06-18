@@ -336,26 +336,38 @@ class Problem(Object):
         if misfits.ndim == 2:
             misfits = misfits[num.newaxis, :, :]
             return self.combine_misfits(
-                misfits, extra_weights,
-                get_contributions=get_contributions)[0, ...]
+                misfits,
+                extra_weights,
+                extra_residuals,
+                get_contributions)[0, ...]
+
         assert misfits.ndim == 3
         assert extra_weights is None or extra_weights.ndim == 2
+        assert extra_residuals is None or extra_residuals.ndim == 2
 
-        if extra_weights is not None:
-            w = extra_weights[num.newaxis, :, :] \
-                * self.get_target_weights()[num.newaxis, num.newaxis, :] \
-                * self.inter_family_weights2(
-                    misfits[:, :, 1])[:, num.newaxis, :]
+        if extra_weights is not None or extra_residuals is not None:
+            if extra_weights is not None:
+                w = extra_weights[num.newaxis, :, :] \
+                    * self.get_target_weights()[num.newaxis, num.newaxis, :] \
+                    * self.inter_family_weights2(
+                        misfits[:, :, 1])[:, num.newaxis, :]
+            else:
+                w = 1.0
+
+            if extra_residuals is not None:
+                r = extra_residuals[num.newaxis, :, :]
+            else:
+                r = 0.0
 
             if get_contributions:
-                return exp(w*misfits[:, num.newaxis, :, 0]) \
+                return exp(w*(misfits[:, num.newaxis, :, 0]+r)) \
                     / num.nansum(
                         exp(w*misfits[:, num.newaxis, :, 1]),
                         axis=2)[:, :, num.newaxis]
 
             return root(
-                num.nansum(exp(w*misfits[:, num.newaxis, :, 0]), axis=2) /
-                num.nansum(exp(w*misfits[:, num.newaxis, :, 1]), axis=2))
+                num.nansum(exp(w*(misfits[:, num.newaxis, :, 0]+r)), axis=2) /
+                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1]+r)), axis=2))
         else:
             w = self.get_target_weights()[num.newaxis, :] \
                 * self.inter_family_weights2(misfits[:, :, 1])
