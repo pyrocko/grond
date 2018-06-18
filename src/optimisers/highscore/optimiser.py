@@ -375,7 +375,7 @@ class HighScoreOptimiser(Optimiser):
         Optimiser.__init__(self, **kwargs)
         self._bootstrap_weights = None
         self._status_chains = None
-        self.rstate = num.RandomState(self.bootstrap_seed)
+        self.rstate = num.random.RandomState(self.bootstrap_seed)
 
     def init_bootstraps(self, problem):
         self.init_bayesian_bootstraps(problem)
@@ -383,7 +383,7 @@ class HighScoreOptimiser(Optimiser):
     def init_bayesian_bootstraps(self, problem):
         logger.info('Initializing Bayesian bootstrap weights')
         bootstrap_targets = set([t for t in problem.targets
-                                 if t.is_bayesian_bootstrapable])
+                                 if t.can_bootstrap_weights])
 
         ws = make_bayesian_weights(
             self.nbootstrap,
@@ -395,23 +395,23 @@ class HighScoreOptimiser(Optimiser):
             t.set_bayesian_weights(ws[:, imf:imf+t.nmisfits])
             imf += t.nmisfits
 
-        for t in set(problem.target) - bootstrap_targets:
+        for t in set(problem.targets) - bootstrap_targets:
             t.set_bayesian_weights(
                 num.ones((self.nbootstrap, t.nmisfits)))
 
     def init_residual_bootstraps(self, problem):
-        bootstrap_targets = set([t for t in problem.targets
-                                 if t.has_bayesian_residuals])
+        residual_targets = set([t for t in problem.targets
+                                if t.can_bootstrap_residuals])
 
-        for t in bootstrap_targets:
+        for t in residual_targets:
             t.init_residual_bootstraps(self.rstate, self.nbootstrap)
 
-        for t in set(problem.targets) - bootstrap_targets:
-            t.set_bayesian_residuals(num.ones((self.nbootstrap, t.nmisfits)))
+        for t in set(problem.targets) - residual_targets:
+            t.set_bayesian_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
-            self.init_bootstrap(problem)
+            self.init_bootstraps(problem)
 
             self._bootstrap_weights = num.hstack(
                 [t.get_bayesian_weights()
@@ -586,12 +586,14 @@ class HighScoreOptimiser(Optimiser):
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_header=u'Optimiser phase: %s\n'
+            extra_header=u'Optimiser phase: %s, exploring %d BS chains\n'
                          u'Global chain misfit distribution: \u2080%s\xb9'
                          % (phase.__class__.__name__,
+                            chains.nchains-1,
                             spark_plot(
                                 glob_misfits,
-                                num.linspace(0., 1., 25))))
+                                num.linspace(0., 1., 25))
+                            ))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
