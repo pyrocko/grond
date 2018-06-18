@@ -328,6 +328,7 @@ class Problem(Object):
     def combine_misfits(
             self, misfits,
             extra_weights=None,
+            extra_residuals=None,
             get_contributions=False):
 
         exp, root = self.get_norm_functions()

@@ -88,7 +88,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     campaign_name = String.T()
     misfit_config = GNSSCampaignMisfitConfig.T()
 
-    is_bayesian_bootstrapable = True
+    can_bootstrap_weights = True
 
     def __init__(self, **kwargs):
         gf.GNSSCampaignTarget.__init__(self, **kwargs)

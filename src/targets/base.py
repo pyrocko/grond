@@ -58,9 +58,17 @@ class MisfitTarget(Object):
     misfit_config = MisfitConfig.T(
         default=MisfitConfig.D(),
         help='Misfit configuration')
+    bootstrap_weights = Array.T(
+        shape=(None, None),
+        dtype='<f8',
+        optional=True)
+    bootstrap_residuals = Array.T(
+        shape=(None, None),
+        dtype='<f8',
+        optional=True)
 
-    is_bayesian_bootstrapable = False
-    has_bayesian_residuals = False
+    can_bootstrap_weights = False
+    can_bootstrap_residuals = False
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -72,8 +80,6 @@ class MisfitTarget(Object):
         self._target_parameters = None
         self._target_ranges = None
 
-        self._bootstrap_weights = None
-        self._bootstrap_residuals = None
         self._combined_weight = None
 
     @classmethod
@@ -124,23 +130,23 @@ class MisfitTarget(Object):
         return self._combined_weight
 
     def set_bayesian_weights(self, weights):
-        self._bootstrap_weights = weights
+        self.bootstrap_weights = weights
 
     def get_bayesian_weights(self):
-        if self._bootstrap_weights is None:
+        if self.bootstrap_weights is None:
             raise Exception('Bootstrap weights have not been set!')
-        return self._bootstrap_weights
+        return self.bootstrap_weights
 
     def set_bayesian_residuals(self, residuals):
-        self._bootstrap_residuals = residuals
+        self.bootstrap_residuals = residuals
 
     def get_bayesian_residuals(self):
-        if self._bootstrap_residuals is None:
-            raise Exception('Bootstrap weights have not been set!')
-        return self._bootstrap_residuals
+        if self.bootstrap_residuals is None:
+            raise Exception('Bootstrap residuals have not been set!')
+        return self.bootstrap_residuals
 
     # def bootstrap_misfits(self, misfit):
-    #     return misfit * self._bootstrap_weights
+    #     return misfit * self.bootstrap_weights
 
     def prepare_modelling(self, engine, source, targets):
         return []

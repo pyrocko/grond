@@ -127,7 +127,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     misfit_config = SatelliteMisfitConfig.T(
         help='Configuration of the ``SatelliteTarget``')
 
-    is_bayesian_bootstrapable = False
+    can_bootstrap_residuals = False
 
     available_parameters = [
         Parameter('offset', 'm'),
