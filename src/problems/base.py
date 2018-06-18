@@ -331,6 +331,35 @@ class Problem(Object):
             extra_residuals=None,
             get_contributions=False):
 
+        '''
+        Combine misfit contributions (residuals) to global or bootstrap misfits
+
+        :param misfits: 3D array ``misfits[imodel, iresidual, 0]`` are the
+            misfit contributions (residuals) ``misfits[imodel, iresidual, 1]``
+            are the normalisation contributions. It is also possible to give
+            the misfit and normalisation contributions for a single model as
+            ``misfits[iresidual, 0]`` and misfits[iresidual, 1]`` in which
+            case, the first dimension (imodel) of the result will be stipped
+            off.
+
+        :param extra_weights: if given, 2D array of extra weights to be applied
+            to the contributions, indexed as
+            ``extra_weights[ibootstrap, iresidual]``.
+
+        :param extra_residuals: if given, 2D array of perturbations to be added
+            to the residuals, indexed as
+            ``extra_residuals[ibootstrap, iresidual]``.
+
+        :param get_contributions: get the weighted and perturbed contributions
+            (don't do the sum).
+
+        :returns: if no *extra_weights* or *extra_residuals* are given, a 1D
+            array indexed as ``misfits[imodel]`` containing the global misfit
+            for each model is returned, otherwise a 2D array
+            ``misfits[imodel, ibootstrap]`` with the misfit for every model and
+            weighting/residual set is returned.
+        '''
+
         exp, root = self.get_norm_functions()
 
         if misfits.ndim == 2:
