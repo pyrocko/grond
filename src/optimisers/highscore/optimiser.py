@@ -378,9 +378,10 @@ class HighScoreOptimiser(Optimiser):
         self.rstate = num.random.RandomState(self.bootstrap_seed)
 
     def init_bootstraps(self, problem):
-        self.init_bayesian_bootstraps(problem)
+        self.init_bootstrap_weights(problem)
+        self.init_bootstrap_residuals(problem)
 
-    def init_bayesian_bootstraps(self, problem):
+    def init_bootstrap_weights(self, problem):
         logger.info('Initializing Bayesian bootstrap weights')
         bootstrap_targets = set([t for t in problem.targets
                                  if t.can_bootstrap_weights])
@@ -392,38 +393,30 @@ class HighScoreOptimiser(Optimiser):
 
         imf = 0
         for it, t in enumerate(bootstrap_targets):
-            t.set_bayesian_weights(ws[:, imf:imf+t.nmisfits])
+            t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
             imf += t.nmisfits
 
         for t in set(problem.targets) - bootstrap_targets:
-            t.set_bayesian_weights(
+            t.set_bootstrap_weights(
                 num.ones((self.nbootstrap, t.nmisfits)))
 
-    def init_residual_bootstraps(self, problem):
+    def init_bootstrap_residuals(self, problem):
         residual_targets = set([t for t in problem.targets
                                 if t.can_bootstrap_residuals])
 
         for t in residual_targets:
-            t.init_residual_bootstraps(self.rstate, self.nbootstrap)
+            t.init_bootstrap_residuals(self.nbootstrap, self.rstate)
 
         for t in set(problem.targets) - residual_targets:
-            t.set_bayesian_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
+            t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
             self.init_bootstraps(problem)
 
             self._bootstrap_weights = num.hstack(
-                [t.get_bayesian_weights()
+                [t.get_bootstrap_weights()
                  for t in problem.targets])
-
-        # testing
-        num.testing.assert_array_equal(
-            make_bayesian_weights(
-                self.nbootstrap,
-                ntargets=problem.nmisfits,
-                rstate=num.random.RandomState(self.bootstrap_seed)),
-            self._bootstrap_weights)
 
         return self._bootstrap_weights
 
@@ -432,7 +425,7 @@ class HighScoreOptimiser(Optimiser):
             self.init_bootstraps(problem)
 
             self._bootstrap_residuals = num.hstack(
-                [t.get_bayesian_residuals()
+                [t.get_bootstrap_residuals()
                  for t in problem.targets])
 
         return self._bootstrap_residuals

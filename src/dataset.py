@@ -249,6 +249,7 @@ class Dataset(object):
         self.gnss_campaigns.append(campaign[0])
 
     def add_kite_scenes(self, paths):
+        logger.info('Loading kite InSAR scenes...')
         paths = util.select_files(
             paths,
             regex=r'\.npz',
