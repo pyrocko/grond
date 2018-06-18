@@ -412,7 +412,10 @@ class HighScoreOptimiser(Optimiser):
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
-            self.init_bootstraps(problem)
+            try:
+                problem.targets[0].get_bootstrap_weights()
+            except Exception:
+                self.init_bootstraps(problem)
 
             self._bootstrap_weights = num.hstack(
                 [t.get_bootstrap_weights()
@@ -422,7 +425,10 @@ class HighScoreOptimiser(Optimiser):
 
     def get_bootstrap_residuals(self, problem):
         if self._bootstrap_residuals is None:
-            self.init_bootstraps(problem)
+            try:
+                problem.targets[0].get_bootstrap_residuals()
+            except Exception:
+                self.init_bootstraps(problem)
 
             self._bootstrap_residuals = num.hstack(
                 [t.get_bootstrap_residuals()

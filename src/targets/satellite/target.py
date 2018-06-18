@@ -155,6 +155,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         MisfitTarget.set_dataset(self, ds)
 
     @property
+    def nmisfits(self):
+        return self.lats.size
+
+    @property
     def scene(self):
         return self._ds.get_kite_scene(self.scene_id)
 
@@ -182,13 +186,13 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         res = obs - stat_syn
 
-        misfit_value = num.sqrt(
-            num.sum((res * scene.covariance.weight_vector)**2))
-        misfit_norm = num.sqrt(
-            num.sum((obs * scene.covariance.weight_vector)**2))
+        misfit_value = res * scene.covariance.weight_vector
+        misfit_norm = obs * scene.covariance.weight_vector
+        print(misfit_value)
 
         result = SatelliteMisfitResult(
-            misfits=num.array([[misfit_value, misfit_norm]], dtype=num.float))
+            misfits=num.array([[misfit_value.ravel(), misfit_norm.ravel()]],
+                              dtype=num.float)).T
 
         if self._result_mode == 'full':
             result.statics_syn = statics
@@ -214,12 +218,14 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         if rstate is None:
             rstate = num.random.RandomState()
 
-        qt = self.scene.quadtree
-        cov = self.scene.covariance
+        scene = self.scene
+        qt = scene.quadtree
+        cov = scene.covariance
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
-            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
+            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
+                * cov.weight_vector
 
         return bootstraps
 
