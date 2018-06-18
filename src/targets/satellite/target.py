@@ -188,11 +188,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         misfit_value = res * scene.covariance.weight_vector
         misfit_norm = obs * scene.covariance.weight_vector
-        print(misfit_value)
 
+        mf = num.vstack([misfit_value, misfit_norm]).T
         result = SatelliteMisfitResult(
-            misfits=num.array([misfit_value.ravel(), misfit_norm.ravel()],
-                              dtype=num.float).T)
+            misfits=mf)
 
         if self._result_mode == 'full':
             result.statics_syn = statics

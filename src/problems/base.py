@@ -470,7 +470,6 @@ class Problem(Object):
 
             imisfit += target.nmisfits
 
-        print(misfits)
         return misfits
 
     def forward(self, x):
