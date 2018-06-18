@@ -258,7 +258,7 @@ class Problem(Object):
 
         family, nfamilies = self.get_family_mask()
 
-        ws = num.zeros(self.ntargets)
+        ws = num.zeros(self.nmisfits)
         for ifamily in range(nfamilies):
             mask = family == ifamily
             ws[mask] = 1.0 / root(num.nansum(exp(ns[mask])))
@@ -279,7 +279,6 @@ class Problem(Object):
             mask = family == ifamily
             ws[:, mask] = (1.0 / root(
                 num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]
-
         return ws
 
     def get_reference_model(self):

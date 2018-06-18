@@ -201,8 +201,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def get_combined_weight(self):
         if self._combined_weight is None:
-            self._combined_weight = num.array([self.manual_weight],
-                                              dtype=num.float)
+            self._combined_weight = num.full(self.nmisfits, self.manual_weight)
         return self._combined_weight
 
     def prepare_modelling(self, engine, source, targets):
@@ -223,11 +222,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
-            bootstraps[ibs, :] = num.ones(self.nmisfits)
-            # bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
-            #     * cov.weight_vector
+            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
+                * cov.weight_vector
 
-        return bootstraps
+        self.set_bootstrap_residuals(bootstraps)
 
     @classmethod
     def get_plot_classes(cls):
