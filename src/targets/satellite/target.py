@@ -212,7 +212,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return modelling_results[0]
 
     def init_bootstrap_residuals(self, nbootstraps, rstate=None):
-        logger.info('Bootstrapping residuals from noise pertubation...')
+        logger.info('Scene %s Bootstrapping residuals from noise pertubations'
+                    ' ...' % self.scene_id)
         if rstate is None:
             rstate = num.random.RandomState()
 

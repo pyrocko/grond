@@ -15,14 +15,17 @@ class BadProblem(GrondError):
 class Optimiser(Object):
 
     def optimise(self, problem):
-        raise NotImplemented()
+        raise NotImplementedError
 
     @property
     def niterations(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_status(self, history):
         pass
+
+    def init_bootstraps(self, problem):
+        raise NotImplementedError
 
     @classmethod
     def get_plot_classes(cls):
