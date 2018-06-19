@@ -224,6 +224,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
+            bootstraps[ibs, :] = num.ones(self.nmisfits)
+            continue
             bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
                 * cov.weight_vector
 

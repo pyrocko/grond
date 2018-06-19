@@ -490,7 +490,9 @@ class HighScoreOptimiser(Optimiser):
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
-        history = ModelHistory(problem, path=rundir, mode='w')
+        history = ModelHistory(problem,
+                               nbootstrap=self.nbootstrap,
+                               path=rundir, mode='w')
         chains = self.chains(problem, history)
 
         niter = self.niterations
@@ -508,6 +510,10 @@ class HighScoreOptimiser(Optimiser):
                 isok_mask = None
 
             misfits = problem.misfits(x, mask=isok_mask)
+            bootstrap_misfits = problem.combine_misfits(
+                misfits,
+                extra_weights=self.get_bootstrap_weights(problem),
+                extra_residuals=self.get_bootstrap_residuals(problem))
 
             isbad_mask_new = num.isnan(misfits[:, 0])
             if isbad_mask is not None and num.any(
@@ -534,7 +540,7 @@ class HighScoreOptimiser(Optimiser):
                     'problem %s: all target misfit values are NaN'
                     % problem.name)
 
-            history.append(x, misfits)
+            history.append(x, misfits, bootstrap_misfits)
 
     @property
     def niterations(self):

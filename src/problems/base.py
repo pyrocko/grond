@@ -115,7 +115,7 @@ class Problem(Object):
         guts.dump(self, filename=fn)
 
     def dump_problem_data(
-            self, dirname, x, misfits,
+            self, dirname, x, misfits, bootstraps=None,
             accept=None, ibootstrap_choice=None, ibase=None):
 
         fn = op.join(dirname, 'models')
@@ -127,6 +127,11 @@ class Problem(Object):
         fn = op.join(dirname, 'misfits')
         with open(fn, 'ab') as f:
             misfits.astype('<f8').tofile(f)
+
+        if bootstraps is not None:
+            fn = op.join(dirname, 'bootstraps')
+            with open(fn, 'ab') as f:
+                misfits.astype('<f8').tofile(f)
 
         if None not in (ibootstrap_choice, ibase):
             fn = op.join(dirname, 'choices')
@@ -553,22 +558,28 @@ class ModelHistory(object):
 
     nmodels_capacity_min = 1024
 
-    def __init__(self, problem, path=None, mode='r'):
+    def __init__(self, problem, nbootstrap=None, path=None, mode='r'):
+        self.mode = mode
 
         self.problem = problem
         self.path = path
+        self.nbootstrap = nbootstrap
+
         self._models_buffer = None
         self._misfits_buffer = None
+        self._bootstraps_buffer = None
+
         self.models = None
         self.misfits = None
+        self.bootstrap_misfits = None
+
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
-        self.mode = mode
 
         if mode == 'r':
             self.verify_rundir(self.path)
-            models, misfits = load_problem_data(path, problem)
-            self.extend(models, misfits)
+            models, misfits, bootstraps = load_problem_data(path, problem)
+            self.extend(models, misfits, bootstraps)
 
     @staticmethod
     def verify_rundir(rundir):
@@ -582,7 +593,7 @@ class ModelHistory(object):
                 raise ProblemDataNotAvailable('File %s not found!' % f)
 
     @classmethod
-    def follow(cls, path, wait=20.):
+    def follow(cls, path, nbootstrap=None, wait=20.):
         '''
         Start following a rundir (constructor).
 
@@ -597,7 +608,7 @@ class ModelHistory(object):
             try:
                 cls.verify_rundir(path)
                 problem = load_problem_info(path)
-                return cls(problem, path, mode='r')
+                return cls(problem, nbootstrap=nbootstrap, path=path, mode='r')
             except (ProblemDataNotAvailable, OSError):
                 time.sleep(.25)
 
@@ -613,6 +624,8 @@ class ModelHistory(object):
         assert 0 <= nmodels_new <= self.nmodels
         self.models = self._models_buffer[:nmodels_new, :]
         self.misfits = self._misfits_buffer[:nmodels_new, :, :]
+        if self.nbootstrap is not None:
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels_new, :, :]  # noqa
 
     @property
     def nmodels_capacity(self):
@@ -632,6 +645,11 @@ class ModelHistory(object):
                 (nmodels_capacity_new, self.problem.nmisfits, 2),
                 dtype=num.float)
 
+            if self.nbootstrap is not None:
+                bootstraps_buffer = num.zeros(
+                    (nmodels_capacity_new, self.nbootstrap),
+                    dtype=num.float)
+
             ncopy = min(self.nmodels, nmodels_capacity_new)
 
             if self._models_buffer is not None:
@@ -643,11 +661,17 @@ class ModelHistory(object):
             self._models_buffer = models_buffer
             self._misfits_buffer = misfits_buffer
 
+            if self.nbootstrap is not None:
+                if self._bootstraps_buffer is not None:
+                    bootstraps_buffer[:ncopy, :] = \
+                        self._bootstraps_buffer[:ncopy, :]
+                self._bootstraps_buffer = bootstraps_buffer
+
     def clear(self):
         self.nmodels = 0
         self.nmodels_capacity = self.nmodels_capacity_min
 
-    def extend(self, models, misfits):
+    def extend(self, models, misfits, bootstrap_misfits=None):
         nmodels = self.nmodels
 
         n = models.shape[0]
@@ -664,6 +688,10 @@ class ModelHistory(object):
         self.models = self._models_buffer[:nmodels+n, :]
         self.misfits = self._misfits_buffer[:nmodels+n, :, :]
 
+        if bootstrap_misfits is not None:
+            self._bootstraps_buffer[nmodels:nmodels+n, :] = bootstrap_misfits
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+n, :]
+
         if self.path and self.mode == 'w':
             for i in range(n):
                 self.problem.dump_problem_data(
@@ -671,7 +699,7 @@ class ModelHistory(object):
 
         self.emit('extend', nmodels, n, models, misfits)
 
-    def append(self, model, misfits):
+    def append(self, model, misfits, bootstrap_misfits=None):
         nmodels = self.nmodels
 
         nmodels_capacity_want = max(
@@ -686,9 +714,13 @@ class ModelHistory(object):
         self.models = self._models_buffer[:nmodels+1, :]
         self.misfits = self._misfits_buffer[:nmodels+1, :, :]
 
+        if bootstrap_misfits is not None:
+            self._bootstraps_buffer[nmodels, :] = bootstrap_misfits
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+1, :]
+
         if self.path and self.mode == 'w':
             self.problem.dump_problem_data(
-                self.path, model, misfits)
+                self.path, model, misfits, bootstrap_misfits)
 
         self.emit(
             'extend', nmodels, 1,
@@ -699,10 +731,11 @@ class ModelHistory(object):
         nmodels_available = get_nmodels(self.path, self.problem)
         if self.nmodels == nmodels_available:
             return
-        new_models, new_misfits = load_problem_data(
-            self.path, self.problem, nmodels_skip=self.nmodels)
+        new_models, new_misfits, new_bootstraps = load_problem_data(
+            self.path, self.problem,
+            nmodels_skip=self.nmodels, nbootstrap=self.nbootstrap)
 
-        self.extend(new_models, new_misfits)
+        self.extend(new_models, new_misfits, new_bootstraps)
 
     def add_listener(self, listener):
         self.listeners.append(listener)
@@ -747,7 +780,7 @@ def load_problem_info(dirname):
             'no problem info available (%s)' % dirname)
 
 
-def load_problem_data(dirname, problem, nmodels_skip=0):
+def load_problem_data(dirname, problem, nmodels_skip=0, nbootstrap=None):
 
     try:
         nmodels = get_nmodels(dirname, problem) - nmodels_skip
@@ -769,15 +802,26 @@ def load_problem_data(dirname, problem, nmodels_skip=0):
                     f, dtype='<f8',
                     count=nmodels*problem.nmisfits*2)\
                 .astype(num.float)
-
         misfits = misfits.reshape((nmodels, problem.nmisfits, 2))
+
+        bootstraps = None
+        fn = op.join(dirname, 'bootstraps')
+        if op.exists(fn) and nbootstrap is not None:
+            with open(fn, 'r') as f:
+                f.seek(nmodels_skip * problem.nmisfits * 8)
+                bootstraps = num.fromfile(
+                        f, dtype='<f8',
+                        count=nmodels*nbootstrap)\
+                    .astype(num.float)
+
+            bootstraps = bootstraps.reshape((nmodels, nbootstrap))
 
     except OSError as e:
         logger.debug(str(e))
         raise ProblemDataNotAvailable(
             'no problem data available (%s)' % dirname)
 
-    return models, misfits
+    return models, misfits, bootstraps
 
 
 __all__ = '''

@@ -431,9 +431,11 @@ class HistogramPlot(PlotConfig):
                 par.scaled(pstats.mean),
                 color=stats_color, ls=':', alpha=0.5)
 
+            print(par.get_label())
             axes.axvline(
                 par.scaled(problem.extract(xref, ipar)),
                 color=ref_color)
+
 
             item = PlotItem(name=par.name)
             item.attributes['parameters'] = [par.name]
