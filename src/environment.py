@@ -1,3 +1,4 @@
+import time
 import os.path as op
 
 from grond.config import read_config
@@ -42,7 +43,6 @@ class Environment(object):
         self._selected_event_names = None
         self._config = None
         self._plot_collection_manager = None
-
         if not args:
             args.append(op.curdir)
 
@@ -56,6 +56,28 @@ class Environment(object):
             self.set_selected_event_names(args[1:])
 
         self.reset()
+
+    @classmethod
+    def discover(cls, rundir, wait=20.):
+        start_watch = time.time()
+        while (time.time() - start_watch) < wait:
+            try:
+                cls.verify_rundir(rundir)
+                return cls([rundir])
+            except GrondEnvironmentError:
+                time.sleep(.25)
+
+    @staticmethod
+    def verify_rundir(rundir_path):
+        files = [
+            'config.yaml',
+            'problem.yaml',
+            'optimiser.yaml',
+            'misfits'
+            ]
+        for fn in files:
+            if not op.exists(op.join(rundir_path, fn)):
+                raise GrondEnvironmentError('inconsistent rundir')
 
     def reset(self):
         self._histories = {}
@@ -170,6 +192,7 @@ class Environment(object):
             self._histories[subset] = \
                 ModelHistory(
                     self.get_problem(),
+                    nbootstrap=self.get_optimiser().nbootstrap,
                     path=meta.xjoin(self.get_rundir_path(), subset))
 
         return self._histories[subset]
