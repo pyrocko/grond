@@ -510,8 +510,10 @@ Optimisation
 
 Grond is open for many different optimisation schemes. So far implemented is 
 the so-called `Bayesian Bootstrap Optimisation` (BABO). The `Optimiser` defines
-the particular objective function or objective functions or options for them. 
-The optimiser also defines the model space sampling schemes. 
+the particular objective function or objective functions and options for them. 
+The optimiser also defines the model space sampling schemes. Multiple objective
+functions are realized in parallel running optimisation chains. So far these
+are the bootstrap chains (see below).
 
 The BABO optimiser
 ..................
@@ -527,7 +529,10 @@ the misfit space and is appropriate also for highly non-linear problems.
 
 BABO can turn into a simple Monte-Carlo random direct search if some options 
 are switched off. It can also resemble a simulated annealing optimisation 
-approach using a certain problem configuration.
+approach using a certain problem configuration. Last but not least BABO
+enables fully probabilistic bootstrapping of the optimisation results. This is 
+realised in parallel with optimisation chains to which bootstrapping weights
+are applied.
 
 Note:
 *Weights* are explained above. The specific
@@ -598,8 +603,8 @@ the model space:
     **sampling distributions**: For drawing new models normal distributions
     are used. The standard deviations for the sampler are derived from the 
     `highscore` model parameter standard deviations by using a configurable 
-    value (`scatter scale`, see below). Optionally, the covariance of model parameter 
-    distributions is
+    value (`scatter scale`, see below). Optionally, the covariance of model 
+    parameter distributions is
     taken into account by configuring a ``multivariate_normal`` sampler
     distribtion instead of a ``normal`` sampler distribution. 
     The center points for the sampling distribution is configurable to be 
@@ -642,42 +647,53 @@ the model space:
     `excentricity compensations` can help is these cases and keep models with 
     not significantly higher misfits in the game and in sight.
     
-    TODO: correct? too much explaination? Sebastian,
+    TODO: correct? too many explanations? Sebastian,
     here is the perfect place for one of your movies.
  
 
 Bootstrap chains
 ................
 
+A `bootstrap chain` is set up with individual target bootstrap weights and/or 
+target bootstrap residuals (Fig. 7A). Therefore each bootstrap chain has 
+an individual objective function. With one 
+forward model :math:`N_{\mathrm{bootstrap}}` 
+different `global 
+misfits` are calculated (Fig. 7B). Like this for each bootstrap chain we can 
+run an individual optimisation, even though all bootstrap chains share the same 
+forward models. 
+
+The highscore list member models in each bootstrap chain (Fig. 7B) will differ 
+to some
+extent and therefore different bootstrap chains may converge to different 
+places within the model space (Fig. 7C, Fig. 8). These differences mark the 
+uncertainty of the models with respect to data errors.
+
 .. figure:: ../images/illu_bootstrap_weights.svg
     :name: Fig. 7
-    :height: 300px
+    :height: 400px
     :align: center
     :alt: alternate text
     :figclass: align-center
     
-    **Figure 7**:  Illustration of bootstrap weights and their influence on the 
-    convergence in the model parameter space due to the differing misfit 
-    function for each bootstrap chain.
+    **Figure 7**:  Bootstrap chain graph. (A) Illustration of bootstrap 
+    weights, (B) bootstrap chain highscore lists and  (C) their influence 
+    on the convergence in the model parameter space due to the 
+    individual objective function of each bootstrap chain.
 
-
-One history of sampling the model space. N misfit spaces
-
-All bootstrap chains share the misfits of the 
-same forward models. The misfit is re-evaluated without the sampling of new
-models and new forward modelling. This makes the bootstrapping setup in Grond 
-computationally very efficient.
  
 .. figure:: ../images/illu_babo_chains.svg
     :name: Fig. 8
     :height: 300px
-    :align: center
+    :align: left
     :alt: alternate text
-    :figclass: align-center
+    :figclass: align-left
     
     **Figure 8**: Drawing new candidate models based on the existing solution 
     space. (...)
 
+    
+    
 .. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace
 .. _GF store database: http://kinherd.org/gfs.html
