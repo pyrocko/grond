@@ -1,68 +1,32 @@
 ﻿Method
 ======
 
-TODO: (general) this section should be as self-contained as possible, describe 
+TODO: REVIEW: This section should be as self-contained as possible, describe 
 the method in general - give references to other sections how things are
 implemented in Grond.
 
 The very core of any optimisation is the evaluation of a misfit value between
-observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`, This
+observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`. This
 is most often based on the difference  :math:`{\bf d}_{obs} - {\bf d}_{synth}`,
 but can also be any other comparison, like a correlation measure for example.
 
-This sheet describes the method on:
 
-1. what exactly are the observed :math:`{\bf d}_{obs}` and the synthetic 
-   data :math:`{\bf d}_{synth}`
-2. how does Grond handle the differences between :math:`{\bf d}_{obs}` and
-   :math:`{\bf d}_{synth}` 
-   with respect to defining the objective functions through misfits and data
-   weighting,
-3. how the optimisation is set up to search the model space to find the 
-   optimum models and 
-4. which methods are used to estimate model uncertainties.
-
-
-TODO: move the following into objective function design section?
-
-`Observed data` here means full waveforms that are tapered to the defined 
+`Observed data` here means post-processed data and not the `raw` measurements.
+E.g. full waveforms are usually tapered to the defined 
 phases, restituted and filtered. `Synthetic waveforms` are the forward-
 modelled waveforms that are tapered and filtered in the same way as the 
-observed waveforms. 
+observed waveforms. Find details on the post-processing in the `targets`_ 
+section. The `targets` are derived from data defined in the `dataset`_.
 
+This sheet describes the method of Grond on:
 
-**Tapering**:
-    Tapering is done on the waveform targets and means that parts of the 
-    recorded waveforms are cut out. Here the taper applies to specific seismic
-    phases in both the raw synthetic waveforms calculated 
-    :math:`{\bf d}_{raw, synth}` and 
-    the recorded, restituted waveforms. Only these parts are then used in the 
-    misfit calculation. 
-    The taper window duration is configured with the waveform `targets`_ as 
-    well as the time. 
-
-    The tapering is source-model dependent, since the tapering time is given 
-    with respect to the theoretic phase arrival
-    time. This arrival time depends on the source location, which is often part of 
-    the optimisation itself and therefore may change continuously. Therefore, 
-    restitution, tapering and filtering are done for each misfit calculation anew.
-    Grond uses the pyrocko `CosTaper`_ taper, which is a taper-function with 
-    Cosine-shaped fade-outs. The `fade-out` time can be configured or it is 
-    calculated as the inverse of the minimum frequency of the chosen bandpass 
-    filter.
-
-
-**Filtering**: 
-    Filtering to the desired frequency band is part of the 
-    restitution. Minimum and maximum frequencies are configured.
-
-    TODO Explain the ffactor: filter factor fmin/ffactor  fmax ffactor
-
-
-From the difference :math:`{\bf d}_{obs} - {\bf d}_{synth}` or any other
-quantitative comparison (e.g. correlation) the `misfit` is defined based
-on a certain L-norm and by the use of certain data weights. Then there are 
-the objective functions defined in Grond that determine the ...
+1. how Grond implements the differences between :math:`{\bf d}_{obs}` and
+   :math:`{\bf d}_{synth}` 
+   with respect to the definition of objective functions and data
+   weighting,
+2. how the optimisation is set up to search the model space to find the 
+   optimum models and 
+3. which methods are used to estimate model uncertainties.
 
 
 Forward modelling with pre-calculated Green's functions
@@ -121,7 +85,8 @@ minimum of the misfit function optimum model.
 
 The objective function defines what a `model fit` is and how `good` or
 `poor` models are scaled with respect to others. Furthermore, the
-objective function has rules how different data sets are handled and how data 
+objective function has rules how different data sets are handled, which 
+L-norm is applied and how data 
 errors are considered in optimisations. 
 
 
@@ -134,8 +99,6 @@ errors are considered in optimisations.
     **Figure 1**: GROND objective function design in an overview illustration. 
     Details on how each function and weight vectors are formed follow below.
 
-TODO: there is nothing about the L-norms in the graphic, Is that misleading or 
-formation the sake of generalization ok or is there a nice way for that?  
     
 Misfit calculation
 ..................
@@ -451,7 +414,7 @@ final misfit values are comparable even without normalisation.
 
 .. figure:: ../images/classic_bootstrap_weights.svg
     :name: Fig. 3
-    :width: 1400px
+    :width: 1600px
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -471,7 +434,7 @@ final misfit values are comparable even without normalisation.
 
 .. figure:: ../images/bayesian_bootstrap_weights.svg
     :name: Fig. 4
-    :width: 1400px
+    :width: 1600px
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -487,23 +450,37 @@ Residual bootstrap actually is a computationally more efficient version of the
 `Randomize-then-optimize`_ procedure. The name of the latter method describes
 the procedure - with empirical estimates of the data 
 error statistics individual realisations of synthetic correlated random noise 
-are added to the data for many slightly differing optimisations. Source 
+are added to the data for many slightly differing optimisations (Fig. 5). 
+Source 
 parameter distributions retrieved with the `Randomize-then-optimize`_ method 
 based on the data error variance-covariance matrix have been shown to match the 
-model parameter distributions obtained from Marcov Chain Monte Carlo sampling
+model parameter distributions obtained from `Marcov Chain Monte Carlo` sampling
 of the model spaces by `Jonsson et al.`_ (2014).
-In `residual bootstrap` we add such individual realisations of synthetic 
-correlated random noise to the misfits to evaluate individual `global misfits`
+In our `residual bootstrap` we add such individual realisations of synthetic 
+correlated random noise (Fig. 5C) to the misfits to evaluate individual 
+`global misfits`
 (Fig. 1). Like this we save the calculation of many forward models compared to 
 `Randomize-then-optimize`_, while obtaining the same result.
 
 To generate random noise we use functions of the `kite`_ module. From the 
-noise estimation region defined in the `kite`_ scenes, the noise power spectrum
+noise estimation region defined in the `kite`_ scenes (Fig. 5A), the 
+noise power spectrum
 is used directly with a randomised phase spectrum to create new random noise
-with common characteristics in the spatial domain. The noise is then subsampled
-exactly like the data to be used on the model residuals.
+with common characteristics in the spatial domain (Fig. 5B). The noise is 
+then subsampled
+exactly like the data to be used on the model residuals (Fig. 5C).
 
-TODO: Fig.5 residual bootstrap
+.. figure:: ../images/illu_residual_bootstrap_realisation.svg
+    :name: Fig. 5
+    :width: 1400px
+    :align: center
+    :alt: alternate text
+    :figclass: align-center
+
+    **Figure 5**: Residual bootstrap realisation in grond. From data noise (A)
+    we synthesise random correlated data noise (B), which is then subsampled
+    like the data (C) to be added to the residuals.  
+
 
 Optimisation 
 ------------
@@ -681,7 +658,18 @@ uncertainty of the models with respect to data errors.
     on the convergence in the model parameter space due to the 
     individual objective function of each bootstrap chain.
 
- 
+The convergence of model parameters for the models within each bootstrap chain 
+is dependent on the settings of the optimisation, e.g. the setup of parameter
+bounds, `scatter scale` settings of the `directive sampling phase` and else.
+With very `exploitive` settings convergence can be forced. However, if the 
+convergence within each bootstrap chain starts to form individual solar systems
+in the model space, further optimisation will not provide significantly better
+models. In Fig. 8 the area of the `highscore` models of the three bootstrap
+chains has only little overlap compared to an earlier stage visualised in 
+Fig. 7C.
+
+
+
 .. figure:: ../images/illu_babo_chains.svg
     :name: Fig. 8
     :height: 300px
@@ -710,5 +698,6 @@ uncertainty of the models with respect to data errors.
 .. _Randomize-then-optimize: https://epubs.siam.org/doi/abs/10.1137/140964023
 .. _Jonsson et al.: http://adsabs.harvard.edu/abs/2014AGUFM.S51C..05J
 
+.. _dataset: ../dataset/index.html
 .. _targets: ../targets/index.html
 .. _problem: problems/index.html
