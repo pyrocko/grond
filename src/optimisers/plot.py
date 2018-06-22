@@ -73,7 +73,9 @@ class SequencePlot(PlotConfig):
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        xref = problem.get_reference_model()
+        ref_model = problem.get_reference_model()
+        xref = num.zeros(npar)
+        xref[:ref_model.size] = ref_model
 
         gms = problem.combine_misfits(history.misfits)
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)

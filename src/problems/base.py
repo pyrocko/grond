@@ -578,7 +578,8 @@ class ModelHistory(object):
 
         if mode == 'r':
             self.verify_rundir(self.path)
-            models, misfits, bootstraps = load_problem_data(path, problem)
+            models, misfits, bootstraps = load_problem_data(
+                path, problem, nbootstrap=self.nbootstrap)
             self.extend(models, misfits, bootstraps)
 
     @staticmethod
@@ -759,10 +760,11 @@ def get_nmodels(dirname, problem):
     return min(nmodels1, nmodels2)
 
 
-def load_problem_info_and_data(dirname, subset=None):
+def load_problem_info_and_data(dirname, subset=None, nbootstrap=None):
     problem = load_problem_info(dirname)
-    models, misfits = load_problem_data(xjoin(dirname, subset), problem)
-    return problem, models, misfits
+    models, misfits, bootstraps = load_problem_data(
+        xjoin(dirname, subset), problem, nbootstrap=nbootstrap)
+    return problem, models, misfits, bootstraps
 
 
 def load_optimiser_info(dirname):

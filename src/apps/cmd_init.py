@@ -24,7 +24,11 @@ region = Myanmar
 class GrondProject(object):
 
     def __init__(self):
-        self.dataset_config = grond.DatasetConfig(events_path='events.txt')
+        self.dataset_config = grond.DatasetConfig(
+            events_path='events.txt',
+            stations_path='stations.txt',
+            responses_stationxml_paths=['stationxml.xml']
+            )
         self.project_config = None
         self.target_groups = []
 

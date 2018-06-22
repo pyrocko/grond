@@ -23,6 +23,7 @@ from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError
 from .config import read_config
 
+from .environment import Environment
 from .monitor import GrondMonitor
 
 logger = logging.getLogger('grond.core')
@@ -190,10 +191,15 @@ def forward(rundir_or_config_path, event_names):
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
+    env = Environment([rundir])
+    nbootstrap = env.get_optimiser().nbootstrap
+
     if problem is None:
-        problem, xs, misfits = load_problem_info_and_data(rundir)
+        problem, xs, misfits, bootstrap_misfits = \
+            load_problem_info_and_data(rundir, nbootstrap=nbootstrap)
     else:
-        xs, misfits = load_problem_data(rundir, problem)
+        xs, misfits, bootstrap_misfits = \
+            load_problem_data(rundir, problem, nbootstrap=nbootstrap)
 
     logger.info('harvesting problem %s...' % problem.name)
 
@@ -672,7 +678,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     header = None
     for rundir in rundirs:
-        problem, xs, misfits = load_problem_info_and_data(
+        problem, xs, misfits, bootstrap_misfits = load_problem_info_and_data(
             rundir, subset='harvest')
 
         if type == 'vector':

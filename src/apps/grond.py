@@ -422,6 +422,7 @@ def command_init(args):
             project.build(project_dir, options.force)
         else:
             sys.stdout.write(project.dump())
+            project_dir = '<project_dir>'
         logger.info(CLIHints('init', project_dir=project_dir))
 
     except grond.GrondError as e:
