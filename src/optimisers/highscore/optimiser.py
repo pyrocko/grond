@@ -400,7 +400,7 @@ class HighScoreOptimiser(Optimiser):
                                 if t.can_bootstrap_residuals])
 
         for t in residual_targets:
-            t.init_bootstrap_residuals(self.nbootstrap, self.rstate)
+            t.init_bootstrap_residuals(self.nbootstrap, rstate=self.rstate)
 
         for t in set(problem.targets) - residual_targets:
             t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
@@ -416,7 +416,7 @@ class HighScoreOptimiser(Optimiser):
                 [t.get_bootstrap_weights()
                  for t in problem.targets])
 
-            self._bootstrap_weights[:, 0] = 1.
+            # self._bootstrap_weights[:, 0] = 1.
 
         return self._bootstrap_weights
 
@@ -431,7 +431,7 @@ class HighScoreOptimiser(Optimiser):
                 [t.get_bootstrap_residuals()
                  for t in problem.targets])
 
-            self._bootstrap_residuals[:, 0] = 0.
+            # self._bootstrap_residuals[:, 0] = 0.
 
         return self._bootstrap_residuals
 

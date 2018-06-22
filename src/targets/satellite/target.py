@@ -186,8 +186,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         res = obs - stat_syn
 
-        misfit_value = res * scene.covariance.weight_vector
-        misfit_norm = obs * scene.covariance.weight_vector
+        misfit_value = res
+        misfit_norm = obs
 
         mf = num.vstack([misfit_value, misfit_norm]).T
         result = SatelliteMisfitResult(
@@ -223,8 +223,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
-            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate) \
-                * cov.weight_vector
+            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
 
         self.set_bootstrap_residuals(bootstraps)
 

@@ -73,9 +73,7 @@ class SequencePlot(PlotConfig):
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        ref_model = problem.get_reference_model()
-        xref = num.zeros(npar)
-        xref[:ref_model.size] = ref_model
+        xref = problem.get_reference_model(expand=True)
 
         gms = problem.combine_misfits(history.misfits)
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
@@ -343,6 +341,7 @@ class ContributionsPlot(PlotConfig):
             if num.all(ms == 0.0):
                 continue
 
+            print(ms.shape, gms.shape, b.shape)
             rel_ms = ms / gms
 
             rel_ms_smooth = signal.filtfilt(b, a, rel_ms)
