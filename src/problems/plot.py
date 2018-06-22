@@ -97,7 +97,7 @@ class JointparPlot(PlotConfig):
             if lo == hi:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model()
+        xref = problem.get_reference_model(expand=True)
 
         if ibootstrap is not None:
             gms = optimiser.bootstrap_misfits(
@@ -359,7 +359,7 @@ class HistogramPlot(PlotConfig):
             if vmin == vmax:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model()
+        xref = problem.get_reference_model(expand=True)
 
         smap = {}
         iselected = 0
@@ -431,11 +431,9 @@ class HistogramPlot(PlotConfig):
                 par.scaled(pstats.mean),
                 color=stats_color, ls=':', alpha=0.5)
 
-            print(par.get_label())
             axes.axvline(
                 par.scaled(problem.extract(xref, ipar)),
                 color=ref_color)
-
 
             item = PlotItem(name=par.name)
             item.attributes['parameters'] = [par.name]

@@ -341,7 +341,7 @@ class RectangularSourceProblem(SourceProblem):
                 dip=gf.Range(0, 90),
                 strike=gf.Range(0, 180),
                 rake=gf.Range(0, 90),
-                magnitude=gf.Range(0, 3),
+                slip=gf.Range(.5, 10),
                 nucleation_x=gf.Range(-1., 1.),
                 nucleation_y=gf.Range(-1., 1.),
                 time=gf.Range(-5.0, 5.0, relative='add'))

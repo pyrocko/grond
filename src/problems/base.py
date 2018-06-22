@@ -131,7 +131,7 @@ class Problem(Object):
         if bootstraps is not None:
             fn = op.join(dirname, 'bootstraps')
             with open(fn, 'ab') as f:
-                misfits.astype('<f8').tofile(f)
+                bootstraps.astype('<f8').tofile(f)
 
         if None not in (ibootstrap_choice, ibase):
             fn = op.join(dirname, 'choices')
@@ -258,6 +258,9 @@ class Problem(Object):
 
         return self._target_weights
 
+    def get_target_residuals(self):
+        pass
+
     def inter_family_weights(self, ns):
         exp, root = self.get_norm_functions()
 
@@ -286,8 +289,14 @@ class Problem(Object):
                 num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]
         return ws
 
-    def get_reference_model(self):
-        return self.pack(self.base_source)
+    def get_reference_model(self, expand=False):
+        if expand:
+            src_params = self.pack(self.base_source)
+            ref = num.zeros(self.nparameters)
+            ref[:src_params.size] = src_params
+        else:
+            ref = self.pack(self.base_source)
+        return ref
 
     def get_parameter_bounds(self):
         out = []
@@ -398,11 +407,16 @@ class Problem(Object):
                         exp(w*misfits[:, num.newaxis, :, 1]),
                         axis=2)[:, :, num.newaxis]
 
-            return root(
+            res = root(
                 num.nansum(exp(w*(misfits[:, num.newaxis, :, 0]+r)), axis=2) /
                 num.nansum(exp(w*(misfits[:, num.newaxis, :, 1])), axis=2))
+            assert res[res < 0].size == 0
+            return res
         else:
             w = self.get_target_weights()[num.newaxis, :] \
+                * self.inter_family_weights2(misfits[:, :, 1])
+
+            r = self.get_target_weights()[num.newaxis, :] \
                 * self.inter_family_weights2(misfits[:, :, 1])
 
             if get_contributions:
@@ -810,7 +824,7 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nbootstrap=None):
         fn = op.join(dirname, 'bootstraps')
         if op.exists(fn) and nbootstrap is not None:
             with open(fn, 'r') as f:
-                f.seek(nmodels_skip * problem.nmisfits * 8)
+                f.seek(nmodels_skip * nbootstrap * 8)
                 bootstraps = num.fromfile(
                         f, dtype='<f8',
                         count=nmodels*nbootstrap)\
