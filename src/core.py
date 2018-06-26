@@ -222,7 +222,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     if weed != 3:
         for ibootstrap in range(optimiser.nbootstrap):
-            bms = optimiser.bootstrap_misfits(problem, misfits, ibootstrap)
+            bms = bootstrap_misfits[:, ibootstrap]
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
