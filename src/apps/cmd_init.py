@@ -32,7 +32,7 @@ class GrondProject(object):
         self.project_config = None
         self.target_groups = []
 
-        self.sub_dirs = ['gf_store']
+        self.sub_dirs = ['gf_store', 'config']
         self.empty_files = []
 
     def add_waveforms(self):
@@ -169,14 +169,14 @@ class GrondProject(object):
         logger.info('Creating empty project in folder %s' % project_dir)
         config = self.get_config()
 
-        def p(fn):
-            return op.join(project_dir, fn)
+        def p(*fn):
+            return op.join(project_dir, *fn)
 
         os.mkdir(op.abspath(project_dir))
         for d in self.sub_dirs:
             os.mkdir(p(d))
 
-        with open(p('config.yml'), 'w') as f:
+        with open(p('config', 'config.gronf'), 'w') as f:
             f.write(str(config))
         with open(p('events.txt'), 'w') as f:
             f.write(INIT_EVENT)

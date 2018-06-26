@@ -341,7 +341,6 @@ class ContributionsPlot(PlotConfig):
             if num.all(ms == 0.0):
                 continue
 
-            print(ms.shape, gms.shape, b.shape)
             rel_ms = ms / gms
 
             rel_ms_smooth = signal.filtfilt(b, a, rel_ms)
@@ -442,8 +441,7 @@ class BootstrapPlot(PlotConfig):
 
         ibests = []
         for ibootstrap in range(optimiser.nbootstrap):
-            bms = optimiser.bootstrap_misfits(
-                problem, history.misfits, ibootstrap)
+            bms = history.bootstrap_misfits[:, ibootstrap]
 
             isort_bms = num.argsort(bms)[::-1]
 

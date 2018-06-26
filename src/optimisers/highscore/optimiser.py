@@ -416,7 +416,11 @@ class HighScoreOptimiser(Optimiser):
                 [t.get_bootstrap_weights()
                  for t in problem.targets])
 
-            # self._bootstrap_weights[:, 0] = 1.
+            self._bootstrap_weights[:, 0] = 1.
+
+            # self._bootstrap_weights = num.vstack((
+            #     num.ones((1, problem.nmisfits)),
+            #     bootstrap_weights))
 
         return self._bootstrap_weights
 
@@ -431,17 +435,13 @@ class HighScoreOptimiser(Optimiser):
                 [t.get_bootstrap_residuals()
                  for t in problem.targets])
 
-            # self._bootstrap_residuals[:, 0] = 0.
+            self._bootstrap_residuals[:, 0] = 0.
+
+            # self._bootstrap_weights = num.vstack((
+            #     num.zeros((1, problem.nmisfits)),
+            #     bootstrap_residuals))
 
         return self._bootstrap_residuals
-
-    def bootstrap_misfits(self, problem, misfits, ibootstrap):
-        bweights = self.get_bootstrap_weights(problem)
-        bms = problem.combine_misfits(
-            misfits,
-            extra_weights=bweights[ibootstrap:ibootstrap+1, :])[:, 0]
-
-        return bms
 
     def chains(self, problem, history):
         nlinks_cap = int(round(
@@ -590,7 +590,7 @@ class HighScoreOptimiser(Optimiser):
             extra_header=u'Optimiser phase: %s, exploring %d BS chains\n'
                          u'Global chain misfit distribution: \u2080%s\xb9'
                          % (phase.__class__.__name__,
-                            chains.nchains-1,
+                            chains.nchains,
                             spark_plot(
                                 glob_misfits,
                                 num.linspace(0., 1., 25))

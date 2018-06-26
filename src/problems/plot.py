@@ -100,8 +100,7 @@ class JointparPlot(PlotConfig):
         xref = problem.get_reference_model(expand=True)
 
         if ibootstrap is not None:
-            gms = optimiser.bootstrap_misfits(
-                problem, history.misfits, ibootstrap)
+            gms = history.bootstrap_misfits[:, ibootstrap]
         else:
             gms = problem.combine_misfits(history.misfits)
 

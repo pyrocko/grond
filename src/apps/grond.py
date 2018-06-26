@@ -420,7 +420,9 @@ def command_init(args):
         if len(args) == 1:
             project_dir = args[0]
             project.build(project_dir, options.force)
-            logger.info(CLIHints('init', project_dir=project_dir))
+            logger.info(CLIHints(
+                'init', project_dir=project_dir,
+                config=op.join(project_dir, 'config', 'config.gronf')))
         else:
             sys.stdout.write(project.dump())
 

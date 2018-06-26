@@ -220,6 +220,7 @@ class InSARObservation(Observation):
 
     def get_scenario_target_generator(self):
         return scenario.targets.InSARGenerator(
+                mask_water=False,
                 store_id=self.store_id)
 
     def get_grond_target_group(self):
