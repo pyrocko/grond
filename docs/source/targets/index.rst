@@ -55,7 +55,7 @@ Waveform targets
 
 
 
-Example :class:`~grond.targets.waveform.WaveformTargetGroup` configuration
+Example :class:`~grond.targets.waveform.WaveformTargetGroup` configuration block:
 
 .. code-block :: yaml
 
@@ -81,7 +81,7 @@ Example :class:`~grond.targets.waveform.WaveformTargetGroup` configuration
       store_id: crust2_ib
 
 
-    
+
 Satellite targets
 -----------------
 
@@ -93,10 +93,11 @@ Prior to optimisation we have to define a subsamples Quadtree and Covariance mat
     The InSAR scenes are identified by their kite ``scene_id``, they can be explicitly selected or a wildcard ``*all*`` can be used.
 
 **Optimise Orbital Ramps**
-    Activates the optimisation of a 2D offset plane in the InSAR. This will compensate tradeoffs between the earthquake signal and trends in the unwrapped surface displacements.
-    The ranges are given in :math:`\frac{m}{m}`, these parameters have to be tuned with touch.
+    Optimisation for a 2D offset plane in each InSAR scene. This will compensate tradeoffs between the earthquake signal and uncorrected trends in the unwrapped surface displacements.
+    The slopes of ``ramp_north`` and ``ramp_east`` are given in :math:`\frac{m}{m}`, the offset in :math:`m` - these parameters have to be tuned with touch.
 
-Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration
+
+Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration block:
 
 .. code-block :: yaml
 
@@ -119,8 +120,12 @@ Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration
 GNSS campaign targets
 ---------------------
 
+True 3D surface displacement as measured by GNSS stations can be included in the inversion process by defining a :class:`~grond.targets.GNSSCampaignTargetGroup`. The displacement data has to be according to :class:`~pyrocko.model.gnss_campaign`.
 
-Example :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` configuration
+There are no particular configuration parameters available for this :class:`grond.targets.TargetGroup`.
+
+
+Example :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` configuration block:
 
 .. code-block :: yaml
 
