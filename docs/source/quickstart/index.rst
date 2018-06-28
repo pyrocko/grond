@@ -14,7 +14,7 @@ we present a quickstart solution employing forward-modelled data.
 
 Forward-model a scenario:
 
-.. code-block:: sh
+.. code-block :: sh
 
     grond scenario --targets=waveforms my_first_project
     In which cache directory shall the GF store be downloaded to? 
@@ -22,20 +22,20 @@ Forward-model a scenario:
 
 Check the configuration:
 
-.. code-block:: sh
+.. code-block :: sh
 
     cd my_first_project
     grond check config.yml
 
 Start the optimisation:
 
-.. code-block:: sh
+.. code-block :: sh
 
     grond go config.yml
 
 Plot the results in a report:
 
-.. code-block:: sh
+.. code-block :: sh
 
     grond report <rundir>
 
