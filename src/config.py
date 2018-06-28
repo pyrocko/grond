@@ -84,15 +84,20 @@ class Config(HasPaths):
         gf.StringID.T(),
         help='Restrict application to given event names. If empty, all events '
              'found through the dataset configuration are considered.')
+    event_names_exclude = List.T(
+        gf.StringID.T(),
+        help='Event names to be excluded')
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
 
     def get_event_names(self):
         if self.event_names:
-            return self.event_names
+            names = self.event_names
         else:
-            return self.dataset_config.get_event_names()
+            names = self.dataset_config.get_event_names()
+
+        return [name for name in names if name not in self.event_names_exclude]
 
     @property
     def nevents(self):
