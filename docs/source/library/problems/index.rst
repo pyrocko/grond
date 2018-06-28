@@ -8,5 +8,5 @@ The :mod:`problems` module
 
     base <base>
     cmt <cmt>
-    double_dc <double_dc>
     rectangular <rectangular>
+    double_dc <double_dc>

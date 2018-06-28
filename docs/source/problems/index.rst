@@ -44,7 +44,7 @@ problem configurations:
  
 An example for the configuration of a rectangular fault problem is given here:
 
-.. code-block :: sh
+.. code-block :: yaml
 
   problem_config: !grond.RectangularProblemConfig
     name_template: '${event_name}'
@@ -118,7 +118,7 @@ particularly for the ``CMTProblem``.
     
 **Example configuration**:
     
-.. code-block :: sh
+.. code-block :: yaml
 
   problem_config: !grond.CMTProblemConfig
     name_template: '${event_name}_regional_mt'
@@ -207,7 +207,7 @@ particularly for the ``DoubleDCProblem``.
         
 **Example configuration**:
         
-.. code-block :: sh
+.. code-block :: yaml
 
   problem_config: !grond.CMTProblemConfig
     name_template: '${event_name}_regional_mt'
@@ -309,7 +309,7 @@ are ignored.
 
 **Example configuration**:
 
-.. code-block :: sh
+.. code-block :: yaml
 
   problem_config: !grond.RectangularProblemConfig
     name_template: '${event_name}_joint'
