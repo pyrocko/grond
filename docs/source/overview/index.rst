@@ -219,33 +219,84 @@ Engine
     pre-calculated Green's functions. Its configuration may contain information
     about where to find the pre-calculated Pyrocko Green's function stores.
 
+
+Initialize project
+------------------
+
+Grond ships with two options to quickstart a new project structure (see 
+:ref:`project-layout`), including Grond's YAML configuration files.
+
+**Forward-model a scenario**
+
+The subcommand ``grond scenario`` will forward model observations for a modelled
+earthquake and create a ready-to-go Grond project. Different observations and
+source problems can be added by flags - see ``grond scenario --help`` for possible
+combinations and options.
+
+The scenario can contain the following synthetic observations:
+
+* Seismic waveforms
+* InSAR surface displacements
+* GNSS surface displacements
+
+.. code-block:: sh
+    
+    grond scenario --targets=waveforms,insar <project-folder>
+
+A map of the random scenario is plotted in :file:`scenario_map.pdf`.
+
+**Initialise an empty project**
+
+An empty project structure can be created with the subcommand ``grond init``.
+Different configurations can be added by flags, see ``grond init --help`` for
+more information. 
+
+.. code-block:: sh
+    
+    grond init <project-folder>
+    cd <project-folder>
+
+Existing project folders can be overwritten by
+
+.. code-block:: sh
+    
+    grond init --force <project-folder>
+    cd <project-folder>
+    
+You can create an initial Grond configuration file for a centroid moment tensor
+optimization based on global seismic waveforms with
+
+.. code-block:: sh
+
+    grond init > config/<configfilename>.gronf
+
+This is the default and corresponds to
+
+.. code-block:: sh
+
+    grond init --target=waveforms > config/<configfilename>.gronf
+
+Identically, for static near-field displacement (InSAR, GNSS data sets) and finite
+source optimisation set-ups, initial Grond configuration file can be created with
+
+.. code-block:: sh
+
+    grond init --target=insar > config/<configfilename>.gronf
+    grond init --target=gnss  > config/<configfile>.gronf
+
+The ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data)
+can be combined and sources types can be exchanged. A Grond configuration file showing
+all possible options with their default values is given using:
+
+.. code-block:: sh
+
+    grond init --full > config/<configfilename>.gronf`
+
+
 Configuration
 -------------
 
 TODO: shorten config file example, describe overall structure
-
-You can create an initial Grond configuration file for a centroid moment tensor
-optimization based on global seismic waveforms with
-
-.. code-block :: sh
-
-    grond init > config/cmt.gronf
-
-Identically, for static near-field displacement (InSAR, GNSS data sets) and
-finite source optimisation set-ups, initial Grond configuration file can be
-created with
-
-.. code-block :: sh
-
-    grond init --waveforms > config/.gronf
-    grond init --insar > <project>.gronf
-    grond init --gnss --insar > <project>.gronf
-
-The ``targets`` (data and misfit setups for seimsic waveforms, InSAR and or GNSS data) can be combined and sources types can be exchanged. A Grond configuration file showing all possible options with their default values is given using:
-
-.. code-block :: sh
-
-    grond init --full > <project>.gronf`
 
 Commented snippets of Grond configuration files explaining all options can be found here for
 
