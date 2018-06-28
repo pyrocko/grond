@@ -359,7 +359,7 @@ The results can be exported in various ways by running the subcommand
 	grond export <what> <rundir>
 
 
-.. _YAML: http://yaml.org/
+.. _YAML: https://en.wikipedia.org/wiki/YAML
 .. _Optimisers: ../library/optimisers.html
 .. _Result Plots: ./plots_docu.html
 .. _Kite: https://pyrocko.org/docs/kite/current/
