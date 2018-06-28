@@ -132,8 +132,7 @@ class WaveformTargetGroup(TargetGroup):
                     misfit_config=self.misfit_config,
                     manual_weight=self.weight,
                     normalisation_family=self.normalisation_family,
-                    path=self.path or default_path,
-                    enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
+                    path=self.path or default_path)
 
                 if ds.is_blacklisted((st.nsl() + (cha,))):
                     log_exclude(target, 'blacklisted')

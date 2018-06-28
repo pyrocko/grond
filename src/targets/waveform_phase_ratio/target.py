@@ -55,8 +55,7 @@ class PhaseRatioTargetGroup(TargetGroup):
                 manual_weight=self.weight,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
-                backazimuth=0.0,
-                enable_bayesian_bootstraps=self.enable_bayesian_bootstraps)
+                backazimuth=0.0)
 
             if blacklisted:
                 log_exclude(target, 'blacklisted')
