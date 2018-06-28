@@ -27,12 +27,13 @@ class GrondProject(object):
         self.dataset_config = grond.DatasetConfig(
             events_path='events.txt',
             stations_path='stations.txt',
-            responses_stationxml_paths=['stationxml.xml']
-            )
+            responses_stationxml_paths=['stationxml.xml'],
+            gf_store_superdirs=['gf_stores'])
+
         self.project_config = None
         self.target_groups = []
 
-        self.sub_dirs = ['gf_store', 'config']
+        self.sub_dirs = ['gf_stores', 'config']
         self.empty_files = []
 
     def add_waveforms(self):
@@ -53,7 +54,7 @@ class GrondProject(object):
                 distance_max=1000*km,
                 channels=['Z', 'R', 'T'],
                 interpolation='multilinear',
-                store_id='gf_store',
+                store_id='gf_store_id',
                 misfit_config=grond.WaveformMisfitConfig(
                     fmin=0.01,
                     fmax=0.1)))
@@ -70,7 +71,7 @@ class GrondProject(object):
                 normalisation_family='static',
                 path='all',
                 interpolation='multilinear',
-                store_id='gf_store',
+                store_id='gf_static_store_id',
                 kite_scenes=['*all'],
                 misfit_config=grond.SatelliteMisfitConfig(
                     optimise_orbital_ramp=True,
@@ -94,7 +95,7 @@ class GrondProject(object):
                 normalisation_family='static',
                 path='all',
                 interpolation='multilinear',
-                store_id='gf_store',
+                store_id='gf_static_store_id',
                 misfit_config=grond.GNSSCampaignMisfitConfig()
                 )
             )
@@ -152,8 +153,8 @@ class GrondProject(object):
         return grond.Config(
             rundir_template=op.join('rundir', '${problem_name}.grun'),
             dataset_config=self.dataset_config,
-            target_groups=self.target_groups,
             problem_config=self.problem_config,
+            target_groups=self.target_groups,
             optimiser_config=optimiser_config,
             engine_config=engine_config)
 

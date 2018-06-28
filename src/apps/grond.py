@@ -394,7 +394,7 @@ def command_init(args):
     try:
         project = init.GrondProject()
 
-        if 'waveform' in options.targets:
+        if 'waveforms' in options.targets:
             project.add_waveforms()
             project.set_cmt_source()
         if 'insar' in options.targets:
