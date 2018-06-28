@@ -31,7 +31,8 @@ class GrondScenario(object):
         self.problem = problem
         self.observations = observations
 
-        self.engine = gf.LocalEngine(use_config=True)
+    def get_gf_stores_dir(self):
+        return op.join(self.project_dir, 'gf_stores')
 
     def create_project_dir(self, force=False):
         prj_dir = self.project_dir
@@ -43,20 +44,22 @@ class GrondScenario(object):
         elif op.exists(prj_dir) and force:
             logger.info('Overwriting directory %s.' % prj_dir)
             shutil.rmtree(prj_dir)
+
         util.ensuredir(prj_dir)
 
     @property
     def stores_wanted(self):
         return set([obs.store_id for obs in self.observations])
 
-    def symlink_gfstores(self):
+    def symlink_gfstores(self, engine):
         logger.info('Symlinking Green\'s function stores...')
-        util.ensuredir(op.join(self.project_dir, 'gf_stores'))
+
 
         for store_id in self.stores_wanted:
-            store = self.engine.get_store(store_id)
-            os.symlink(store.store_dir,
-                       op.join(self.project_dir, 'gf_stores', store_id))
+            store = engine.get_store(store_id)
+            dtarget = op.join(self.get_gf_stores_dir(), store_id)
+            if not op.exists(dtarget):
+                os.symlink(store.store_dir, dtarget)
 
     def add_observation(self, observation):
         logger.info('Adding %s' % observation.__class__.__name__)
@@ -96,8 +99,25 @@ class GrondScenario(object):
         logger.info('Creating scenario...')
 
         scenario = self.get_scenario()
-        scenario.init_modelling(engine=self.engine)
-        scenario.ensure_gfstores(interactive=interactive)
+        util.ensuredir(self.get_gf_stores_dir())
+
+        engine1 = gf.LocalEngine(
+            use_config=True,
+            store_superdirs=[self.get_gf_stores_dir()])
+
+        scenario.init_modelling(engine=engine1)
+
+        scenario.ensure_gfstores(
+            interactive=interactive,
+            gf_store_superdirs_extra=[self.get_gf_stores_dir()])
+
+        self.symlink_gfstores(engine1)
+
+        engine2 = gf.LocalEngine(
+            use_config=False,
+            store_superdirs=[self.get_gf_stores_dir()])
+
+        scenario.init_modelling(engine=engine2)
 
         data_dir = op.join(self.project_dir, self.data_dir)
         util.ensuredir(data_dir)
@@ -145,7 +165,6 @@ class GrondScenario(object):
         self.create_project_dir(force)
 
         self.create_scenario(interactive=interactive)
-        self.symlink_gfstores()
 
         self.create_grond_files()
 
