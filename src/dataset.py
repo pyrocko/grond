@@ -187,8 +187,12 @@ class Dataset(object):
         if filenames:
             blacklist = list(blacklist)
             for filename in filenames:
-                with open(filename, 'r') as f:
-                    blacklist.extend(s.strip() for s in f.read().splitlines())
+                if op.exists(filename):
+                    with open(filename, 'r') as f:
+                        blacklist.extend(
+                            s.strip() for s in f.read().splitlines())
+                else:
+                    logger.warning('no such blacklist file: %s' % filename)
 
         for x in blacklist:
             if isinstance(x, str):
