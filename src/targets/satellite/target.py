@@ -48,8 +48,6 @@ class SatelliteTargetGroup(TargetGroup):
     misfit_config = SatelliteMisfitConfig.T(
         help='Carries the settings of the objective function for these targets'
         )
-    interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T(optional=True)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting satellite targets...')

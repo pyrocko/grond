@@ -4,7 +4,7 @@ import numpy as num
 
 from pyrocko import gf
 from pyrocko.guts_array import Array
-from pyrocko.guts import Object, Float, Bool, Dict
+from pyrocko.guts import Object, Float, Dict
 
 from grond.analysers.base import AnalyserResult
 
@@ -13,9 +13,6 @@ guts_prefix = 'grond'
 
 
 class TargetGroup(Object):
-    enabled = Bool.T(
-        default=True,
-        help='Enable/Disable the target group')
     normalisation_family = gf.StringID.T(
         optional=True,
         help='Group with common misfit normalisation')

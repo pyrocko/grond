@@ -109,8 +109,6 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help='set channels to include, e.g. \[\'Z\',\'T\'\]')
     misfit_config = WaveformMisfitConfig.T()
-    interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T(optional=True)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting waveform targets...')

@@ -13,6 +13,11 @@ from observables or synthesised data. A target can be, a filtered waveform, a sp
 The waveform target groups can be combined to solve the inverse problem, leading to a joint optimisation from different data sources and observeables.
 
 
+.. note ::
+
+    Weighting between targets is described in the :doc:`../method/index` section.
+
+
 Waveform targets
 ----------------
 
@@ -29,10 +34,10 @@ Waveform targets
     Filtering to the desired frequency band is part of the 
     restitution. Minimum and maximum (``fmin, fmax``) frequencies can be configured.
 
-**Lp Normalisation**
-    The `Lp normalisation <https://en.wikipedia.org/wiki/Lp_space>`_ factor for calculating the waveform misfit.
+**Lp Normalisation**:
+    The `Lp normalisation <https://en.wikipedia.org/wiki/Lp_space>`_ for calculating the waveform misfit.
 
-**Domain**
+**Domain**:
     Can be selection from
 
     * ``time_domain``
@@ -85,14 +90,20 @@ Example :class:`~grond.targets.waveform.WaveformTargetGroup` configuration block
 Satellite targets
 -----------------
 
-Observations of spatial surface displacements as derived from unwrapped InSAR data. These data must be prepared using the `kite <https://pyrocko.org>`_ software package.
+Observations of spatial surface displacements as derived from unwrapped InSAR data. These data must be hold in a special container format and prepared using the `kite <https://pyrocko.org/#kite>`_ software package.
 
-Prior to optimisation we have to define a subsamples Quadtree and Covariance matrix.
+Prior to optimisation we have to parametrise a quadtree of the surface displacements (spatial sub-sampling) and pre-calculate the data's covariance matrix with kite's ``spool`` tool:
 
-**Scene ID**
-    The InSAR scenes are identified by their kite ``scene_id``, they can be explicitly selected or a wildcard ``*all*`` can be used.
+.. code-block :: bash
 
-**Optimise Orbital Ramps**
+    spool events/<event_name>/data/insar/scene_ascending.yml
+
+Please see `kite's documentation <https://pyrocko.org/docs/kite/current/>`_ for insights into the pre-processing methods.
+
+**Scene ID**:
+    The InSAR scenes are identified by their kite ``scene_id``. Scenes can be explicitly selected, or the wildcard ``*all`` can be used.
+
+**Optimise Orbital Ramps**:
     Optimisation for a 2D offset plane in each InSAR scene. This will compensate tradeoffs between the earthquake signal and uncorrected trends in the unwrapped surface displacements.
     The slopes of ``ramp_north`` and ``ramp_east`` are given in :math:`\frac{m}{m}`, the offset in :math:`m` - these parameters have to be tuned with touch.
 
@@ -120,10 +131,10 @@ Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration blo
 GNSS campaign targets
 ---------------------
 
-True 3D surface displacement as measured by GNSS stations can be included in the inversion process by defining a :class:`~grond.targets.GNSSCampaignTargetGroup`. The displacement data has to be according to :class:`~pyrocko.model.gnss_campaign`.
+True 3D surface displacement as measured by GNSS stations can be included in the inversion process by defining a :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup`. The station's displacement data has to be stored according to :mod:`~pyrocko.model.gnss_campaign`. Please refer to pyrocko's documentation of the GNSS model (`See example <https://pyrocko.org/docs/current/library/examples/gnss_data.html>`_)
 
-There are no particular configuration parameters available for this :class:`grond.targets.TargetGroup`.
-
+**GNSS Campaigns Name**:
+    The campaigns are identified by their ``campaign_name``. Campaigns can be explicitly selected, or the wildcard ``*all`` can be used.
 
 Example :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` configuration block:
 

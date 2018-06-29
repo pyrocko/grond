@@ -8,6 +8,6 @@ The :mod:`targets` module
 
     base <base>
     waveform <waveform>
-    waveform_phase_ratio <waveform_phase_ratio>
     satellite <satellite>
     gnss_campaign <gnss_campaign>
+    waveform_phase_ratio <waveform_phase_ratio>
