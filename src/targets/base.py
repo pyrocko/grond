@@ -68,6 +68,7 @@ class MisfitTarget(Object):
         self._ds = None
         self._result_mode = 'sparse'
 
+        self._combined_weight = None
         self._target_parameters = None
         self._target_ranges = None
 
