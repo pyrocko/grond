@@ -36,8 +36,6 @@ class GNSSCampaignTargetGroup(TargetGroup):
         help='List of individual campaign names'
              ' (`name` in `gnss.yaml` files).')
     misfit_config = GNSSCampaignMisfitConfig.T()
-    interpolation = gf.InterpolationMethod.T()
-    store_id = gf.StringID.T(optional=True)
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting GNSS targets...')

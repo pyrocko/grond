@@ -22,6 +22,13 @@ class TargetGroup(Object):
     weight = Float.T(
         default=1.0,
         help='Additional manual weight of the target group')
+    interpolation = gf.InterpolationMethod.T(
+        default='nearest_neighbor',
+        help='Interpolation from pre-calculated GF store.')
+    store_id = gf.StringID.T(
+        optional=True,
+        help='ID of the Green\'s function store for this TargetGroup.')
+
 
     def get_targets(self, ds, event, default_path):
         raise NotImplementedError()

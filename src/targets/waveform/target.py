@@ -8,7 +8,6 @@ from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
 from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
-from grond.analysers.base import AnalyserResult
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
 
@@ -255,6 +254,8 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()
 
+    can_bootstrap_weights = True
+
     def __init__(self, **kwargs):
         gf.Target.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
@@ -271,26 +272,13 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         return plots
 
     def get_combined_weight(self):
-        w = self.manual_weight
-        if 'target_balancing' in self.analyser_results:
-            w *= self.get_balancing_weight()
-        if 'noise' in self.analyser_results:
-            w *= self.get_station_noise_weight()
-        return num.array([w], dtype=num.float)
+        if self._combined_weight is None:
+            w = self.manual_weight
+            for analyser in self.analyser_results.values():
+                w *= analyser.weight
+            self._combined_weight = num.array([w], dtype=num.float)
 
-    def get_balancing_weight(self):
-        if 'target_balancing' not in self.analyser_results:
-            raise AnalyserResult.NoResults(
-                'no balancing weights available')
-
-        return self.analyser_results['target_balancing'].weight
-
-    def get_station_noise_weight(self):
-        if 'noise' not in self.analyser_results:
-            raise AnalyserResult.NoResults(
-                'no station noise weights available')
-
-        return self.analyser_results['target_balancing'].weight
+        return self._combined_weight
 
     def get_taper_params(self, engine, source):
         store = engine.get_store(self.store_id)
