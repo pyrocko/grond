@@ -29,7 +29,6 @@ class TargetGroup(Object):
         optional=True,
         help='ID of the Green\'s function store for this TargetGroup.')
 
-
     def get_targets(self, ds, event, default_path):
         raise NotImplementedError()
 
