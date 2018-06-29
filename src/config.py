@@ -106,8 +106,6 @@ class Config(HasPaths):
 
         targets = []
         for igroup, target_group in enumerate(self.target_groups):
-            if not target_group.enabled:
-                continue
             targets.extend(target_group.get_targets(
                 ds, event, 'target.%i' % igroup))
 

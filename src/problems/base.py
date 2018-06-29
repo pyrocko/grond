@@ -409,7 +409,7 @@ class Problem(Object):
 
             res = root(
                 num.nansum(exp(w*(misfits[:, num.newaxis, :, 0]+r)), axis=2) /
-                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1]+r)), axis=2))
+                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1])), axis=2))
             assert res[res < 0].size == 0
             return res
         else:
