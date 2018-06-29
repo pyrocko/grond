@@ -1,6 +1,5 @@
 import logging
 import numpy as num
-import progressbar
 
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
@@ -223,10 +222,11 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         cov = scene.covariance
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
-        with progressbar.ProgressBar(max_value=nbootstraps) as bar:
-            for ibs in range(nbootstraps):
-                bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
-                bar.update(ibs)
+        for ibs in range(nbootstraps):
+            if not ibs % 5:
+                logger.info('Calculating noise realisation %d/%d'
+                            % (ibs, nbootstraps))
+            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
 
         self.set_bootstrap_residuals(bootstraps)
 
