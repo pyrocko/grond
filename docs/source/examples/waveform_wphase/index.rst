@@ -134,7 +134,7 @@ are not detected by the downloader, so we will have to look at the seismograms.
 Data screening
 ..............
 
-For a quick visual inspection of the dataset, we may use the 
+For a quick visual inspection of the dataset, we can use the 
 `Snuffler <https://pyrocko.org/docs/current/apps/snuffler/index.html>`_ program
 contained in Pyrocko.
 
@@ -143,10 +143,11 @@ contained in Pyrocko.
     cd data/events/gfz2015sfdd/waveforms
     snuffler --event=../event.txt --stations=stations.prepared.txt waveforms/prepared
 
-After some interactive adjustments in Snuffler, we may arrive at a figure as
-shown in Figure 1. In particular, we may want to
+Figure 1 shows our view after some interactive adjustments in Snuffler. In
+particular, we we may want to
 
-* sort the traces according to epicentral distance (Menu → check *Sort by Distance*).
+* sort the traces according to epicentral distance (Menu → check *Sort by
+  Distance*).
 * configure display style (Menu → uncheck *Show Boxes*, check *Common Scale per 
   Station*, uncheck *Clip Traces*).
 * filter between 0.001 and 0.01 Hz.

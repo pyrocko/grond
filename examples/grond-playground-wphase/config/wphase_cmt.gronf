@@ -1,83 +1,237 @@
 %YAML 1.1
 --- !grond.Config
+
+# All file paths referenced below are treated relative to the location of this
+# configuration file, here we may give a common prefix. E.g. setting it to '..'
+# if the configuration file is in '${project_root}/config' allows us to give
+# the paths below relative to '${project_root}'.
 path_prefix: '..'
+
+# Path, where to store output (run directories). The placeholder
+# '${problem_name}' will be expanded to a name configured below in
+# problem_config.name_template and will typically include a config identifier
+# and the event name.
 rundir_template: 'runs/${problem_name}.grun'
 
-# 
-event_names:
-- 'gfz2015sfdd'
+# If given, restrict to processing of listed events
+#event_names:
+#- 'gfz2015sfdd'
+
+
+# -----------------------------------------------------------------------------
+# Configuration section for dataset (input data)
+#
+# The placeholder '${event_name}' will be expanded to the current event. This
+# enables us to use the same configuration for multiple events. The available 
+# events are detected 
+# -----------------------------------------------------------------------------
 
 dataset_config: !grond.DatasetConfig
+
+  # List of files with station coordinates.
   stations_stationxml_paths: 
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
   - 'data/events/${event_name}/waveforms/stations.iris.xml'
   - 'data/events/${event_name}/waveforms/stations.orfeus.xml'
+
+  # File with hypocenter information and possibly reference solution
   events_path: 'data/events/${event_name}/event.txt'
+
+  # List of directories with raw waveform data
   waveform_paths: ['data/events/${event_name}/waveforms/raw']
-  # picks_paths: ['catalogs/picks2.txt']
+
+  # List of stations/components to be excluded according to their STA, NET.STA,
+  # NET.STA.LOC, or NET.STA.LOC.CHA codes
   blacklist: []
+
+  # List of files with additional exclusion lists (one entry per line, same 
+  # format as above)
   blacklist_paths:
   - 'data/events/${event_name}/waveforms/blacklist.txt'
+
+  # List of files with instrument response information (can be the same as in
+  # stations_stationxml_paths above)
   responses_stationxml_paths:
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
   - 'data/events/${event_name}/waveforms/stations.iris.xml'
   - 'data/events/${event_name}/waveforms/stations.orfeus.xml'
 
+
+# -----------------------------------------------------------------------------
+# Configuration section for the observational data fitting
+#
+# This defines the objective function to be minimized in the optimisation. It
+# can be composed of one or more contributions, each represented by a
+# !grond.*TargetGroup section.
+# -----------------------------------------------------------------------------
+
 target_groups:
 
 - !grond.WaveformTargetGroup
+
+  # Normalisation family (see the Grond documentation for how it works).
+  # Use distinct normalisation families when mixing misfit contributors with
+  # different magnitude scaling, like e.g. cross-correlation based misfit and 
+  # time-domain Lx norm.
   normalisation_family: 'td'
+
+  # Just a name used to identfy targets from this group. Use dot-separated path
+  # notation to group related contributors
   path: 'td.wphase'
-  distance_min: 1000e3
-  distance_max: 10000e3
+
+  # Epicentral distance range of stations to be considered
+  distance_min: 3000e3
+  distance_max: 11000e3
+
+  # Names of components to be included. Available: N=north, E=east, Z=vertical
+  # (up), R=radial (away), T=transverse (right)
   channels: ['Z','R']
-  #weight: 1.0
+
+  # How to weight contributions from this group in the global misfit
+  weight: 1.0
+
+  # subsection on how to fit the traces
   misfit_config: !grond.WaveformMisfitConfig
+
+    # Frequency band [Hz] of acausal filter (flat part of frequency taper)
     fmin: 0.001
     fmax: 0.005
+
+    # Factor defining fall-off of frequency taper (zero at fmin/ffactor and
+    # fmax*ffactor)
     ffactor: 1.5
-    tmin: 'begin-600'
-    tmax: 'S-60'
+
+    # Time window to include in the data fitting. Times can be defined offset
+    # to given phase arrivals. E.g. '{stored:begin}-600' would mean 600 s
+    # before arrival of the phase named 'begin', which must be defined in the
+    # travel time tables in the GF store.
+    tmin: '{stored:begin}-600'
+    tmax: '{stored:S}-60'
+
+    # How to fit the data (available: 'time_domain', 'frequency_domain',
+    # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
     domain: 'time_domain'
+    
+    # For L1 norm: 1, L2 norm: 2, etc.
     norm_exponent: 1
+
+  # How to interpolate the Green's functions (available choices:
+  # 'nearest_neighbor', 'multilinear'). Choices other than 'nearest_neighbor'
+  # may require dense GF stores to avoid aliasing artifacts in the forward 
+  # modelling.
   interpolation: 'nearest_neighbor'
+
+  # Name of the GF Store to use
   store_id: 'global_20s_shallow'
-  #store_id: global_20s
+
+
+# -----------------------------------------------------------------------------
+# Definition of the problem to be solved
+#
+# In this section the source model to be fitted is chosen, the parameter space
+# defined, and how to combine the misfit contributions defined in the
+# target_groups section above.
+# 
+# The marker !grond.CMTProblemConfig selects a centroid moment tensor source
+# model. 
+# -----------------------------------------------------------------------------
 
 problem_config: !grond.CMTProblemConfig
+
+  # Name used to identify the output
   name_template: 'wphase_cmt_${event_name}'
+
+  # Definition of model parameter space to be searched in the optimisation
   ranges:
+    # Time relative to hypocenter origin time [s]
     time: '-100 .. 100 | add'
+
+    # Centroid location with respect to hypocenter origin [m]
     north_shift: '-200e3 .. 200e3'
     east_shift: '-200e3 .. 200e3'
     depth: '5e3 .. 40e3'
+
+    # Range of magnitudes to allow
     magnitude: '7.5 .. 8.5'
+
+    # Relative moment tensor component ranges (don't touch)
     rmnn: '-1.41421 .. 1.41421'
     rmee: '-1.41421 .. 1.41421'
     rmdd: '-1.41421 .. 1.41421'
     rmne: '-1 .. 1'
     rmnd: '-1 .. 1'
     rmed: '-1 .. 1'
+
+    # Source duration range [s]
     duration: '50. .. 200.'
+
+  # Clearance distance around stations (no models with origin closer than this
+  # distance to any station are produced by the sampler)
   distance_min: 0.
+
+  # Type of moment tensor to restrict to (choices: 'full', 'deviatoric', 'dc')
   mt_type: 'deviatoric'
+
+  # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
   norm_exponent: 1
 
-optimiser_config: !grond.HighScoreOptimiserConfig
-  nbootstrap: 100
-  sampler_phases:
-  - !grond.UniformSamplerPhase
-      niterations: 1000
-  - !grond.DirectedSamplerPhase
-      niterations: 20000
-      scatter_scale_begin: 2.0
-      scatter_scale_end: 0.5
 
+# -----------------------------------------------------------------------------
+# Configuration of pre-optimisation analysis phases. 
+# determined during this phase.
+# -----------------------------------------------------------------------------
+#
 analyser_configs:
+
+# Balancing weights are determined with this analyser
 - !grond.TargetBalancingAnalyserConfig
+
+  # Number of models to forward model in the analysis, larger number -> better
+  # statistics)
   niterations: 1000
 
+# -----------------------------------------------------------------------------
+# Configuration of the optimisation procedure
+# -----------------------------------------------------------------------------
+
+optimiser_config: !grond.HighScoreOptimiserConfig
+
+  # Number of bootstrap realisations to be tracked simultaneously in the
+  # optimisation
+  nbootstrap: 100
+
+  # stages of the sampler. Start with uniform sampling of the model space
+  # (!grond.UniformSamplerPhase), then narrow down to the interesting regions
+  # (!grond.DirectedSamplerPhase).
+  sampler_phases:
+
+  - !grond.UniformSamplerPhase
+
+      # Number of iterations
+      niterations: 1000
+
+  - !grond.DirectedSamplerPhase
+
+      # Number of iterations
+      niterations: 20000
+
+      # Multiplicator for width of sampler distribution at start of this phase
+      scatter_scale_begin: 2.0
+
+      # Multiplicator for width of sampler distribution at end of this phase
+      scatter_scale_end: 0.5
+
+
+# -----------------------------------------------------------------------------
+# Configuration section for synthetic seismogram engine
+#
+# Configures where to look for GF stores.
+# -----------------------------------------------------------------------------
+
 engine_config: !grond.EngineConfig
-  #gf_stores_from_pyrocko_config: true
+
+  # Whether to use GF store directories listed in ~/.pyrocko/config.pf
   gf_stores_from_pyrocko_config: false
+
+  # List of directories with GF stores
   gf_store_superdirs: ['gf_stores']
