@@ -1,0 +1,83 @@
+%YAML 1.1
+--- !grond.Config
+path_prefix: '..'
+rundir_template: 'runs/${problem_name}.grun'
+
+# 
+event_names:
+- 'gfz2015sfdd'
+
+dataset_config: !grond.DatasetConfig
+  stations_stationxml_paths: 
+  - 'data/events/${event_name}/waveforms/stations.geofon.xml'
+  - 'data/events/${event_name}/waveforms/stations.iris.xml'
+  - 'data/events/${event_name}/waveforms/stations.orfeus.xml'
+  events_path: 'data/events/${event_name}/event.txt'
+  waveform_paths: ['data/events/${event_name}/waveforms/raw']
+  # picks_paths: ['catalogs/picks2.txt']
+  blacklist: []
+  blacklist_paths:
+  - 'data/events/${event_name}/waveforms/blacklist.txt'
+  responses_stationxml_paths:
+  - 'data/events/${event_name}/waveforms/stations.geofon.xml'
+  - 'data/events/${event_name}/waveforms/stations.iris.xml'
+  - 'data/events/${event_name}/waveforms/stations.orfeus.xml'
+
+target_groups:
+
+- !grond.WaveformTargetGroup
+  normalisation_family: 'td'
+  path: 'td.wphase'
+  distance_min: 1000e3
+  distance_max: 10000e3
+  channels: ['Z','R']
+  #weight: 1.0
+  misfit_config: !grond.WaveformMisfitConfig
+    fmin: 0.001
+    fmax: 0.005
+    ffactor: 1.5
+    tmin: 'begin-600'
+    tmax: 'S-60'
+    domain: 'time_domain'
+    norm_exponent: 1
+  interpolation: 'nearest_neighbor'
+  store_id: 'global_20s_shallow'
+  #store_id: global_20s
+
+problem_config: !grond.CMTProblemConfig
+  name_template: 'wphase_cmt_${event_name}'
+  ranges:
+    time: '-100 .. 100 | add'
+    north_shift: '-200e3 .. 200e3'
+    east_shift: '-200e3 .. 200e3'
+    depth: '5e3 .. 40e3'
+    magnitude: '7.5 .. 8.5'
+    rmnn: '-1.41421 .. 1.41421'
+    rmee: '-1.41421 .. 1.41421'
+    rmdd: '-1.41421 .. 1.41421'
+    rmne: '-1 .. 1'
+    rmnd: '-1 .. 1'
+    rmed: '-1 .. 1'
+    duration: '50. .. 200.'
+  distance_min: 0.
+  mt_type: 'deviatoric'
+  norm_exponent: 1
+
+optimiser_config: !grond.HighScoreOptimiserConfig
+  nbootstrap: 100
+  sampler_phases:
+  - !grond.UniformSamplerPhase
+      niterations: 1000
+  - !grond.DirectedSamplerPhase
+      niterations: 20000
+      scatter_scale_begin: 2.0
+      scatter_scale_end: 0.5
+
+analyser_configs:
+- !grond.TargetBalancingAnalyserConfig
+  niterations: 1000
+
+engine_config: !grond.EngineConfig
+  #gf_stores_from_pyrocko_config: true
+  gf_stores_from_pyrocko_config: false
+  gf_store_superdirs: ['gf_stores']
