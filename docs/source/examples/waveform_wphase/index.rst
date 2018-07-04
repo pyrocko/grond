@@ -185,3 +185,29 @@ be found in the :doc:`/library/index`.
     :caption: config/wphase_cmt.gronf (in project folder)
 
 .. _YAML: https://en.wikipedia.org/wiki/YAML
+
+Checking the optimisation setup
+...............................
+
+Before running the actual optimisation, we can now use the command
+
+.. code-block :: sh
+    
+    grond check config/wphase_cmt.gronf gfz2015sfdd
+
+to run some sanity checks. In particular, Grond will try to run a few forward
+models to see if the modelling works and if it can read the input data. If only
+one event is available, we can also neglect the event name argument in this and
+other Grond commands.
+
+To get some more insight into the setup, we can now run
+
+.. code-block :: sh
+
+    grond report -so config/wphase_cmt.gronf gfz2015sfdd
+
+This will plot some diagnostic figures, create web pages in a new directory 
+'reports', and finally open these in a web browser. 
+
+
+

@@ -3,8 +3,8 @@
 
 # All file paths referenced below are treated relative to the location of this
 # configuration file, here we may give a common prefix. E.g. setting it to '..'
-# if the configuration file is in '${project_root}/config' allows us to give
-# the paths below relative to '${project_root}'.
+# if the configuration file is in the sub-directory '${project_root}/config'
+# allows us to give the paths below relative to '${project_root}'.
 path_prefix: '..'
 
 # Path, where to store output (run directories). The placeholder
@@ -23,7 +23,8 @@ rundir_template: 'runs/${problem_name}.grun'
 #
 # The placeholder '${event_name}' will be expanded to the current event. This
 # enables us to use the same configuration for multiple events. The available 
-# events are detected 
+# events are detected by looking into possible expansions of
+# dataset_config.events_path
 # -----------------------------------------------------------------------------
 
 dataset_config: !grond.DatasetConfig
@@ -81,7 +82,7 @@ target_groups:
 
   # Epicentral distance range of stations to be considered
   distance_min: 3000e3
-  distance_max: 11000e3
+  distance_max: 10000e3
 
   # Names of components to be included. Available: N=north, E=east, Z=vertical
   # (up), R=radial (away), T=transverse (right)
@@ -102,11 +103,12 @@ target_groups:
     ffactor: 1.5
 
     # Time window to include in the data fitting. Times can be defined offset
-    # to given phase arrivals. E.g. '{stored:begin}-600' would mean 600 s
-    # before arrival of the phase named 'begin', which must be defined in the
+    # to given phase arrivals. E.g. '{stored:P}-600' would mean 600 s
+    # before arrival of the phase named 'P'. The phase must be defined in the
     # travel time tables in the GF store.
-    tmin: '{stored:begin}-600'
+    tmin: '{stored:P}-600'
     tmax: '{stored:S}-60'
+    tfade: 120.0
 
     # How to fit the data (available: 'time_domain', 'frequency_domain',
     # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
