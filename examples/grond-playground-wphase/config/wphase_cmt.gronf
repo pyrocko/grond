@@ -108,7 +108,7 @@ target_groups:
     # travel time tables in the GF store.
     tmin: '{stored:P}-600'
     tmax: '{stored:S}-60'
-    tfade: 120.0
+    # tfade: 120.0
 
     # How to fit the data (available: 'time_domain', 'frequency_domain',
     # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
