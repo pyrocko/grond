@@ -100,7 +100,7 @@ For a quick visual inspection of the dataset, we can use the `Snuffler <https://
 .. code-block :: sh
 
     cd data/events/gfz2015sfdd/waveforms
-    snuffler --event=../event.txt --stations=stations.prepared.txt waveforms/prepared
+    snuffler --event=../event.txt --stations=stations.prepared.txt prepared
 
 Figure 1 shows our view after some interactive adjustments in Snuffler. In particular, we we may want to
 
