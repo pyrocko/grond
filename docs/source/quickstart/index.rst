@@ -4,64 +4,54 @@
 Quickstart
 ==========
 
-Grond ships with a two options to quickstart a new project structure (see :ref:`project-layout`), including Grond's YAML configuration files.
+Grond ships with two options to quickstart a new project structure (see
+:ref:`project-layout`), including Grond's YAML configuration files. Here
+we present a quickstart solution employing forward-modelled data.
 
 .. tip::
     
     All subcommands come with a help, e.g. ``grond go --help``!
 
-Option 1: Forward-model a scenario
-----------------------------------
+Forward-model a scenario:
 
-The subcommand ``grond scenario`` will forward model observations for a modelled earthquake and create a ready-to-go Grond project. Different observations and source problems can be added by flags - see ``grond scenario --help`` for possible combinations and options.
+.. code-block :: sh
 
-The scenario can contain the following synthetic observations:
+    grond scenario --targets=waveforms my_first_project
+    In which cache directory shall the GF store be downloaded to? 
+    Default 1, (C)ancel: 1
 
-* Seismic waveforms
-* InSAR surface displacements
-* GNSS surface displacements
+Check the configuration:
 
-.. code-block:: sh
-    
-    grond scenario --targets=waveforms,insar <project-folder>
+.. code-block :: sh
 
-A map of the random scenario is plotted in :file:`scenario_map.pdf`.
+    cd my_first_project
+    grond check config.yml
 
-Option 2: Initialise an empty project
--------------------------------------
+Start the optimisation:
 
-An empty project structure can be created with the subcommand ``grond init``. Different configurations can be added by flags, see ``grond init --help`` for more information.
+.. code-block :: sh
 
-.. code-block:: sh
-    
-    grond init <project-folder>
-
-Start the optimisation
-----------------------
-
-To start optimising the bootstrapped Grond scenario use the subcommand `go`
-
-.. code-block:: sh
-
-    cd <project-folder>
     grond go config.yml
 
-Optionally we can check the configuration beforehand with
+Plot the results in a report:
 
-.. code-block:: sh
+.. code-block :: sh
 
-    grond check config.yml
+    grond report <rundir>
+
 
 Custom Grond projects
 ---------------------
 
 After initialising a new project you can add your own data and customise the configration file.
 
-1. Add your own data to folders :file:`events/<name>/`
-2. Add your :file:`events.txt`
-3. Copy :file:`config.yml` to :file:`my-event.yml`
-4. Customize values in :class:`~grond.dataset.DatasetConfig`
-5. Run a ``grond check`` to check your configuration and input data
-6. Run ``grond go my-event.yml`` to start the optimisation
+1. Run ``grond init <project-folder>`` to initialise an empty project
+2. Add your own data to folders :file:`events/<name>/`
+3. Add your :file:`events.txt`
+4. Copy :file:`config.yml` to :file:`my-event.yml`
+5. Customize values in :class:`~grond.dataset.DatasetConfig`
+6. Run a ``grond check`` to check your configuration and input data
+7. Run ``grond go my-event.yml`` to start the optimisation
+8. Run ``grond report <rundir>`` to obtain a report on the results.
 
 See the :doc:`../examples/index` for detailed information.

@@ -219,46 +219,162 @@ Engine
     pre-calculated Green's functions. Its configuration may contain information
     about where to find the pre-calculated Pyrocko Green's function stores.
 
-Configuration
--------------
 
-TODO: shorten config file example, describe overall structure
+Initialize project
+------------------
 
+Grond ships with two options to quickstart a new project structure (see 
+:ref:`project-layout`), including Grond's YAML configuration files.
+
+**Forward-model a scenario**
+
+The subcommand ``grond scenario`` will forward model observations for a modelled
+earthquake and create a ready-to-go Grond project. Different observations and
+source problems can be added by flags - see ``grond scenario --help`` for possible
+combinations and options.
+
+The scenario can contain the following synthetic observations:
+
+* Seismic waveforms
+* InSAR surface displacements
+* GNSS surface displacements
+
+.. code-block :: sh
+    
+    grond scenario --targets=waveforms,insar <project-folder>
+
+A map of the random scenario is plotted in :file:`scenario_map.pdf`.
+
+**Initialise an empty project**
+
+An empty project structure can be created with the subcommand ``grond init``.
+Different configurations can be added by flags, see ``grond init --help`` for
+more information. 
+
+.. code-block :: sh
+
+    grond init <project-folder>
+    cd <project-folder>
+
+.. tip::
+
+    Existing project folders can be overwritten using ``grond init --force <project-folder>``
+ 
 You can create an initial Grond configuration file for a centroid moment tensor
 optimization based on global seismic waveforms with
 
 .. code-block :: sh
 
-    grond init > config/cmt.gronf
+    grond init > config/<configfilename>.gronf
 
-Identically, for static near-field displacement (InSAR, GNSS data sets) and
-finite source optimisation set-ups, initial Grond configuration file can be
-created with
+This is the default and corresponds to
 
 .. code-block :: sh
 
-    grond init --waveforms > config/.gronf
-    grond init --insar > <project>.gronf
-    grond init --gnss --insar > <project>.gronf
+    grond init --target=waveforms > config/<configfilename>.gronf
 
-The ``targets`` (data and misfit setups for seimsic waveforms, InSAR and or GNSS data) can be combined and sources types can be exchanged. A Grond configuration file showing all possible options with their default values is given using:
+Identically, for static near-field displacement (InSAR, GNSS data sets) and finite
+source optimisation set-ups, initial Grond configuration file can be created with
 
 .. code-block :: sh
 
-    grond init --full > <project>.gronf`
+    grond init --target=insar > config/<configfilename>.gronf
+    grond init --target=gnss  > config/<configfile>.gronf
 
-Commented snippets of Grond configuration files explaining all options can be found here for
+The ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data)
+can be combined and sources types can be exchanged. A Grond configuration file showing
+all possible options with their default values is given using:
 
-**Example configurations**
+.. code-block :: sh
 
-* point-source optimizations based on waveforms: :download:`config_example_waveforms.yaml </../../examples/config_example_waveforms.yaml>`
-* finite source optimizations based on InSAR data: :download:`config_example_static.yaml </../../examples/config_example_static.yaml>`
+    grond init --full > config/<configfilename>.gronf
 
+
+Configuration
+-------------
 
 **Configuration file structure**
 
-.. literalinclude :: /../../examples/config_example_static.yaml
-    :language: yaml
+The configuration file consists of several blocks. The order of these blocks is of
+no importance.
+
+.. code-block :: sh
+
+    %YAML 1.1
+    --- !grond.Config
+    # Path where to store output (run-directories)
+    path_prefix: '..'
+    rundir_template: 'runs/${problem_name}.run'
+
+    # -----------------------------------------------------------------------------
+    # Configuration section for dataset (input data)
+    # ---------------------------------------------------------------------   
+    dataset_config: !grond.DatasetConfig
+      ...
+
+    # -----------------------------------------------------------------------------
+    # Configuration section for the forward modelling engine (configures where
+    # to look for GF stores)
+    # -----------------------------------------------------------------------------
+    engine_config: !grond.EngineConfig
+      ...
+
+    # -----------------------------------------------------------------------------
+    # Configuration section selecting data to be included in the data optimization. 
+    # Amongst other parameters, the objective function for the optimization is 
+    # defined for each target group. The targets can be composed of one or more 
+    # contributions, each represented by a !grond.TargetConfig section.
+    # ----------------------------------------------------------------------------- 
+    target_groups:
+    # setup for seismic waveforms
+    - !grond.WaveformTargetGroup
+      ...
+
+    # setup for InSAR
+    - !grond.SatelliteTargetGroup
+      ...
+
+    # setup for coseismic GNSS displacements
+    - !grond.GNSSCampaignTargetGroup
+      ...
+
+    # -----------------------------------------------------------------------------
+    # Definition of the problem to be solved - source model, parameter space, and
+    # global misfit configuration settings. Only one problem can be defined per 
+    # configuration file.
+    # -----------------------------------------------------------------------------  
+    problem_config: !grond.CMTProblemConfig           # setup for a general moment tensor
+    # problem_config: !grond.RectangularProblemConfig # setup for an extended source
+    # problem_config: !grond.DoubleDCProblemConfig    # setup for combination of two double-couples
+      ...
+      
+    # -----------------------------------------------------------------------------
+    # Configuration of pre-optimization analysis phase; e.g. balancing weights are
+    # determined during this phase. Analysers can be combined.
+    # ----------------------------------------------------------------------------- 
+    analyser_configs: 
+    # Analyse synthetic waveforms from random source models
+    - !grond.TargetBalancingAnalyserConfig
+      ...
+
+    # Analyse pre-event noise
+    - !grond.NoiseAnalyserConfig
+      ...
+
+    # -----------------------------------------------------------------------------
+    # Configuration of the optimization procedure. The following example setup will
+    # run a Bayesian bootstrap optimization (BABO).
+    # -----------------------------------------------------------------------------    
+    optimizer_config: !grond.HighScoreOptimizerConfig
+      ...
+
+
+**Example configurations**
+
+Commented snippets of Grond configuration files explaining all options can be found here for
+
+* point-source optimizations based on waveforms: :download:`config_example_waveforms.yaml </../../examples/config_example_waveforms.yaml>`
+* finite source optimizations based on InSAR data: :download:`config_example_static.yaml </../../examples/config_example_static.yaml>`
 
 
 Optimisation
