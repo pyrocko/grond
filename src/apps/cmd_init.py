@@ -27,8 +27,7 @@ class GrondProject(object):
         self.dataset_config = grond.DatasetConfig(
             events_path='events.txt',
             stations_path='stations.txt',
-            responses_stationxml_paths=['stationxml.xml'],
-            gf_store_superdirs=['gf_stores'])
+            responses_stationxml_paths=['stationxml.xml'])
 
         self.project_config = None
         self.target_groups = []
@@ -146,7 +145,7 @@ class GrondProject(object):
         self.check()
 
         engine_config = grond.EngineConfig(
-            gf_store_superdirs=['.'])
+            gf_store_superdirs=['gf_stores'])
 
         optimiser_config = grond.HighScoreOptimiserConfig()
 
