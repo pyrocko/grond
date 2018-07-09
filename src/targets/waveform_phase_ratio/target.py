@@ -152,8 +152,6 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
     measure_a = fm.FeatureMeasure.T()
     measure_b = fm.FeatureMeasure.T()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     fit_log_ratio = Bool.T(
         default=True,
         help='if true, compare synthetic and observed log ratios')
@@ -162,9 +160,6 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
         default=0.01,
         help='waterlevel added to both ratios when comparing on logarithmic '
              'scale, to avoid log(0)')
-=======
-    can_bootstrap_weights = True
->>>>>>> sauron2-bs
 
     def __init__(self, **kwargs):
         gf.Location.__init__(self, **kwargs)
