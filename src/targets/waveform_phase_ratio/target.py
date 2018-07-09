@@ -152,6 +152,7 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
     measure_a = fm.FeatureMeasure.T()
     measure_b = fm.FeatureMeasure.T()
 
+<<<<<<< HEAD
     fit_log_ratio = Bool.T(
         default=True,
         help='if true, compare synthetic and observed log ratios')
