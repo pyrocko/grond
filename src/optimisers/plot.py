@@ -73,7 +73,7 @@ class SequencePlot(PlotConfig):
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        xref = problem.get_reference_model()
+        xref = problem.get_reference_model(expand=True)
 
         gms = problem.combine_misfits(history.misfits)
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
@@ -327,9 +327,16 @@ class ContributionsPlot(PlotConfig):
         b /= num.sum(b)
         a = [1]
         ii = 0
-        for itarget in jsort:
-            target = problem.targets[itarget]
-            ms = gcms[:, itarget]
+
+        target_idx = [str(it)*t.nmisfits
+                      for it, t in enumerate(problem.targets)]
+        target_idx = num.fromiter(map(float, ''.join(target_idx)),
+                                  dtype=int)
+
+        for idx in jsort:
+            target = problem.targets[target_idx[idx]]
+            ms = gcms[:, idx]
+
             ms = num.where(num.isfinite(ms), ms, 0.0)
             if num.all(ms == 0.0):
                 continue
@@ -434,8 +441,7 @@ class BootstrapPlot(PlotConfig):
 
         ibests = []
         for ibootstrap in range(optimiser.nbootstrap):
-            bms = optimiser.bootstrap_misfits(
-                problem, history.misfits, ibootstrap)
+            bms = history.bootstrap_misfits[:, ibootstrap]
 
             isort_bms = num.argsort(bms)[::-1]
 

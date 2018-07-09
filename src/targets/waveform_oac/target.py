@@ -55,6 +55,8 @@ class WOACTarget(MisfitTarget):
     associated_path = gf.StringID.T()
     norm_exponent = Int.T(default=2)
 
+    can_bootstrap_weights = True
+
     def __init__(self, **kwargs):
         MisfitTarget.__init__(self, **kwargs)
         self.piggy_ids = set()

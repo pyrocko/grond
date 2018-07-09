@@ -23,6 +23,7 @@ from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError
 from .config import read_config
 
+from .environment import Environment
 from .monitor import GrondMonitor
 
 logger = logging.getLogger('grond.core')
@@ -190,10 +191,15 @@ def forward(rundir_or_config_path, event_names):
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
+    env = Environment([rundir])
+    nbootstrap = env.get_optimiser().nbootstrap
+
     if problem is None:
-        problem, xs, misfits = load_problem_info_and_data(rundir)
+        problem, xs, misfits, bootstrap_misfits = \
+            load_problem_info_and_data(rundir, nbootstrap=nbootstrap)
     else:
-        xs, misfits = load_problem_data(rundir, problem)
+        xs, misfits, bootstrap_misfits = \
+            load_problem_data(rundir, problem, nbootstrap=nbootstrap)
 
     logger.info('harvesting problem %s...' % problem.name)
 
@@ -216,7 +222,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     if weed != 3:
         for ibootstrap in range(optimiser.nbootstrap):
-            bms = optimiser.bootstrap_misfits(problem, misfits, ibootstrap)
+            bms = bootstrap_misfits[:, ibootstrap]
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
@@ -508,6 +514,8 @@ def process_event(ievent, g_data_id):
     guts.dump(config, filename=op.join(rundir, 'config.yaml'))
     config.change_basepath(basepath)
 
+    optimiser = config.optimiser_config.get_optimiser()
+    optimiser.init_bootstraps(problem)
     problem.dump_problem_info(rundir)
 
     monitor = None
@@ -520,7 +528,6 @@ def process_event(ievent, g_data_id):
         xs_inject = synt.get_x()[num.newaxis, :]
 
     try:
-        optimiser = config.optimiser_config.get_optimiser()
         if xs_inject is not None:
             from .optimisers import highscore
             if not isinstance(optimiser, highscore.HighScoreOptimiser):
@@ -671,7 +678,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     header = None
     for rundir in rundirs:
-        problem, xs, misfits = load_problem_info_and_data(
+        problem, xs, misfits, bootstrap_misfits = load_problem_info_and_data(
             rundir, subset='harvest')
 
         if type == 'vector':

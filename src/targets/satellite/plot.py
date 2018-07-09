@@ -32,7 +32,7 @@ class SatelliteTargetPlot(PlotConfig):
         default=250)
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(22., 9.))
+        default=(22., 10.))
     colormap = String.T(
         default='RdBu',
         help='Colormap for the surface displacements')
@@ -150,7 +150,7 @@ class SatelliteTargetPlot(PlotConfig):
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
                 1, 3,
-                wspace=.05, left=.1, bottom=.175,
+                wspace=.05, left=.1, bottom=.25,
                 right=.9)
 
             item = PlotItem(
@@ -227,7 +227,7 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                 ax.set_xlim(llE, urE)
                 ax.set_ylim(llN, urN)
 
-            cax = fig.add_axes([.1, .15, .8, .025])
+            cax = fig.add_axes((.1, .15, .8, .025))
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal')
             cbar.set_label('LOS Displacement [m]')
 

@@ -97,11 +97,10 @@ class JointparPlot(PlotConfig):
             if lo == hi:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model()
+        xref = problem.get_reference_model(expand=True)
 
         if ibootstrap is not None:
-            gms = optimiser.bootstrap_misfits(
-                problem, history.misfits, ibootstrap)
+            gms = history.bootstrap_misfits[:, ibootstrap]
         else:
             gms = problem.combine_misfits(history.misfits)
 
@@ -359,7 +358,7 @@ class HistogramPlot(PlotConfig):
             if vmin == vmax:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model()
+        xref = problem.get_reference_model(expand=True)
 
         smap = {}
         iselected = 0

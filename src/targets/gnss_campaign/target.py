@@ -86,6 +86,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     campaign_name = String.T()
     misfit_config = GNSSCampaignMisfitConfig.T()
 
+    can_bootstrap_weights = True
+
     def __init__(self, **kwargs):
         gf.GNSSCampaignTarget.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
@@ -99,6 +101,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     def string_id(self):
         return self.campaign_name
+
+    @property
+    def nmisfits(self):
+        return self.lats.size
 
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
@@ -154,6 +160,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         """
         obs = self.obs_data
         weights = self.weights
+        nstations = self.campaign.nstations
 
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
@@ -164,13 +171,17 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         res = obs - syn
 
-        misfit_value = num.sqrt(
-            num.sum(num.asarray(res * weights)**2))
-        misfit_norm = num.sqrt(
-            num.sum(num.asarray(obs * weights)**2))
+        misfit_value = res * weights
+        misfit_norm = obs * weights
 
+        misfit_value = num.sum(
+            misfit_value.reshape((nstations, 3)), axis=1)
+        misfit_norm = num.sum(
+            misfit_norm.reshape((nstations, 3)), axis=1)
+
+        mf = num.hstack((misfit_value, misfit_norm))
         result = GNSSCampaignMisfitResult(
-            misfits=num.array([misfit_value, misfit_norm], dtype=num.float))
+            misfits=mf)
 
         if self._result_mode == 'full':
             result.statics_syn = statics
@@ -180,7 +191,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     def get_combined_weight(self):
         """A given manual weight in the configuration is applied."""
-        return num.array([self.manual_weight])
+        if self._combined_weight is None:
+            self._combined_weight = num.full(self.nmisfits, self.manual_weight)
+
+        return self._combined_weight
 
     def prepare_modelling(self, engine, source, targets):
         return [self]

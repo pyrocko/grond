@@ -72,8 +72,10 @@ class SamplerPhase(Object):
     niterations = Int.T()
     ntries_preconstrain_limit = Int.T(default=1000)
 
-    def get_sample(self, problem, iiter, chains):
+    def get_raw_sample(self, problem, iiter, chains):
+        raise NotImplementedError
 
+    def get_sample(self, problem, iiter, chains):
         assert 0 <= iiter < self.niterations
 
         ntries_preconstrain = 0
@@ -225,31 +227,32 @@ class DirectedSamplerPhase(SamplerPhase):
         return x
 
 
-def make_bootstrap_weights(nbootstrap, ntargets, type='bayesian', seed=None):
-    ws = num.zeros((nbootstrap, ntargets))
-    rstate = num.random.RandomState(seed)
+def make_bayesian_weights(nbootstrap, nmisfits,
+                          type='bayesian', rstate=None):
+    ws = num.zeros((nbootstrap, nmisfits))
+    if rstate is None:
+        rstate = num.random.RandomState()
+
     for ibootstrap in range(nbootstrap):
         if type == 'classic':
-            ii = rstate.randint(0, ntargets, size=ntargets)
+            ii = rstate.randint(0, nmisfits, size=nmisfits)
             ws[ibootstrap, :] = num.histogram(
-                ii, ntargets, (-0.5, ntargets - 0.5))[0]
+                ii, nmisfits, (-0.5, nmisfits - 0.5))[0]
         elif type == 'bayesian':
-            f = rstate.uniform(0., 1., size=ntargets+1)
+            f = rstate.uniform(0., 1., size=nmisfits+1)
             f[0] = 0.
             f[-1] = 1.
             f = num.sort(f)
             g = f[1:] - f[:-1]
-            ws[ibootstrap, :] = g * ntargets
+            ws[ibootstrap, :] = g * nmisfits
         else:
             assert False
-
     return ws
 
 
 class Chains(object):
     def __init__(
-            self, problem, history, nchains, nlinks_cap,
-            bootstrap_weights):
+            self, problem, history, nchains, nlinks_cap):
 
         self.problem = problem
         self.history = history
@@ -264,10 +267,6 @@ class Chains(object):
         self.nread = 0
         history.add_listener(self)
 
-        self.bootstrap_weights = num.vstack((
-            num.ones((1, self.problem.ntargets)),
-            bootstrap_weights))
-
     def goto(self, n=None):
         if n is None:
             n = self.history.nmodels
@@ -277,18 +276,17 @@ class Chains(object):
         assert self.nread <= n
 
         while self.nread < n:
-            misfits = self.history.misfits[self.nread, :]
-            gbms = self.problem.combine_misfits(
-                misfits, self.bootstrap_weights)
+            gbms = self.history.bootstrap_misfits[self.nread, :]
 
             self.chains_m[:, self.nlinks] = gbms
             self.chains_i[:, self.nlinks] = n-1
+            nbootstrap = self.chains_m.shape[0]
 
             self.nlinks += 1
             chains_m = self.chains_m
             chains_i = self.chains_i
 
-            for ichain in range(chains_m.shape[0]):
+            for ichain in range(nbootstrap):
                 isort = num.argsort(chains_m[ichain, :self.nlinks])
                 chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
@@ -368,40 +366,90 @@ class HighScoreOptimiser(Optimiser):
 
     def __init__(self, **kwargs):
         Optimiser.__init__(self, **kwargs)
-        self._bootstrap_weights = {}
+        self._bootstrap_weights = None
+        self._bootstrap_residuals = None
         self._status_chains = None
+        self.rstate = num.random.RandomState(self.bootstrap_seed)
+
+    def init_bootstraps(self, problem):
+        self.init_bootstrap_weights(problem)
+        self.init_bootstrap_residuals(problem)
+
+    def init_bootstrap_weights(self, problem):
+        logger.info('Initializing Bayesian bootstrap weights')
+        bootstrap_targets = set([t for t in problem.targets
+                                 if t.can_bootstrap_weights])
+
+        ws = make_bayesian_weights(
+            self.nbootstrap,
+            nmisfits=problem.nmisfits,
+            rstate=self.rstate)
+
+        imf = 0
+        for it, t in enumerate(bootstrap_targets):
+            t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
+            imf += t.nmisfits
+
+        for t in set(problem.targets) - bootstrap_targets:
+            t.set_bootstrap_weights(
+                num.ones((self.nbootstrap, t.nmisfits)))
+
+    def init_bootstrap_residuals(self, problem):
+        logger.info('Initializing Bayesian bootstrap residuals')
+        residual_targets = set([t for t in problem.targets
+                                if t.can_bootstrap_residuals])
+
+        for t in residual_targets:
+            t.init_bootstrap_residuals(self.nbootstrap, rstate=self.rstate)
+
+        for t in set(problem.targets) - residual_targets:
+            t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
 
     def get_bootstrap_weights(self, problem):
-        k = (problem,
-             self.nbootstrap,
-             self.bootstrap_type,
-             self.bootstrap_seed)
+        if self._bootstrap_weights is None:
+            try:
+                problem.targets[0].get_bootstrap_weights()
+            except Exception:
+                self.init_bootstraps(problem)
 
-        if k not in self._bootstrap_weights:
-            self._bootstrap_weights[k] = make_bootstrap_weights(
-                self.nbootstrap, problem.ntargets,
-                type=self.bootstrap_type,
-                seed=self.bootstrap_seed)
+            bootstrap_weights = num.hstack(
+                [t.get_bootstrap_weights()
+                 for t in problem.targets])
 
-        return self._bootstrap_weights[k]
+            self._bootstrap_weights = num.vstack((
+                num.ones((1, problem.nmisfits)),
+                bootstrap_weights))
 
-    def bootstrap_misfits(self, problem, misfits, ibootstrap):
-        bweights = self.get_bootstrap_weights(problem)
-        bms = problem.combine_misfits(
-            misfits,
-            extra_weights=bweights[ibootstrap:ibootstrap+1, :])[:, 0]
+        return self._bootstrap_weights
 
-        return bms
+    def get_bootstrap_residuals(self, problem):
+        if self._bootstrap_residuals is None:
+            try:
+                problem.targets[0].get_bootstrap_residuals()
+            except Exception:
+                self.init_bootstraps(problem)
+
+            bootstrap_residuals = num.hstack(
+                [t.get_bootstrap_residuals()
+                 for t in problem.targets])
+
+            self._bootstrap_weights = num.vstack((
+                num.zeros((1, problem.nmisfits)),
+                bootstrap_residuals))
+
+        return self._bootstrap_residuals
+
+    @property
+    def nchains(self):
+        return self.nbootstrap + 1
 
     def chains(self, problem, history):
-        bootstrap_weights = self.get_bootstrap_weights(problem)
-
         nlinks_cap = int(round(
             self.chain_length_factor * problem.nparameters + 1))
 
         return Chains(
-            problem, history, self.nbootstrap+1, nlinks_cap,
-            bootstrap_weights=bootstrap_weights)
+            problem, history,
+            nchains=self.nchains, nlinks_cap=nlinks_cap)
 
     def get_sampler_phase(self, iiter):
         niter = 0
@@ -411,7 +459,7 @@ class HighScoreOptimiser(Optimiser):
 
             niter += phase.niterations
 
-        assert False, 'out of bounds'
+        assert False, 'sample out of bounds'
 
     def log_progress(self, problem, iiter, niter, phase, iiter_phase):
         t = time.time()
@@ -432,7 +480,9 @@ class HighScoreOptimiser(Optimiser):
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
-        history = ModelHistory(problem, path=rundir, mode='w')
+        history = ModelHistory(problem,
+                               nchains=self.nchains,
+                               path=rundir, mode='w')
         chains = self.chains(problem, history)
 
         niter = self.niterations
@@ -450,6 +500,10 @@ class HighScoreOptimiser(Optimiser):
                 isok_mask = None
 
             misfits = problem.misfits(x, mask=isok_mask)
+            bootstrap_misfits = problem.combine_misfits(
+                misfits,
+                extra_weights=self.get_bootstrap_weights(problem),
+                extra_residuals=self.get_bootstrap_residuals(problem))
 
             isbad_mask_new = num.isnan(misfits[:, 0])
             if isbad_mask is not None and num.any(
@@ -476,7 +530,7 @@ class HighScoreOptimiser(Optimiser):
                     'problem %s: all target misfit values are NaN'
                     % problem.name)
 
-            history.append(x, misfits)
+            history.append(x, misfits, bootstrap_misfits)
 
     @property
     def niterations(self):
@@ -534,12 +588,14 @@ class HighScoreOptimiser(Optimiser):
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_header=u'Optimiser phase: %s\n'
+            extra_header=u'Optimiser phase: %s, exploring %d BS chains\n'
                          u'Global chain misfit distribution: \u2080%s\xb9'
                          % (phase.__class__.__name__,
+                            chains.nchains,
                             spark_plot(
                                 glob_misfits,
-                                num.linspace(0., 1., 25))))
+                                num.linspace(0., 1., 25))
+                            ))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):

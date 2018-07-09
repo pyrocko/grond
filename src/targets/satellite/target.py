@@ -125,6 +125,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     misfit_config = SatelliteMisfitConfig.T(
         help='Configuration of the ``SatelliteTarget``')
 
+    can_bootstrap_residuals = True
+
     available_parameters = [
         Parameter('offset', 'm'),
         Parameter('ramp_north', 'm/m'),
@@ -149,6 +151,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
+
+    @property
+    def nmisfits(self):
+        return self.lats.size
 
     @property
     def scene(self):
@@ -178,13 +184,12 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         res = obs - stat_syn
 
-        misfit_value = num.sqrt(
-            num.sum((res * scene.covariance.weight_vector)**2))
-        misfit_norm = num.sqrt(
-            num.sum((obs * scene.covariance.weight_vector)**2))
+        misfit_value = res
+        misfit_norm = obs
 
+        mf = num.vstack([misfit_value, misfit_norm]).T
         result = SatelliteMisfitResult(
-            misfits=num.array([[misfit_value, misfit_norm]], dtype=num.float))
+            misfits=mf)
 
         if self._result_mode == 'full':
             result.statics_syn = statics
@@ -193,7 +198,9 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return result
 
     def get_combined_weight(self):
-        return num.array([self.manual_weight], dtype=num.float)
+        if self._combined_weight is None:
+            self._combined_weight = num.full(self.nmisfits, self.manual_weight)
+        return self._combined_weight
 
     def prepare_modelling(self, engine, source, targets):
         return [self]
@@ -201,6 +208,25 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
         return modelling_results[0]
+
+    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+        logger.info('Scene %s Bootstrapping residuals from noise pertubations'
+                    ' ...' % self.scene_id)
+        if rstate is None:
+            rstate = num.random.RandomState()
+
+        scene = self.scene
+        qt = scene.quadtree
+        cov = scene.covariance
+        bootstraps = num.empty((nbootstraps, qt.nleaves))
+
+        for ibs in range(nbootstraps):
+            if not ibs % 5:
+                logger.info('Calculating noise realisation %d/%d'
+                            % (ibs, nbootstraps))
+            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
+
+        self.set_bootstrap_residuals(bootstraps)
 
     @classmethod
     def get_plot_classes(cls):

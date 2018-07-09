@@ -115,7 +115,7 @@ class Problem(Object):
         guts.dump(self, filename=fn)
 
     def dump_problem_data(
-            self, dirname, x, misfits,
+            self, dirname, x, misfits, bootstraps=None,
             accept=None, ibootstrap_choice=None, ibase=None):
 
         fn = op.join(dirname, 'models')
@@ -127,6 +127,11 @@ class Problem(Object):
         fn = op.join(dirname, 'misfits')
         with open(fn, 'ab') as f:
             misfits.astype('<f8').tofile(f)
+
+        if bootstraps is not None:
+            fn = op.join(dirname, 'bootstraps')
+            with open(fn, 'ab') as f:
+                bootstraps.astype('<f8').tofile(f)
 
         if None not in (ibootstrap_choice, ibase):
             fn = op.join(dirname, 'choices')
@@ -212,7 +217,7 @@ class Problem(Object):
                 if isinstance(t, WaveformMisfitTarget)]
 
     @property
-    def has_statics(self):
+    def has_satellite(self):
         if self.satellite_targets:
             return True
         return False
@@ -246,7 +251,6 @@ class Problem(Object):
                 xs, self.dependants[i-self.nparameters].name)
 
     def get_target_weights(self):
-
         if self._target_weights is None:
             self._target_weights = num.concatenate(
                 [target.get_combined_weight()
@@ -254,12 +258,15 @@ class Problem(Object):
 
         return self._target_weights
 
+    def get_target_residuals(self):
+        pass
+
     def inter_family_weights(self, ns):
         exp, root = self.get_norm_functions()
 
         family, nfamilies = self.get_family_mask()
 
-        ws = num.zeros(self.ntargets)
+        ws = num.zeros(self.nmisfits)
         for ifamily in range(nfamilies):
             mask = family == ifamily
             ws[mask] = 1.0 / root(num.nansum(exp(ns[mask])))
@@ -280,11 +287,16 @@ class Problem(Object):
             mask = family == ifamily
             ws[:, mask] = (1.0 / root(
                 num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]
-
         return ws
 
-    def get_reference_model(self):
-        return self.pack(self.base_source)
+    def get_reference_model(self, expand=False):
+        if expand:
+            src_params = self.pack(self.base_source)
+            ref = num.zeros(self.nparameters)
+            ref[:src_params.size] = src_params
+        else:
+            ref = self.pack(self.base_source)
+        return ref
 
     def get_parameter_bounds(self):
         out = []
@@ -329,36 +341,82 @@ class Problem(Object):
     def combine_misfits(
             self, misfits,
             extra_weights=None,
+            extra_residuals=None,
             get_contributions=False):
+
+        '''
+        Combine misfit contributions (residuals) to global or bootstrap misfits
+
+        :param misfits: 3D array ``misfits[imodel, iresidual, 0]`` are the
+            misfit contributions (residuals) ``misfits[imodel, iresidual, 1]``
+            are the normalisation contributions. It is also possible to give
+            the misfit and normalisation contributions for a single model as
+            ``misfits[iresidual, 0]`` and misfits[iresidual, 1]`` in which
+            case, the first dimension (imodel) of the result will be stipped
+            off.
+
+        :param extra_weights: if given, 2D array of extra weights to be applied
+            to the contributions, indexed as
+            ``extra_weights[ibootstrap, iresidual]``.
+
+        :param extra_residuals: if given, 2D array of perturbations to be added
+            to the residuals, indexed as
+            ``extra_residuals[ibootstrap, iresidual]``.
+
+        :param get_contributions: get the weighted and perturbed contributions
+            (don't do the sum).
+
+        :returns: if no *extra_weights* or *extra_residuals* are given, a 1D
+            array indexed as ``misfits[imodel]`` containing the global misfit
+            for each model is returned, otherwise a 2D array
+            ``misfits[imodel, ibootstrap]`` with the misfit for every model and
+            weighting/residual set is returned.
+        '''
 
         exp, root = self.get_norm_functions()
 
         if misfits.ndim == 2:
             misfits = misfits[num.newaxis, :, :]
             return self.combine_misfits(
-                misfits, extra_weights,
-                get_contributions=get_contributions)[0, ...]
+                misfits,
+                extra_weights,
+                extra_residuals,
+                get_contributions)[0, ...]
 
         assert misfits.ndim == 3
         assert extra_weights is None or extra_weights.ndim == 2
+        assert extra_residuals is None or extra_residuals.ndim == 2
 
-        if extra_weights is not None:
-            w = extra_weights[num.newaxis, :, :] \
-                * self.get_target_weights()[num.newaxis, num.newaxis, :] \
-                * self.inter_family_weights2(
-                    misfits[:, :, 1])[:, num.newaxis, :]
+        if extra_weights is not None or extra_residuals is not None:
+            if extra_weights is not None:
+                w = extra_weights[num.newaxis, :, :] \
+                    * self.get_target_weights()[num.newaxis, num.newaxis, :] \
+                    * self.inter_family_weights2(
+                        misfits[:, :, 1])[:, num.newaxis, :]
+            else:
+                w = 1.0
+
+            if extra_residuals is not None:
+                r = extra_residuals[num.newaxis, :, :]
+            else:
+                r = 0.0
 
             if get_contributions:
-                return exp(w*misfits[:, num.newaxis, :, 0]) \
+                return exp(w*(misfits[:, num.newaxis, :, 0]+r)) \
                     / num.nansum(
                         exp(w*misfits[:, num.newaxis, :, 1]),
                         axis=2)[:, :, num.newaxis]
 
-            return root(
-                num.nansum(exp(w*misfits[:, num.newaxis, :, 0]), axis=2) /
-                num.nansum(exp(w*misfits[:, num.newaxis, :, 1]), axis=2))
+            res = root(
+                num.nansum(exp(w*(misfits[:, num.newaxis, :, 0]+r)), axis=2) /
+                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1])), axis=2))
+            assert res[res < 0].size == 0
+            return res
         else:
             w = self.get_target_weights()[num.newaxis, :] \
+                * self.inter_family_weights2(misfits[:, :, 1])
+
+            r = self.get_target_weights()[num.newaxis, :] \
                 * self.inter_family_weights2(misfits[:, :, 1])
 
             if get_contributions:
@@ -373,11 +431,13 @@ class Problem(Object):
 
     def make_family_mask(self):
         family_names = set()
-        families = num.zeros(len(self.targets), dtype=num.int)
+        families = num.zeros(self.nmisfits, dtype=num.int)
 
+        idx = 0
         for itarget, target in enumerate(self.targets):
             family_names.add(target.normalisation_family)
-            families[itarget] = len(family_names) - 1
+            families[idx:idx + target.nmisfits] = len(family_names) - 1
+            idx += target.nmisfits
 
         return families, len(family_names)
 
@@ -448,9 +508,9 @@ class Problem(Object):
 
     def misfits(self, x, mask=None):
         results = self.evaluate(x, mask=mask, result_mode='sparse')
+        misfits = num.full((self.nmisfits, 2), num.nan)
+
         imisfit = 0
-        misfits = num.zeros((self.nmisfits, 2))
-        misfits.fill(None)
         for target, result in zip(self.targets, results):
             if isinstance(result, MisfitResult):
                 misfits[imisfit:imisfit+target.nmisfits, :] = result.misfits
@@ -512,22 +572,29 @@ class ModelHistory(object):
 
     nmodels_capacity_min = 1024
 
-    def __init__(self, problem, path=None, mode='r'):
+    def __init__(self, problem, nchains=None, path=None, mode='r'):
+        self.mode = mode
 
         self.problem = problem
         self.path = path
+        self.nchains = nchains
+
         self._models_buffer = None
         self._misfits_buffer = None
+        self._bootstraps_buffer = None
+
         self.models = None
         self.misfits = None
+        self.bootstrap_misfits = None
+
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
-        self.mode = mode
 
         if mode == 'r':
             self.verify_rundir(self.path)
-            models, misfits = load_problem_data(path, problem)
-            self.extend(models, misfits)
+            models, misfits, bootstraps = load_problem_data(
+                path, problem, nchains=self.nchains)
+            self.extend(models, misfits, bootstraps)
 
     @staticmethod
     def verify_rundir(rundir):
@@ -541,7 +608,7 @@ class ModelHistory(object):
                 raise ProblemDataNotAvailable('File %s not found!' % f)
 
     @classmethod
-    def follow(cls, path, wait=20.):
+    def follow(cls, path, nchains=None, wait=20.):
         '''
         Start following a rundir (constructor).
 
@@ -556,7 +623,7 @@ class ModelHistory(object):
             try:
                 cls.verify_rundir(path)
                 problem = load_problem_info(path)
-                return cls(problem, path, mode='r')
+                return cls(problem, nchains=nchains, path=path, mode='r')
             except (ProblemDataNotAvailable, OSError):
                 time.sleep(.25)
 
@@ -572,6 +639,8 @@ class ModelHistory(object):
         assert 0 <= nmodels_new <= self.nmodels
         self.models = self._models_buffer[:nmodels_new, :]
         self.misfits = self._misfits_buffer[:nmodels_new, :, :]
+        if self.nchains is not None:
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels_new, :, :]  # noqa
 
     @property
     def nmodels_capacity(self):
@@ -583,13 +652,18 @@ class ModelHistory(object):
     @nmodels_capacity.setter
     def nmodels_capacity(self, nmodels_capacity_new):
         if self.nmodels_capacity != nmodels_capacity_new:
+
             models_buffer = num.zeros(
                 (nmodels_capacity_new, self.problem.nparameters),
                 dtype=num.float)
-
             misfits_buffer = num.zeros(
-                (nmodels_capacity_new, self.problem.ntargets, 2),
+                (nmodels_capacity_new, self.problem.nmisfits, 2),
                 dtype=num.float)
+
+            if self.nchains is not None:
+                bootstraps_buffer = num.zeros(
+                    (nmodels_capacity_new, self.nchains),
+                    dtype=num.float)
 
             ncopy = min(self.nmodels, nmodels_capacity_new)
 
@@ -602,11 +676,17 @@ class ModelHistory(object):
             self._models_buffer = models_buffer
             self._misfits_buffer = misfits_buffer
 
+            if self.nchains is not None:
+                if self._bootstraps_buffer is not None:
+                    bootstraps_buffer[:ncopy, :] = \
+                        self._bootstraps_buffer[:ncopy, :]
+                self._bootstraps_buffer = bootstraps_buffer
+
     def clear(self):
         self.nmodels = 0
         self.nmodels_capacity = self.nmodels_capacity_min
 
-    def extend(self, models, misfits):
+    def extend(self, models, misfits, bootstrap_misfits=None):
         nmodels = self.nmodels
 
         n = models.shape[0]
@@ -623,6 +703,10 @@ class ModelHistory(object):
         self.models = self._models_buffer[:nmodels+n, :]
         self.misfits = self._misfits_buffer[:nmodels+n, :, :]
 
+        if bootstrap_misfits is not None:
+            self._bootstraps_buffer[nmodels:nmodels+n, :] = bootstrap_misfits
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+n, :]
+
         if self.path and self.mode == 'w':
             for i in range(n):
                 self.problem.dump_problem_data(
@@ -630,7 +714,7 @@ class ModelHistory(object):
 
         self.emit('extend', nmodels, n, models, misfits)
 
-    def append(self, model, misfits):
+    def append(self, model, misfits, bootstrap_misfits=None):
         nmodels = self.nmodels
 
         nmodels_capacity_want = max(
@@ -645,9 +729,13 @@ class ModelHistory(object):
         self.models = self._models_buffer[:nmodels+1, :]
         self.misfits = self._misfits_buffer[:nmodels+1, :, :]
 
+        if bootstrap_misfits is not None:
+            self._bootstraps_buffer[nmodels, :] = bootstrap_misfits
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+1, :]
+
         if self.path and self.mode == 'w':
             self.problem.dump_problem_data(
-                self.path, model, misfits)
+                self.path, model, misfits, bootstrap_misfits)
 
         self.emit(
             'extend', nmodels, 1,
@@ -658,10 +746,11 @@ class ModelHistory(object):
         nmodels_available = get_nmodels(self.path, self.problem)
         if self.nmodels == nmodels_available:
             return
-        new_models, new_misfits = load_problem_data(
-            self.path, self.problem, nmodels_skip=self.nmodels)
+        new_models, new_misfits, new_bootstraps = load_problem_data(
+            self.path, self.problem,
+            nmodels_skip=self.nmodels, nchains=self.nchains)
 
-        self.extend(new_models, new_misfits)
+        self.extend(new_models, new_misfits, new_bootstraps)
 
     def add_listener(self, listener):
         self.listeners.append(listener)
@@ -680,15 +769,16 @@ def get_nmodels(dirname, problem):
 
     fn = op.join(dirname, 'misfits')
     with open(fn, 'r') as f:
-        nmodels2 = os.fstat(f.fileno()).st_size // (problem.ntargets * 2 * 8)
+        nmodels2 = os.fstat(f.fileno()).st_size // (problem.nmisfits * 2 * 8)
 
     return min(nmodels1, nmodels2)
 
 
-def load_problem_info_and_data(dirname, subset=None):
+def load_problem_info_and_data(dirname, subset=None, nchains=None):
     problem = load_problem_info(dirname)
-    models, misfits = load_problem_data(xjoin(dirname, subset), problem)
-    return problem, models, misfits
+    models, misfits, bootstraps = load_problem_data(
+        xjoin(dirname, subset), problem, nchains=nchains)
+    return problem, models, misfits, bootstraps
 
 
 def load_optimiser_info(dirname):
@@ -706,7 +796,7 @@ def load_problem_info(dirname):
             'no problem info available (%s)' % dirname)
 
 
-def load_problem_data(dirname, problem, nmodels_skip=0):
+def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
 
     try:
         nmodels = get_nmodels(dirname, problem) - nmodels_skip
@@ -723,20 +813,31 @@ def load_problem_data(dirname, problem, nmodels_skip=0):
 
         fn = op.join(dirname, 'misfits')
         with open(fn, 'r') as f:
-            f.seek(nmodels_skip * problem.ntargets * 2 * 8)
+            f.seek(nmodels_skip * problem.nmisfits * 2 * 8)
             misfits = num.fromfile(
                     f, dtype='<f8',
-                    count=nmodels*problem.ntargets*2)\
+                    count=nmodels*problem.nmisfits*2)\
                 .astype(num.float)
+        misfits = misfits.reshape((nmodels, problem.nmisfits, 2))
 
-        misfits = misfits.reshape((nmodels, problem.ntargets, 2))
+        bootstraps = None
+        fn = op.join(dirname, 'bootstraps')
+        if op.exists(fn) and nchains is not None:
+            with open(fn, 'r') as f:
+                f.seek(nmodels_skip * nchains * 8)
+                bootstraps = num.fromfile(
+                        f, dtype='<f8',
+                        count=nmodels*nchains)\
+                    .astype(num.float)
+
+            bootstraps = bootstraps.reshape((nmodels, nchains))
 
     except OSError as e:
         logger.debug(str(e))
         raise ProblemDataNotAvailable(
             'no problem data available (%s)' % dirname)
 
-    return models, misfits
+    return models, misfits, bootstraps
 
 
 __all__ = '''

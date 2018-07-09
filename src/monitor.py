@@ -6,7 +6,7 @@ import numpy as num
 from datetime import timedelta
 
 from pyrocko import util, guts
-from grond.problems import ModelHistory
+from grond.environment import Environment
 
 
 logger = logging.getLogger('grond.monit')
@@ -56,8 +56,9 @@ class GrondMonitor(threading.Thread):
         self._iter_buffer = RingBuffer(20)
 
     def run(self):
-        logger.debug('Waiting to follow rundir %s' % self.rundir)
-        self.history = ModelHistory.follow(self.rundir, wait=40.)
+        logger.info('Waiting to follow environment %s' % self.rundir)
+        self.environment = Environment.discover(self.rundir)
+        self.history = self.environment.get_history()
 
         optimiser_fn = op.join(self.rundir, 'optimiser.yaml')
         self.optimiser = guts.load(filename=optimiser_fn)
