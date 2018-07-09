@@ -192,14 +192,14 @@ def forward(rundir_or_config_path, event_names):
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     env = Environment([rundir])
-    nbootstrap = env.get_optimiser().nbootstrap
+    nchains = env.get_optimiser().nchains
 
     if problem is None:
         problem, xs, misfits, bootstrap_misfits = \
-            load_problem_info_and_data(rundir, nbootstrap=nbootstrap)
+            load_problem_info_and_data(rundir, nchains=nchains)
     else:
         xs, misfits, bootstrap_misfits = \
-            load_problem_data(rundir, problem, nbootstrap=nbootstrap)
+            load_problem_data(rundir, problem, nchains=nchains)
 
     logger.info('harvesting problem %s...' % problem.name)
 

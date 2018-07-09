@@ -161,6 +161,8 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
         help='waterlevel added to both ratios when comparing on logarithmic '
              'scale, to avoid log(0)')
 
+    can_bootstrap_weights = True
+
     def __init__(self, **kwargs):
         gf.Location.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)

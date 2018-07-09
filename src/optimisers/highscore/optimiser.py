@@ -433,7 +433,7 @@ class HighScoreOptimiser(Optimiser):
                 [t.get_bootstrap_residuals()
                  for t in problem.targets])
 
-            self._bootstrap_weights = num.vstack((
+            self._bootstrap_residuals = num.vstack((
                 num.zeros((1, problem.nmisfits)),
                 bootstrap_residuals))
 
