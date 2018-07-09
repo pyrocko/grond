@@ -227,24 +227,24 @@ class DirectedSamplerPhase(SamplerPhase):
         return x
 
 
-def make_bayesian_weights(
-        nbootstrap, ntargets, type='bayesian', rstate=None):
-    ws = num.zeros((nbootstrap, ntargets))
+def make_bayesian_weights(nbootstrap, nmisfits,
+                          type='bayesian', rstate=None):
+    ws = num.zeros((nbootstrap, nmisfits))
     if rstate is None:
         rstate = num.random.RandomState()
 
     for ibootstrap in range(nbootstrap):
         if type == 'classic':
-            ii = rstate.randint(0, ntargets, size=ntargets)
+            ii = rstate.randint(0, nmisfits, size=nmisfits)
             ws[ibootstrap, :] = num.histogram(
-                ii, ntargets, (-0.5, ntargets - 0.5))[0]
+                ii, nmisfits, (-0.5, nmisfits - 0.5))[0]
         elif type == 'bayesian':
-            f = rstate.uniform(0., 1., size=ntargets+1)
+            f = rstate.uniform(0., 1., size=nmisfits+1)
             f[0] = 0.
             f[-1] = 1.
             f = num.sort(f)
             g = f[1:] - f[:-1]
-            ws[ibootstrap, :] = g * ntargets
+            ws[ibootstrap, :] = g * nmisfits
         else:
             assert False
     return ws
@@ -382,7 +382,7 @@ class HighScoreOptimiser(Optimiser):
 
         ws = make_bayesian_weights(
             self.nbootstrap,
-            ntargets=problem.nmisfits,
+            nmisfits=problem.nmisfits,
             rstate=self.rstate)
 
         imf = 0
@@ -412,15 +412,13 @@ class HighScoreOptimiser(Optimiser):
             except Exception:
                 self.init_bootstraps(problem)
 
-            self._bootstrap_weights = num.hstack(
+            bootstrap_weights = num.hstack(
                 [t.get_bootstrap_weights()
                  for t in problem.targets])
 
-            self._bootstrap_weights[:, 0] = 1.
-
-            # self._bootstrap_weights = num.vstack((
-            #     num.ones((1, problem.nmisfits)),
-            #     bootstrap_weights))
+            self._bootstrap_weights = num.vstack((
+                num.ones((1, problem.nmisfits)),
+                bootstrap_weights))
 
         return self._bootstrap_weights
 
@@ -431,24 +429,27 @@ class HighScoreOptimiser(Optimiser):
             except Exception:
                 self.init_bootstraps(problem)
 
-            self._bootstrap_residuals = num.hstack(
+            bootstrap_residuals = num.hstack(
                 [t.get_bootstrap_residuals()
                  for t in problem.targets])
 
-            self._bootstrap_residuals[:, 0] = 0.
-
-            # self._bootstrap_weights = num.vstack((
-            #     num.zeros((1, problem.nmisfits)),
-            #     bootstrap_residuals))
+            self._bootstrap_weights = num.vstack((
+                num.zeros((1, problem.nmisfits)),
+                bootstrap_residuals))
 
         return self._bootstrap_residuals
+
+    @property
+    def nchains(self):
+        return self.nbootstrap + 1
 
     def chains(self, problem, history):
         nlinks_cap = int(round(
             self.chain_length_factor * problem.nparameters + 1))
 
         return Chains(
-            problem, history, self.nbootstrap, nlinks_cap)
+            problem, history,
+            nchains=self.nchains, nlinks_cap=nlinks_cap)
 
     def get_sampler_phase(self, iiter):
         niter = 0
@@ -458,7 +459,7 @@ class HighScoreOptimiser(Optimiser):
 
             niter += phase.niterations
 
-        assert False, 'out of bounds'
+        assert False, 'sample out of bounds'
 
     def log_progress(self, problem, iiter, niter, phase, iiter_phase):
         t = time.time()
@@ -480,7 +481,7 @@ class HighScoreOptimiser(Optimiser):
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
         history = ModelHistory(problem,
-                               nbootstrap=self.nbootstrap,
+                               nchains=self.nchains,
                                path=rundir, mode='w')
         chains = self.chains(problem, history)
 

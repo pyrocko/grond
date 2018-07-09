@@ -192,7 +192,7 @@ class Environment(object):
             self._histories[subset] = \
                 ModelHistory(
                     self.get_problem(),
-                    nbootstrap=self.get_optimiser().nbootstrap,
+                    nchains=self.get_optimiser().nchains,
                     path=meta.xjoin(self.get_rundir_path(), subset))
 
         return self._histories[subset]
