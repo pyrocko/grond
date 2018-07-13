@@ -165,10 +165,10 @@ correlation :math:`\mathrm{max}(C)` of :math:`{\bf d}_{obs}` and
   :label: cor
   
   \begin{align*}
-    e_{\mathrm{cc}} &= \frac{1}{2} - \frac{1}{2}\, \mathrm{max}(C), \, \
+    e_{\mathrm{cc}} = \frac{1}{2} - \frac{1}{2}\, \mathrm{max}(C), \, \
     \mathrm{with} \,\,\,
-    e_{\mathrm{0, cc}} = \frac{1}{2} \,\, , \mathrm{such\,\, that}  \\
-    e_{\mathrm{norm}} &= 1 - \mathrm{max}(C).
+    e_{\mathrm{0, cc}} = \frac{1}{2} \,\, ,\, \mathrm{such\,\, that}  \
+    e_{\mathrm{norm}} = 1 - \mathrm{max}(C).
   \end{align*}  
 
 
@@ -317,15 +317,11 @@ for a source model
 .. math::
   :label: norm_ex1
   
-    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{
-       \frac{ ( \lVert e_{\mathrm{Pt}} \rVert_2)^2 + \
-    (\lVert e_{\mathrm{St}} \rVert_2)^2 }{\
-        (\lVert e_{\mathrm{0,Pt}} \rVert_2)^2 + \ 
-    (\lVert e_{\mathrm{0,St}} \rVert_2)^2 } \
-    +  \frac{ ( \lVert e_{\mathrm{Ps}} \rVert_2)^2 + \
-    (\lVert e_{\mathrm{Ss}} \rVert_2)^2 }{\
-     (\lVert e_{\mathrm{0,Ps}} \rVert_2)^2 + \ 
-    (\lVert e_{\mathrm{0,Ss}} \rVert_2)^2 } \
+    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{ \
+       \frac{(\lVert e_{\mathrm{time}} \rVert_2)^2  }{\
+        (\lVert e_{\mathrm{0,time}} \rVert_2)^2 } \
+    +  \frac{ ( \lVert e_{\mathrm{spectral}} \rVert_2)^2 }{\
+     (\lVert e_{\mathrm{0,spectral}} \rVert_2)^2 } \
     }
 
     
@@ -355,17 +351,20 @@ to solve for a source model
 .. math::
   :label: norm_ex2
   
-    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{
-       \frac{ ( \lVert e_{\mathrm{Pt}} \rVert_2)^2}{\
-        (\lVert e_{\mathrm{0,Pt}} \rVert_2)^2 } \
-    +  \frac{ ( \lVert e_{\mathrm{Ptcor}} \rVert_2)^2 }{\
-     (\lVert e_{\mathrm{0,Ptcor}} \rVert_2)^2  } \
-      +  \frac{ ( \lVert e_{\mathrm{insar}} \rVert_2)^2 + \
-    (\lVert e_{\mathrm{gnss}} \rVert_2)^2 }{\
-     (\lVert e_{\mathrm{0,insar}} \rVert_2)^2 + \ 
-    (\lVert e_{\mathrm{0,gnss}} \rVert_2)^2 } \
-    }   
-
+    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{ 
+    \frac{ ( \frac{ \lVert e_{\mathrm{time}} \rVert_2}{\lVert \
+       e_{\mathrm{0,time}} \rVert_2})^2 + \
+       ( \frac{ \lVert e_{\mathrm{spectral}} \rVert_2}{\lVert \
+        e_{\mathrm{0,spectral}} \rVert_2  })^2 }{ \     
+             ( \frac{ \lVert e_{\mathrm{0,time}} \rVert_2}{\lVert \
+             e_{\mathrm{0,time}}\rVert_2})^2 + \
+             ( \frac{ \lVert e_{\mathrm{0,spectral}} \rVert_2}{\lVert \
+             e_{\mathrm{0,spectral}}\rVert_2})^2 }} = \
+              \sqrt{ \frac{ ( \frac{ \lVert e_{\mathrm{time}} \rVert_2}{ \
+              \lVert e_{\mathrm{0,time}} \rVert_2})^2 + \
+               ( \frac{ \lVert e_{\mathrm{spectral}} \rVert_2}{\lVert \
+               e_{\mathrm{0,spectral}} \rVert_2  })^2 \
+               }{ N_{\mathrm{norm\_fams}} }}
 
 The bootstrap method
 --------------------
