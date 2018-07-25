@@ -746,9 +746,13 @@ class ModelHistory(object):
         nmodels_available = get_nmodels(self.path, self.problem)
         if self.nmodels == nmodels_available:
             return
-        new_models, new_misfits, new_bootstraps = load_problem_data(
-            self.path, self.problem,
-            nmodels_skip=self.nmodels, nchains=self.nchains)
+
+        try:
+            new_models, new_misfits, new_bootstraps = load_problem_data(
+                self.path, self.problem,
+                nmodels_skip=self.nmodels, nchains=self.nchains)
+        except ValueError as e:
+            return
 
         self.extend(new_models, new_misfits, new_bootstraps)
 
