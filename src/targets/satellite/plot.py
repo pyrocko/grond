@@ -73,11 +73,12 @@ class SatelliteTargetPlot(PlotConfig):
 
         def decorateAxes(ax, scene, title):
             ax.set_title(title)
+            ax.tick_params(length=2)
             if scene.frame.isMeter():
-                ax.set_xlabel('[km]')
+                ax.set_xlabel('East [km]')
                 scale_axes(ax, 1. / km)
             elif scene.frame.isDegree():
-                ax.set_xlabel('[°]')
+                ax.set_xlabel('Lon [°]')
             ax.set_aspect('equal')
 
         def drawSource(ax, scene):
@@ -150,8 +151,8 @@ class SatelliteTargetPlot(PlotConfig):
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
                 1, 3,
-                wspace=.05, left=.1, bottom=.25,
-                right=.9)
+                wspace=.025, left=.1, bottom=.25,
+                right=.95)
 
             item = PlotItem(
                 name='fig_%i' % ifig,
@@ -199,9 +200,9 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
             decorateAxes(ax, scene, 'Data')
 
             if scene.frame.isDegree():
-                ax.set_ylabel('[°]')
+                ax.set_ylabel('Lat [°]')
             elif scene.frame.isMeter():
-                ax.set_ylabel('[km]')
+                ax.set_ylabel('North [km]')
 
             ax = axes[1]
             ax.imshow(mapDisplacementGrid(stat_syn, scene),
@@ -227,9 +228,13 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                 ax.set_xlim(llE, urE)
                 ax.set_ylim(llN, urN)
 
-            cax = fig.add_axes((.1, .15, .8, .025))
+            cax = fig.add_axes((.1, .125, .85, .025))
+            cax.tick_params(length=2)
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal')
             cbar.set_label('LOS Displacement [m]')
+
+            fig.text(.02, .98, 'Scene ID: %s' % scene.meta.scene_id,
+                     va='top', alpha=.3)
 
             yield (item, fig)
 
