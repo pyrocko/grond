@@ -38,7 +38,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest',
               'sphinx.ext.intersphinx',
               'sphinx.ext.todo',
-              'sphinx.ext.imgmath',
+              'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',
               'sphinx.ext.githubpages']
 
@@ -199,7 +199,7 @@ intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
                        # 'matplotlib': ('http://matplotlib.org/',
                        #           None),
-                       'python': ('https://docs.python.org/2.7',
+                       'python': ('https://docs.python.org/3.7',
                                   None)}
 
 
