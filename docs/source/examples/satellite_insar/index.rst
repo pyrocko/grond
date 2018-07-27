@@ -73,12 +73,12 @@ Let's start by parametrizing the quadtree: find a good parameters for the subsam
     3. ``tile_size_min``, minimum size of the tiles.
     4. ``tile_size_max``, maximum size of the tiles.
 
-Start kite's Spool GUI with:
+Start kite's :program:`spool` GUI with:
 
 .. code-block :: sh
 
     spool data/events/2009LAquila/insar/asc_insar
-    # and descending equivalent
+    # descending scene:
     spool data/events/2009LAquila/insar/dsc_insar
 
 Now we can parametrize the quadtree visually:
@@ -99,16 +99,16 @@ Once you are done, click on the Tag :guilabel:`scene.covariance`. Now we will de
 Use a window far away from the earthquake signal to capture true noise, yet the bigger the window is, the better the data covariance will be estimated.
 In figure 2.
 
-On the left hand side of the GUI you find parameters to fit a covariance model (:math:`\exp` and :math:`\exp + \sin`), as well as configurable spatial parameters for the covariance.
+On the left hand side of the GUI you find parameters to tune the spatial covariance analysis. We now can fit an analytical model to the empirical covariance: :math:`\exp(d)` and :math:`\exp + \sin`. For more details on the method, see `kite's documentation <https://pyrocko.org/docs/kite/current>`_.
 
 .. figure:: ../../images/example_spool-covariance.png
     :name: Fig. 2 Example InSAR
     :width: 100%
     :align: center
     
-    **Figure 1**: Data covariance inspection with :command:`spool`.
+    **Figure 2**: Data covariance inspection with :command:`spool`.
 
-Once we finished configuring the covariance, we have to calculate the full covariance and weight matrix from the complete scene resoltion:
+Once we finished parametrisation of the quadtree and covariance, we have to calculate the full covariance and weight matrix from the complete scene resoltion:
 
     1. Calulate the full covariance: :menuselection:`Tools --> Calculate Full Matrix`
     2. Save the parametrized scene: :menuselection:`File --> Save Scene`.
@@ -117,15 +117,15 @@ Once we finished configuring the covariance, we have to calculate the full covar
 Grond Configuration
 ...................
 
-The project folder already contains a configuration file for W-phase CMT optimisation with Grond, so let's have a look at it.
-It's a `YAML`_ file: This file format has been choosen for the Grond configuration because it can represent arbitrarily nested data structures built from mappings, lists, and scalar values. It also provides an excellent balance between human and machine readability. When working with YAML files, it is good to know that the **indentation is part of the syntax** and that comments can be introduced with the ``#`` symbol. The type markers, like ``!grond.CMTProblemConfig``, select the Grond object type of the following mapping and it's documentation can likely be found in the :doc:`/library/index`.
+The project folder already contains a configuration file for rectangular source optimisation with Grond, so let's have a look at it.
+
+It's a `YAML`_ file: This file format has been choosen for the Grond configuration because it can represent arbitrarily nested data structures built from mappings, lists, and scalar values. It also provides an excellent balance between human and machine readability. When working with YAML files, it is good to know that the **indentation is part of the syntax** and that comments can be introduced with the ``#`` symbol. The type markers, like ``!grond.RectangularProblemConfig``, select the Grond object type of the following mapping and it's documentation can likely be found in the :doc:`/library/index`.
 
 
 .. literalinclude :: ../../../../examples/grond-playground-insar/config/insar_rectangular.gronf
     :language: yaml
     :caption: config/insar_rectangular.gronf (in project folder)
 
-.. _YAML: https://en.wikipedia.org/wiki/YAML
 
 Checking the optimisation setup
 ...............................
@@ -138,5 +138,38 @@ Before running the actual optimisation, we can now use the command
 
 to run some sanity checks. In particular, Grond will try to run a few forward models to see if the modelling works and if it can read the input data. If only one event is available, we can also neglect the event name argument in this and other Grond commands.
 
-Running the optimisation
-........................
+Starting the optimisation
+.........................
+
+Now we are set to start the optimisation with:
+
+.. code-block :: sh
+
+    grond go config/insar_rectangular.gronf
+
+
+During the optimisation a status monitor will be presented.
+
+.. figure:: ../../images/example_grond-run-insar.png
+    :width: 100%
+    :align: center
+
+    **Figure 3**: Runtime information given by :command:`grond`.
+
+Depending on the configured number of iterations and the computer's hardware the optimisation will run several minutes to hours.
+
+
+Optimisation Report
+...................
+
+Once the optimisation is finished we can generate and open the final report with:
+
+.. code-block :: sh
+
+    grond report -so rundir/rect_source.grun
+
+See the `example report <https://localhost>`_.
+
+
+.. _Kite: https://pyrocko.org/docs/kite/current/
+.. _YAML: https://en.wikipedia.org/wiki/YAML

@@ -1,7 +1,7 @@
-Examples
-========
+Example Projects
+================
 
-This section contains some tutorial style examples of Grond in action.
+Here we walk through hands-on data inversions with Grond. The examples provide data and are tutorial style to get Grond in action.
 
 .. toctree::
    :maxdepth: 2
