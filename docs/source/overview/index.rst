@@ -25,6 +25,15 @@ The basic work-flow when using Grond is as follows:
 Details on these steps are given in the following sections.
 
 
+Initializing a Grond project
+----------------------------
+
+Grond ships with two subcommands to help setting up a new project folder. For
+real data, you may use ``grond init <project-folder>`` (:ref:`project-init` see
+below). For synthetic testing, with ``grond scenario <project-folder>`` a fully
+synthetic dataset can be customised and forward modelled.
+
+
 .. _project-layout:
 
 Project folder layout
@@ -73,7 +82,7 @@ Single files and data formats listed here are explained below. The folders ``run
     └── reports 
         └── ...
 
-Input data (Observables)
+Input data (observables)
 ------------------------
 
 Grond can combine different observational input data in an earthquake source optimisation:
@@ -195,6 +204,8 @@ The scenario can contain the following synthetic observations:
     grond scenario --targets=waveforms,insar <project-folder>
 
 A map of the random scenario is plotted in :file:`scenario_map.pdf`.
+
+.. _project-init:
 
 Initialise an empty project
 ...........................

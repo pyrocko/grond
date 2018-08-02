@@ -119,7 +119,7 @@ Figure 1 shows our view after some interactive adjustments in Snuffler. In parti
     
     **Figure 1**: Displacement seismograms for W-phase CMT optimisation as viewed in the waveform browser Snuffler.
 
-Grond Configuration
+Grond configuration
 ...................
 
 The project folder already contains a configuration file for W-phase CMT optimisation with Grond, so let's have a look at it.

@@ -17,7 +17,7 @@ exercise project directory from Grond's git repos to a place of your choice.
     cd ~/grond-playground-insar
 
 
-The Project Folder
+The project folder
 ..................
 
 The project folder now contains a configuration file for Grond, some utility scripts to download precalculated Green's functions and InSAR data
@@ -114,7 +114,7 @@ Once we finished parametrisation of the quadtree and covariance, we have to calc
     2. Save the parametrized scene: :menuselection:`File --> Save Scene`.
 
 
-Grond Configuration
+Grond configuration
 ...................
 
 The project folder already contains a configuration file for rectangular source optimisation with Grond, so let's have a look at it.
@@ -159,7 +159,7 @@ During the optimisation a status monitor will be presented.
 Depending on the configured number of iterations and the computer's hardware the optimisation will run several minutes to hours.
 
 
-Optimisation Report
+Optimisation report
 ...................
 
 Once the optimisation is finished we can generate and open the final report with:
