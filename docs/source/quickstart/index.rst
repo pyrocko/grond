@@ -4,54 +4,68 @@
 Quickstart
 ==========
 
-Grond ships with two options to quickstart a new project structure (see
-:ref:`project-layout`), including Grond's YAML configuration files. Here
-we present a quickstart solution employing forward-modelled data.
+This is a type-along introductory example to get your feet wet in operating
+Grond.
 
-.. tip::
-    
-    All subcommands come with a help, e.g. ``grond go --help``!
+We will estimate a centroid moment tensor (CMT) solution given a set of
+simulated regional full waveform seismic records. Such synthetic tests are
+useful e.g. for resolution analysis.
 
-Forward-model a scenario:
+A synthetic test
+----------------
+
+With the following few commands, we will let Grond
+
+* forward model a fully synthetic scenario of regional seismic waveforms.
+* setup a processing environment (project folder).
+* perform a probabilistic optimisation to retrieve a CMT solution for the scenario.
+* visualise the results and various details about the optimisation.
+
+**Online help**
+
+.. code-block :: sh
+
+    grond --help           # get list of available subcommands
+    grond scenario --help  # all subcommands come with built-in help
+
+**Forward-model a random scenario and create project folder**
 
 .. code-block :: sh
 
     grond scenario --targets=waveforms my_first_project
-    In which cache directory shall the GF store be downloaded to? 
-    Default 1, (C)ancel: 1
 
-Check the configuration:
+*Note: precomputed Green's functions (GF) needed to run this example will be
+downloaded from the internet.*
+
+**Check the data setup and configuration**
 
 .. code-block :: sh
 
     cd my_first_project
-    grond check config.yml
+    grond check config/scenario.gronf
 
-Start the optimisation:
-
-.. code-block :: sh
-
-    grond go config.yml
-
-Plot the results in a report:
+**Start the optimisation**
 
 .. code-block :: sh
 
-    grond report <rundir>
+    grond go config/scenario.gronf
 
+**Plot the results in a report**
 
-Custom Grond projects
----------------------
+.. code-block :: sh
 
-After initialising a new project you can add your own data and customise the configration file.
+    grond report runs/cmt_scenario_ev001.grun
 
-1. Run ``grond init <project-folder>`` to initialise an empty project
-2. Add your own data to folders :file:`events/<name>/`
-3. Add your :file:`events.txt`
-4. Copy :file:`config.yml` to :file:`my-event.yml`
-5. Customize values in :class:`~grond.dataset.DatasetConfig`
-6. Run a ``grond check`` to check your configuration and input data
-7. Run ``grond go my-event.yml`` to start the optimisation
-8. Run ``grond report <rundir>`` to obtain a report on the results.
+**Open the report in your web browser**
 
-See the :doc:`../examples/index` for detailed information.
+.. code-block :: sh
+
+    grond report -so
+
+TODO: link to results
+
+Next steps
+----------
+
+Read the :doc:`../overview/index` to see how to set up a project folder with
+your own data or take a tour through our :doc:`../examples/index`.

@@ -1,4 +1,4 @@
-Example Projects
+Example projects
 ================
 
 Here we walk through hands-on data inversions with Grond. The examples provide data and are tutorial style to get Grond in action.

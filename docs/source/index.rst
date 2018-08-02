@@ -28,6 +28,7 @@ Contents
    analysers/index
    optimisers/index
    report/index
+   commands/index
    library/index
    :maxdepth: 2
 

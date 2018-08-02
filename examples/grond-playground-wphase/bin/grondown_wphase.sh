@@ -4,7 +4,8 @@ if [ -z "$1" ]; then
     echo "grondown_w_phase.sh <catalog-name>"
     exit 1
 fi
-bindir="$(dirname "$(realpath "$0")")"
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 "$bindir/grondown" \
     --radius-min=3000 \
