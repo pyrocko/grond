@@ -1,0 +1,62 @@
+--- !grond.Config
+path_prefix: ..
+rundir_template: rundir/${problem_name}.grun
+dataset_config: !grond.DatasetConfig
+  events_path: event.txt
+  extend_incomplete: false
+  picks_paths: []
+  blacklist_paths: []
+  blacklist: []
+  whitelist_paths: []
+  kite_scene_paths: [insar]
+target_groups:
+- !grond.SatelliteTargetGroup
+  normalisation_family: static
+  path: all
+  weight: 1.0
+  kite_scenes: ['*all']
+  misfit_config: !grond.SatelliteMisfitConfig
+    optimise_orbital_ramp: false
+    ranges:
+      offset: -0.5 .. 0.5
+      ramp_east: -1e-4 .. 1e-4
+      ramp_north: -1e-4 .. 1e-4
+  interpolation: multilinear
+  store_id: crust2_ib_static
+problem_config: !grond.RectangularProblemConfig
+  name_template: rect_source
+  norm_exponent: 2
+  ranges:
+    depth: 2500 .. 7000
+    dip: 10 .. 50
+    east_shift: 0 .. 20000
+    length: 5000 .. 10000
+    north_shift: 0 .. 20000
+    rake: 120 .. 360
+    slip: .2 .. 2
+    strike: 220 .. 360
+    width: 2000 .. 10000
+  decimation_factor: 12
+  distance_min: 0.0
+analyser_configs:
+- !grond.TargetBalancingAnalyserConfig
+  niterations: 1000
+optimiser_config: !grond.HighScoreOptimiserConfig
+  sampler_phases:
+  - !grond.UniformSamplerPhase
+    niterations: 10000
+    ntries_preconstrain_limit: 1000
+  - !grond.DirectedSamplerPhase
+    niterations: 40000
+    ntries_preconstrain_limit: 1000
+    starting_point: excentricity_compensated
+    sampler_distribution: normal
+    standard_deviation_estimator: median_density_single_chain
+    ntries_sample_limit: 2000
+  chain_length_factor: 8.0
+  nbootstrap: 25
+engine_config: !grond.EngineConfig
+  gf_stores_from_pyrocko_config: true
+  gf_store_superdirs: [.]
+  gf_store_dirs: []
+event_names: []
