@@ -1,5 +1,5 @@
-Problems and problem configuration
-==================================
+Problems
+========
 
 A problem in Grond is a task to optimise a specific source model in Grond given certain conditions. 
 These conditions can be configured rather flexibly. So far defined problems in Grond are the optimisations 

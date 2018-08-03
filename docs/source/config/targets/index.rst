@@ -15,7 +15,7 @@ The waveform target groups can be combined to solve the inverse problem, leading
 
 .. note ::
 
-    Weighting between targets is described in the :doc:`../method/index` section.
+    Weighting between targets is described in the :doc:`/method/index` section.
 
 
 Waveform targets

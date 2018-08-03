@@ -397,7 +397,7 @@ During the optimisation, results are aggregated in an output directory, referred
         └── ...
 
 
-You find detailed information on the misfit configuration and model space sampling in the section :doc:`/optimisers/index`.
+You find detailed information on the misfit configuration and model space sampling in the section :doc:`/config/optimisers/index`.
 
 
 Results and visualisation

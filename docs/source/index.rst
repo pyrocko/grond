@@ -24,11 +24,7 @@ Contents
    overview/index
    examples/index
    method/index
-   dataset/index
-   targets/index
-   problems/index
-   analysers/index
-   optimisers/index
+   config/index
    report/index
    commands/index
    library/index
