@@ -49,7 +49,7 @@ class SatelliteTargetPlot(PlotConfig):
             self,
             self.draw_static_fits(ds, history, optimiser),
             title='Satellite Surface Displacements',
-            section='results',
+            section='fits',
             feather_icon='navigation',
             description='Maps showing surface displacements'
                         ' from satellite and modelled data.')

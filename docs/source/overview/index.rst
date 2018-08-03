@@ -140,38 +140,40 @@ Grond is a rather large system. The following terminology may help to
 understand its configuration and the underlying concepts and implementation
 strategies.
 
-Event
-    A seismic event which has a unique name among all events available to a specific configuration of Grond. An event usually has a preliminary origin location and sometimes a reference mechanism attached to it.
+.. glossary::
 
-Config file
-    A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using ``grond init``.
+    Event
+        A seismic event which has a unique name among all events available to a specific configuration of Grond. An event usually has a preliminary origin location and sometimes a reference mechanism attached to it.
 
-Rundir
-    The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the ``grond go`` subcommand.
+    Config file
+        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using ``grond init``.
 
-Dataset
-    The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
+    Rundir
+        The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the ``grond go`` subcommand.
 
-Misfit
-    The misfit is the value of the objective function obtained for a given source model proposal. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
+    Dataset
+        The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
 
-Target
-    In a typical Grond set-up, many modelling targets may contribute to the global misfit. For example, An individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
+    Misfit
+        The misfit is the value of the objective function obtained for a given source model proposal. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
 
-Problem
-    In the context of a Grond set-up, the "problem" groups the choice of source model and parameter bounds to be used in the optimisation.
+    Target
+        In a typical Grond set-up, many modelling targets may contribute to the global misfit. For example, An individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
 
-Analyser
-    Before running the optimisation, station weights and other internal parameters may need to be adapted to the observed data and configured set-up of Grond. Such pre-optimisation tasks are done by one or more of Grond's analysers.
+    Problem
+        In the context of a Grond set-up, the "problem" groups the choice of source model and parameter bounds to be used in the optimisation.
 
-Optimiser
-    This refers to the optimisation strategy, how to sample model space to find solutions in a given Grond set-up.
+    Analyser
+        Before running the optimisation, station weights and other internal parameters may need to be adapted to the observed data and configured set-up of Grond. Such pre-optimisation tasks are done by one or more of Grond's analysers.
 
-Store
-    Refers to Green's functions databases to be used for the forward modelling. In Grond these stores are adressed with paths and an individual ``store_id``.
+    Optimiser
+        This refers to the optimisation strategy, how to sample model space to find solutions in a given Grond set-up.
 
-Engine
-    Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's functions stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
+    Store
+        Refers to Green's functions databases to be used for the forward modelling. In Grond these stores are adressed with paths and an individual ``store_id``.
+
+    Engine
+        Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's functions stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
 
 
 Initializing a Grond project
