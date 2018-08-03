@@ -18,7 +18,7 @@ With the following few commands, we will let Grond
 
 * forward model a fully synthetic scenario of regional seismic waveforms.
 * setup a processing environment (project folder).
-* perform a probabilistic optimisation to retrieve a CMT solution for the scenario.
+* perform a probabilistic optimisation to retrieve a CMT solution for the scenario event.
 * visualise the results and various details about the optimisation.
 
 **Online help**
