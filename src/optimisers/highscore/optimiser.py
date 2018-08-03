@@ -107,14 +107,24 @@ class UniformSamplerPhase(SamplerPhase):
 
 
 class DirectedSamplerPhase(SamplerPhase):
-    scatter_scale = Float.T(optional=True)
-    scatter_scale_begin = Float.T(optional=True)
-    scatter_scale_end = Float.T(optional=True)
+    scatter_scale = Float.T(
+        optional=True,
+        help='Scales search radius around the current `highscore` models')
+    scatter_scale_begin = Float.T(
+        optional=True,
+        help='Scaling factor at beginning of the phase.')
+    scatter_scale_end = Float.T(
+        optional=True,
+        help='Scaling factor at the end of the directed phase.')
     starting_point = SamplerStartingPointChoice.T(
-        default='excentricity_compensated')
+        default='excentricity_compensated',
+        help='Tunes to the center value of the sampler distribution.'
+             'May increase the likelihood to draw a highscore member model'
+             ' off-center to the mean value')
 
     sampler_distribution = SamplerDistributionChoice.T(
-        default='normal')
+        default='normal',
+        help='Distribution new models are drawn from.')
 
     standard_deviation_estimator = StandardDeviationEstimatorChoice.T(
         default='median_density_single_chain')

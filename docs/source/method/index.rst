@@ -7,13 +7,11 @@
 Method
 ******
 
-TODO: REVIEW: This section should be as self-contained as possible, describe 
-the method in general - give references to other sections how things are
-implemented in Grond.
+TODO: REVIEW: This section should be as self-contained as possible, describe the method in general - give references to other sections how things are implemented in Grond.
 
 The very core of any optimisation is the evaluation of a misfit value between observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`. This is most often based on the difference  :math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be any other comparison, like a correlation measure for example.
 
-`Observed data` here means post-processed data and not the `raw` measurements. E.g. full waveforms are usually tapered to the defined phases, restituted and filtered. `Synthetic waveforms` are the forward- modelled waveforms that are tapered and filtered in the same way as the observed waveforms. Find details on the post-processing in the `targets`_ section. The `targets` are derived from data defined in the `dataset`_.
+`Observed data` here means post-processed data and not the `raw` measurements. E.g. full waveforms are usually tapered to the defined phases, restituted and filtered. `Synthetic waveforms` are the forward- modelled waveforms that are tapered and filtered in the same way as the observed waveforms. Find details on the post-processing in the `targets config`_ section. The `targets` are derived from data defined in the `dataset config`_.
 
 This document describes the method of Grond on:
 
@@ -72,7 +70,7 @@ The core of an optimisation is the data-point-wise calculation of the difference
 
 .. math ::
 
-  |{\bf d}_{obs} - {\bf d}_{synth}|.
+    |{\bf d}_{obs} - {\bf d}_{synth}|.
 
 Grond supports different seismological observations, thus :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` can be:
 
@@ -90,7 +88,7 @@ The misfit is based on the configurable :math:`L^x`-norm with :math:`x \,\, \eps
   :label: eq:ms
 
     \lVert e \rVert_x = \lVert {\bf{d}}_{obs} - {{\bf d}}_{synth} \rVert_x  = \
-        \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^x}\right)^{\frac{1}{x}}.
+        \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^x}\right)^{\frac{1}{x}}
         
 Further the misfit normalisation factor :math:`norm` is associated with each target. This measure will be used to normalise the misfit values for relative weighing:
 
@@ -98,9 +96,9 @@ Further the misfit normalisation factor :math:`norm` is associated with each tar
   :label: ns
         
     \lVert e_{\mathrm{0}} \rVert_x = \lVert {\bf{d}}_{obs}  \rVert_x  = \
-        (\sum{|{d}_{i, obs}|^x})^{\frac{1}{x}}.
+        left(\sum{|{d}_{i, obs}|^x} \right) ^{\frac{1}{x}}.
 
-The reusulting normalised misfit
+The resulting normalised misfit
 
 .. math::
   :label: ms_ns
@@ -109,6 +107,12 @@ The reusulting normalised misfit
     \frac{\lVert e \rVert_x}{ \lVert e_{\mathrm{0}} \rVert_x}.
 
 is a useful measure to evaluate the data fit. Model predictions that manage to explain parts of the observed data holds :math:`\lVert e_{\mathrm{norm}} \rVert_x <1`. Furthermore, the data norm :math:`\lVert e_{\mathrm{0}} \rVert_x` is used in the normalisation of data groups.
+
+Waveform misfit
+^^^^^^^^^^^^^^^
+
+Waveform data is preprocessed before misfit calculation: Before the misfit is calculated, observed and synthetic data are tapered within a time window and bandpass filtered (see above).
+The misfit in Grond can further be based on the maximum waveform correlation.
 
 When measuring waveform data's cross-correlation, the misfit function is based on the maximum correlation :math:`\mathrm{max}(C)` of :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` defined as:
 
@@ -123,23 +127,17 @@ When measuring waveform data's cross-correlation, the misfit function is based o
     e_{\mathrm{norm}} = 1 - \mathrm{max}(C).
   \end{align*}  
 
-Waveform misfit
-^^^^^^^^^^^^^^^
-
-Waveform data is preprocessed before misfit calculation: Before the misfit is calculated, observed and synthetic data are tapered within a time window and bandpass filtered (see above).
-The misfit in Grond can further be based on the maximum waveform correlation. 
 
 Satellite misfit
 ^^^^^^^^^^^^^^^^
 
-The residual of each quadtree tile is calculated, see Equation :ref:`eq:ms`.
+The surface deformation data is pre-processed with kite (:doc:`../examples/satellite_insar/index`) to obtain a subsampled quadtree. The misfit is then calculated for each quadtree tile :math:`d_{i}`.
 
 
 GNSS misfit
 ^^^^^^^^^^^^
 
-Each GNSS component (North, East, Up) is forward modelled and compared with the observed data.
-
+Each GNSS component (north, east and up) is forward modelled and compared with the observed data.
 
 
 Target Weighting
@@ -147,10 +145,10 @@ Target Weighting
 
 Grond implements several different kinds of weights:
 
-* :math:`w_{\mathrm{tba},i}` - target balancing (for waveforms and GNSS campaign only)
-* :math:`w_{\mathrm{noise},i}` - noise-based data weights (for waveforms only)
-* :math:`w_{\mathrm{man},i}` - user-defined, manual weights of target groups
-* normalisation within data groups (leads to balancing between data groups)
+* :math:`w_{\mathrm{tba},i}` - target balancing (for waveforms and GNSS campaign only).
+* :math:`w_{\mathrm{noise},i}` - noise-based data weights (for waveforms only).
+* :math:`w_{\mathrm{man},i}` - user-defined, manual weights of target groups.
+* normalisation within data groups, leads to balancing between data groups.
 
 These weights are applied as factors to the misfits, optionally as a product of weight combinations. E.g. for a waveform all data weights combined means:
 
@@ -173,13 +171,14 @@ The misfit and data norm calculations with data weights
     \lVert e_{\mathrm{0}} \rVert_x  &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot \ 
        |{{d}}_{i,obs} |)^{x}}\right)^{\frac{1}{x}}
   \end{align*}
-  
+
+
 Target balancing weights
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 With these weights waveform targets are `balanced` with respect to the expected earthquake signal amplitude.
 
-Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) signal procesing applied (taper, bandpass). The problem tackled with this weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source machanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
+Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) signal procesing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source machanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
 
     .. math::
       :label: wtba
@@ -187,7 +186,7 @@ Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source
       {\bf w}_{\mathrm{tba}} = 1/ \lVert {\bf{d}}_{synth}  \rVert_x  = \
             \left(\sum^{N}{|{d}_{i, synth}|^x}\right)^{\frac{1}{x}}.
 
-These balancing weights will enhanced small signals and supress large signals in the objective function. This is described as `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23). In Grond they are defined as ``balancing weights`` and are received from the :class:`~grond.analyser.TargetBalancingAnalyser` module before the optimisation.
+These balancing weights will enhanced small signals and supress large signals in the objective function. This is described as `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23). In Grond they are defined as ``balancing weights`` and are received from the :class:`~grond.analysers.target_balancing.TargetBalancingAnalyser` module before the optimisation.
 
 .. figure:: ../images/illu_target_balancing.svg
     :name: Fig. 2
@@ -196,8 +195,8 @@ These balancing weights will enhanced small signals and supress large signals in
     :alt: alternate text
     :figclass: align-center
     
-    **Figure 2**: Qualitative sketch how target balancing weight increases with 
-    source-receiver distance to balance amplitude inferred by geometrical spreading.
+    **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading.
+
 
 Data weights based on data error statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,16 +208,16 @@ There are direct data weight vectors :math:`\bf{w}` or weight matrices :math:`\b
 
       {\bf w} = \frac{1}{{\bf \sigma}}, \quad  \bf{W} = \sqrt{{\bf \Sigma}^{-1}}.
 
-For a :class:`~grond.targets.WaveformTarget` the data error statistics stem from real data noise before the first phase arrival as described e.g. in `Duputel et al.`_ (2012). From the noise traces the inverse of their standard deviation is used. In Grond they are named `station_noise_weights` and are received from the :class:`~grond.analyser.NoiseAnalyser` before the optimisation.
+For a :class:`~grond.targets.waveform.WaveformTargetGroup` the data error statistics stem from real data noise before the first phase arrival as described e.g. in `Duputel et al.`_ (2012). From the noise traces the inverse of their standard deviation is used. In Grond they are named `station_noise_weights` and are received from the :class:`~grond.analyser.noise_analyser.NoiseAnalyser` before the optimisation.
 
-For a :class:`~grond.targets.SatelliteTarget` the data error statistics are pre-calculated by `Kite`_ and loaded with the scenes. The estimation of the noise statistics has to be done before Grond by using `kite`_. In `kite`_ the noise estimation can be done in areas of the displacement map that are not affected by coseismic deformation by using spatial sampling methods and semi-variogram and covariogram formation, described e.g. in `Sudhaus and Jonsson`_ (2009).
+For a :class:`~grond.targets.satellite.SatelliteTargetGroup` the data error statistics are pre-calculated by `Kite`_ and loaded with the scenes. The estimation of the noise statistics has to be done before Grond by using `Kite`_. In `Kite`_ the noise estimation can be done in areas of the displacement map that are not affected by coseismic deformation by using spatial sampling methods and semi-variogram and covariogram formation, described e.g. in `Sudhaus and Jonsson`_ (2009).
 
-For a :class:`~grond.targets.GNSSCampaignTarget` the data error statistics are also obtained from the data set. They have to be estimated before and given in the GNSS data `YAML`-file describing the data set. For details visit the corresponding chapter in the `Pyrocko tutorial`_.
+For a :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` the data error statistics are also obtained from the data set. They have to be estimated before and given in the GNSS data `YAML`-file describing the data set. For details visit the corresponding chapter in the `Pyrocko tutorial`_.
 
 Manual data weighting
 ^^^^^^^^^^^^^^^^^^^^^
 
-User-defined manual data weights enable an arbitrary weighting of data sets in contrast to balancing of single observations through target balancing and noise-based data weights. No rules apply other than from the user's rationale. In Grond they are called ``manual_weight`` and are given in the configuration file of the `targets`_.
+User-defined manual data weights enable an arbitrary weighting of data sets in contrast to balancing of single observations through target balancing and noise-based data weights. No rules apply other than from the user's rationale. In Grond they are called ``manual_weight`` and are given in the configuration file of the `targets config`_.
 
 Normalisation of data and data groups
 -------------------------------------
@@ -228,7 +227,7 @@ The normalisation in Grond is applied to data groups that are member of the so c
 Example 1: Fitting waveforms of P and S waves
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Let's say we use the waveform fit in time domain and in spectral domain combined. We then have weighted misfits as in Equation :eq:`wms_wns` for P waves with :math:`{\bf d}_{obs,\mathrm{Pt}}` and :math:`{\bf d}_{synth,\mathrm{Pt}}` in time domain and :math:`{\bf d}_{obs,\mathrm{Ps}}` and :math:`{\bf d}_{synth,\mathrm{Ps}}` in spectral domain. We have also the corresponding weighted misfit norms (see Equation :eq:`wms_wns`) and the same for S waveforms in time and spectral domain. Let's also say we are using the :math:`L_{\mathrm{2}}\,`-norm.
+Let's say we use the waveform fit in time domain and in spectral domain combined. We then have weighted misfits as in Equation :eq:`wms_wns` for P waves with :math:`{\bf d}_{obs,\mathrm{Pt}}` and :math:`{\bf d}_{synth,\mathrm{Pt}}` in time domain and :math:`{\bf d}_{obs,\mathrm{Ps}}` and :math:`{\bf d}_{synth,\mathrm{Ps}}` in spectral domain. We have also the corresponding weighted misfit norms (see Equation :eq:`wms_wns`) and the same for S waveforms in time and spectral domain. Let's also say we are using the :math:`L^2\,`-norm.
 
 The waveforms of P and S waves in time domain are of a similar and kind and can, maybe even should, be normalised together. The same may be meaningful for the normalisation of the P and S waves in spectral domain.
     
@@ -328,7 +327,7 @@ Residual bootstrap
     
 Residual bootstrapping is a computationally more efficient implementation of the `Randomize-then-optimize`_ approach: with empirical estimates of the data error statistics individual realisations of synthetic correlated random noise are systematically added to the data to obtain perturbed optimisations results (Fig. 5). Earthquake source parameter distributions retrieved with the `Randomize-then-optimize`_ method based on the data error variance-covariance matrices have been shown to match the model parameter distributions obtained through `Marcov Chain Monte Carlo` sampling of the model space (`Jonsson et al.`_,2014). In our `residual bootstrapping` method we add one realisation of synthetic correlated random noise to each bootstrapping chain (Fig. 5C and 1). This saves the calculation of many independent forward models compared to `Randomize-then-optimize`_ approach.
 
-To generate random noise we use functions of the `kite`_ module. From the noise estimation region defined in the `kite`_ scenes (Fig. 5A), the noise power spectrum is used directly with a randomised phase spectrum to create new random noise with same spectral characteristics (Fig. 5B). The noise is then subsampled through the same quadtree as defined for the observed data (Fig. 5C).
+To generate random noise we use functions of the `Kite`_ module. From the noise estimation region defined in the `Kite`_ scenes (Fig. 5A), the noise power spectrum is used directly with a randomised phase spectrum to create new random noise with same spectral characteristics (Fig. 5B). The noise is then subsampled through the same quadtree as defined for the observed data (Fig. 5C).
 
 .. figure:: ../images/illu_residual_bootstrap_realisation.svg
     :name: Fig. 5
@@ -355,7 +354,7 @@ BABO stands for `Bayesian Bootstrap Optimisation` that is done if the optimiser 
 BABO can turn into a simple Monte-Carlo random direct search if some options are switched off. It can also resemble a simulated annealing optimisation approach using a certain problem configuration. Last but not least BABO enables fully probabilistic bootstrapping of the optimisation results. This is realised in parallel with optimisation chains to which bootstrapping weights are applied.
 
 Note:
-*Weights* are explained above. The specific weighting is configured with the `targets`_ used and also with the `problem`_. The *model space* in which the optimisation takes place is defined with the `problem`_. Here described is the sampling and in the context of the multiple objective functions given by the bootstrapping.
+*Weights* are explained above. The specific weighting is configured with the `targets config`_ used and also with the `problem`_. The *model space* in which the optimisation takes place is defined with the `problem`_. Here described is the sampling and in the context of the multiple objective functions given by the bootstrapping.
 
 
 Sampling scheme and sampling phases
@@ -370,9 +369,9 @@ This list contains a defined number of the current best models (lowest misfit). 
 There are three sampling phases defined, based on which models are drawn from
 the model space:
 
-* ``UniformSamplerPhase`` - models are drawn randomly
-* ``InjectionSamplerPhase`` - allows to inject specific models 
-* ``DirectedSamplerPhase`` - existing low-misfit models `direct` the sampling
+* :class:`~grond.optimisers.highscore.optimiser.UniformSamplerPhase` - models are drawn randomly
+* :class:`~grond.optimisers.highscore.optimiser.InjectionSamplerPhase` - allows to inject specific models 
+* :class:`~grond.optimisers.highscore.optimiser.DirectedSamplerPhase` - existing low-misfit models `direct` the sampling
 
 .. figure:: ../images/illu_sampling_phases.svg
     :name: Fig. 6
@@ -394,22 +393,22 @@ This starting phase allows to inject pre-defined models at the start of the opti
 
 DirectedSamplerPhase
 """"""""""""""""""""
-This sampler is used for the second phase and follows any of starting samplers above: Using existing models of the current `highscore` models the `directed` sampler draws a configurable number of new models. Like this convergence to low-misfit regions is enabled. There are quite some noteworthy configureable details to this sampler phase.
+This sampler is used for the second phase and follows any of starting samplers above: Using existing models of the current `highscore` models the `directed` sampler draws a configurable number of new models. Like this convergence to low-misfit regions is enabled. There are quite some noteworthy configureable details to this sampler phase:
 
-Sampling distributions
-......................
-New models are drawn from normal distribution. The standard deviations are derived from the `highscore` models parameter's standard deviation and scaled by `scatter scale` (see below). Optionally, the covariance of model parameters is taken into account by configuring when ``multivariate_normal`` is enabled (default is ``normal`` distribution). The distribution is centered around
+``sampling_distributions``
+..........................
+New models are drawn from normal distribution. The standard deviations are derived from the `highscore` models parameter's standard deviation and scaled by ``scatter_scale`` (see below). Optionally, the covariance of model parameters is taken into account by configuring when ``multivariate_normal`` is enabled (default is ``normal`` distribution). The distribution is centered around
 
-1.``mean`` of the `highscore`` model parameter distributions
+1. ``mean`` of the `highscore` model parameter distributions
 2. a ``random`` model from the `highscore` list or
 3. an ``excentricity_compensated`` draw (see below).
     
-Scatter scale
-.............
-This scales search radius around the current `highscore` models. With a scatter scale of 2 the search for new models has a distribution with twice the standard deviation as estimated from the current `highscore` list. It is possible to define a beginning scatter scale and an ending scatter scale. This leads to a  confining directed search. In other words, the sampling evolves from being more explorative to being more exploitive in the end.
+``scatter_scale``
+.................
+This scales search radius around the current `highscore` models. With a scatter scale of 2 the search for new models has a distribution with twice the standard deviation as estimated from the current `highscore` list. It is possible to define a beginning scatter scale and an ending scatter scale. This leads to a confining directed search. In other words, the sampling evolves from being more explorative to being more exploitive in the end.
 
-Excentricity compensation
-.........................
+``starting_point`` 
+..................
 This method tunes to the center value of the sampler distribution: This option, will increase the likelihood to draw a `highscore` member model off-center to the mean value. The probability of drawing a model from the `highscore` list is derived from distances the `highscore` models have to other `highscore` models in the model parameter space. Excentricity is therefore compensated, because models with few neighbours at larger distances have an increased likelihood to be drawn.
     
 What's the use? Convergence is slowed down, yes, but to the benefit of low-misfit region represented by only a few models drawn up to the current point.
@@ -464,6 +463,6 @@ The convergence of model parameters for the models within each bootstrap chain i
 .. _Randomize-then-optimize: https://epubs.siam.org/doi/abs/10.1137/140964023
 .. _Jonsson et al.: http://adsabs.harvard.edu/abs/2014AGUFM.S51C..05J
 
-.. _dataset: ../dataset/index.html
-.. _targets: ../targets/index.html
+.. _dataset config: ../config/dataset/index.html
+.. _targets config: ../config/targets/index.html
 .. _problem: problems/index.html
