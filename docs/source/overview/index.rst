@@ -346,9 +346,8 @@ can likely be found in the :doc:`/library/index`.
     optimiser_config: !grond.HighScoreOptimiserConfig
       ...
 
-
-Example projects
-................
+Example configuration files
+...........................
 
 Commented snippets of Grond configuration files explaining all options can be found here for
 
