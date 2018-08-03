@@ -1,4 +1,4 @@
 go
 --
 
-.. program-output:: grond go --help
+.. command-output:: grond go --help

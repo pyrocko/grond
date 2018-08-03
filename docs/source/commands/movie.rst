@@ -1,4 +1,4 @@
 movie
 -----
 
-.. program-output:: grond movie --help
+.. command-output:: grond movie --help

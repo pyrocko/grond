@@ -1,4 +1,4 @@
 plot
 ----
 
-.. program-output:: grond plot --help
+.. command-output:: grond plot --help

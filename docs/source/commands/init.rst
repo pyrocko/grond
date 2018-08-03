@@ -1,4 +1,4 @@
 init
 ----
 
-.. program-output:: grond init --help
+.. command-output:: grond init --help

@@ -1,4 +1,4 @@
 events
 ------
 
-.. program-output:: grond events --help
+.. command-output:: grond events --help

@@ -1,4 +1,4 @@
 report
 ------
 
-.. program-output:: grond report --help
+.. command-output:: grond report --help

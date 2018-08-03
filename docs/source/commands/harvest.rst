@@ -1,4 +1,4 @@
 harvest
 -------
 
-.. program-output:: grond harvest --help
+.. command-output:: grond harvest --help

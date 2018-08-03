@@ -1,4 +1,4 @@
 version
 -------
 
-.. program-output:: grond version --help
+.. command-output:: grond version --help

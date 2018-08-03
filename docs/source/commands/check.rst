@@ -1,4 +1,4 @@
 check
 -----
 
-.. program-output:: grond check --help
+.. command-output:: grond check --help

@@ -1,4 +1,4 @@
 qc-polarization
 ---------------
 
-.. program-output:: grond qc-polarization --help
+.. command-output:: grond qc-polarization --help

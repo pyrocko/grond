@@ -1,4 +1,4 @@
 forward
 -------
 
-.. program-output:: grond forward --help
+.. command-output:: grond forward --help

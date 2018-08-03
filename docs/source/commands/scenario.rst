@@ -1,4 +1,4 @@
 scenario
 --------
 
-.. program-output:: grond scenario --help
+.. command-output:: grond scenario --help

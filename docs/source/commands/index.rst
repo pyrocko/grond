@@ -1,22 +1,23 @@
 Command reference
 =================
 
-.. program-output:: grond
+.. command-output:: grond --help
 
 .. toctree::
-   scenario
-   init
-   events
-   check
-   go
-   forward
-   harvest
-   plot
-   movie
-   export
-   report
-   diff
-   qc-polarization
-   upgrade-config
-   version
+    :caption: Subcommands:
 
+    scenario
+    init
+    events
+    check
+    go
+    forward
+    harvest
+    plot
+    movie
+    export
+    report
+    diff
+    qc-polarization
+    upgrade-config
+    version

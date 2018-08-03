@@ -9,8 +9,7 @@ are available, run ::
 
 	grond --help
 
-To get more information about any of the available subcommands and its options,
-run ::
+To get more information about a subcommand and its options, run ::
 
 	grond <subcommand> --help
 
@@ -19,19 +18,11 @@ The basic work-flow when using Grond is as follows:
 1. Set up a project folder containing input data and Green's functions.
 2. Set up a configuration file for Grond.
 3. Check the set-up with ``grond check``.
-4. Run the inversion using with ``grond go``.
-5. Create the result plots and report with ``grond report``.
+4. Run the optimisation with ``grond go``.
+5. Create result plots and report with ``grond report``.
+6. Export results with ``grond export``.
 
 Details on these steps are given in the following sections.
-
-
-Initializing a Grond project
-----------------------------
-
-Grond ships with two subcommands to help setting up a new project folder. For
-real data, you may use ``grond init <project-folder>`` (:ref:`project-init` see
-below). For synthetic testing, with ``grond scenario <project-folder>`` a fully
-synthetic dataset can be customised and forward modelled.
 
 
 .. _project-layout:
@@ -159,7 +150,7 @@ Rundir
     The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the ``grond go`` subcommand.
 
 Dataset
-    The dataset is a section in the config file telling Grond where to look for input data (waveforms, insar scenes, gnss data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
+    The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
 
 Misfit
     The misfit is the value of the objective function obtained for a given source model proposal. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
@@ -183,32 +174,20 @@ Engine
     Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's functions stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
 
 
-Initialize project
-------------------
+Initializing a Grond project
+----------------------------
 
-Grond ships with two options to quickstart a new project structure (see :ref:`project-layout`), including Grond's YAML configuration files.
-
-Forward-model a scenario
-........................
-
-The subcommand ``grond scenario`` will forward model observations for a modelled earthquake and create a ready-to-go Grond project. Different observations and source problems can be added by flags - see ``grond scenario --help`` for possible combinations and options.
-
-The scenario can contain the following synthetic observations:
-
-* Seismic waveforms
-* InSAR surface displacements
-* GNSS surface displacements
-
-.. code-block :: sh
-    
-    grond scenario --targets=waveforms,insar <project-folder>
-
-A map of the random scenario is plotted in :file:`scenario_map.pdf`.
+Grond ships with two options to quickstart a new project folder structure (see
+:ref:`project-layout`), including Grond's YAML configuration files. For real
+data, you may use ``grond init <project-folder>`` (section
+:ref:`project-init`). For synthetic testing, with ``grond scenario
+<project-folder>`` a fully synthetic dataset can be customised and forward
+modelled (section :ref:`project-scenario`).
 
 .. _project-init:
 
-Initialise an empty project
-...........................
+Initializing an empty project
+.............................
 
 An empty project structure can be created with the subcommand ``grond init``. Different configurations can be added by flags, see ``grond init --help`` for more information.
 
@@ -221,7 +200,7 @@ An empty project structure can be created with the subcommand ``grond init``. Di
 
     Existing project folders can be overwritten using ``grond init --force <project-folder>``
  
-You can create an initial Grond configuration file for a centroid moment tensor optimization based on global seismic waveforms with
+You can create an initial Grond configuration file for a centroid moment tensor optimisation based on global seismic waveforms with
 
 .. code-block :: sh
 
@@ -246,83 +225,125 @@ The ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS
 
     grond init --full > config/<configfilename>.gronf
 
+.. _project-scenario:
+
+Initializing a scenario project from forward modelling
+......................................................
+
+The subcommand ``grond scenario`` will forward model observations for a modelled earthquake and create a ready-to-go Grond project. Different observations and source problems can be added by flags - see ``grond scenario --help`` for possible combinations and options.
+
+The scenario can contain the following synthetic observations:
+
+* Seismic waveforms
+* InSAR surface displacements
+* GNSS surface displacements
+
+.. code-block :: sh
+    
+    grond scenario --targets=waveforms,insar <project-folder>
+
+A map of the random scenario is plotted in :file:`scenario_map.pdf`.
 
 Configuration
 -------------
 
+Grond is configured with plain text files in `YAML`_ format. The YAML format
+has been chosen because it can represent arbitrarily nested data structures
+built from mappings, lists, and scalar values. It also provides an excellent
+balance between human and machine readability. When working with such files, it
+is good to know that the **indentation is part of the syntax** and that
+comments can be introduced with the ``#`` symbol. The configuration file can be
+made to work with multiple events. A basic configuration template can be
+generated using the :doc:`grond init </commands/init>` subcommand (see section
+:ref:`project-init`).
+
 Configuration file structure
 ............................
 
-The configuration file consists of several blocks. The order of these blocks is not important.
+The following commented listing presents the overall structure of a Grond
+configuration file. It has a top level container (mapping), introduced with the
+line ``--- !grond.Config`` with several child elements: ``path_prefix``,
+``rundir_template``, ``dataset_config``, etc. Some of these entries may again
+contain their own child elements (indented blocks of lines) or lists (lines
+introduced with dashes). The type markers, like e.g. ``!grond.DatasetConfig``,
+select the Grond object type of the following mapping and their documentation
+can likely be found in the :doc:`/library/index`.
 
 .. code-block :: sh
 
     %YAML 1.1
     --- !grond.Config
-    # Path where to store output (run-directories)
+
+    # All file paths referenced below are treated relative to the location of this
+    # configuration file, here we may give a common prefix. E.g. setting it to '..'
+    # if the configuration file is in the sub-directory '${project_root}/config'
+    # allows us to give the paths below relative to '${project_root}'.
+
     path_prefix: '..'
+
+    # Path, where to store output (run directories). The placeholder
+    # '${problem_name}' will be expanded to a name configured below in
+    # problem_config.name_template and will typically include a config identifier
+    # and the event name.
+
     rundir_template: 'runs/${problem_name}.run'
 
-    # -----------------------------------------------------------------------------
     # Configuration section for dataset (input data)
-    # ---------------------------------------------------------------------   
+
     dataset_config: !grond.DatasetConfig
       ...
 
-    # -----------------------------------------------------------------------------
     # Configuration section for the forward modelling engine (configures where
     # to look for GF stores)
-    # -----------------------------------------------------------------------------
+
     engine_config: !grond.EngineConfig
       ...
 
-    # -----------------------------------------------------------------------------
-    # Configuration section selecting data to be included in the data optimization. 
-    # Amongst other parameters, the objective function for the optimization is 
+    # Configuration section selecting data to be included in the data optimisation. 
+    # Amongst other parameters, the objective function for the optimisation is 
     # defined for each target group. The targets can be composed of one or more 
     # contributions, each represented by a !grond.TargetConfig section.
-    # ----------------------------------------------------------------------------- 
+
     target_groups:
-    # setup for seismic waveforms
-    - !grond.WaveformTargetGroup
+
+    - !grond.WaveformTargetGroup       # Setup for seismic waveforms
       ...
 
-    # setup for InSAR
-    - !grond.SatelliteTargetGroup
+    - !grond.SatelliteTargetGroup      # Setup for InSAR
       ...
 
-    # setup for coseismic GNSS displacements
-    - !grond.GNSSCampaignTargetGroup
+    - !grond.GNSSCampaignTargetGroup   # Setup for coseismic GNSS displacements
       ...
 
-    # -----------------------------------------------------------------------------
     # Definition of the problem to be solved - source model, parameter space, and
     # global misfit configuration settings. Only one problem can be defined per 
     # configuration file.
-    # -----------------------------------------------------------------------------  
+
+    #problem_config: !grond.RectangularProblemConfig  # setup for an extended source
+    #problem_config: !grond.DoubleDCProblemConfig     # setup for combination of two double-couples
     problem_config: !grond.CMTProblemConfig           # setup for a general moment tensor
-    # problem_config: !grond.RectangularProblemConfig # setup for an extended source
-    # problem_config: !grond.DoubleDCProblemConfig    # setup for combination of two double-couples
+
+      # Name used to identify the output the placeholder '${event_name}' will
+      # be replaced with the current event name
+
+      name_template: 'cmt_${event_name}'
       ...
       
-    # -----------------------------------------------------------------------------
-    # Configuration of pre-optimization analysis phase; e.g. balancing weights are
+    # Configuration of pre-optimisation analysis phase; e.g. balancing weights are
     # determined during this phase. Analysers can be combined.
-    # ----------------------------------------------------------------------------- 
+
     analyser_configs: 
-    # Analyse synthetic waveforms from random source models
-    - !grond.TargetBalancingAnalyserConfig
+
+
+    - !grond.TargetBalancingAnalyserConfig  # balancing weights
       ...
 
-    # Analyse pre-event noise
-    - !grond.NoiseAnalyserConfig
+    - !grond.NoiseAnalyserConfig            # pre-event noise based weights
       ...
 
-    # -----------------------------------------------------------------------------
-    # Configuration of the optimization procedure. The following example setup will
-    # run a Bayesian bootstrap optimization (BABO).
-    # -----------------------------------------------------------------------------    
-    optimizer_config: !grond.HighScoreOptimizerConfig
+    # Configuration of the optimisation procedure.
+
+    optimiser_config: !grond.HighScoreOptimiserConfig
       ...
 
 

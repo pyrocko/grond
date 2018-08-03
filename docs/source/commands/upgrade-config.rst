@@ -1,4 +1,4 @@
 upgrade-config
 --------------
 
-.. program-output:: grond upgrade-config --help
+.. command-output:: grond upgrade-config --help

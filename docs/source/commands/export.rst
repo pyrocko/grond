@@ -1,4 +1,4 @@
 export
 ------
 
-.. program-output:: grond export --help
+.. command-output:: grond export --help

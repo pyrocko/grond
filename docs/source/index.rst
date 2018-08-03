@@ -17,6 +17,8 @@ Contents
 --------
 
 .. toctree::
+   :maxdepth: 2
+
    install/index
    quickstart/index
    overview/index
@@ -30,7 +32,6 @@ Contents
    report/index
    commands/index
    library/index
-   :maxdepth: 2
 
 
 Recommended citation

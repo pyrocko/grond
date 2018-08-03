@@ -1,4 +1,4 @@
 diff
 ----
 
-.. program-output:: grond diff --help
+.. command-output:: grond diff --help
