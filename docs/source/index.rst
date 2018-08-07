@@ -7,11 +7,20 @@ A probabilistic earthquake source inversion framework. Designed and crafted in M
 Introduction
 ------------
 
-Robust characterization of earthquake sources from diverse observations requires elaborate forward modeling techniques and efficient inversion strategies which can deliver expressive model uncertainties.
+Grond is a software tool and framework for robust characterization of
+earthquake sources from diverse observations. It employs efficient forward
+modeling as well as elaborate inversion strategies and delivers meaningful
+model uncertainties.
 
-Grond realises a Bayesian bootstrap-based probabilistic inversion scheme for heterogeneous data. It realizes an efficient strategy to explore the full model space together with uncertainties and parameters trade-offs for the earthquake source model. The program is highly flexible with respect to the adoption to specific problems, the design of the objective functions, and the diversity of the measurements.
+The software implements a Bayesian bootstrap-based probabilistic inversion
+scheme for heterogeneous data. It explores the full model space and helps
+mapping potential model parameter trade-offs. The program is highly flexible
+with respect to the adoption to specific problems, the design of objective
+function, and the diversity of measurements.
 
-Our approach is based on adaptable Green's function databases which provide predictions of near-field geodetic data (InSAR, GNSS and gravity) together with synthetic seismic waveforms at all distances in layered media.
+Our modelling approach is based on pre-computed Green's function databases,
+which provide synthetic near-field geodetic data (InSAR, GNSS and gravity)
+together with synthetic seismic waveforms at all distances and receiver depths.
 
 
 Contents
