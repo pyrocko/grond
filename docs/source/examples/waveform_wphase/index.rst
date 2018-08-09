@@ -1,11 +1,11 @@
 
 Centroid moment tensor from W-phase observations
-------------------------------------------------
+================================================
 
 This step-by-step guide explains how to obtain a probabilistic W-phase centroid moment tensor (CMT) solution for the Mw 8.2 2015 Illapel (Chile) earthquake using Grond.
 
 Setup
-.....
+-----
 
 To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the exercise project directory from Grond's git repos to a place of your choice:
 
@@ -17,7 +17,7 @@ To repeat this exercise on your machine, you should first `install Pyrocko <http
 
 
 The project folder
-..................
+------------------
 
 The project folder now contains a configuration file for Grond, some utility scripts to download precalculated Green's functions and seismic waveforms from public datacenters.
 
@@ -32,7 +32,7 @@ The project folder now contains a configuration file for Grond, some utility scr
         └── wphase_cmt.gronf       # Grond configuration file for this exercise
 
 Green's function download
-.........................
+-------------------------
 
 To download the precalculated Green's functions needed in this exercise, run
 
@@ -40,7 +40,7 @@ To download the precalculated Green's functions needed in this exercise, run
     
     bin/download_gf_stores.sh
 
-When the command succeeds, you should have a new subdirectory ``gf_stores`` in your project folder:
+When the command succeeds, you should have a new subdirectory :file:`gf_stores` in your project folder:
 
 .. code-block :: sh
 
@@ -50,7 +50,7 @@ When the command succeeds, you should have a new subdirectory ``gf_stores`` in y
 It contains a Pyrocko Green's function store, named ``global_20s_shallow``, which has been created using the `Fomosto <https://pyrocko.org/docs/current/apps/fomosto/index.html>`_ tool of `Pyrocko <http://pyrocko.org/>`_ and the modelling code `QSSP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-qssp-backend>`_. The Green's functions in this store have been calculated for the global `ak135-f-continental <http://rses.anu.edu.au/seismology/ak135/ak135f.html>`_ earth model for a source depths between 0 and 100 km in 4 km steps. It is sampled at 0.05 Hz, which is sufficient for our target frequency range of 0.001 - 0.005 Hz.
 
 Seismic waveform data download
-..............................
+------------------------------
 
 A preconfigured script is provided to download seismic waveform recordings via FDSN web services from the `IRIS <http://service.iris.edu/fdsnws/>`_, `GEOFON <https://geofon.gfz-potsdam.de/waveform/webservices.php>`_, and `ORFEUS <https://www.orfeus-eu.org/data/eida/webservices/>`_ datacenters. Just run it with the GEOFON event ID of the study earthquake. The GEOFON event ID of the great Illapel (Chile) earthquake is ``gfz2015sfdd`` (you can find the ID in the `GEOFON catalog <https://geofon.gfz-potsdam.de/eqinfo/list.php>`_ event links).
 
@@ -60,7 +60,7 @@ Now run:
     
     bin/grondown_wphase.sh gfz2015sfdd
 
-This shell script calls the data downloader ``bin/grondown`` with parameters appropriate to get a dataset of broadband seismometer recordings, sufficient for a W-phase CMT optimisation. It performs the following steps for us:
+This shell script calls the data downloader :file:`bin/grondown` with parameters appropriate to get a dataset of broadband seismometer recordings, sufficient for a W-phase CMT optimisation. It performs the following steps for us:
 
 * Querry the `GEOFON catalog <https://geofon.gfz-potsdam.de/eqinfo/list.php>`_ for event information about ``gfz2015sfdd``.
 * Select time windows based on event origin and time, considering that we want to analyse the signals at very low frequencies (0.001 - 0.005 Hz).
@@ -71,7 +71,7 @@ This shell script calls the data downloader ``bin/grondown`` with parameters app
 * Download instrument transfer function meta-information for all successfully downloaded waveform data.
 * Calculate displacement seismograms for quality check (Grond will use the raw data). If all went well, the displacement seismograms should be valid in the frequency range 0.001 - 0.5 Hz, sampled at 1 Hz and rotated to radial, transverse, and vertical components.
 
-After running the download script, the playground directory should contain a new ``data`` directory with the following content:
+After running the download script, the playground directory should contain a new :file:`data` directory with the following content:
 
 .. code-block :: sh
 
@@ -93,7 +93,7 @@ After running the download script, the playground directory should contain a new
 Because of various data problems, like missing instrument response information, gappy traces, data inconsistencies and what not, only about half of the initially requested stations will be useful in the optimisation. Some problems are not detected by the downloader, so we will have to look at the seismograms.
 
 Data screening
-..............
+--------------
 
 For a quick visual inspection of the dataset, we can use the `Snuffler <https://pyrocko.org/docs/current/apps/snuffler/index.html>`_ program contained in Pyrocko.
 
@@ -101,6 +101,7 @@ For a quick visual inspection of the dataset, we can use the `Snuffler <https://
 
     cd data/events/gfz2015sfdd/waveforms
     snuffler --event=../event.txt --stations=stations.prepared.txt prepared
+    cd -  # change to previous folder
 
 Figure 1 shows our view after some interactive adjustments in Snuffler. In particular, we we may want to
 
@@ -120,7 +121,7 @@ Figure 1 shows our view after some interactive adjustments in Snuffler. In parti
     **Figure 1**: Displacement seismograms for W-phase CMT optimisation as viewed in the waveform browser Snuffler.
 
 Grond configuration
-...................
+-------------------
 
 The project folder already contains a configuration file for W-phase CMT optimisation with Grond, so let's have a look at it.
 
@@ -133,7 +134,7 @@ It's a `YAML`_ file: This file format has been choosen for the Grond configurati
 .. _YAML: https://en.wikipedia.org/wiki/YAML
 
 Checking the optimisation setup
-...............................
+-------------------------------
 
 Before running the actual optimisation, we can now use the command
 
@@ -149,4 +150,28 @@ To get some more insight into the setup, we can now run
 
     grond report -so config/wphase_cmt.gronf gfz2015sfdd
 
-This will plot some diagnostic figures, create web pages in a new directory 'reports', and finally open these in a web browser.
+This will plot some diagnostic figures, create web pages in a new directory :file:`reports`, and finally open these in a web browser.
+
+
+Starting the optimisation
+-------------------------
+
+Let's start the optimisation with:
+
+.. code-block :: sh
+
+    grond go config/wphase_cmt.gronf
+
+
+Final report
+------------
+
+The final report will be generated and opened with
+
+.. code-block :: sh
+
+    grond report -so config/wphase_cmt.gronf
+
+
+
+
