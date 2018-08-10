@@ -36,7 +36,7 @@ Contents
    method/index
    config/index
    report/index
-   commands/index
+   cli/index
    library/index
 
 
