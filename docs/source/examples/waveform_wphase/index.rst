@@ -1,4 +1,3 @@
-
 Centroid moment tensor from W-phase observations
 ================================================
 
@@ -162,11 +161,21 @@ Let's start the optimisation with:
 
     grond go config/wphase_cmt.gronf
 
+During the optimisation a status monitor will show the optimisation's progress.
 
-Final report
-------------
+.. figure:: ../../images/example_grond-run-insar.png
+    :width: 100%
+    :align: center
 
-The final report will be generated and opened with
+    **Figure 3**: Runtime information given by :command:`grond`.
+
+Depending on the configured number of iterations and the computer's hardware the optimisation will run several minutes to hours.
+
+
+Optimisation report
+-------------------
+
+Once the optimisation is finished we can generate and open the final report with:
 
 .. code-block :: sh
 

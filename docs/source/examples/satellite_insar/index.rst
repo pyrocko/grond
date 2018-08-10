@@ -148,7 +148,7 @@ Now we are set to start the optimisation with:
     grond go config/insar_rectangular.gronf
 
 
-During the optimisation a status monitor will be presented.
+During the optimisation a status monitor will show the optimisation's progress.
 
 .. figure:: ../../images/example_grond-run-insar.png
     :width: 100%
