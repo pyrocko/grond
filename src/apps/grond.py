@@ -181,9 +181,76 @@ def add_common_options(parser):
              '"critical", "error", "warning", "info", or "debug". '
              'Default is "%default".')
 
+    parser.add_option(
+        '--docs',
+        dest='rst_docs',
+        action='store_true')
 
-def process_common_options(options):
+
+def print_docs(command, parser):
+
+    from optparse import IndentedHelpFormatter
+
+    class DocsFormatter(IndentedHelpFormatter):
+
+        def format_heading(self, heading):
+            return '%s\n%s\n\n' % (heading, '.'*len(heading))
+
+        def format_usage(self, usage):
+            lines = usage.splitlines()
+            return self.format_heading('Usage') + \
+                '.. code-block:: none\n\n%s' % '\n'.join(
+                    '    '+line.strip() for line in lines)
+
+        def format_option(self, option):
+            if not option.help:
+                return ''
+
+            result = []
+            opts = self.option_strings[option]
+            result.append('\n.. describe:: %s\n\n' % opts)
+
+            help_text = self.expand_default(option)
+            result.append('    %s\n\n' % help_text)
+
+            return ''.join(result)
+
+    parser.formatter = DocsFormatter()
+    parser.formatter.set_parser(parser)
+
+    def format_help(parser):
+        formatter = parser.formatter
+        result = []
+
+        result.append(parser.format_description(formatter) + "\n")
+
+        if parser.usage:
+            result.append(parser.get_usage() + "\n")
+
+        result.append('\n')
+
+        result.append(parser.format_option_help(formatter))
+
+        result.append('\n')
+
+        result.append(parser.format_epilog(formatter))
+        return "".join(result)
+
+    print(command)
+    print('-' * len(command))
+    print()
+    print('.. program:: %s' % program_name)
+    print()
+    print('.. option:: %s' % command)
+    print()
+    print(format_help(parser))
+
+
+def process_common_options(command, parser, options):
     util.setup_logging(program_name, options.loglevel)
+    if options.rst_docs:
+        print_docs(command, parser)
+        exit(0)
 
 
 def cl_parse(command, args, setup=None, details=None):
@@ -209,7 +276,7 @@ def cl_parse(command, args, setup=None, details=None):
 
     add_common_options(parser)
     (options, args) = parser.parse_args(args)
-    process_common_options(options)
+    process_common_options(command, parser, options)
     return parser, options, args
 
 

@@ -17,10 +17,10 @@ The basic work-flow when using Grond is as follows:
 
 1. Set up a project folder containing input data and Green's functions.
 2. Set up a configuration file for Grond.
-3. Check the set-up with ``grond check``.
-4. Run the optimisation with ``grond go``.
-5. Create result plots and report with ``grond report``.
-6. Export results with ``grond export``.
+3. Check the set-up with :option:`grond check`.
+4. Run the optimisation with :option:`grond go`.
+5. Create result plots and report with :option:`grond report`.
+6. Export results with :option:`grond check`.
 
 Details on these steps are given in the following sections.
 
@@ -146,10 +146,10 @@ strategies.
         A seismic event which has a unique name among all events available to a specific configuration of Grond. An event usually has a preliminary origin location and sometimes a reference mechanism attached to it.
 
     Config file
-        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using ``grond init``.
+        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`.
 
     Rundir
-        The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the ``grond go`` subcommand.
+        The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the :option:`grond go` subcommand.
 
     Dataset
         The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
@@ -191,7 +191,7 @@ modelled (section :ref:`project-scenario`).
 Initializing an empty project
 .............................
 
-An empty project structure can be created with the subcommand ``grond init``. Different configurations can be added by flags, see ``grond init --help`` for more information.
+An empty project structure can be created with the subcommand :option:`grond init`. Different configurations can be added by flags, see ``grond init --help`` for more information.
 
 .. code-block :: sh
 
@@ -232,7 +232,7 @@ The ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS
 Initializing a scenario project from forward modelling
 ......................................................
 
-The subcommand ``grond scenario`` will forward model observations for a modelled earthquake and create a ready-to-go Grond project. Different observations and source problems can be added by flags - see ``grond scenario --help`` for possible combinations and options.
+The subcommand :option:`grond scenario` will forward model observations for a modelled earthquake and create a ready-to-go Grond project. Different observations and source problems can be added by flags - see ``grond scenario --help`` for possible combinations and options.
 
 The scenario can contain the following synthetic observations:
 

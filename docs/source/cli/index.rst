@@ -2,19 +2,22 @@ Command line interface
 ======================
 
 Grond is a normally invoked as a command line program by calling ``grond`` from
-the Unix/Linux shell. It's command line interface (CLI) uses the standard
-Unix/Linux conventions for its options and arguments.  To get a brief summary
-on any of its subcommands, add the ``--help`` option. Options are recognized by
-their leading double-dashes, e.g. ``--help``. Some options in Grond have short aliases
-with single dashes.
+the Unix/Linux shell. Its command line interface (CLI) uses standard Unix/Linux
+conventions for its options and arguments. To get a brief summary on any Grond
+subcommand, add the ``--help`` option. Options are recognized by their leading
+double-dashes (``--help``). Some options have single character aliases names
+accessible with single dash notation (``-h``). In the documentation,
+placeholders for required arguments are denoted with angle brackets
+(``<placeholder>``), placeholders for optional arguments with square brackets,
+e.g. (``[placeholder]``).
 
 .. command-output:: grond --help
 
-Grond subcommands
------------------
+The following pages list the self-documentation strings of all Grond
+subcommands.
 
 .. toctree::
-    :caption: Subcommands:
+    :maxdepth: 1
 
     scenario
     init
