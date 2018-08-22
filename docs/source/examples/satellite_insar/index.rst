@@ -1,10 +1,10 @@
 Rectangular source plane from InSAR observations
-------------------------------------------------
+================================================
 
 This step-by-step recipe will guide you to through an earthquake source inversion for a finite rectangular fault plane from InSAR data using Grond. We will excercise the inversion for the 2009 L'Aquila earthquake - A shallow normal faulting Mw 6.3 earthquake - and use unwrapped surface displacement data derived from the Envisat mission.
 
 Setup
-.....
+-----
 
 To repeat this exercise on your machine, you should first `install Pyrocko
 <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the
@@ -18,7 +18,7 @@ exercise project directory from Grond's git repos to a place of your choice.
 
 
 The project folder
-..................
+------------------
 
 The project folder now contains a configuration file for Grond, some utility scripts to download precalculated Green's functions and InSAR data
 
@@ -33,7 +33,7 @@ The project folder now contains a configuration file for Grond, some utility scr
 
 
 Green's function download
-.........................
+-------------------------
 
 To download the precalculated Green's functions needed in this exercise, run
 
@@ -44,7 +44,7 @@ To download the precalculated Green's functions needed in this exercise, run
 It contains a Pyrocko Green's function store, named ``crust2_ib_static``, which has been created using the `Fomosto <https://pyrocko.org/docs/current/apps/fomosto/index.html>`_ tool of `Pyrocko <http://pyrocko.org/>`_ and the modelling code `QSSP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-qssp-backend>`_. The Green's functions in this store have been calculated for a regional `CRUST2 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model for a source depths between 0 and 30 km in 500 m steps, and horizontal extent from 0 - 300 km in 500 m steps.
 
 InSAR displacement download
-...........................
+---------------------------
 
 The example includes a script to download unwrapped InSAR data from Pyrocko's servers. The sufrface displacement data has been derived from the Envisat satellite mission.
 
@@ -55,7 +55,7 @@ The example includes a script to download unwrapped InSAR data from Pyrocko's se
 This will download (1) an ascending and (2) descending scene to :file:`data/events/2009laquila/insar/`. Data is held in ``kite`` container format.
 
 InSAR data preparation with ``kite``
-....................................
+------------------------------------
 
 The downloaded data has to be prepared for the inversion using the ``kite`` tool. To install the software, follow the `install instructions <https://pyrocko.org/docs/kite/current/installation.html>`_.
 
@@ -77,9 +77,9 @@ Start kite's :program:`spool` GUI with:
 
 .. code-block :: sh
 
-    spool data/events/2009LAquila/insar/asc_insar
+    spool data/events/2009laquila/insar/asc_insar
     # descending scene:
-    spool data/events/2009LAquila/insar/dsc_insar
+    spool data/events/2009laquila/insar/dsc_insar
 
 Now we can parametrize the quadtree visually:
 
@@ -115,7 +115,7 @@ Once we finished parametrisation of the quadtree and covariance, we have to calc
 
 
 Grond configuration
-...................
+-------------------
 
 The project folder already contains a configuration file for rectangular source optimisation with Grond, so let's have a look at it.
 
@@ -128,7 +128,7 @@ It's a `YAML`_ file: This file format has been choosen for the Grond configurati
 
 
 Checking the optimisation setup
-...............................
+-------------------------------
 
 Before running the actual optimisation, we can now use the command
 
@@ -139,7 +139,7 @@ Before running the actual optimisation, we can now use the command
 to run some sanity checks. In particular, Grond will try to run a few forward models to see if the modelling works and if it can read the input data. If only one event is available, we can also neglect the event name argument in this and other Grond commands.
 
 Starting the optimisation
-.........................
+-------------------------
 
 Now we are set to start the optimisation with:
 
@@ -160,7 +160,7 @@ Depending on the configured number of iterations and the computer's hardware the
 
 
 Optimisation report
-...................
+-------------------
 
 Once the optimisation is finished we can generate and open the final report with:
 
@@ -168,7 +168,11 @@ Once the optimisation is finished we can generate and open the final report with
 
     grond report -so rundir/rect_source.grun
 
-See the `example report <https://localhost>`_.
+
+Example report
+~~~~~~~~~~~~~~
+
+Explore the `online example reports <https://pyrocko.org/grond/reports>`_ to see what information the inversion reveals.
 
 
 .. _Kite: https://pyrocko.org/docs/kite/current/

@@ -73,7 +73,7 @@ target_groups:
   # time-domain Lx norm.
   normalisation_family: 'td'
 
-  # Just a name used to identfy targets from this group. Use dot-separated path
+  # Just a name used to identify targets from this group. Use dot-separated path
   # notation to group related contributors
   path: 'td.love'
 
@@ -197,7 +197,6 @@ target_groups:
 # The marker !grond.CMTProblemConfig selects a centroid moment tensor source
 # model. 
 # -----------------------------------------------------------------------------
-
 problem_config: !grond.CMTProblemConfig
 
   # Name used to identify the output
@@ -255,7 +254,6 @@ analyser_configs:
 # -----------------------------------------------------------------------------
 # Configuration of the optimisation procedure
 # -----------------------------------------------------------------------------
-
 optimiser_config: !grond.HighScoreOptimiserConfig
 
   # Number of bootstrap realisations to be tracked simultaneously in the
@@ -268,12 +266,10 @@ optimiser_config: !grond.HighScoreOptimiserConfig
   sampler_phases:
 
   - !grond.UniformSamplerPhase
-
       # Number of iterations
       niterations: 1000
 
   - !grond.DirectedSamplerPhase
-
       # Number of iterations
       niterations: 20000
 

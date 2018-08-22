@@ -32,7 +32,6 @@ tfade_factor = 1.0
 ffade_factors = 0.5, 1.5
 
 ws.g_timeout = 60.
-logging.basicConfig(level=logging.DEBUG)
 
 
 class starfill(object):

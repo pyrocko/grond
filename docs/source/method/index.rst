@@ -55,7 +55,7 @@ The objective function defines what a `model fit` is and how `good` or `poor` mo
 
 .. figure:: ../images/illu_combi_weights.svg
     :name: Fig. 1
-    :height: 500px
+    :width: 80%
     :align: center
     :alt: alternate text
     
@@ -90,13 +90,12 @@ The misfit is based on the configurable :math:`L^x`-norm with :math:`x \,\, \eps
     \lVert e \rVert_x = \lVert {\bf{d}}_{obs} - {{\bf d}}_{synth} \rVert_x  = \
         \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^x}\right)^{\frac{1}{x}}
         
-Further the misfit normalisation factor :math:`norm` is associated with each target. This measure will be used to normalise the misfit values for relative weighing:
+Further the misfit normalisation factor :math:`norm` is associated with each target. This measure will be used to normalise the misfit values for relative weighting:
 
 .. math::
   :label: ns
         
-    \lVert e_{\mathrm{0}} \rVert_x = \lVert {\bf{d}}_{obs}  \rVert_x  = \
-        left(\sum{|{d}_{i, obs}|^x} \right) ^{\frac{1}{x}}.
+    \lVert e_{\mathrm{0}} \rVert_x = \lVert {\bf{d}}_{obs} \rVert_x  = \left(\sum{|{d}_{i, obs}|^x} \right)^{\frac{1}{x}}.
 
 The resulting normalised misfit
 
@@ -178,6 +177,15 @@ Target balancing weights
 
 With these weights waveform targets are `balanced` with respect to the expected earthquake signal amplitude.
 
+.. figure:: ../images/illu_target_balancing.svg
+    :name: Fig. 2
+    :width: 50%
+    :align: left
+    :alt: alternate text
+    :figclass: align-center
+    
+    **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading.
+
 Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) signal procesing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source machanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
 
     .. math::
@@ -187,15 +195,6 @@ Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source
             \left(\sum^{N}{|{d}_{i, synth}|^x}\right)^{\frac{1}{x}}.
 
 These balancing weights will enhanced small signals and supress large signals in the objective function. This is described as `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23). In Grond they are defined as ``balancing weights`` and are received from the :class:`~grond.analysers.target_balancing.TargetBalancingAnalyser` module before the optimisation.
-
-.. figure:: ../images/illu_target_balancing.svg
-    :name: Fig. 2
-    :width: 300px
-    :align: left
-    :alt: alternate text
-    :figclass: align-center
-    
-    **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading.
 
 
 Data weights based on data error statistics
@@ -331,7 +330,7 @@ To generate random noise we use functions of the `Kite`_ module. From the noise 
 
 .. figure:: ../images/illu_residual_bootstrap_realisation.svg
     :name: Fig. 5
-    :width: 1400px
+    :width: 100%
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -375,7 +374,7 @@ the model space:
 
 .. figure:: ../images/illu_sampling_phases.svg
     :name: Fig. 6
-    :height: 300px
+    :width: 100%
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -427,7 +426,7 @@ The highscore list member models in each bootstrap chain (Fig. 7B) will differ t
 
 .. figure:: ../images/illu_bootstrap_weights.svg
     :name: Fig. 7
-    :height: 400px
+    :width: 80%
     :align: center
     :alt: alternate text
     :figclass: align-center
@@ -439,8 +438,8 @@ The convergence of model parameters for the models within each bootstrap chain i
 
 .. figure:: ../images/illu_babo_chains.svg
     :name: Fig. 8
-    :height: 300px
-    :align: left
+    :width: 50%
+    :align: center
     :alt: alternate text
     :figclass: align-left
     

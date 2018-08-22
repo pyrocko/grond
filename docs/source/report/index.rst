@@ -1,15 +1,11 @@
 Report
 ======
 
-TODO: describe how to create and configure Grond's reports. Describe what
-output plots are available.
-
 Grond's reports are presented in interactive HTML webpages where you can browse and compare different events and inversion runs.
 
 .. figure :: ../images/report_webpage.png
     :name: Grond Webpage
-    :width: 100%
-    :align: left
+    :width: 80%
     :alt: Grond report webpage
     :figclass: align-center
 
@@ -18,13 +14,13 @@ Grond's reports are presented in interactive HTML webpages where you can browse 
 Generate reports
 ----------------
 
-When an inversion is finished you can create and open the report with:
+When an inversion is finished and with a set-up project structure you can create and open the report with:
 
 .. code-block:: sh
     
     grond report -so <rundir>
 
-You can look up the meaning of ``-so`` with ``grond report --help``
+The flags ``-s`` will spin up a webserver and ``-o`` will open the browser; more information is given from ``grond report --help``.
 
 
 Plot types

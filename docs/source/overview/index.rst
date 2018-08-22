@@ -34,7 +34,7 @@ To use Grond with your own dataset, we suggest the following folder structure.
 
 Single files and data formats listed here are explained below. The folders ``runs`` and ``reports`` are generated during and after the optimisation, respectively.
 
-.. code-block :: sh
+.. code-block :: none
 
     ├── config
     │   ├── laquila2009_joint.gronf

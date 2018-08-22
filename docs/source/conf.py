@@ -37,6 +37,7 @@ import sphinx_sleekcat_theme
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest',
               'sphinx.ext.intersphinx',
+              'sphinx.ext.imgconverter',
               'sphinx.ext.todo',
               'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',
@@ -147,7 +148,7 @@ htmlhelp_basename = 'gronddoc'
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
-    # 'papersize': 'letterpaper',
+    'papersize': 'a4paper',
 
     # The font size ('10pt', '11pt' or '12pt').
     #
@@ -155,12 +156,14 @@ latex_elements = {
 
     # Additional stuff for the LaTeX preamble.
     #
-    # 'preamble': '',
+    'preamble': r'\setcounter{tocdepth}{2}',
 
     # Latex figure (float) alignment
     #
-    # 'figure_align': 'htbp',
+    'figure_align': 'H',
 }
+
+latex_engine = 'xelatex'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,

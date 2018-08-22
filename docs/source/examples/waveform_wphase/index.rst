@@ -181,6 +181,7 @@ Once the optimisation is finished we can generate and open the final report with
 
     grond report -so config/wphase_cmt.gronf
 
+Example report
+~~~~~~~~~~~~~~
 
-
-
+Explore the `online example reports <https://pyrocko.org/grond/reports>`_ to see what information the inversion reveals.

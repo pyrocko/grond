@@ -57,7 +57,7 @@ Now run:
 
 .. code-block :: sh
     
-    bin/grondown_regional.sh gfz2015pmjk
+    bin/grondown_regional.sh gfz2018pmjk
 
 This shell script calls the data downloader :file:`bin/grondown` with parameters appropriate to get a dataset of broadband seismometer recordings, sufficient for a surface wave CMT optimisation. It performs the following steps for us:
 
@@ -75,7 +75,7 @@ After running the download script, the playground directory should contain a new
 
     data
     └── events
-        └── gfz2015pmjk
+        └── gfz2018pmjk
             ├── event.txt                 # catalog information about the event
             └── waveforms
                 ├── grondown.command
@@ -97,7 +97,7 @@ For a quick visual inspection of the dataset, we can use the `Snuffler <https://
 
 .. code-block :: sh
 
-    cd data/events/gfz2015pmjk/waveforms
+    cd data/events/gfz2018pmjk/waveforms
     snuffler --event=../event.txt --stations=stations.prepared.txt prepared
     cd -  # change to previous folder
 
@@ -109,7 +109,7 @@ Figure 1 shows our view after some interactive adjustments in Snuffler. In parti
 * add markers for expected P and S phase arrivals, (Menu → *Panels* → *Cake Phase (builtin)*).
 * show only vertical components: Command ‣ :command:`c *z`.
 
-.. figure:: ../../images/example_snuffler-gfz2015pmjk.svg
+.. figure:: ../../images/example_snuffler-gfz2018pmjk.svg
     :name: Fig. 1 Example surface wave CMT inversion
     :width: 100%
     :align: center
@@ -136,7 +136,7 @@ Before running the actual optimisation, we can now use the command
 
 .. code-block :: sh
     
-    grond check config/regional_cmt.gronf gfz2015pmjk
+    grond check config/regional_cmt.gronf gfz2018pmjk
 
 to run some sanity checks. In particular, Grond will try to run a few forward models to see if the modelling works and if it can read the input data. If only one event is available, we can also neglect the event name argument in this and other Grond commands.
 
@@ -144,7 +144,7 @@ To get some more insight into the setup, we can now run
 
 .. code-block :: sh
 
-    grond report -so config/regional_cmt.gronf gfz2015pmjk
+    grond report -so config/regional_cmt.gronf gfz2018pmjk
 
 This will plot some diagnostic figures, create web pages in a new directory :file:`reports`, and finally open these in a web browser.
 
@@ -177,3 +177,9 @@ Once the optimisation is finished we can generate and open the final report with
 .. code-block :: sh
 
     grond report -so config/regional_cmt.gronf
+
+
+Example report
+~~~~~~~~~~~~~~
+
+Explore the `online example reports <https://pyrocko.org/grond/reports>`_ to see what information the inversion reveals.
