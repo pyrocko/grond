@@ -13,6 +13,8 @@ To get more information about a subcommand and its options, run ::
 
 	grond <subcommand> --help
 
+or see section :doc:`/cli/index`.
+
 The basic work-flow when using Grond is as follows:
 
 1. Set up a project folder containing input data and Green's functions.
@@ -155,7 +157,7 @@ strategies.
         The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
 
     Misfit
-        The misfit is the value of the objective function obtained for proposed source model. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
+        The misfit is the value of the objective function obtained for a proposed source model. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
 
     Target
         In a typical Grond setup, many modelling targets may contribute to the global misfit. For example, an individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
@@ -170,10 +172,10 @@ strategies.
         This refers to the optimisation strategy, how to sample model space to find solutions in a given Grond setup.
 
     Store
-        Refers to Green's functions databases to be used for the forward modelling. In Grond these stores are adressed with directory paths and an individual ``store_id``.
+        Refers to Green's function databases to be used for the forward modelling. In Grond these stores are adressed with directory paths and an individual ``store_id``.
 
     Engine
-        Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's functions stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
+        Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's function stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
 
 
 Initializing a Grond project
@@ -206,26 +208,26 @@ You can create an initial Grond configuration file for a centroid moment tensor 
 
 .. code-block :: sh
 
-    grond init > config/<configfilename>.gronf
+    grond init > config/<filename>.gronf
 
 This is the default and corresponds to
 
 .. code-block :: sh
 
-    grond init --target=waveforms > config/<configfilename>.gronf
+    grond init --target=waveforms > config/<filename>.gronf
 
 Identically, for static near-field displacement (InSAR, GNSS data sets) and finite source optimisation setups, initial Grond configuration file can be created with
 
 .. code-block :: sh
 
-    grond init --target=insar > config/<configfilename>.gronf
-    grond init --target=gnss  > config/<configfile>.gronf
+    grond init --target=insar > config/<filename>.gronf
+    grond init --target=gnss  > config/<filename>.gronf
 
 The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged. A Grond configuration file showing all possible options with their default values is given using:
 
 .. code-block :: sh
 
-    grond init --full > config/<configfilename>.gronf
+    grond init --full > config/<filename>.gronf
 
 .. _project-scenario:
 
@@ -352,6 +354,8 @@ The results can be exported in various ways by running the subcommand
 ::
 
 	grond export <what> <rundir>
+
+See the command reference of :option:`grond export` for more details.
 
 
 .. _YAML: https://en.wikipedia.org/wiki/YAML

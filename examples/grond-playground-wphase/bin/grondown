@@ -19,11 +19,12 @@ import numpy as num
 
 from pyrocko import trace, util, io, cake, catalog, automap, pile, model
 from pyrocko import orthodrome, weeding
-from pyrocko.fdsn import ws, station, resp, enhanced_sacpz as epz
+from pyrocko.client import fdsn
+from pyrocko.io import resp, enhanced_sacpz as epz, stationxml
 
 km = 1000.
 
-g_sites_available = sorted(ws.g_site_abbr.keys())
+g_sites_available = sorted(fdsn.g_site_abbr.keys())
 
 geofon = catalog.Geofon()
 usgs = catalog.USGS(catalog=None)
@@ -31,7 +32,7 @@ usgs = catalog.USGS(catalog=None)
 tfade_factor = 1.0
 ffade_factors = 0.5, 1.5
 
-ws.g_timeout = 60.
+fdsn.g_timeout = 60.
 
 
 class starfill(object):
@@ -604,17 +605,18 @@ if __name__ == '__main__':
                         site in g_user_credentials or site in g_auth_tokens))
 
             logger.info('downloading channel information (%s)' % site)
-            sx = ws.station(
+            sx = fdsn.station(
                 site=site,
                 format='text',
                 level='channel',
                 **extra_args)
 
-        except ws.EmptyResult:
-            logger.error('No stations matching given criteria.')
+        except fdsn.EmptyResult:
+            logger.error('No stations matching given criteria. (%s)' % site)
             sx = None
 
-        sxs.append(sx)
+        if sx is not None:
+            sxs.append(sx)
 
     if all(sx is None for sx in sxs) and not options.local_data:
         sys.exit(1)
@@ -628,7 +630,6 @@ if __name__ == '__main__':
             nsl_to_sites[nsl].append(site)
             if nsl not in nsl_to_station:
                 nsl_to_station[nsl] = s  # using first site with this station
-
     logger.info('number of stations found: %i' % len(nsl_to_station))
 
     # station weeding
@@ -679,7 +680,6 @@ if __name__ == '__main__':
             trs_avail = p.all(tmin=tmin_win, tmax=tmax_win, load_data=False)
             for tr in trs_avail:
                 have_data_this_window.add(tr.nslc_id)
-
         for site, sx in zip(sites, sxs):
             if sx is None:
                 continue
@@ -756,8 +756,7 @@ if __name__ == '__main__':
                                 (i//neach) + 1, nbatches)
 
                         logger.info('downloading data (%s)%s' % (site, sbatch))
-
-                        data = ws.dataselect(
+                        data = fdsn.dataselect(
                             site=site, selection=selection_now,
                             **get_user_credentials(site))
 
@@ -784,7 +783,7 @@ if __name__ == '__main__':
                                 logger.warn('overwriting file %s', fn)
                         fns.extend(fns2)
 
-                    except ws.EmptyResult:
+                    except fdsn.EmptyResult:
                         pass
 
                     except HTTPError:
@@ -856,7 +855,7 @@ if __name__ == '__main__':
 
         if selection:
             logger.info('downloading response information (%s)' % site)
-            sxs[site] = ws.station(
+            sxs[site] = fdsn.station(
                 site=site, level='response', selection=selection)
 
             sxs[site].dump_xml(
@@ -895,7 +894,7 @@ if __name__ == '__main__':
             local_stations, resp.iload(options.local_responses_resp))
 
     if options.local_responses_stationxml:
-        sxs['local'] = station.load_xml(
+        sxs['local'] = stationxml.load_xml(
             filename=options.local_responses_stationxml)
 
     # chapter 1.6: dump raw data stations file
@@ -966,10 +965,10 @@ if __name__ == '__main__':
 
                     break
 
-                except station.NoResponseInformation:
+                except stationxml.NoResponseInformation:
                     failure.append('%s: no response information' % site)
 
-                except station.MultipleResponseInformation:
+                except stationxml.MultipleResponseInformation:
                     failure.append('%s: multiple response information' % site)
 
             if response is None:

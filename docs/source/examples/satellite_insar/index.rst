@@ -13,14 +13,15 @@ exercise project directory from Grond's git repos to a place of your choice.
 .. code-block :: sh
 
     # git clone https://gitext.gfz-potsdam.de/heimann/grond.git  # <- done during installation
-    cp -r grond/examples/grond-playground-insar ~/grond-playground-insar
+    cd grond
+    cp -r examples/grond-playground-insar ~/grond-playground-insar
     cd ~/grond-playground-insar
 
 
 The project folder
 ------------------
 
-The project folder now contains a configuration file for Grond, some utility scripts to download precalculated Green's functions and InSAR data
+The project folder now contains a configuration file for Grond and some utility scripts to download precalculated Green's functions and InSAR data:
 
 .. code-block :: sh
     
@@ -41,12 +42,19 @@ To download the precalculated Green's functions needed in this exercise, run
     
     bin/download_gf_stores.sh
 
-It contains a Pyrocko Green's function store, named ``crust2_ib_static``, which has been created using the `Fomosto <https://pyrocko.org/docs/current/apps/fomosto/index.html>`_ tool of `Pyrocko <http://pyrocko.org/>`_ and the modelling code `QSSP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-qssp-backend>`_. The Green's functions in this store have been calculated for a regional `CRUST2 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model for a source depths between 0 and 30 km in 500 m steps, and horizontal extent from 0 - 300 km in 500 m steps.
+When the command succeeds, you should have a new subdirectory :file:`gf_stores` in your project folder:
+
+.. code-block :: sh
+
+    gf_stores
+    └── crust2_ib_static/... # Green's function store
+
+It contains a Pyrocko Green's function store, named ``crust2_ib_static``, which has been created using the `Fomosto <https://pyrocko.org/docs/current/apps/fomosto/index.html>`_ tool of `Pyrocko <http://pyrocko.org/>`_ and the modelling code `PSGRN/PSCMP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-psgrn-pscmp-backend>`_. The Green's functions in this store have been calculated for a regional `CRUST2 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model for source depths between 0 and 30 km in 500 m steps, and horizontal extent from 0 - 300 km in 500 m steps.
 
 InSAR displacement download
 ---------------------------
 
-The example includes a script to download unwrapped InSAR data from Pyrocko's servers. The sufrface displacement data has been derived from the Envisat satellite mission.
+The example includes a script to download unwrapped InSAR data from Pyrocko's servers. The surface displacement data has been derived from the Envisat satellite mission.
 
 .. code-block :: sh
     
