@@ -19,7 +19,7 @@ setup(
     description='A probabilistic earthquake source inversion framework. '
                 'Designed and crafted in Mordor.',
 
-    version='0.2',
+    version='1.0',
 
     author='The Grond Developers',
 
