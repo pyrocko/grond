@@ -1,26 +1,16 @@
-﻿This document gives an comprehensive overview over Grond's optimisation strategy.
-
-.. contents :: Content
-  :depth: 3
-
-******
+﻿******
 Method
 ******
 
-TODO: REVIEW: This section should be as self-contained as possible, describe the method in general - give references to other sections how things are implemented in Grond.
+This document gives a comprehensive overview over Grond's methodical background. It describes how the objective function and data weighting are defined, how the optimisation algorithm works and how model uncertainties are
+estimated.
 
-The very core of any optimisation is the evaluation of a misfit value between observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`. This is most often based on the difference  :math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be any other comparison, like a correlation measure for example.
+The very core of any optimisation is the evaluation of an objective function or misfit value between observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`. This is most often based on the difference  :math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be any other comparison, like a correlation measure for example.
 
-`Observed data` here means post-processed data and not the `raw` measurements. E.g. full waveforms are usually tapered to the defined phases, restituted and filtered. `Synthetic waveforms` are the forward- modelled waveforms that are tapered and filtered in the same way as the observed waveforms. Find details on the post-processing in the `targets config`_ section. The `targets` are derived from data defined in the `dataset config`_.
+`Observed data` here means post-processed data (or features) derived from the `raw` measurements. For example, in the context of seismic source inversion, seismic waveform recordings are usually tapered to extract specific seismic phases, restituted to displacement and filtered. `Predicted data` are in this case forward modelled seismograms that are tapered and filtered in the same way as the observed waveforms.
 
-This document describes the method of Grond on:
-
-  1. How Grond implements the differences between :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` with respect to the definition of objective functions and data weighting,
-
-  2. how the optimisation is set up to search the model space to find the optimum models and
-
-  3. which methods are used to estimate model uncertainties.
-
+.. contents :: Content
+  :depth: 3
 
 Forward modelling with pre-calculated Green's functions
 =======================================================
@@ -65,8 +55,9 @@ The objective function defines what a `model fit` is and how `good` or `poor` mo
 Misfit calculation and objective function
 -----------------------------------------
 
-
 The core of an optimisation is the data-point-wise calculation of the difference between observed and predicted data:
+
+TODO: avoid repetiion
 
 .. math ::
 
@@ -84,6 +75,8 @@ Grond supports different seismological observations and a combination of those, 
     * from unwrapped InSAR images
     * from pixel offsets
     * measured by using GNSS sensors
+
+TODO: Define the word target.
 
 The misfit is based on the configurable :math:`L^x`-norm with :math:`x \,\, \epsilon \,\, [1, 2, 3, ...]`:
 

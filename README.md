@@ -5,7 +5,7 @@ Grond is an open source software tool for robust characterization of earthquake 
 
 ## Documentation and installation
 
-Find the documentation and install instructions at https://pyrocko.com/grond/docs/.
+Find the documentation and install instructions at https://pyrocko.org/grond/.
 
 ## Community and support
 
@@ -19,7 +19,7 @@ The recommended citation for Grond is::
 
 [![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2018.003-blue.svg)](https://doi.org/10.5880/GFZ.2.1.2018.003)
 
-You can find the BibTeX snippet in the [`CITATION` file](CITATION.bib)
+You can find the BibTeX snippet in the [`CITATION` file](CITATION.bib).
 
 ## License
 
@@ -38,11 +38,8 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>.
 
 ## Contact
-* Sebastian Heimann; 
-  sebastian.heimann@gfz-potsdam.de
-
-* Marius Isken; 
-  marius.isken@gfz-potsdam.de
+* Sebastian Heimann - sebastian.heimann@gfz-potsdam.de
+* Marius Isken - marius.isken@gfz-potsdam.de
 
 ```
 Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ
