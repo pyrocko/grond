@@ -35,15 +35,13 @@ Contents
 Citation
 --------
 
-The recommended citation for Grond is 
+The recommended citation for Grond is:
 
     Heimann, Sebastian; Isken, Marius; Kühn, Daniela; Sudhaus, Henriette;
-    Steinberg, Andreas; Vasyura-Bathke, Hannes; Daout, Simon; Cesca, Simone;
-    Dahm, Torsten (2018): Grond - A probabilistic earthquake source inversion
-    framework. V. 1.0. GFZ Data Services.
+    Steinberg, Andreas; Vasyura-Bathke, Hannes; Daout, Simon; Cesca, Simone; Dahm, Torsten (2018): Grond - A probabilistic earthquake source inversion framework. V. 1.0. GFZ Data Services.
     https://doi.org/10.5880/GFZ.2.1.2018.003
 
-BibTeX citatation file: :download:`CITATION.bib <../../CITATION.bib>`
+Download BibTeX citatation file: :download:`CITATION.bib <../../CITATION.bib>`
 
 
 License

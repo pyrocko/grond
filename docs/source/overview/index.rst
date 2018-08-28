@@ -135,48 +135,6 @@ GFs for near-field static displacement data (InSAR, GNSS)
 
 Near-field static displacements require high spatial sampling and mostly only little temporal sampling. With the `Fomosto PSGRN/PSCMP backend`_, you can build your own GF store for any given local 1D-layered velocity model.
 
-Terminology
------------
-
-Grond is a rather large system. The following terminology may help to
-understand its configuration and the underlying concepts and implementation
-strategies.
-
-.. glossary::
-
-    Event
-        A seismic event which has a unique name among all events available to a specific configuration of Grond. An event usually has a preliminary origin location and sometimes a reference mechanism attached to it.
-
-    Config file
-        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`.
-
-    Rundir
-        The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the :option:`grond go` subcommand.
-
-    Dataset
-        The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
-
-    Misfit
-        The misfit is the value of the objective function obtained for a proposed source model. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
-
-    Target
-        In a typical Grond setup, many modelling targets may contribute to the global misfit. For example, an individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
-
-    Problem
-        In the context of a Grond setup, the "problem" groups the choice of source model and parameter bounds to be used in the optimisation.
-
-    Analyser
-        Before running the optimisation, station weights and other internal parameters may need to be adapted to the observed data and configured setup of Grond. Such pre-optimisation tasks are done by one or more of Grond's analysers.
-
-    Optimiser
-        This refers to the optimisation strategy, how to sample model space to find solutions in a given Grond setup.
-
-    Store
-        Refers to Green's function databases to be used for the forward modelling. In Grond these stores are adressed with directory paths and an individual ``store_id``.
-
-    Engine
-        Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's function stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
-
 
 Initializing a Grond project
 ----------------------------
@@ -355,6 +313,62 @@ The results can be exported in various ways by running the subcommand
 	grond export <what> <rundir>
 
 See the command reference of :option:`grond export` for more details.
+
+
+Terminology
+-----------
+
+Grond is a rather large system. The following terminology may help to
+understand its configuration and the underlying concepts and implementation
+strategies.
+
+.. glossary::
+
+    Event
+        A seismic event which has a unique name among all events available to a specific configuration of Grond. An event usually has a preliminary origin location and sometimes a reference mechanism attached to it.
+
+    Source
+        The earthquake dislocation source can be a moment tensor point source or a finite fault.
+
+    Receiver
+        Is the recipient side of the source's excitation. This can be a modelled seismometer, a GNSS station or a InSAR satellite.
+
+    Problem
+        In the context of a Grond setup, the "problem" groups the choice of source model and parameter bounds to be used in the optimisation.
+
+    Target
+        In a typical Grond setup, many modelling targets may contribute to the global misfit. For example, an individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
+
+    Config file
+        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`.
+
+    Rundir
+        The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the :option:`grond go` subcommand.
+
+    Dataset
+        The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
+
+    Misfit
+        The misfit is the value of the objective function obtained for a proposed source model. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).
+
+
+    Analyser
+        Before running the optimisation, station weights and other internal parameters may need to be adapted to the observed data and configured setup of Grond. Such pre-optimisation tasks are done by one or more of Grond's analysers.
+
+    Objective Function
+        The objective function gives a scalar misfit value how well the source model fits the observed data. A smaller misfit value is better than a large one. It is often called misfit function.
+
+    Optimiser
+        This refers to the optimisation strategy, how to sample model space to find solutions in a given Grond setup.
+
+    Bootstrapping
+        In statistics, bootstrapping is any test or metric that relies on random sampling with replacement. Bootstrapping allows assigning measures of accuracy (defined in terms of bias, variance, confidence intervals, prediction error or some other such measure) to sample estimates. This technique allows estimation of the sampling distribution of almost any statistic using random sampling methods. Generally, it falls in the broader class of resampling methods. `Wiki <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_
+
+    Green's Function Store
+        Refers to Green's function databases to be used for the forward modelling. In Grond these stores are adressed with directory paths and an individual ``store_id``.
+
+    Engine
+        Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's function stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.
 
 
 .. _YAML: https://en.wikipedia.org/wiki/YAML

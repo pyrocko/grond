@@ -15,7 +15,7 @@ The very core of any optimisation is the evaluation of a misfit value between ob
 
 This document describes the method of Grond on:
 
-  1. how Grond implements the differences between :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` with respect to the definition of objective functions and data weighting,
+  1. How Grond implements the differences between :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` with respect to the definition of objective functions and data weighting,
 
   2. how the optimisation is set up to search the model space to find the optimum models and
 
@@ -25,11 +25,11 @@ This document describes the method of Grond on:
 Forward modelling with pre-calculated Green's functions
 =======================================================
 
-The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all source points and receiver positions involved, based on a medium model. In the general earthquake source problem, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, in Grond leverages pre-calculated GFs, stored in a database called 'Pyrocko GF store`, are used that have been created with the `Pyrocko fomosto module`_.
+The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, in Grond leverages pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`, are used that have been created with the `Pyrocko fomosto module`_.
 
-Generally, we distinguish different types of GF stores (for detail see the `Pyrocko fomosto module`_ documentation). For the options possible in Grond at the moment we need only to distinguish between GFs that have been calculated based on different GF methods to either allow for the fast forward calculation of dynamic seismic waveforms or static near-field displacements.
+Generally, we distinguish different types of :term:`GF stores <Green's Function Store>` (for detail see the `Pyrocko fomosto module`_ documentation). For the options possible in Grond at the moment we need only to distinguish between GFs that have been calculated based on different GF methods to either allow for the fast forward calculation of dynamic seismic waveforms or static near-field displacements.
 
-GF stores can be searched and downloaded on our `GF store database`_, for the some general global seismic waveform analyses and/or for InSAR and GNSS data analyses based, e.g. on the global 1d `PREM model`_,. For more specific analyses, based on an individual choice of the medium, the GF store can be created - usually very swiftly - with the `Pyrocko fomosto module`_ for different GF methods.
+GF stores can be searched and downloaded on our `GF store database`_, for the some general global seismic waveform analyses and/or for InSAR and GNSS data analyses based, e.g. on the global 1D `PREM model`_,. For more specific analyses, based on an individual choice of the medium, the GF store can be created - usually very swiftly - with the `Pyrocko fomosto module`_ for different GF methods.
 
 GFs for seismic waveforms
 -------------------------
@@ -48,7 +48,7 @@ For more details on GF stores, see the `Pyrocko documentation <https://pyrocko.o
 Objective function design
 =========================
 
-The `objective function` gives a scalar misfit value how well the source model fits the observed data. A smaller misfit value is better than a large one. It is often called `misfit function`. The source model that results in the smallest values of the `objective function` is the global minimum of the misfit function optimum model.
+The `objective function` gives a scalar misfit value how well the source model fits the observed data. A smaller misfit value is better than a large one. It is often called `misfit function`. The source model that results in the smallest values of the :term:`objective function` is the global minimum of the misfit function optimum model.
 
 The objective function defines what a `model fit` is and how `good` or `poor` models are scaled with respect to others. Furthermore, the objective function has rules how different data sets are handled, which `Lp-norm <https://en.wikipedia.org/wiki/Lp_space>`_ is applied and how data errors are considered in optimisations.
 
@@ -59,7 +59,7 @@ The objective function defines what a `model fit` is and how `good` or `poor` mo
     :align: center
     :alt: alternate text
 
-    **Figure 1**: Overview of Grond's objective function design. Each optimisation target (waveform, satellite and campaign GNSS) handles weights similarly and bootstraps differently. Details on how each target and weight vector is formed is described in the section below.
+    **Figure 1**: Overview of Grond's :term:`objective function` design. Each optimisation :term:`target` (waveform, satellite and campaign GNSS) handles weights similarly and bootstraps differently. Details on how each target and weight vector is formed is described in the section below.
 
 
 Misfit calculation and objective function
@@ -72,15 +72,18 @@ The core of an optimisation is the data-point-wise calculation of the difference
 
     |{\bf d}_{obs} - {\bf d}_{synth}|.
 
-Grond supports different seismological observations, thus :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` can be:
+Grond supports different seismological observations and a combination of those, thus :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` can be:
 
-* seismic waveforms traces in time domain
-* seismic waveforms in spectral domain
-* seismic waveforms in logarithmic spectral domain
-* static surface displacements measured by using InSAR or from pixel offsets
-* static surface displacements measured by using GNSS sensors
+* Seismic waveforms
+    * in time domain
+    * in spectral domain
+    * in logarithmic spectral domain
+    * trace's spectral ratios
 
-TODO: add spectral phase ratio and more?
+* Static surface displacements
+    * from unwrapped InSAR images
+    * from pixel offsets
+    * measured by using GNSS sensors
 
 The misfit is based on the configurable :math:`L^x`-norm with :math:`x \,\, \epsilon \,\, [1, 2, 3, ...]`:
 
@@ -278,9 +281,12 @@ The bootstrap method
 
 `Bootstrapping` in Grond (see also `Bootstrapping (Wikipedia) <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_)  enables to suppress some types of bias in the optimization results. Observations that are affected by other signals or noise often show large misfits. Also insufficient media models for the forward model can result in high misfit values. Already a few high misfit values may pull the optimisation to a biased optimum. With bootstrapping techinques we can better estimate model parameter uncertainties in an efficient way. These include the propagation of the data error, but also the assessment of modelling errors to some extent.
 
-In Grond the bootstrapping is applied in a number of parallel `bootstrapping chains` where individual bootstrap weights and bootstrap noise is applied to the model misfits. Technically each bootstrap chain carries out its optimization. Find more detail below, at :ref:`babo-optimizer`.
+In Grond the bootstrapping is applied in a number of parallel `bootstrapping chains` where individual bootstrap weights and bootstrap noise is applied to the model misfits. Technically each bootstrap chain carries out its optimization. Find more detail below, at :ref:`babo-optimizer`. (What is an :term:`optimiser`?)
 
-In Grond **two** different bootstrapping methods are implemented: (1) `Bayesian and classic bootstrapping` through misfit weighting and (2) `Residual bootstrapping` by adding synthetic noise to the residuals (Fig. 1).
+In Grond **two** different bootstrapping methods are implemented:
+
+    1. `Bayesian and classic bootstrapping` through misfit weighting and
+    2. `Residual bootstrapping` by adding synthetic noise to the residuals (Fig. 1).
 
 Bayesian bootstrapping
 ----------------------
