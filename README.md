@@ -44,9 +44,6 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 * Marius Isken; 
   marius.isken@gfz-potsdam.de
 
-* Marius Kriegerowski; 
-  marius.kriegerowski@gfz-potsdam.de
-
 ```
 Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ
 Section 2.1: Physics of Earthquakes and Volcanoes
