@@ -347,7 +347,7 @@ To generate random noise we use functions of the `Kite`_ module. From the noise 
 Optimisation
 ============
 
-Grond's modular framework is open for different optimisation schemes, the native optimisation schemes is the so-called `Bayesian Bootstrap Optimisation` (BABO). The `Optimiser` defines the particular objective function or objective functions and options for them. The optimiser also defines the model space sampling schemes. Multiple objective functions are realized in parallel running optimisation chains - the bootstrap chains (see below).
+Grond's modular framework is open for different optimisation schemes, the native optimisation schemes is the so-called `Bayesian Bootstrap Optimisation` (BABO). The :term:`Optimiser` defines the particular :term:`objective function` or objective functions and options for them. The optimiser also defines the model space sampling schemes. Multiple objective functions are realized in parallel running optimisation chains - the bootstrap chains (see below).
 
 .. _babo-optimizer:
 
@@ -452,8 +452,8 @@ The convergence of model parameters for the models within each bootstrap chain i
     **Figure 8**: Drawing new model candidated from the described sampling strategies - the proposal is based on the existing solution space.
 
 
-BABO at work
-============
+Movies: BABO at work
+====================
 
 TODO: replace draft text with something meaningful. add figure with toy problem setup.
 
@@ -463,6 +463,7 @@ cross section is shown. Star is true solution. Lines indicate regions of low
 misfit.
 
 Single chain
+------------
 
 Only upper half-space is searched, problem is unimodal.
 
@@ -475,6 +476,7 @@ Only upper half-space is searched, problem is unimodal.
 
 
 Global + 3 bootstrap chains
+---------------------------
 
 .. raw:: html
 
@@ -484,6 +486,7 @@ Global + 3 bootstrap chains
     </video>
 
 Illposed problem, no excentricity correction
+--------------------------------------------
 
 .. raw:: html
 
@@ -493,6 +496,7 @@ Illposed problem, no excentricity correction
     </video>
 
 Illposed problem, excentricity correction applied
+-------------------------------------------------
 
 .. raw:: html
 
@@ -502,7 +506,8 @@ Illposed problem, excentricity correction applied
     </video>
 
 
-Bimodal, standard deviations based on all high score models
+Bimodal, standard deviations from high score models
+---------------------------------------------------
 Fullspace is searched, problem is bimodel due to symmetry
 
 .. raw:: html
@@ -513,7 +518,8 @@ Fullspace is searched, problem is bimodel due to symmetry
     </video>
 
 
-Bimodal, standard deviations based on median density
+Bimodal, standard deviations from median density
+------------------------------------------------
 
 .. raw:: html
 
