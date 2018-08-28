@@ -251,16 +251,15 @@ A map of the random scenario is plotted in :file:`scenario_map.pdf`.
 Configuration
 -------------
 
-Grond is configured using YAML files, see section :doc:`/config/index`.
+Grond is configured in in ``.gronf`` files using YAML markup language, see section :doc:`/config/index`.
 
-Commented snippets of Grond configuration files explaining many options can be found here for
+The :doc:`/examples/index` section provides commented configuration files for different earthquake source problems explaining many of the options:
 
-* point-source optimizations based on waveforms: :download:`config_example_waveforms.yaml </../../examples/config_example_waveforms.yaml>`
-* finite source optimizations based on InSAR data: :download:`config_example_static.yaml </../../examples/config_example_static.yaml>`
+* Regional point-source optimizations based on waveforms: :download:`regional_cmt.gronf <../../../examples/grond-playground-regional/config/regional_cmt.gronf>`
+* Teleseismic point-source optimizations based on W phase waveforms: :download:`wphase_cmt.gronf <../../../examples/grond-playground-wphase/config/wphase_cmt.gronf>`
+* Finite source optimizations based on unwrapped InSAR observations: :download:`insar_rectangular.gronf <../../../examples/grond-playground-insar/config/insar_rectangular.gronf>`
 
-TODO: update file ending to .gronf, check if these are up to date, maybe replace with examples from the tutorials
-
-Or see the :doc:`/../../examples/index` for a detailed project walk-through.
+See the :doc:`/examples/index` for a detailed walk-through.
 
 
 Optimisation
