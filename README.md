@@ -19,7 +19,7 @@ The recommended citation for Grond is::
 
 [![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2018.003-blue.svg)](https://doi.org/10.5880/GFZ.2.1.2018.003)
 
-You can find the BibTeX snippet in the [`CITATION` file](CITATION.bib
+You can find the BibTeX snippet in the [`CITATION` file](CITATION.bib)
 
 ## License
 
