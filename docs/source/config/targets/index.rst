@@ -1,15 +1,13 @@
 Targets
 =======
 
-**Targets** are generic data representations, derived or postprocessed 
-from observables or synthesised data. A target can be, a filtered waveform, a spectrum or InSAR displacement. Each target has properties which can be tuned. These can be frequency filters, selected observed components and essentially a Green's functions store which will modell the synthetics for a particular target.
+**Targets** is what Grond tries to match: The misfit between an *observed* target and forward model is minimized. Targets are derived from observabled or synthesised data. A target can be, a filtered waveform, a spectrum, InSAR or GNSS displacement. Each target has properties which can be tuned. These can be frequency filters, selected observed components and essentially a Green's functions store which is responsible for the synthetics at a particular target.
 
-The waveform target groups can be combined to solve the inverse problem, leading to a joint optimisation from different data sources and observeables.
-
+Different ``TargetGroups`` can be combined to solve the inverse problem, leading to a joint optimisation from different data sources and observables.
 
 .. note ::
 
-    Weighting between targets is described in the :doc:`/method/index` section.
+    Weighting between different targets is described in the :doc:`/method/index` section.
 
 
 General ``Target`` configuration
@@ -46,45 +44,47 @@ Parameters valid for all types of ``MisfitTargets`` are:
 Waveform targets
 ----------------
 
-**Tapering**
-    ``tmin`` and ``tmax`` define time-windows around phase arrivals of interest, those are cut out and tapered.
+.. glossary ::
 
-    :math:`{\bf d}_{raw, synth}` and the restituted observed waveforms. Only these parts are used in the misfit calculation. The taper window duration is configured for each seismic station individually by phase arrivals.
+  **Tapering**
+      ``tmin`` and ``tmax`` define time-windows around phase arrivals of interest, those are cut out and tapered.
 
-    The tapering is source-model dependent, since the tapering time is given with respect to the theoretic phase arrival time. This arrival time depends on the source location, which is often part of the optimisation itself and therefore may change continuously with each iteration. Therefore, restitution, tapering and filtering are done for each misfit calculation anew. Grond uses the pyrocko `CosTaper`_ taper. The ``fade_out`` time can be configured or it is calculated as the inverse of the minimum frequency of the chosen bandpass filter.
+      :math:`{\bf d}_{raw, synth}` and the restituted observed waveforms. Only these parts are used in the misfit calculation. The taper window duration is configured for each seismic station individually by phase arrivals.
 
-**Frequency filtering**
-    ``fmin`` and ``fmax`` in Hz define the desired bandpass filter.
+      The tapering is source-model dependent, since the tapering time is given with respect to the theoretic phase arrival time. This arrival time depends on the source location, which is often part of the optimisation itself and therefore may change continuously with each iteration. Therefore, restitution, tapering and filtering are done for each misfit calculation anew. Grond uses the pyrocko `CosTaper`_ taper. The ``fade_out`` time can be configured or it is calculated as the inverse of the minimum frequency of the chosen bandpass filter.
 
-``norm_exponent``
-    The `Lp normalisation <https://en.wikipedia.org/wiki/Lp_space>`_ for calculating the waveform misfit.
+  **Frequency filtering**
+      ``fmin`` and ``fmax`` in Hz define the desired bandpass filter.
 
-``Domain``:
-    Can be selection from
+  ``norm_exponent``
+      The `Lp normalisation <https://en.wikipedia.org/wiki/Lp_space>`_ for calculating the waveform misfit.
 
-    * ``time_domain``
-        Misfit calculated in time domain, here it is useful to configure the ``tautoshift_max`` and ``autoshift_penalty_max`` to allow for small time shifts of the synthetic data.
+  ``domain``
+      Can be selection from
 
-    * ``frequency_domain``
-        Waveform misfit is calculated in the frequency domain.
+      * ``time_domain``
+          Misfit calculated in time domain, here it is useful to configure the ``tautoshift_max`` and ``autoshift_penalty_max`` to allow for small time shifts of the synthetic data.
 
-    * ``log_frequency_domain``
-        Waveform misfit is calculated in the logarithmic frequency domain.
+      * ``frequency_domain``
+          Waveform misfit is calculated in the frequency domain.
 
-    * ``envelope``
-        Waveform envelops are compared.
+      * ``log_frequency_domain``
+          Waveform misfit is calculated in the logarithmic frequency domain.
 
-    * ``absolute``
-        The absolute amplitudes are used to calculate the misfit
+      * ``envelope``
+          Waveform envelops are compared.
 
-    * ``cc_max_norm``
-        Misfit is calculated from cross-correlation of the traces.
+      * ``absolute``
+          The absolute amplitudes are used to calculate the misfit
 
-``tautoshift_max``
-    defines the maximum allowed time uin seconds the observed and synthetic trace may be shifted during the inversion.
+      * ``cc_max_norm``
+          Misfit is calculated from cross-correlation of the traces.
 
-``autoshift_penalty_max``
-    is the misfit penalty for autoshifting seismic traces.
+  ``tautoshift_max``
+      defines the maximum allowed time uin seconds the observed and synthetic trace may be shifted during the inversion.
+
+  ``autoshift_penalty_max``
+      is the misfit penalty for autoshifting seismic traces.
 
 Example :class:`~grond.targets.waveform.WaveformTargetGroup` configuration section:
 
@@ -136,7 +136,7 @@ Please see `kite's documentation <https://pyrocko.org/docs/kite/current/>`_ for 
     The slopes of ``ramp_north`` and ``ramp_east`` are given in :math:`\frac{m}{m}`, the offset in :math:`m` - these parameters have to be tuned with touch.
 
 
-Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration block:
+Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration section:
 
 .. code-block :: yaml
 
@@ -166,7 +166,7 @@ True 3D surface displacement as measured by GNSS stations can be included in the
   ``gnss_campaigns``
     The campaigns are identified by their ``campaign_name``. Campaigns can be explicitly selected, or the wildcard ``*all`` can be used.
 
-Example :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` configuration block:
+Example :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` configuration section:
 
 .. code-block :: yaml
 
