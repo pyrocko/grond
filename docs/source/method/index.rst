@@ -15,22 +15,20 @@ The very core of any optimisation is the evaluation of an objective function or 
 Forward modelling with pre-calculated Green's functions
 =======================================================
 
-The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, in Grond leverages pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`, are used that have been created with the `Pyrocko fomosto module`_.
+The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, Grond uses pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`. Such GF Stores can be created with the `Fomosto`_ GF management tool of Pyrocko.
 
-Generally, we distinguish different types of :term:`GF stores <Green's Function Store>` (for detail see the `Pyrocko fomosto module`_ documentation). For the options possible in Grond at the moment we need only to distinguish between GFs that have been calculated based on different GF methods to either allow for the fast forward calculation of dynamic seismic waveforms or static near-field displacements.
-
-GF stores can be searched and downloaded on our `GF store database`_, for the some general global seismic waveform analyses and/or for InSAR and GNSS data analyses based, e.g. on the global 1D `PREM model`_,. For more specific analyses, based on an individual choice of the medium, the GF store can be created - usually very swiftly - with the `Pyrocko fomosto module`_ for different GF methods.
+Different applications need different types of :term:`GF stores <Green's function store>`. For the purpose of forward modelling in Grond, we have to distinguish between GFs for dynamic seismic waveforms and GFs for static near-field displacement. Ready to use GF stores can be found in `our online repository <http://kinherd.org/gfs.html>`_. Global GFs for several standard earth models, like e.g. the global 1D `PREM model`_ are available, as well as regional distance GFs for many profiles of the `CRUST 2.0 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model database. Custom GF stores can be created using the `Fomosto`_ tool and an appropriate choice of the numerical method to calculate the GFs (Fomosto backend).
 
 GFs for seismic waveforms
 -------------------------
 
-For regional data analyses with optional near-field terms the ``QSEIS`` method by for layered media by `Wang et al.`_ (1999) is appropriate. For global forward models the ``QSSP`` method also by `Wang et al.`_ (2017) is more suited.
+For regional data analyses the `QSEIS <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-qseis-backend>`_ method for layered media by `Wang et al.`_ (1999) is appropriate. For global forward models the `QSSP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-qssp-backend>`_ method also by `Wang et al.`_ (2017) is more suited.
 
 
 GFs for static near-field displacements (measured by using GNSS or InSAR)
 -------------------------------------------------------------------------
 
-For the calculation of purely static coseismic displacements the use of the ``PSGRN/PSCMP`` method by `Wang et al.`_ (2006) is suggested for fast forward modelling.
+For the calculation of purely static coseismic displacements the use of the `PSGRN/PSCMP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-psgrn-pscmp-backend>`_ method by `Wang et al.`_ (2006) is suggested for fast forward modelling.
 
 For more details on GF stores, see the `Pyrocko documentation <https://pyrocko.org/docs/current/>`_
 
@@ -523,9 +521,8 @@ Bimodal, standard deviations from median density
 
 
 
-.. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
+.. _fomosto: https://pyrocko.org/docs/current/apps/fomosto/index.html
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace
-.. _GF store database: http://kinherd.org/gfs.html
 .. _kite: https://pyrocko.org/docs/kite/current/
 
 .. _PREM model: http://ds.iris.edu/spud/earthmodel/9991844

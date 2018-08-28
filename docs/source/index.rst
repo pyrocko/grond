@@ -32,6 +32,12 @@ Contents
    library/index
 
 
+Community and support
+---------------------
+
+Please use the `Pyrocko Hive <https://hive.pyrocko.org>`_ for discussion, feedback and bug reports.
+
+
 Citation
 --------
 
@@ -48,6 +54,13 @@ License
 -------
 
 Grond is licensed under the :download:`GPLv3 <../../LICENSE>`.
+
+
+Contact
+-------
+
+* Sebastian Heimann - sebastian.heimann@gfz-potsdam.de
+* Marius Isken - marius.isken@gfz-potsdam.de
 
 
 Indices and tables
