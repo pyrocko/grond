@@ -4,24 +4,16 @@ Grond
 
 A probabilistic earthquake source inversion framework. Designed and crafted in Mordor.
 
-Introduction
-------------
+Abstract
+--------
 
-Grond is a software tool and framework for robust characterization of
-earthquake sources from diverse observations. It employs efficient forward
-modelling as well as elaborate inversion strategies and is able to deliver
-meaningful model uncertainties.
+Grond is an open source software tool for robust characterization of earthquake sources. Moment tensors and finite fault rupture models can be estimated from seismic, InSAR, and GNSS observations. It serves as a modular framework for the analysis of diverse magmatic, tectonic, and other geophysical processes.
 
-The software implements a Bayesian bootstrap-based probabilistic joint
-inversion scheme for heterogeneous data. It explores the full model space and
-helps to map potential model parameter trade-offs. The program is highly
-flexible in how it can be adapted to specific dislocation problems, the design
-of objective functions, and the diversity of measurements.
+In Grond the optimisation explores the full model space and maps model parameter trade-offs. Meaningful model uncertainties are delivered through a Bayesian bootstrap-based probabilistic joint inversion scheme.
+Various data-fitting and weighting options provide easy customization of the objective function.
 
-Pre-computed Green's function databases handled by the Pyrocko software
-library are the backone of the forward modelling. They serve synthetic
-near-field geodetic data (InSAR and GNSS) and synthetic seismic waveforms at
-all distances and receiver depths for arbitrary earthquake source models.
+Rapid forward modelling is enabled by using pre-computed Green's function databases, handled through the Pyrocko software library. They serve synthetic near-field geodetic displacements (InSAR and GNSS) and synthetic seismic waveforms for arbitrary earthquake source models and geometries.
+
 
 Contents
 --------
@@ -40,10 +32,25 @@ Contents
    library/index
 
 
-Recommended citation
---------------------
+Citation
+--------
 
-TODO DOI
+The recommended citation for Grond is 
+
+    Heimann, Sebastian; Isken, Marius; Kühn, Daniela; Sudhaus, Henriette;
+    Steinberg, Andreas; Vasyura-Bathke, Hannes; Daout, Simon; Cesca, Simone;
+    Dahm, Torsten (2018): Grond - A probabilistic earthquake source inversion
+    framework. V. 1.0. GFZ Data Services.
+    https://doi.org/10.5880/GFZ.2.1.2018.003
+
+BibTeX citatation file: :download:`CITATION.bib <../../CITATION.bib>`
+
+
+License
+-------
+
+Grond is licensed under the :download:`GPLv3 <../../LICENSE>`.
+
 
 Indices and tables
 ------------------

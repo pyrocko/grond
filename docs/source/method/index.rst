@@ -17,7 +17,7 @@ This document describes the method of Grond on:
 
   1. how Grond implements the differences between :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` with respect to the definition of objective functions and data weighting,
 
-  2. how the optimisation is set up to search the model space to find the optimum models and 
+  2. how the optimisation is set up to search the model space to find the optimum models and
 
   3. which methods are used to estimate model uncertainties.
 
@@ -34,8 +34,8 @@ GF stores can be searched and downloaded on our `GF store database`_, for the so
 GFs for seismic waveforms
 -------------------------
 
-For regional data analyses with optional near-field terms the ``QSEIS`` method by for layered media by `Wang et al.`_ (1999) is appropriate. For global forward models the ``QSSP`` method also by `Wang et al.`_ (2017) is more suited. 
- 
+For regional data analyses with optional near-field terms the ``QSEIS`` method by for layered media by `Wang et al.`_ (1999) is appropriate. For global forward models the ``QSSP`` method also by `Wang et al.`_ (2017) is more suited.
+
 
 GFs for static near-field displacements (measured by using GNSS or InSAR)
 -------------------------------------------------------------------------
@@ -58,10 +58,10 @@ The objective function defines what a `model fit` is and how `good` or `poor` mo
     :width: 80%
     :align: center
     :alt: alternate text
-    
+
     **Figure 1**: Overview of Grond's objective function design. Each optimisation target (waveform, satellite and campaign GNSS) handles weights similarly and bootstraps differently. Details on how each target and weight vector is formed is described in the section below.
 
-    
+
 Misfit calculation and objective function
 -----------------------------------------
 
@@ -89,19 +89,19 @@ The misfit is based on the configurable :math:`L^x`-norm with :math:`x \,\, \eps
 
     \lVert e \rVert_x = \lVert {\bf{d}}_{obs} - {{\bf d}}_{synth} \rVert_x  = \
         \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^x}\right)^{\frac{1}{x}}
-        
+
 Further the misfit normalisation factor :math:`norm` is associated with each target. This measure will be used to normalise the misfit values for relative weighting:
 
 .. math::
   :label: ns
-        
+
     \lVert e_{\mathrm{0}} \rVert_x = \lVert {\bf{d}}_{obs} \rVert_x  = \left(\sum{|{d}_{i, obs}|^x} \right)^{\frac{1}{x}}.
 
 The resulting normalised misfit
 
 .. math::
   :label: ms_ns
- 
+
     \lVert e_{\mathrm{norm}} \rVert_x = \
     \frac{\lVert e \rVert_x}{ \lVert e_{\mathrm{0}} \rVert_x}.
 
@@ -118,13 +118,13 @@ When measuring waveform data's cross-correlation, the misfit function is based o
 .. math::
   :nowrap:
   :label: cor
-  
+
   \begin{align*}
     e_{\mathrm{cc}} = \frac{1}{2} - \frac{1}{2}\, \mathrm{max}(C), \, \
     \mathrm{with} \,\,\,
     e_{\mathrm{0, cc}} = \frac{1}{2} \,\, ,\, \mathrm{such\,\, that}  \
     e_{\mathrm{norm}} = 1 - \mathrm{max}(C).
-  \end{align*}  
+  \end{align*}
 
 
 Satellite misfit
@@ -153,11 +153,11 @@ These weights are applied as factors to the misfits, optionally as a product of 
 
 .. math::
   :label: wcomb
-  
+
    w_{\mathrm{comb},i} = w_{\mathrm{tba},i} \cdot w_{\mathrm{noise},i} \
    \cdot w_{\mathrm{man},i}
 
-The misfit and data norm calculations with data weights 
+The misfit and data norm calculations with data weights
 :math:`w_{\mathrm{comb},i}` change to:
 
 .. math::
@@ -167,7 +167,7 @@ The misfit and data norm calculations with data weights
   \begin{align*}
     \lVert e \rVert_x &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot |{{d}}_{i,obs} - \
   {{ d}}_{i,synth}|)^{x}}\right)^{\frac{1}{x}}\\
-    \lVert e_{\mathrm{0}} \rVert_x  &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot \ 
+    \lVert e_{\mathrm{0}} \rVert_x  &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot \
        |{{d}}_{i,obs} |)^{x}}\right)^{\frac{1}{x}}
   \end{align*}
 
@@ -183,14 +183,14 @@ With these weights waveform targets are `balanced` with respect to the expected 
     :align: left
     :alt: alternate text
     :figclass: align-center
-    
+
     **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading.
 
 Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) signal procesing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source machanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
 
     .. math::
       :label: wtba
-        
+
       {\bf w}_{\mathrm{tba}} = 1/ \lVert {\bf{d}}_{synth}  \rVert_x  = \
             \left(\sum^{N}{|{d}_{i, synth}|^x}\right)^{\frac{1}{x}}.
 
@@ -201,7 +201,7 @@ Data weights based on data error statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There are direct data weight vectors :math:`\bf{w}` or weight matrices :math:`\bf{W}` based on empirical data error variance estimates. Partly, e.g. for InSAR and GNSS data, these weights are derived from data error correlations expressed in the data error variance-covariance matrix :math:`\bf{\Sigma}`:
-    
+
     .. math::
       :label: wnoi
 
@@ -229,7 +229,7 @@ Example 1: Fitting waveforms of P and S waves
 Let's say we use the waveform fit in time domain and in spectral domain combined. We then have weighted misfits as in Equation :eq:`wms_wns` for P waves with :math:`{\bf d}_{obs,\mathrm{Pt}}` and :math:`{\bf d}_{synth,\mathrm{Pt}}` in time domain and :math:`{\bf d}_{obs,\mathrm{Ps}}` and :math:`{\bf d}_{synth,\mathrm{Ps}}` in spectral domain. We have also the corresponding weighted misfit norms (see Equation :eq:`wms_wns`) and the same for S waveforms in time and spectral domain. Let's also say we are using the :math:`L^2\,`-norm.
 
 The waveforms of P and S waves in time domain are of a similar and kind and can, maybe even should, be normalised together. The same may be meaningful for the normalisation of the P and S waves in spectral domain.
-    
+
 In Grond we say the time- domain data and the spectral-domain data each belong to a different ``normalisation_family``.
 
 The **global misfit** for two normalisations families will read:
@@ -237,7 +237,7 @@ The **global misfit** for two normalisations families will read:
 
 .. math::
   :label: norm_ex1
-  
+
     \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{ \
        \frac{\left( \lVert e_{\mathrm{time}} \rVert_2 \right)^2  }{\
         \left(\lVert e_{\mathrm{0,time}} \rVert_2\right)^2 } \
@@ -245,24 +245,24 @@ The **global misfit** for two normalisations families will read:
      \left( \lVert e_{\mathrm{0,spectral}} \rVert_2 \right)^2 } \
     }
 
-    
+
 Example 2: Fitting waveforms of P waves and static surface displacements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    
+
 Let's say we use P waveforms in the time domain :math:`{\bf d}_{obs,\mathrm{Pt}}`. We combine the waveform misfit defined in Equation :eq:`wms_wns` with the misfit of the maximum waveform defined in Equation :eq:`cor` correlation. Furthermore we use InSAR-measured static surface displacements  :math:`{\bf d}_{obs,\mathrm{insar}}` and GNSS-measured static surface displacements :math:`{\bf d}_{obs,\mathrm{gnss}}`. The static surface displacement misfit is defined as in Equation :eq:`wms_wns`.
-    
+
 The waveform misfits and the correlations, even if the same weights are applied, are measures of a different nature. Also the dynamic waveforms and the static near-field displacements have different relationships to the source parameters. Different normalisation is meaningful. The static surface displacement data themselves should be comparable, even though InSAR and GNSS positing are very different measuring techniques.
-    
+
 The **global misfit** in this example is then:
-    
+
 .. math::
   :label: norm_ex2
-  
-    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{ 
+
+    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{
     \frac{ \left( \frac{ \lVert e_{\mathrm{time}} \rVert_2}{\lVert \
        e_{\mathrm{0,time}} \rVert_2}\right)^2 + \
        \left( \frac{ \lVert e_{\mathrm{spectral}} \rVert_2}{\lVert \
-        e_{\mathrm{0,spectral}} \rVert_2  }\right)^2 }{ \     
+        e_{\mathrm{0,spectral}} \rVert_2  }\right)^2 }{ \
              \left( \frac{ \lVert e_{\mathrm{0,time}} \rVert_2}{\lVert \
              e_{\mathrm{0,time}}\rVert_2}\right)^2 + \
              \left( \frac{ \lVert e_{\mathrm{0,spectral}} \rVert_2}{\lVert \
@@ -286,7 +286,7 @@ Bayesian bootstrapping
 ----------------------
 
 These bootstrap types are based on residual weighting. We divert from the physics-related and noise-related target weights and create numerous additional random weight factors for each target. Virtually equal weights of 1 for each target are redistributed to new random weights, which add up to equal the number of targets. In this way the final misfit values are comparable even without normalisation.
-   
+
 Classic weights
 ^^^^^^^^^^^^^^^
 
@@ -299,7 +299,7 @@ For a `classic` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` rando
     :align: center
     :alt: alternate text
     :figclass: align-center
-    
+
     **Figure 3**: Formation of `classical` bootstrap weights. Uniformly random samples (left) and the corresponding histogram (right) with the occurence frequencies being used as bootstrap weights.
 
 Bayesian weights
@@ -323,7 +323,7 @@ For a `Bayesian` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` rand
 
 Residual bootstrap
 ------------------
-    
+
 Residual bootstrapping is a computationally more efficient implementation of the `Randomize-then-optimize`_ approach: with empirical estimates of the data error statistics individual realisations of synthetic correlated random noise are systematically added to the data to obtain perturbed optimisations results (Fig. 5). Earthquake source parameter distributions retrieved with the `Randomize-then-optimize`_ method based on the data error variance-covariance matrices have been shown to match the model parameter distributions obtained through `Marcov Chain Monte Carlo` sampling of the model space (`Jonsson et al.`_,2014). In our `residual bootstrapping` method we add one realisation of synthetic correlated random noise to each bootstrapping chain (Fig. 5C and 1). This saves the calculation of many independent forward models compared to `Randomize-then-optimize`_ approach.
 
 To generate random noise we use functions of the `Kite`_ module. From the noise estimation region defined in the `Kite`_ scenes (Fig. 5A), the noise power spectrum is used directly with a randomised phase spectrum to create new random noise with same spectral characteristics (Fig. 5B). The noise is then subsampled through the same quadtree as defined for the observed data (Fig. 5C).
@@ -338,7 +338,7 @@ To generate random noise we use functions of the `Kite`_ module. From the noise 
     **Figure 5**: Residual bootstrap realisation of InSAR surface displacement data in Grond. (A) From data noise we (B) synthesise random correlated data noise, which is then (C) subsampled exactly as the observed data. These perturbation are then added as bootstrap residuals.
 
 
-Optimisation 
+Optimisation
 ============
 
 Grond's modular framework is open for different optimisation schemes, the native optimisation schemes is the so-called `Bayesian Bootstrap Optimisation` (BABO). The `Optimiser` defines the particular objective function or objective functions and options for them. The optimiser also defines the model space sampling schemes. Multiple objective functions are realized in parallel running optimisation chains - the bootstrap chains (see below).
@@ -369,7 +369,7 @@ There are three sampling phases defined, based on which models are drawn from
 the model space:
 
 * :class:`~grond.optimisers.highscore.optimiser.UniformSamplerPhase` - models are drawn randomly
-* :class:`~grond.optimisers.highscore.optimiser.InjectionSamplerPhase` - allows to inject specific models 
+* :class:`~grond.optimisers.highscore.optimiser.InjectionSamplerPhase` - allows to inject specific models
 * :class:`~grond.optimisers.highscore.optimiser.DirectedSamplerPhase` - existing low-misfit models `direct` the sampling
 
 .. figure:: ../images/illu_sampling_phases.svg
@@ -380,8 +380,8 @@ the model space:
     :figclass: align-center
 
     **Figure 7**: Strategic sketch of different optimiser sampling phases.
-    
-    
+
+
 UniformSamplerPhase
 """""""""""""""""""
 At the beginning of the optimisation this sampler phase explores the solution space uniformly. A configurable number of models are drawn randomly from the entire model space based on a uniform distribution.
@@ -401,21 +401,21 @@ New models are drawn from normal distribution. The standard deviations are deriv
 1. ``mean`` of the `highscore` model parameter distributions
 2. a ``random`` model from the `highscore` list or
 3. an ``excentricity_compensated`` draw (see below).
-    
+
 ``scatter_scale``
 .................
 This scales search radius around the current `highscore` models. With a scatter scale of 2 the search for new models has a distribution with twice the standard deviation as estimated from the current `highscore` list. It is possible to define a beginning scatter scale and an ending scatter scale. This leads to a confining directed search. In other words, the sampling evolves from being more explorative to being more exploitive in the end.
 
-``starting_point`` 
+``starting_point``
 ..................
 This method tunes to the center value of the sampler distribution: This option, will increase the likelihood to draw a `highscore` member model off-center to the mean value. The probability of drawing a model from the `highscore` list is derived from distances the `highscore` models have to other `highscore` models in the model parameter space. Excentricity is therefore compensated, because models with few neighbours at larger distances have an increased likelihood to be drawn.
-    
+
 What's the use? Convergence is slowed down, yes, but to the benefit of low-misfit region represented by only a few models drawn up to the current point.
-    
+
 Let's assume there are two separated groups of low-misfit models in our `highscore` list, with one group forming the 75% majority. In the directed sampler phase the choices of a mean center point for the distribution as well as a random starting point for the sampler distribution would favour new samples in the region of the `highscore` model majority. Models in the low-misfit region may be dying out in the `highscore` list due to favorism and related sparse sampling. `excentricity compensations` can help is these cases and keep models with not significantly higher misfits in the game and in sight.
-    
+
 TODO: correct? too many explanations? Sebastian, here is the perfect place for one of your movies.
- 
+
 
 Bootstrap chains
 ----------------
@@ -430,7 +430,7 @@ The highscore list member models in each bootstrap chain (Fig. 7B) will differ t
     :align: center
     :alt: alternate text
     :figclass: align-center
-    
+
     **Figure 7**:  Bootstrap chain graph. (A) Illustration of bootstrap weights, (B) bootstrap chain highscore lists and  (C) their influence on the convergence in the model parameter space due to the individual objective function of each bootstrap chain.
 
 The convergence of model parameters for the models within each bootstrap chain is dependent on the settings of the optimisation, e.g. the setup of parameter bounds, `scatter scale` settings of the `directive sampling phase` and other tuneables. With very `exploitive` settings convergence can be forced. However, if the convergence within each bootstrap chain starts to form individual clusters in the model space, further optimisation will not provide significantly better models. In Fig. 8 the area of the `highscore` models of  three bootstrap chains has only little overlap compared to an earlier stage visualised in Fig. 7C.
@@ -442,11 +442,82 @@ The convergence of model parameters for the models within each bootstrap chain i
     :align: center
     :alt: alternate text
     :figclass: align-left
-    
+
     **Figure 8**: Drawing new model candidated from the described sampling strategies - the proposal is based on the existing solution space.
 
-    
-    
+
+BABO at work
+============
+
+TODO: replace draft text with something meaningful. add figure with toy problem setup.
+
+Toy problem: find best fitting source location in 3D, given noisy 1D distance
+measures from 10 observers on the horizontal z=0 plane. Projection to vertical
+cross section is shown. Star is true solution. Lines indicate regions of low
+misfit.
+
+Single chain
+
+Only upper half-space is searched, problem is unimodal.
+
+.. raw:: html
+
+    <video width="960" height="540" controls>
+        <source src="https://pyrocko.org/grond/media/babo/grond_wellposed_unimodal_lownoise_0_nce_sdac_web.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+
+Global + 3 bootstrap chains
+
+.. raw:: html
+
+    <video width="960" height="540" controls>
+        <source src="https://pyrocko.org/grond/media/babo/grond_wellposed_unimodal_lownoise_3_nce_sdac_web.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+Illposed problem, no excentricity correction
+
+.. raw:: html
+
+    <video width="960" height="540" controls>
+        <source src="https://pyrocko.org/grond/media/babo/grond_illposed_unimodal_lownoise_3_nce_mdsc_web.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+Illposed problem, excentricity correction applied
+
+.. raw:: html
+
+    <video width="960" height="540" controls>
+        <source src="https://pyrocko.org/grond/media/babo/grond_illposed_unimodal_lownoise_3_ce_mdsc_web.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+
+Bimodal, standard deviations based on all high score models
+Fullspace is searched, problem is bimodel due to symmetry
+
+.. raw:: html
+
+    <video width="960" height="540" controls>
+        <source src="https://pyrocko.org/grond/media/babo/grond_wellposed_bimodal_lownoise_3_ce_sdac_web.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+
+Bimodal, standard deviations based on median density
+
+.. raw:: html
+
+    <video width="960" height="540" controls>
+        <source src="https://pyrocko.org/grond/media/babo/grond_wellposed_bimodal_lownoise_3_ce_mdsc_web.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+
+
 .. _Pyrocko fomosto module: https://pyrocko.org/docs/current/apps/fomosto/index.html
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace
 .. _GF store database: http://kinherd.org/gfs.html

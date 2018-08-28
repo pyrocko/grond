@@ -5,7 +5,7 @@
 * Daniela Kühn
 * Henriette Sudhaus
 * Andreas Steinberg
-* Hannes Bathke
+* Hannes Vasyura-Bathke
 * Simon Daout
 * Simone Cesca
 * Torsten Dahm
