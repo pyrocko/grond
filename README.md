@@ -38,11 +38,8 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>.
 
 ## Contact
-* Sebastian Heimann; 
-  sebastian.heimann@gfz-potsdam.de
-
-* Marius Isken; 
-  marius.isken@gfz-potsdam.de
+* Sebastian Heimann - sebastian.heimann@gfz-potsdam.de
+* Marius Isken - marius.isken@gfz-potsdam.de
 
 ```
 Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ
