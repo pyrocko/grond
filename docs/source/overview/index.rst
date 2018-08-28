@@ -334,19 +334,19 @@ strategies.
         Is the recipient side of the source's excitation. This can be a modelled seismometer, a GNSS station or a InSAR satellite.
 
     Problem
-        In the context of a Grond setup, the "problem" groups the choice of source model and parameter bounds to be used in the optimisation.
+        In the context of a Grond setup, the "problem" groups the choice of source model and parameter bounds to be used in the optimisation. See :doc:`problems/index`.
 
     Target
         In a typical Grond setup, many modelling targets may contribute to the global misfit. For example, an individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
 
     Config file
-        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`.
+        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`. See :doc:`/config/index`.
 
     Rundir
         The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the :option:`grond go` subcommand.
 
     Dataset
-        The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.).
+        The dataset is a section in the config file telling Grond where to look for input data (waveforms, InSAR scenes, GNSS data) and meta-data (station coordinates, instrument responses, blacklists, picks, event catalogues, etc.). See :doc:`/config/dataset/index`.
 
     Misfit
         The misfit is the value of the objective function obtained for a proposed source model. The global misfit may by aggregated from weighted contributions of multiple Grond targets (see below).

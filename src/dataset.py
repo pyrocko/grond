@@ -881,43 +881,60 @@ class Dataset(object):
 
 
 class DatasetConfig(HasPaths):
+    ''' Configuration for a Grond `Dataset`  object. '''
 
     stations_path = Path.T(
-        optional=True)
+        optional=True,
+        help='List of files with station coordinates in Pyrocko format.')
     stations_stationxml_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of files with station coordinates in StationXML format.')
     events_path = Path.T(
-        optional=True)
+        optional=True,
+        help='File with hypocenter information and possibly'
+             ' reference solution')
     waveform_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of directories with raw waveform data')
     clippings_path = Path.T(
         optional=True)
     responses_sacpz_path = Path.T(
-        optional=True)
+        optional=True,
+        help='List of SACPZ response files for restitution of'
+             ' the raw waveform data.')
     responses_stationxml_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of StationXML response files for restitution of'
+             ' the raw waveform data.')
     station_corrections_path = Path.T(
-        optional=True)
+        optional=True,
+        help='File containing station correction informations.')
     apply_correction_factors = Bool.T(
         optional=True,
-        default=True)
+        default=True,
+        help='Apply correction factors from station corrections.')
     apply_correction_delays = Bool.T(
         optional=True,
-        default=True)
+        default=True,
+        help='Apply correction delays from station corrections.')
     extend_incomplete = Bool.T(
-        default=False)
+        default=False,
+        help='Extend incomplete seismic traces.')
     picks_paths = List.T(
         Path.T())
     blacklist_paths = List.T(
-        Path.T())
+        Path.T(),
+        help='List of text files with blacklisted stations.')
     blacklist = List.T(
         String.T(),
         help='stations/components to be excluded according to their STA, '
              'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
-    whitelist_paths = List.T(Path.T())
+    whitelist_paths = List.T(
+        Path.T(),
+        help='List of text files with whitelisted stations.')
     whitelist = List.T(
         String.T(),
         optional=True,
