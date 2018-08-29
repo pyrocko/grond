@@ -66,10 +66,10 @@ class JointparPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history, optimiser),
-            title='Jointpar Plot',
+            title=u'Jointpar Plot',
             section='solution',
             feather_icon='crosshair',
-            description='Source problem parameter\'s tradeoff plots.')
+            description=u'Source problem parameter\'s tradeoff plots.')
 
     def draw_figures(self, history, optimiser):
 
@@ -327,10 +327,10 @@ class HistogramPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Solution Histrogram',
+            title=u'Solution Histrogram',
             section='solution',
             feather_icon='bar-chart-2',
-            description='Distribution of the problem\'s parameters.')
+            description=u'Distribution of the problem\'s parameters.')
 
     def draw_figures(self, history):
 
@@ -454,11 +454,11 @@ class MTDecompositionPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Moment Tensor Decomopostion',
+            title=u'Moment Tensor Decomopostion',
             section='solution',
             feather_icon='sun',
-            description='Moment tensor decomposition of the best-fitting'
-                        ' solution.')
+            description=u'Moment tensor decomposition of the best-fitting'
+                        u' solution.')
 
     def draw_figures(self, history):
 
@@ -608,10 +608,10 @@ class MTLocationPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Moment Tensor Location',
+            title=u'Moment Tensor Location',
             section='solution',
             feather_icon='target',
-            description='Location plots of the best ensemble of solutions.')
+            description=u'Location plots of the best ensemble of solutions.')
 
     def draw_figures(self, history):
         from matplotlib import colors
@@ -719,10 +719,10 @@ class HudsonPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Hudson Plot',
+            title=u'Hudson Plot',
             section='solution',
             feather_icon='box',
-            description='Hudson plot of the best fitting moment tensor.')
+            description=u'Hudson plot of the best fitting moment tensor.')
 
     def draw_figures(self, history):
 

@@ -69,10 +69,10 @@ class FitsPhaseRatioPlot(PlotConfig):
 
         cm.create_group_mpl(
             self, self.draw_figures(ds, history),
-            title='Fits of phase ratios',
+            title=u'Fits of phase ratios',
             section='fits',
             feather_icon='activity',
-            description=S('''
+            description=S(u'''
                 Observed (black markers) and synthetic waveform amplitude phase
                 ratio estimates (colored markers) at different stations for
                 every Nth model in the bootstrap solution ensemble (N=%i).

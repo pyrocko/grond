@@ -52,10 +52,10 @@ class SequencePlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Sequence Plots',
+            title=u'Sequence Plots',
             section='optimiser',
-            description='Sequence plots for all parameters of'
-                        ' the optimisation.',
+            description=u'Sequence plots for all parameters of'
+                        u' the optimisation.',
             feather_icon='fast-forward')
 
     def draw_figures(self, history):
@@ -252,10 +252,10 @@ class ContributionsPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Target Contributions',
+            title=u'Target Contributions',
             section='solution',
             feather_icon='thermometer',
-            description='Contributions of the targets towards the misfit.')
+            description=u'Contributions of the targets towards the misfit.')
 
     def draw_figures(self, history):
 
@@ -421,10 +421,10 @@ class BootstrapPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history, optimiser),
-            title='Bootstrap Misfit',
+            title=u'Bootstrap Misfit',
             section='optimiser',
             feather_icon='trending-down',
-            description='Evolution of the misfits for all bootstrap chains.')
+            description=u'Evolution of the misfits for all bootstrap chains.')
 
     def draw_figures(self, history, optimiser):
 

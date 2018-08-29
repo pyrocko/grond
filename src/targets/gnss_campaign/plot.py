@@ -49,11 +49,11 @@ class GNSSTargetMisfitPlot(PlotConfig):
         cm.create_group_automap(
             self,
             self.draw_gnss_fits(ds, history, optimiser),
-            title='Static GNSS Surface Displacements',
+            title=u'Static GNSS Surface Displacements',
             section='results',
             feather_icon='map',
-            description='Maps showing surface displacements of'
-                        ' GNSS campaigns and the mode.')
+            description=u'Maps showing surface displacements of'
+                        u' GNSS campaigns and the mode.')
 
     def draw_gnss_fits(self, ds, history, optimiser):
         problem = history.problem
@@ -81,11 +81,11 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 attributes={
                     'targets': gnss_target.path
                 },
-                title='Static GNSS Surface Displacements - Campaign %s'
+                title=u'Static GNSS Surface Displacements - Campaign %s'
                       % camp.name,
-                description='Static surface displacement from GNSS campaign %s'
-                            ' (black vectors) and displacements derived from'
-                            ' best rupture model (red).' % camp.name)
+                description=u'Static surface displacement from GNSS campaign '
+                            u'%s (black vectors) and displacements derived '
+                            u'from best rupture model (red).' % camp.name)
 
             lat, lon = camp.get_center_latlon()
 

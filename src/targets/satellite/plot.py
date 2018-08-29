@@ -48,11 +48,11 @@ class SatelliteTargetPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_static_fits(ds, history, optimiser),
-            title='Satellite Surface Displacements',
+            title=u'Satellite Surface Displacements',
             section='fits',
             feather_icon='navigation',
-            description='Maps showing surface displacements'
-                        ' from satellite and modelled data.')
+            description=u'Maps showing surface displacements'
+                        u' from satellite and modelled data.')
 
     def draw_static_fits(self, ds, history, optimiser):
         from pyrocko.orthodrome import latlon_to_ne_numpy
@@ -157,9 +157,9 @@ class SatelliteTargetPlot(PlotConfig):
             item = PlotItem(
                 name='fig_%i' % ifig,
                 attributes={'targets': [sat_target.path]},
-                title='Satellite Surface Displacements - %s'
+                title=u'Satellite Surface Displacements - %s'
                       % scene.meta.scene_title,
-                description='''Surface displacements derived from
+                description=u'''Surface displacements derived from
 satellite data, Scene {meta.scene_title} (id: {meta.scene_id}).
  (Left) the input data, (center) the
 modelled data and (right) the model residual.'''.format(meta=scene.meta))
