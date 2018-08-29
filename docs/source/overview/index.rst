@@ -75,8 +75,8 @@ Single files and data formats listed here are explained below. The folders ``run
     └── reports 
         └── ...
 
-Input data (observables)
-------------------------
+Input data (observations)
+-------------------------
 
 Grond can combine different observational input data in an earthquake source optimisation.
 
