@@ -26,11 +26,11 @@ Grond is configured by YAML text files. Read on :doc:`structure` to get started 
 
 
     ``Problem``
-        is specific source modell (CMT, rectangular fault), which is optimised.
+        is specific source model (CMT, rectangular fault), which is optimised.
 
 
     ``Analysers``
-        are responisble for data analysis before the optimisation.
+        are responsible for data analysis before the optimisation.
 
     ``Optimiser``
         deliver the optimisation strategy.

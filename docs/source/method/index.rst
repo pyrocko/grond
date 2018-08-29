@@ -2,12 +2,18 @@
 Method
 ******
 
-This document gives a comprehensive overview over Grond's methodical background. It describes how the objective function and data weighting are defined, how the optimisation algorithm works and how model uncertainties are
+This document gives a comprehensive overview over Grond's methodical background. It describes how the objective function and data weighting are defined, the optimisation algorithm works and how model uncertainties are
 estimated.
 
-The very core of any optimisation is the evaluation of an objective function or misfit value between observed :math:`{\bf d}_{obs}` and predicted data :math:`{\bf d}_{synth}`. This is most often based on the difference  :math:`{\bf d}_{obs} - {\bf d}_{synth}`, but can also be any other comparison, like a correlation measure for example.
+The very core of any optimisation is the evaluation of an objective function or misfit value between observed and predicted data. This is most often based on the difference
 
-`Observed data` here means post-processed data (or features) derived from the `raw` measurements. For example, in the context of seismic source inversion, seismic waveform recordings are usually tapered to extract specific seismic phases, restituted to displacement and filtered. `Predicted data` are in this case forward modelled seismograms that are tapered and filtered in the same way as the observed waveforms.
+.. math::
+  
+  {\bf d}_{obs} - {\bf d}_{synth}\mathrm{,}
+
+but can also be any other comparison, like a correlation measure for instance.
+
+`Observed data` :math:`{\bf d}_{obs}` are post-processed data (or features) derived from the `raw` measurements. For example, in the context of seismic source inversion, seismic waveforms are tapered to seismic phases of interest, restituted to displacement and filtered. `Predicted data` :math:`{\bf d}_{synth}` are then modelled seismograms which are tapered and filtered in the same way as the observed waveforms.
 
 .. contents :: Content
   :depth: 3
@@ -15,9 +21,15 @@ The very core of any optimisation is the evaluation of an objective function or 
 Forward modelling with pre-calculated Green's functions
 =======================================================
 
-The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, Grond uses pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`. Such GF Stores can be created with the `Fomosto`_ GF management tool of Pyrocko.
+The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium (velocity) model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, Grond uses pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`. Such GF Stores can be created with the `Fomosto`_ GF management tool of Pyrocko.
 
-Different applications need different types of :term:`GF stores <Green's function store>`. For the purpose of forward modelling in Grond, we have to distinguish between GFs for dynamic seismic waveforms and GFs for static near-field displacement. Ready to use GF stores can be found in `our online repository <http://kinherd.org/gfs.html>`_. Global GFs for several standard earth models, like e.g. the global 1D `PREM model`_ are available, as well as regional distance GFs for many profiles of the `CRUST 2.0 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model database. Custom GF stores can be created using the `Fomosto`_ tool and an appropriate choice of the numerical method to calculate the GFs (Fomosto backend).
+Different applications need different types of :term:`GF stores <Green's function store>`. For the purpose of forward modelling in Grond, we have to distinguish between
+
+
+1. GFs for dynamic seismic waveforms and
+2. GFs for static near-field displacement.
+
+Ready to use GF stores can be found in `our online repository <http://kinherd.org/gfs.html>`_. Global GFs for several standard earth models, like e.g. the global 1D `PREM model`_ are available, as well as regional distance GFs for many profiles of the `CRUST 2.0 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model database. Custom GF stores can be created using the `Fomosto`_ tool and an appropriate choice of the numerical method to calculate the GFs (Fomosto back end).
 
 GFs for seismic waveforms
 -------------------------
@@ -28,17 +40,17 @@ For regional data analyses the `QSEIS <https://pyrocko.org/docs/current/apps/fom
 GFs for static near-field displacements (measured by using GNSS or InSAR)
 -------------------------------------------------------------------------
 
-For the calculation of purely static coseismic displacements the use of the `PSGRN/PSCMP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-psgrn-pscmp-backend>`_ method by `Wang et al.`_ (2006) is suggested for fast forward modelling.
+For the calculation of purely static coseismic surface displacements the use of the `PSGRN/PSCMP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-psgrn-pscmp-backend>`_ method by `Wang et al.`_ (2006) is suggested for fast forward modelling.
 
-For more details on GF stores, see the `Pyrocko documentation <https://pyrocko.org/docs/current/>`_
+For more details on GF stores, see the `Pyrocko documentation <https://pyrocko.org/docs/current/>`_.
 
 
 Objective function design
 =========================
 
-The `objective function` gives a scalar misfit value how well the source model fits the observed data. A smaller misfit value is better than a large one. It is often called `misfit function`. The source model that results in the smallest values of the :term:`objective function` is the global minimum of the misfit function optimum model.
+The `objective function` (or `misfit function`) gives a scalar misfit value how well the source model fits the observed data. A smaller misfit value is better than a large one. The source model that results in the smallest values of the :term:`objective function` is the global minimum of the misfit function optimum model.
 
-The objective function defines what a `model fit` is and how `good` or `poor` models are scaled with respect to others. Furthermore, the objective function has rules how different data sets are handled, which `Lp-norm <https://en.wikipedia.org/wiki/Lp_space>`_ is applied and how data errors are considered in optimisations.
+The objective function defines what a `model fit` is and how `good` or `poor` models are scaled with respect to others. Furthermore, the objective function has rules how different observed data sets are handled, which `Lp-norm <https://en.wikipedia.org/wiki/Lp_space>`_ is applied and how data errors are considered in optimisations.
 
 
 .. figure:: ../images/illu_combi_weights.svg
@@ -55,7 +67,7 @@ Misfit calculation and objective function
 
 The core of an optimisation is the data-point-wise calculation of the difference between observed and predicted data:
 
-TODO: avoid repetiion
+TODO: avoid repetition
 
 .. math ::
 
@@ -74,32 +86,30 @@ Grond supports different seismological observations and a combination of those, 
     * from pixel offsets
     * measured by using GNSS sensors
 
-TODO: Define the word target.
-
-The misfit is based on the configurable :math:`L^x`-norm with :math:`x \,\, \epsilon \,\, [1, 2, 3, ...]`:
+The misfit is based on the configurable :math:`L^p`-norm with :math:`p \,\, \epsilon \,\, [1, 2, 3, ...]`:
 
 .. math::
   :label: eq:ms
 
-    \lVert e \rVert_x = \lVert {\bf{d}}_{obs} - {{\bf d}}_{synth} \rVert_x  = \
-        \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^x}\right)^{\frac{1}{x}}
+    \lVert e \rVert_p = \lVert {\bf{d}}_{obs} - {{\bf d}}_{synth} \rVert_p  = \
+        \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^p}\right)^{\frac{1}{p}}
 
 Further the misfit normalisation factor :math:`norm` is associated with each target. This measure will be used to normalise the misfit values for relative weighting:
 
 .. math::
   :label: ns
 
-    \lVert e_{\mathrm{0}} \rVert_x = \lVert {\bf{d}}_{obs} \rVert_x  = \left(\sum{|{d}_{i, obs}|^x} \right)^{\frac{1}{x}}.
+    \lVert e_{\mathrm{0}} \rVert_p = \lVert {\bf{d}}_{obs} \rVert_p  = \left(\sum{|{d}_{i, obs}|^p} \right)^{\frac{1}{p}}.
 
 The resulting normalised misfit
 
 .. math::
   :label: ms_ns
 
-    \lVert e_{\mathrm{norm}} \rVert_x = \
-    \frac{\lVert e \rVert_x}{ \lVert e_{\mathrm{0}} \rVert_x}.
+    \lVert e_{\mathrm{norm}} \rVert_p = \
+    \frac{\lVert e \rVert_p}{ \lVert e_{\mathrm{0}} \rVert_p}.
 
-is a useful measure to evaluate the data fit. Model predictions that manage to explain parts of the observed data holds :math:`\lVert e_{\mathrm{norm}} \rVert_x <1`. Furthermore, the data norm :math:`\lVert e_{\mathrm{0}} \rVert_x` is used in the normalisation of data groups.
+is a useful measure to evaluate the data fit. Model predictions that manage to explain parts of the observed data holds :math:`\lVert e_{\mathrm{norm}} \rVert_p <1`. Furthermore, the data norm :math:`\lVert e_{\mathrm{0}} \rVert_p` is used in the normalisation of data groups.
 
 Waveform misfit
 ^^^^^^^^^^^^^^^
@@ -124,7 +134,7 @@ When measuring waveform data's cross-correlation, the misfit function is based o
 Satellite misfit
 ^^^^^^^^^^^^^^^^
 
-The surface deformation data is pre-processed with kite (:doc:`../examples/satellite_insar/index`) to obtain a subsampled quadtree. The misfit is then calculated for each quadtree tile :math:`d_{i}`.
+The surface deformation data is pre-processed with kite (See example project: :doc:`../examples/satellite_insar/index`) to obtain a subsampled quadtree. The misfit is then calculated for each quadtree tile :math:`d_{i}`.
 
 
 GNSS misfit
@@ -178,9 +188,9 @@ With these weights waveform targets are `balanced` with respect to the expected 
     :alt: alternate text
     :figclass: align-center
 
-    **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading.
+    **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading. Large triangles indicate larger weights and vice versa.
 
-Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) signal procesing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source machanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
+Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) the signal processing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source mechanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
 
     .. math::
       :label: wtba
@@ -270,7 +280,7 @@ The **global misfit** in this example is then:
 The bootstrap method
 ====================
 
-`Bootstrapping` in Grond (see also `Bootstrapping (Wikipedia) <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_)  enables to suppress some types of bias in the optimization results. Observations that are affected by other signals or noise often show large misfits. Also insufficient media models for the forward model can result in high misfit values. Already a few high misfit values may pull the optimisation to a biased optimum. With bootstrapping techinques we can better estimate model parameter uncertainties in an efficient way. These include the propagation of the data error, but also the assessment of modelling errors to some extent.
+`Bootstrapping` in Grond (see also `Bootstrapping [Wikipedia] <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_)  enables to suppress some types of bias in the optimization results. Observations that are affected by other signals or noise often show large misfits. Also insufficient media models for the forward model can result in high misfit values. Already a few high misfit values may pull the optimisation to a biased optimum. With bootstrapping techniques we can better estimate model parameter uncertainties in an efficient way. These include the propagation of the data error, but also the assessment of modelling errors to some extent.
 
 In Grond the bootstrapping is applied in a number of parallel `bootstrapping chains` where individual bootstrap weights and bootstrap noise is applied to the model misfits. Technically each bootstrap chain carries out its optimization. Find more detail below, at :ref:`babo_optimiser`. (What is an :term:`optimiser`?)
 
@@ -297,7 +307,7 @@ For a `classic` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` rando
     :alt: alternate text
     :figclass: align-center
 
-    **Figure 3**: Formation of `classical` bootstrap weights. Uniformly random samples (left) and the corresponding histogram (right) with the occurence frequencies being used as bootstrap weights.
+    **Figure 3**: Formation of `classical` bootstrap weights. Uniformly random samples (left) and the corresponding histogram (right) with the occurrence frequencies being used as bootstrap weights.
 
 Bayesian weights
 ^^^^^^^^^^^^^^^^
@@ -321,7 +331,9 @@ For a `Bayesian` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` rand
 Residual bootstrap
 ------------------
 
-Residual bootstrapping is a computationally more efficient implementation of the `Randomize-then-optimize`_ approach: with empirical estimates of the data error statistics individual realisations of synthetic correlated random noise are systematically added to the data to obtain perturbed optimisations results (Fig. 5). Earthquake source parameter distributions retrieved with the `Randomize-then-optimize`_ method based on the data error variance-covariance matrices have been shown to match the model parameter distributions obtained through `Marcov Chain Monte Carlo` sampling of the model space (`Jonsson et al.`_,2014). In our `residual bootstrapping` method we add one realisation of synthetic correlated random noise to each bootstrapping chain (Fig. 5C and 1). This saves the calculation of many independent forward models compared to `Randomize-then-optimize`_ approach.
+Residual bootstrapping is a computationally more efficient implementation of the `Randomize-then-optimize`_ approach: with empirical estimates of the data error statistics individual realisations of synthetic correlated random noise are systematically added to the data to obtain perturbed optimisations results (Fig. 5).
+
+Earthquake source parameter distributions retrieved with the `Randomize-then-optimize`_ method based on the data error variance-covariance matrices have been shown to match the model parameter distributions obtained through `Markov Chain Monte Carlo` sampling of the model space (`Jonsson et al.`_, 2014). In our `residual bootstrapping` method we add realisations of synthetic correlated random noise to each bootstrapping chain (Fig. 5C and 1). This reduces the calculation of many independent forward models compared to `Randomize-then-optimize`_ approach.
 
 To generate random noise we use functions of the `Kite`_ module. From the noise estimation region defined in the `Kite`_ scenes (Fig. 5A), the noise power spectrum is used directly with a randomised phase spectrum to create new random noise with same spectral characteristics (Fig. 5B). The noise is then subsampled through the same quadtree as defined for the observed data (Fig. 5C).
 
@@ -332,7 +344,7 @@ To generate random noise we use functions of the `Kite`_ module. From the noise 
     :alt: alternate text
     :figclass: align-center
 
-    **Figure 5**: Residual bootstrap realisation of InSAR surface displacement data in Grond. (A) From data noise we (B) synthesise random correlated data noise, which is then (C) subsampled exactly as the observed data. These perturbation are then added as bootstrap residuals.
+    **Figure 5**: Residual bootstrapping of InSAR surface displacement data in Grond. (A) From displacements maps we extract noise and (B) synthesise random correlated data noise. (C) This synthetic noise is then subsampled exactly as the observed data. These random realisations are added to the residuals of each bootstrap chain.
 
 
 .. _optimisation:
@@ -351,8 +363,9 @@ Bayesian bootstrap optimisation `BABO <https://de.wikipedia.org/wiki/Babo_(Jugen
 
 BABO can be configured for a simple Monte-Carlo random direct search. It can also resemble a simulated annealing optimisation approach. Last but not least BABO enables fully probabilistic bootstrapping of the optimisation results. This is realised in parallel with optimisation chains to which bootstrapping weights are applied.
 
-Note:
-*Weights* are explained above. The specific weighting is configured with the `targets config`_ used and also with the `problem`_. The *model space* in which the optimisation takes place is defined with the `problem`_. Here described is the sampling and in the context of the multiple objective functions given by the bootstrapping.
+.. note ::
+
+  *Weights* are explained above. The specific weighting is configured with the `targets config`_ used and also with the `problem`_. The *model space* in which the optimisation takes place is defined with the `problem`_. Here described is the sampling and in the context of the multiple objective functions given by the bootstrapping.
 
 
 Sampling scheme and sampling phases
@@ -362,7 +375,7 @@ Like in any `direct search` optimisation models are drawn from the model space. 
 
 Highscore list
 """"""""""""""
-This list contains a defined number of the current best models (lowest misfit). It is continuously updated at runtime. The `highscore` list length :math:`L_{hs}` (i.e. number of member models) is `problem`_ dependend: :math:`L_{hs} = f_{\mathrm{len}} (N_{\mathrm{par}} -1)`, with :math:`N_{\mathrm{par}}` being the number of model paramters. :math:`f_{\mathrm{len}}` is configurable (``chain_length_factor``, default is 8).
+This list contains a defined number of the current best models (lowest misfit). It is continuously updated at runtime. The `highscore` list length :math:`L_{hs}` (i.e. number of member models) is `problem`_ dependend: :math:`L_{hs} = f_{\mathrm{len}} (N_{\mathrm{par}} -1)`, with :math:`N_{\mathrm{par}}` being the number of model parameters. :math:`f_{\mathrm{len}}` is configurable (``chain_length_factor``, default is 8).
 
 There are three sampling phases defined, based on which models are drawn from
 the model space:
@@ -391,11 +404,11 @@ This starting phase allows to inject pre-defined models at the start of the opti
 
 DirectedSamplerPhase
 """"""""""""""""""""
-This sampler is used for the second phase and follows any of starting samplers above: Using existing models of the current `highscore` models the `directed` sampler draws a configurable number of new models. Like this convergence to low-misfit regions is enabled. There are quite some noteworthy configureable details to this sampler phase:
+This sampler is used for the second phase and follows any of starting samplers above: Using existing models of the current `highscore` models the `directed` sampler draws a configurable number of new models. Like this convergence to low-misfit regions is enabled. There are quite some noteworthy configurable details to this sampler phase:
 
 ``sampling_distributions``
 ..........................
-New models are drawn from normal distribution. The standard deviations are derived from the `highscore` models parameter's standard deviation and scaled by ``scatter_scale`` (see below). Optionally, the covariance of model parameters is taken into account by configuring when ``multivariate_normal`` is enabled (default is ``normal`` distribution). The distribution is centered around
+New models are drawn from normal distribution. The standard deviations are derived from the `highscore` models parameter's standard deviation and scaled by ``scatter_scale`` (see below). Optionally, the covariance of model parameters is taken into account by configuring when ``multivariate_normal`` is enabled (default is ``normal`` distribution). The distribution is centred around
 
 1. ``mean`` of the `highscore` model parameter distributions
 2. a ``random`` model from the `highscore` list or
@@ -407,11 +420,11 @@ This scales search radius around the current `highscore` models. With a scatter 
 
 ``starting_point``
 ..................
-This method tunes to the center value of the sampler distribution: This option, will increase the likelihood to draw a `highscore` member model off-center to the mean value. The probability of drawing a model from the `highscore` list is derived from distances the `highscore` models have to other `highscore` models in the model parameter space. Excentricity is therefore compensated, because models with few neighbours at larger distances have an increased likelihood to be drawn.
+This method tunes to the center value of the sampler distribution: This option, will increase the likelihood to draw a `highscore` member model off-center to the mean value. The probability of drawing a model from the `highscore` list is derived from distances the `highscore` models have to other `highscore` models in the model parameter space. Eccentricity is therefore compensated, because models with few neighbours at larger distances have an increased likelihood to be drawn.
 
 What's the use? Convergence is slowed down, yes, but to the benefit of low-misfit region represented by only a few models drawn up to the current point.
 
-Let's assume there are two separated groups of low-misfit models in our `highscore` list, with one group forming the 75% majority. In the directed sampler phase the choices of a mean center point for the distribution as well as a random starting point for the sampler distribution would favour new samples in the region of the `highscore` model majority. Models in the low-misfit region may be dying out in the `highscore` list due to favorism and related sparse sampling. `excentricity compensations` can help is these cases and keep models with not significantly higher misfits in the game and in sight.
+Let's assume there are two separated groups of low-misfit models in our `highscore` list, with one group forming the 75% majority. In the directed sampler phase the choices of a mean center point for the distribution as well as a random starting point for the sampler distribution would favour new samples in the region of the `highscore` model majority. Models in the low-misfit region may be dying out in the `highscore` list due to favour and related sparse sampling. `eccentricity compensations` can help is these cases and keep models with not significantly higher misfits in the game and in sight.
 
 TODO: correct? too many explanations? Sebastian, here is the perfect place for one of your movies.
 
@@ -430,9 +443,9 @@ The highscore list member models in each bootstrap chain (Fig. 7B) will differ t
     :alt: alternate text
     :figclass: align-center
 
-    **Figure 7**:  Bootstrap chain graph. (A) Illustration of bootstrap weights, (B) bootstrap chain highscore lists and  (C) their influence on the convergence in the model parameter space due to the individual objective function of each bootstrap chain.
+    **Figure 7**:  Bootstrap chain graph. (A) Illustration of bootstrap weights, larger triangles indicate higher weight. (B) bootstrap chain highscore lists and (C) their influence on the convergence in the model parameter space due to the individual weighted objective function of each bootstrap chain.
 
-The convergence of model parameters for the models within each bootstrap chain is dependent on the settings of the optimisation, e.g. the setup of parameter bounds, `scatter scale` settings of the `directive sampling phase` and other tuneables. With very `exploitive` settings convergence can be forced. However, if the convergence within each bootstrap chain starts to form individual clusters in the model space, further optimisation will not provide significantly better models. In Fig. 8 the area of the `highscore` models of  three bootstrap chains has only little overlap compared to an earlier stage visualised in Fig. 7C.
+The convergence of model parameters for the models within each bootstrap chain is dependent on the settings of the optimisation, e.g. the setup of parameter bounds, `scatter scale` settings of the `directive sampling phase` and other tunable. With very `exploitive` settings convergence can be forced. However, if the convergence within each bootstrap chain starts to form individual clusters in the model space, further optimisation will not provide significantly better models. In Fig. 8 the area of the `highscore` models of  three bootstrap chains has only little overlap compared to an earlier stage visualised in Fig. 7C.
 
 
 .. figure:: ../images/illu_babo_chains.svg
@@ -442,7 +455,7 @@ The convergence of model parameters for the models within each bootstrap chain i
     :alt: alternate text
     :figclass: align-left
 
-    **Figure 8**: Drawing new model candidated from the described sampling strategies - the proposal is based on the existing solution space.
+    **Figure 8**: Drawing new model candidates from the described sampling strategies - the proposal is based on the existing solution space.
 
 
 Movies: BABO at work
@@ -478,7 +491,7 @@ Global + 3 bootstrap chains
         Your browser does not support the video tag.
     </video>
 
-Illposed problem, no excentricity correction
+Ill-posed problem, no eccentricity correction
 --------------------------------------------
 
 .. raw:: html
@@ -488,7 +501,7 @@ Illposed problem, no excentricity correction
         Your browser does not support the video tag.
     </video>
 
-Illposed problem, excentricity correction applied
+Ill-posed problem, eccentricity correction applied
 -------------------------------------------------
 
 .. raw:: html
@@ -501,7 +514,7 @@ Illposed problem, excentricity correction applied
 
 Bimodal, standard deviations from high score models
 ---------------------------------------------------
-Fullspace is searched, problem is bimodel due to symmetry
+Full space is searched, problem is bimodal due to symmetry
 
 .. raw:: html
 

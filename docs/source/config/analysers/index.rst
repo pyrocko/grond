@@ -27,7 +27,7 @@ the problem also configures the ``target_balancing``. The only extra parameter
 needed is 
 
 ``niterations``
-    an integer number that defines how many random waveform predictions the target-balancing weights are based. A meaningful number will depepend on the problem. Large model spaces (loose model parameter bounds) may require a larger number of predicitons for more stable average values. For more tightly constrained problems the signal strength at the targets for the not-so-different source models, which are drawn from a small model space, may not vary much. A smaller number may suffice. Of course, the computional effort increases linearly with the number of ``niterations``.
+    an integer number that defines how many random waveform predictions the target-balancing weights are based. A meaningful number will depend on the problem. Large model spaces (loose model parameter bounds) may require a larger number of predictions for more stable average values. For more tightly constrained problems the signal strength at the targets for the not-so-different source models, which are drawn from a small model space, may not vary much. A smaller number may suffice. Of course, the computational effort increases linearly with the number of ``niterations``.
 
 .. code-block :: sh
  
@@ -50,7 +50,7 @@ This analyser is not strongly model-independent. Only the reference time given i
         defines how long the pre-event noise trace is in seconds.
 
     ``check_events``
-        is a boolean value. If ``True`` the iris global earthquake catalog is looked up to find if phase arrivals of other events may disturb the statistics of the noise.
+        is a boolean value. If ``True`` the iris global earthquake catalogue is looked up to find if phase arrivals of other events may disturb the statistics of the noise.
 
     ``phase_def``
         is a string that defines the reference phase for the pre-event time window.

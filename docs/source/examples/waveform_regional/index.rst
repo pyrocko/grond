@@ -6,7 +6,7 @@ This step-by-step guide explains how to obtain a probabilistic centroid moment t
 Setup
 -----
 
-To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the exercise project directory from Grond's git repos to a place of your choice:
+To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the exercise project directory from Grond's git repositories to a place of your choice:
 
 .. code-block :: sh
 
@@ -19,13 +19,13 @@ To repeat this exercise on your machine, you should first `install Pyrocko <http
 The project folder
 ------------------
 
-The project folder now contains a configuration file for Grond, some utility scripts to download precalculated Green's functions and to download seismic waveforms from public datacenters.
+The project folder now contains a configuration file for Grond, some utility scripts to download pre-calculated Green's functions and to download seismic waveforms from public data centres.
 
 .. code-block :: sh
     
     grond-playground-regional  # project folder
     ├── bin                         # directory with scripts
-    │   ├── download_gf_stores.sh   # download precalculated Green's functions
+    │   ├── download_gf_stores.sh   # download pre-calculated Green's functions
     │   ├── grondown                # a simple event-based waveform downloader
     │   └── grondown_regional.sh    # downloader configured for this exercise
     └── config                      # directory for configuration files
@@ -34,7 +34,7 @@ The project folder now contains a configuration file for Grond, some utility scr
 Green's function download
 -------------------------
 
-To download the precalculated Green's functions needed in this exercise, run
+To download the pre-calculated Green's functions needed in this exercise, run
 
 .. code-block :: sh
     
@@ -52,7 +52,7 @@ It contains a Pyrocko Green's function store, named ``crust2_j3``, which has bee
 Seismic waveform data download
 ------------------------------
 
-A preconfigured script is provided to download seismic waveform recordings via FDSN web services from the `IRIS <http://service.iris.edu/fdsnws/>`_ and `GEOFON <https://geofon.gfz-potsdam.de/waveform/webservices.php>`_ datacenters. Just run it with the GEOFON event ID of the study earthquake. The GEOFON event ID of the Mw 5.9 aftershock is ``gfz2018pmjk`` (you can find the ID in the `GEOFON catalog <https://geofon.gfz-potsdam.de/eqinfo/list.php>`_ event links).
+A preconfigured script is provided to download seismic waveform recordings via FDSN web services from the `IRIS <http://service.iris.edu/fdsnws/>`_ and `GEOFON <https://geofon.gfz-potsdam.de/waveform/webservices.php>`_ data centers. Just run it with the GEOFON event ID of the study earthquake. The GEOFON event ID of the Mw 5.9 aftershock is ``gfz2018pmjk`` (you can find the ID in the `GEOFON catalog <https://geofon.gfz-potsdam.de/eqinfo/list.php>`_ event links).
 
 To download the seismic waveform data, now run:
 
@@ -64,11 +64,11 @@ This shell script calls the data downloader :file:`bin/grondown` with parameters
 
 * Query the `GEOFON catalog <https://geofon.gfz-potsdam.de/eqinfo/list.php>`_ for event information about ``gfz2018pmjk``.
 * Select time windows based on event origin and time, considering that we want to analyse the signals at low frequencies (0.01 - 0.1 Hz).
-* Query datacenters for seismic stations with epicentral distance between 0 and 1000 km.
+* Query data centres for seismic stations with epicentral distance between 0 and 1000 km.
 * From the available recorder channels select appropriate ones for a target sampling rate of 2 Hz.
 * Download raw waveform data for the selected stations and channels.
 * Download instrument transfer function meta-information for all successfully downloaded waveform data.
-* Calculate displacement seismograms for quality check (Grond will use the raw data). If all went well, the displacement seismograms should be valid in the frequency range 0.01 - 0.05 Hz, sampled at 1 Hz and rotated to radial, transverse, and vertical components. The rotation to radial and transverse components is with respect to the event coordinates from the GEOFON catalog.
+* Calculate displacement seismograms for quality check (Grond will use the raw data). If all went well, the displacement seismograms should be valid in the frequency range 0.01 - 0.05 Hz, sampled at 1 Hz and rotated to radial, transverse, and vertical components. The rotation to radial and transverse components is with respect to the event coordinates from the GEOFON catalogue.
 
 After running the download script, the playground directory should contain a new :file:`data` directory with the following content:
 
@@ -77,7 +77,7 @@ After running the download script, the playground directory should contain a new
     data
     └── events
         └── gfz2018pmjk
-            ├── event.txt                 # catalog information about the event
+            ├── event.txt                 # catalogue information about the event
             └── waveforms
                 ├── grondown.command
                 ├── prepared/...          # rotated, displacement waveforms

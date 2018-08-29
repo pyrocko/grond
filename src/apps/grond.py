@@ -340,7 +340,7 @@ def command_scenario(args):
             '--problem', dest='problem', default='cmt',
             type='choice', choices=['cmt', 'rectangular'],
             help='problem to generate: \'dc\' (double couple)'
-                 ' or\'rectangular\' (rectangular finite fault)'
+                 ' or \'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
         parser.add_option(
             '--magnitude-range', dest='magnitude_range', type=str,

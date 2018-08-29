@@ -362,10 +362,10 @@ strategies.
         This refers to the optimisation strategy, how to sample model space to find solutions in a given Grond setup.
 
     Bootstrapping
-        In statistics, bootstrapping is any test or metric that relies on random sampling with replacement. Bootstrapping allows assigning measures of accuracy (defined in terms of bias, variance, confidence intervals, prediction error or some other such measure) to sample estimates. This technique allows estimation of the sampling distribution of almost any statistic using random sampling methods. Generally, it falls in the broader class of resampling methods. `Wiki <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_
+        In statistics, bootstrapping is any test or metric that relies on random sampling with replacement. Bootstrapping allows assigning measures of accuracy (defined in terms of bias, variance, confidence intervals, prediction error or some other such measure) to sample estimates. This technique allows estimation of the sampling distribution of almost any statistic using random sampling methods. Generally, it falls in the broader class of re-sampling methods. `Wiki <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_
 
     Green's Function Store
-        Refers to Green's function databases to be used for the forward modelling. In Grond these stores are adressed with directory paths and an individual ``store_id``.
+        Refers to Green's function databases to be used for the forward modelling. In Grond these stores are addressed with directory paths and an individual ``store_id``.
 
     Engine
         Forward modelling in Grond is done through the Pyrocko GF engine, which allows fast forward modelling for arbitrary source models based on pre-calculated Green's function stores (databases). Its configuration may contain information about where to find the pre-calculated Pyrocko Green's function stores.

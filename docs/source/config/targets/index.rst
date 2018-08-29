@@ -1,7 +1,7 @@
 Targets
 =======
 
-**Targets** is what Grond tries to match: The misfit between an *observed* target and forward model is minimized. Targets are derived from observabled or synthesised data. A target can be, a filtered waveform, a spectrum, InSAR or GNSS displacement. Each target has properties which can be tuned. These can be frequency filters, selected observed components and essentially a Green's functions store which is responsible for the synthetics at a particular target.
+**Targets** is what Grond tries to match: The misfit between an *observed* target and forward model is minimized. Targets are derived from observables or synthesised data. A target can be, a filtered waveform, a spectrum, InSAR or GNSS displacement. Each target has properties which can be tuned. These can be frequency filters, selected observed components and essentially a Green's functions store which is responsible for the synthetics at a particular target.
 
 Different ``TargetGroups`` can be combined to solve the inverse problem, leading to a joint optimisation from different data sources and observables.
 
@@ -30,12 +30,12 @@ Parameters valid for all types of ``MisfitTargets`` are:
       Green's function store interpolation, choose from:
 
       * ``multilinear``
-          Performs a linear interpolation between discrete Green's function for improved resolution of synthetic data. *This option is computationaly more expensive.*
+          Performs a linear interpolation between discrete Green's function for improved resolution of synthetic data. *This option is computationally more expensive.*
 
       * ``nearest_neighbor``
           Uses the Green's function calculation for the forward model.
 
-      Choices other than 'nearest_neighbor' may require dense GF stores to avoid aliasing artifacts in the forward modelling.
+      Choices other than 'nearest_neighbor' may require dense GF stores to avoid aliasing artefacts in the forward modelling.
 
   ``store_id``
       Name of the GF Store to use.
@@ -51,7 +51,7 @@ Waveform targets
 
       :math:`{\bf d}_{raw, synth}` and the restituted observed waveforms. Only these parts are used in the misfit calculation. The taper window duration is configured for each seismic station individually by phase arrivals.
 
-      The tapering is source-model dependent, since the tapering time is given with respect to the theoretic phase arrival time. This arrival time depends on the source location, which is often part of the optimisation itself and therefore may change continuously with each iteration. Therefore, restitution, tapering and filtering are done for each misfit calculation anew. Grond uses the pyrocko `CosTaper`_ taper. The ``fade_out`` time can be configured or it is calculated as the inverse of the minimum frequency of the chosen bandpass filter.
+      The tapering is source-model dependent, since the tapering time is given with respect to the theoretic phase arrival time. This arrival time depends on the source location, which is often part of the optimisation itself and therefore may change continuously with each iteration. Therefore, restitution, tapering and filtering are done for each misfit calculation anew. Grond uses the Pyrocko `CosTaper`_ taper. The ``fade_out`` time can be configured or it is calculated as the inverse of the minimum frequency of the chosen bandpass filter.
 
   **Frequency filtering**
       ``fmin`` and ``fmax`` in Hz define the desired bandpass filter.
@@ -159,7 +159,7 @@ Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration sec
 GNSS campaign targets
 ---------------------
 
-True 3D surface displacement as measured by GNSS stations can be included in the inversion process by defining a :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup`. The station's displacement data has to be stored according to :mod:`~pyrocko.model.gnss_campaign`. Please refer to pyrocko's documentation of the GNSS model (`See example <https://pyrocko.org/docs/current/library/examples/gnss_data.html>`_)
+True 3D surface displacement as measured by GNSS stations can be included in the inversion process by defining a :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup`. The station's displacement data has to be stored according to :mod:`~pyrocko.model.gnss_campaign`. Please refer to Pyrocko's documentation of the GNSS model (`See example <https://pyrocko.org/docs/current/library/examples/gnss_data.html>`_)
 
 .. glossary ::
 

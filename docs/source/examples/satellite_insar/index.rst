@@ -1,7 +1,7 @@
 Rectangular source plane from InSAR observations
 ================================================
 
-This step-by-step recipe will guide you to through an earthquake source inversion for a finite rectangular fault plane from InSAR data using Grond. We will excercise the inversion for the 2009 L'Aquila earthquake - A shallow normal faulting Mw 6.3 earthquake - and use unwrapped surface displacement data derived from the Envisat mission.
+This step-by-step recipe will guide you to through an earthquake source inversion for a finite rectangular fault plane from InSAR data using Grond. We will exercise the inversion for the 2009 L'Aquila earthquake - A shallow normal faulting Mw 6.3 earthquake - and use unwrapped surface displacement data derived from the Envisat mission.
 
 Setup
 -----
@@ -21,13 +21,13 @@ exercise project directory from Grond's git repos to a place of your choice.
 The project folder
 ------------------
 
-The project folder now contains a configuration file for Grond and some utility scripts to download precalculated Green's functions and InSAR data:
+The project folder now contains a configuration file for Grond and some utility scripts to download pre-calculated Green's functions and InSAR data:
 
 .. code-block :: sh
     
     grond-playground-insar        # project folder
     ├── bin                        # directory with scripts
-    │   ├── download_gf_stores.sh  # download precalculated Green's functions
+    │   ├── download_gf_stores.sh  # download pre-calculated Green's functions
     │   ├── download_insar_data.sh      # a simple event-based waveform downloader
     └── config                     # directory for configuration files
         └── insar_rectangular.gronf       # Grond configuration file for this exercise
@@ -36,7 +36,7 @@ The project folder now contains a configuration file for Grond and some utility 
 Green's function download
 -------------------------
 
-To download the precalculated Green's functions needed in this exercise, run
+To download the pre-calculated Green's functions needed in this exercise, run
 
 .. code-block :: sh
     
@@ -69,12 +69,12 @@ The downloaded data has to be prepared for the inversion using the ``kite`` tool
 
 Once the software is installed we need to parametrize the two scenes:
 
-    1. The data subsampling quadtree. This efficiently reduces the resolution of the scene, yet conserves the important data information. A reduced number of samples will benefit the forward-modelling computing cost.
+    1. The data sub-sampling quadtree. This efficiently reduces the resolution of the scene, yet conserves the important data information. A reduced number of samples will benefit the forward-modelling computing cost.
 
     2. Estimate the spatial data covariance. By looking at the spatial noise of the scene we can estimate the data covariance. ``kite`` enables us to calculate a covariance matrix for the quadtree, which will be used as a weight matrix in our Grond inversion.
 
 
-Let's start by parametrizing the quadtree: find a good parameters for the subsampling quadtree by tuning four parameters:
+Let's start by parametrizing the quadtree: find a good parameters for the sub-sampling quadtree by tuning four parameters:
 
     1. ``epsilon``, the variance threshold in each quadtree's tile.
     2. ``nan_fraction``, percentage of allowed NaN pixels per tile.
@@ -100,7 +100,7 @@ Now we can parametrize the quadtree visually:
 
 .. note ::
     
-    Delete unncessary tiles of the quadtree by right-click select, and delete with :kbd:`Del`.
+    Delete unnecessary tiles of the quadtree by right-click select, and delete with :kbd:`Del`.
 
 Once you are done, click on the Tag :guilabel:`scene.covariance`. Now we will define a window for the data's noise. The window's data will be use to calculating the spatial covariance of the scene(for details see: reference).
 
@@ -116,9 +116,9 @@ On the left hand side of the GUI you find parameters to tune the spatial covaria
     
     **Figure 2**: Data covariance inspection with :command:`spool`.
 
-Once we finished parametrisation of the quadtree and covariance, we have to calculate the full covariance and weight matrix from the complete scene resoltion:
+Once we finished parametrisation of the quadtree and covariance, we have to calculate the full covariance and weight matrix from the complete scene resolution:
 
-    1. Calulate the full covariance: :menuselection:`Tools --> Calculate Full Matrix`
+    1. Calculate the full covariance: :menuselection:`Tools --> Calculate Full Matrix`
     2. Save the parametrized scene: :menuselection:`File --> Save Scene`.
 
 
@@ -127,7 +127,7 @@ Grond configuration
 
 The project folder already contains a configuration file for rectangular source optimisation with Grond, so let's have a look at it.
 
-It's a `YAML`_ file: This file format has been choosen for the Grond configuration because it can represent arbitrarily nested data structures built from mappings, lists, and scalar values. It also provides an excellent balance between human and machine readability. When working with YAML files, it is good to know that the **indentation is part of the syntax** and that comments can be introduced with the ``#`` symbol. The type markers, like ``!grond.RectangularProblemConfig``, select the Grond object type of the following mapping and it's documentation can likely be found in the :doc:`/library/index`.
+It's a `YAML`_ file: This file format has been chosen for the Grond configuration because it can represent arbitrarily nested data structures built from mappings, lists, and scalar values. It also provides an excellent balance between human and machine readability. When working with YAML files, it is good to know that the **indentation is part of the syntax** and that comments can be introduced with the ``#`` symbol. The type markers, like ``!grond.RectangularProblemConfig``, select the Grond object type of the following mapping and it's documentation can likely be found in the :doc:`/library/index`.
 
 
 .. literalinclude :: ../../../../examples/grond-playground-insar/config/insar_rectangular.gronf

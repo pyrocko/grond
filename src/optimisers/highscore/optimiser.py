@@ -96,7 +96,9 @@ class SamplerPhase(Object):
 
 
 class InjectionSamplerPhase(SamplerPhase):
-    xs_inject = Array.T(dtype=num.float, shape=(None, None))
+    xs_inject = Array.T(
+        dtype=num.float, shape=(None, None),
+        help='Array with the reference model.')
 
     def get_raw_sample(self, problem, iiter, chains):
         return self.xs_inject[iiter, :]
@@ -624,7 +626,7 @@ class HighScoreOptimiserConfig(OptimiserConfig):
         SamplerPhase.T(),
         default=[UniformSamplerPhase(niterations=1000),
                  DirectedSamplerPhase(niterations=5000)],
-        help='Stages of the sampler. Start with uniform sampling of the model'
+        help='Stages of the sampler: Start with uniform sampling of the model'
              ' model space and narrow down through directed sampling.')
     chain_length_factor = Float.T(
         default=8.,

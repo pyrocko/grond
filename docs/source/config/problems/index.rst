@@ -139,11 +139,7 @@ particularly for the ``CMTProblem``.
 ``DoubleDCProblem`` configuration
 ---------------------------------
 
-This problem has two double-couple point sources (derived from ``DoubleDCSource``). They are 
-dependent in location and relative timing to avoid overlapping in either space or time. The 
-mechanisms, the durations and the moments of the two sources are indepedent.
-Using this model more complex eartquakes with two prominent rupture phases or with a 
-change of mechanism along the rupture plane can be studied. Or simply the potenial of a major source 
+This problem has two double-couple point sources (derived from ``DoubleDCSource``). They are dependent in location and relative timing to avoid overlapping in either space or time. The mechanisms, the durations and the moments of the two sources are independent. Using this model more complex earthquakes with two prominent rupture phases or with a change of mechanism along the rupture plane can be studied. Or simply the potential of a major source
 complexity of an earthquake can be tested.
 
 Configuration parameters that common for all problems are listed above and following are parameters 
