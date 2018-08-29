@@ -272,7 +272,7 @@ The bootstrap method
 
 `Bootstrapping` in Grond (see also `Bootstrapping (Wikipedia) <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_)  enables to suppress some types of bias in the optimization results. Observations that are affected by other signals or noise often show large misfits. Also insufficient media models for the forward model can result in high misfit values. Already a few high misfit values may pull the optimisation to a biased optimum. With bootstrapping techinques we can better estimate model parameter uncertainties in an efficient way. These include the propagation of the data error, but also the assessment of modelling errors to some extent.
 
-In Grond the bootstrapping is applied in a number of parallel `bootstrapping chains` where individual bootstrap weights and bootstrap noise is applied to the model misfits. Technically each bootstrap chain carries out its optimization. Find more detail below, at :ref:`babo-optimizer`. (What is an :term:`optimiser`?)
+In Grond the bootstrapping is applied in a number of parallel `bootstrapping chains` where individual bootstrap weights and bootstrap noise is applied to the model misfits. Technically each bootstrap chain carries out its optimization. Find more detail below, at :ref:`babo_optimiser`. (What is an :term:`optimiser`?)
 
 In Grond **two** different bootstrapping methods are implemented:
 
@@ -335,19 +335,21 @@ To generate random noise we use functions of the `Kite`_ module. From the noise 
     **Figure 5**: Residual bootstrap realisation of InSAR surface displacement data in Grond. (A) From data noise we (B) synthesise random correlated data noise, which is then (C) subsampled exactly as the observed data. These perturbation are then added as bootstrap residuals.
 
 
+.. _optimisation:
+
 Optimisation
 ============
 
 Grond's modular framework is open for different optimisation schemes, the native optimisation schemes is the so-called `Bayesian Bootstrap Optimisation` (BABO). The :term:`Optimiser` defines the particular :term:`objective function` or objective functions and options for them. The optimiser also defines the model space sampling schemes. Multiple objective functions are realized in parallel running optimisation chains - the bootstrap chains (see below).
 
-.. _babo-optimizer:
+.. _babo_optimiser:
 
-The BABO optimiser
-------------------
+Bayesian Bootstrap Optimisation (BABO)
+--------------------------------------
 
-BABO stands for `Bayesian Bootstrap Optimisation` that is done if the optimiser is configured to the full extent. As the name says, `BABO <https://de.wikipedia.org/wiki/Babo_(Jugendsprache)>`_ allows for a source optimisation while providing the full information in the results for a fully Bayesian analysis. BABO is based on `Direct Search`, meaning model parameters are drawn in a randomised way from the defined model space and synthetic data are then calculated to be compared with the observed data. This needs no assumptions on the topology of the misfit space and is appropriate also for highly non-linear problems.
+Bayesian bootstrap optimisation `BABO <https://de.wikipedia.org/wiki/Babo_(Jugendsprache)>`_ allows for earthquake source optimisation whilst providing the complete information for a fully Bayesian analysis. BABO is based on `Direct Search`, where random model parameters are drawn from a defined model space. Those synthetic models are then calculated and compared with the :term:`target's <target>` observed data. This needs no assumptions on the topology of the misfit space and is appropriate for highly non-linear problems.
 
-BABO can turn into a simple Monte-Carlo random direct search if some options are switched off. It can also resemble a simulated annealing optimisation approach using a certain problem configuration. Last but not least BABO enables fully probabilistic bootstrapping of the optimisation results. This is realised in parallel with optimisation chains to which bootstrapping weights are applied.
+BABO can be configured for a simple Monte-Carlo random direct search. It can also resemble a simulated annealing optimisation approach. Last but not least BABO enables fully probabilistic bootstrapping of the optimisation results. This is realised in parallel with optimisation chains to which bootstrapping weights are applied.
 
 Note:
 *Weights* are explained above. The specific weighting is configured with the `targets config`_ used and also with the `problem`_. The *model space* in which the optimisation takes place is defined with the `problem`_. Here described is the sampling and in the context of the multiple objective functions given by the bootstrapping.

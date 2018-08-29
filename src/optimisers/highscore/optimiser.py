@@ -69,8 +69,11 @@ class BootstrapTypeChoice(StringChoice):
 
 
 class SamplerPhase(Object):
-    niterations = Int.T()
-    ntries_preconstrain_limit = Int.T(default=1000)
+    niterations = Int.T(
+        help='Number of iteration for this phase.')
+    ntries_preconstrain_limit = Int.T(
+        default=1000,
+        help='Tries to find a valid preconstrained sample.')
 
     def get_raw_sample(self, problem, iiter, chains):
         raise NotImplementedError
@@ -620,9 +623,17 @@ class HighScoreOptimiserConfig(OptimiserConfig):
     sampler_phases = List.T(
         SamplerPhase.T(),
         default=[UniformSamplerPhase(niterations=1000),
-                 DirectedSamplerPhase(niterations=5000)])
-    chain_length_factor = Float.T(default=8.)
-    nbootstrap = Int.T(default=100)
+                 DirectedSamplerPhase(niterations=5000)],
+        help='Stages of the sampler. Start with uniform sampling of the model'
+             ' model space and narrow down through directed sampling.')
+    chain_length_factor = Float.T(
+        default=8.,
+        help='Controls the length of each chain: '
+             'chain_length_factor * nparameters + 1')
+    nbootstrap = Int.T(
+        default=100,
+        help='Number of bootstrap realisations to be tracked simultaneously in'
+             ' the optimisation.')
 
     def get_optimiser(self):
         return HighScoreOptimiser(

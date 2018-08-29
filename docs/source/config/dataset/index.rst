@@ -7,8 +7,8 @@ The :term:`dataset` configuration section is the core of data input and data con
     :language: yaml
     :caption: A basic dataset section of a Grond configuration file (``gronf``).
 
-Basic configuration and templating
-----------------------------------
+General configuration and templating
+------------------------------------
 
 All folder and file paths in the dataset support templating and prefixing:
 
