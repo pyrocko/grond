@@ -53,6 +53,7 @@ subcommand_usages = {
     'plot': (
         'plot <plotnames> ( <rundir> | <configfile> <eventname> ) [options]',
         'plot all ( <rundir> | <configfile> <eventname> ) [options]',
+        'plot <plotconfigfile> ( <rundir> | <configfile> <eventname> ) [options]',
         'plot list ( <rundir> | <configfile> <eventname> ) [options]',
         'plot config ( <rundir> | <configfile> <eventname> ) [options]'),
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
