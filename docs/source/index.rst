@@ -7,12 +7,11 @@ A probabilistic earthquake source inversion framework. Designed and crafted in M
 Abstract
 --------
 
-Grond is an open source software tool for robust characterization of earthquake sources. Moment tensors and finite fault rupture models can be estimated from seismic, InSAR, and GNSS observations. It serves as a modular framework for the analysis of diverse magmatic, tectonic, and other geophysical processes.
+Grond is an open source software tool for robust characterization of earthquake sources. Moment tensors and finite fault rupture models can be estimated from a combination of seismic waveforms, waveform attributes and geodetic observations like InSAR and GNSS. It helps you to investigate diverse magmatic, tectonic, and other geophysical processes at all scales.
 
-In Grond the optimisation explores the full model space and maps model parameter trade-offs. Meaningful model uncertainties are delivered through a Bayesian bootstrap-based probabilistic joint inversion scheme.
-Various data-fitting and weighting options provide easy customization of the objective function.
+It delivers meaningful model uncertainties through a Bayesian bootstrap-based probabilistic joint inversion scheme. The optimisation explores the full model space and maps model parameter trade-offs with a flexible design of objective functions.
 
-Rapid forward modelling is enabled by using pre-computed Green's function databases, handled through the Pyrocko software library. They serve synthetic near-field geodetic displacements (InSAR and GNSS) and synthetic seismic waveforms for arbitrary earthquake source models and geometries.
+Rapid forward modelling is enabled by using pre-computed Green's function databases, handled through the Pyrocko software library. They serve synthetic near-field surface displacements and synthetic seismic waveforms for arbitrary earthquake source models and geometries.
 
 
 Contents
