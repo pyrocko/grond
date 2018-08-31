@@ -1,0 +1,25 @@
+%YAML 1.1
+# Example of station correction file for Grond
+--- !grond.StationCorrection
+
+# NSLC code of the seismic trace
+codes: [SX, WIMM, '', Z]
+
+# Delay in seconds
+delay: 0.0
+
+# Correction factor for the waveform
+factor: 2.4699299309812095
+
+--- !grond.StationCorrection
+codes: [SX, WIMM, '', R]
+delay: 0.0
+factor: 2.4699299309812095
+--- !grond.StationCorrection
+codes: [SX, WIMM, '', T]
+delay: 0.0
+factor: 2.4699299309812095
+--- !grond.StationCorrection
+codes: [TH, MODW, '', Z]
+delay: 0.0
+factor: 0.6026145642803965
