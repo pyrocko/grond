@@ -34,7 +34,10 @@ Contents
 Community and support
 ---------------------
 
-Please use the `Pyrocko Hive <https://hive.pyrocko.org>`_ for discussion, feedback and bug reports.
+Please use the `Grond channel
+<https://hive.pyrocko.org/pyrocko-support/channels/grond/>`_ in `Pyrocko's Hive
+<https://hive.pyrocko.org/>`_ for discussion and feedback. To file a bug
+report, please use `GitHub Issues <https://github.com/pyrocko/grond/issues>`_
 
 
 Citation
@@ -53,6 +56,12 @@ License
 -------
 
 Grond is licensed under the :download:`GPLv3 <../../LICENSE>`.
+
+
+Source code
+-----------
+
+The source code of Grond is hosted in its `GitHub repository <https://github.com/pyrocko/grond/>`_.
 
 
 Contact
