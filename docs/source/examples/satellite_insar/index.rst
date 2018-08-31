@@ -12,7 +12,7 @@ exercise project directory from Grond's git repos to a place of your choice.
 
 .. code-block :: sh
 
-    # git clone https://gitext.gfz-potsdam.de/heimann/grond.git  # <- done during installation
+    # git clone https://github.com/pyrocko/grond  # <- done during installation
     cd grond
     cp -r examples/grond-playground-insar ~/grond-playground-insar
     cd ~/grond-playground-insar
@@ -142,7 +142,7 @@ Before running the actual optimisation, we can now use the command
 
 .. code-block :: sh
     
-    grond check config/insar_rectangular.gronf gfz2015sfdd
+    grond check config/insar_rectangular.gronf
 
 to run some sanity checks. In particular, Grond will try to run a few forward models to see if the modelling works and if it can read the input data. If only one event is available, we can also neglect the event name argument in this and other Grond commands.
 
