@@ -9,7 +9,7 @@ Find the documentation and install instructions at https://pyrocko.org/grond/.
 
 ## Community and support
 
-Please use the [Pyrocko Hive](https://hive.pyrocko.org) for discussion, feedback and bug reports.
+Please use [the Grond channel](https://hive.pyrocko.org/pyrocko-support/channels/grond) in the [Pyrocko Hive](https://hive.pyrocko.org) for discussion and feedback. To file a bug report, please use [GitHub Issues](https://github.com/pyrocko/grond/issues).
 
 ## Citation
 
