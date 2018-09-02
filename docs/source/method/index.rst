@@ -190,13 +190,12 @@ With these weights waveform targets are `balanced` with respect to the expected 
 
     **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading. Large triangles indicate larger weights and vice versa.
 
-Signal amplitudes in a trace :math:`|{\bf{d}}_{synth}|` depend on the (1) source-receiver distance, (2) on the phase type and (3) the signal processing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitude have higher contributions to the misfit than smaller signals, without providing more information about the source mechanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
+Signal amplitudes in a trace :math:`|{\bf{d}}_{i,synth}|_i` depend on the (1) source-receiver distance, (2) on the phase type and (3) the signal processing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitudes have higher contributions to the misfit than smaller signals, without providing more information about the source mechanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
 
     .. math::
       :label: wtba
 
-      {\bf w}_{\mathrm{tba}} = 1/ \lVert {\bf{d}}_{synth}  \rVert_x  = \
-            \left(\sum^{N}{|{d}_{i, synth}|^x}\right)^{\frac{1}{x}}.
+      {\bf w}_{\mathrm{tba}}=\frac{1}{{\bf a}},\quad \textrm{with trace weights}\,\,a_i= \frac{1}{N} \sum^N_j{|{\bf d}_{synth}|_{ji}}.
 
 These balancing weights will enhanced small signals and supress large signals in the objective function. This is described as `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23). In Grond they are defined as ``balancing weights`` and are received from the :class:`~grond.analysers.target_balancing.TargetBalancingAnalyser` module before the optimisation.
 
@@ -492,7 +491,7 @@ Global + 3 bootstrap chains
     </video>
 
 Ill-posed problem, no eccentricity correction
---------------------------------------------
+---------------------------------------------
 
 .. raw:: html
 
@@ -502,7 +501,7 @@ Ill-posed problem, no eccentricity correction
     </video>
 
 Ill-posed problem, eccentricity correction applied
--------------------------------------------------
+--------------------------------------------------
 
 .. raw:: html
 
