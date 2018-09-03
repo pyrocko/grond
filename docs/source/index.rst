@@ -35,9 +35,9 @@ Community and support
 ---------------------
 
 Please use the `Grond channel
-<https://hive.pyrocko.org/pyrocko-support/channels/grond/>`_ in `Pyrocko's Hive
+<https://hive.pyrocko.org/pyrocko-support/channels/grond/>`_ in the `Pyrocko Hive
 <https://hive.pyrocko.org/>`_ for discussion and feedback. To file a bug
-report, please use `GitHub Issues <https://github.com/pyrocko/grond/issues>`_
+report, please use `GitHub Issues <https://github.com/pyrocko/grond/issues>`_.
 
 
 Citation
