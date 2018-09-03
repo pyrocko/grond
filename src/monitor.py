@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import time
 import logging
 import threading
@@ -40,6 +42,30 @@ class color:
     END = '\033[0m'
 
 
+class TerminalMonitor(object):
+
+    def __init__(self, nlines_scroll=10):
+        self.nlines_scroll = nlines_scroll
+
+    def __enter__(self):
+        print('\033[2J\033[1;%ir\033[%i;1H' % (self.nlines_scroll, self.nlines_scroll-1), end=None)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        print('\033[r\033[%i;1H\033[0J\033[%i;1H' % (self.nlines_scroll+1, self.nlines_scroll-1))
+
+    def _start_show(self):
+        print('\033[%i;1H\033[0J' % (self.nlines_scroll+1), end=None)
+
+    def _end_show(self):
+        print('\033[%i;1H' % (self.nlines_scroll-1), end=None)
+
+    def show(self, s):
+        self._start_show()
+        print(s, end=None)
+        self._end_show()
+
+
 class GrondMonitor(threading.Thread):
 
     col_width = 15
@@ -54,6 +80,7 @@ class GrondMonitor(threading.Thread):
         self.iter_per_second = 0
         self._iiter = 0
         self._iter_buffer = RingBuffer(20)
+        self._tm = None
 
     def run(self):
         logger.info('Waiting to follow environment %s' % self.rundir)
@@ -71,15 +98,19 @@ class GrondMonitor(threading.Thread):
 
         self.history.add_listener(self)
 
-        print('\033c')
 
-        ii = 0
-        while True:
-            ii += 1
-            self.history.update()
-            time.sleep(0.1)
-            if self.sig_terminate.is_set():
-                break
+        with TerminalMonitor(10) as tm:
+
+            self._tm = tm
+
+            ii = 0
+            while True:
+                ii += 1
+                self.history.update()
+                time.sleep(0.1)
+                if self.sig_terminate.is_set():
+                    break
+
 
         logger.debug('monitor thread exiting')
 
@@ -149,10 +180,7 @@ class GrondMonitor(threading.Thread):
         if optimiser_status.extra_footer is not None:
             lnadd(optimiser_status.extra_footer)
 
-        lines[0:0] = ['\033[%i;1H\033[1J\033[1;1H' % (len(lines)+2)]
-        lnadd('')
-        lnadd('\033[%i;1H' % (len(lines)+1))
-        print('\n'.join(lines))
+        self._tm.show('\n'.join(lines))
 
     def terminate(self):
         logger.debug('setting thread termination flag')
