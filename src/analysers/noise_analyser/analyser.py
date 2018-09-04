@@ -3,7 +3,7 @@ from pyrocko.client import catalog
 
 import logging
 import numpy as num
-from pyrocko.guts import Int, Bool, Float, String
+from pyrocko.guts import Int, Bool, Float, String, StringChoice
 from pyrocko.gf.meta import OutOfBounds
 from ..base import Analyser, AnalyserConfig, AnalyserResult
 from grond.dataset import NotFound
@@ -149,23 +149,33 @@ def seismic_noise_variance(traces, engine, event, targets,
 
 
 class NoiseAnalyser(Analyser):
-    """From the pre-event station noise variance-based trace weights are formed.
+    '''
+    From the pre-event station noise variance-based trace weights are formed.
 
-    The trace weights are the inverse of the noise variance. The correlation
-    of the noise is neglected.
-    Optionally, using a the gCMT global earthquake catalogue, the station data
-    are checked for theoretical phase arrivals of M>5 earthquakes. In case of
-    a very probable contamination the trace weights are set to zero. In case
-    global earthquake phase arrivals are within a 30 min time window before
-    the start of the set pre-event noise window, only a warning is thrown.
-    """
+    By default, the trace weights are the inverse of the noise variance. The
+    correlation of the noise is neglected. Optionally, using a the gCMT global
+    earthquake catalogue, the station data are checked for theoretical phase
+    arrivals of M>5 earthquakes. In case of a very probable contamination the
+    trace weights are set to zero. In case global earthquake phase arrivals are
+    within a 30 min time window before the start of the set pre-event noise
+    window, only a warning is thrown.
+
+    It is also possible to remove data where the noise level exceeds the median
+    by a given factor (by setting there weight to 0). This can be done
+    exclusively (``mode='weeding'``) or in combination with weighting
+    (``mode='weighting'``).
+    '''
+
     def __init__(self, nwindows, pre_event_noise_duration,
-                 check_events, phase_def):
+                 check_events, phase_def, statistic, mode, cutoff):
         Analyser.__init__(self)
         self.nwindows = nwindows
         self.pre_event_noise_duration = pre_event_noise_duration
         self.check_events = check_events
         self.phase_def = phase_def
+        self.statistic = statistic
+        self.mode = mode
+        self.cutoff = cutoff
 
     def analyse(self, problem, ds):
 
@@ -210,15 +220,48 @@ class NoiseAnalyser(Analyser):
             traces, engine, event, problem.waveform_targets,
             self.nwindows, self.pre_event_noise_duration,
             self.check_events, self.phase_def)
-        norm_noise = num.nanmedian(var_ds)
-        if norm_noise == 0:
-                logger.info(
-                    'Noise Analyser returned a weight of 0 for all stations')
 
-        weights0 = norm_noise / var_ds
-        weights = num.where(var_ds == num.nan, 0., weights0)
+        if self.statistic == 'var':
+            noise = var_ds
+        elif self.statistic == 'std':
+            noise = num.sqrt(var_ds)
+        else:
+            assert False, 'invalid statistic argument'
+
+        norm_noise = num.nanmedian(noise)
+        if norm_noise == 0:
+            logger.info(
+                'Noise Analyser returned a weight of 0 for all stations')
+
+        ok = num.isfinite(noise)
+        assert num.all(noise[ok] >= 0.0)
+
+        weights = num.zeros(noise.size)
+        if self.mode == 'weighting':
+            weights[ok] = norm_noise / noise[ok]
+        elif self.mode == 'weeding':
+            weights[ok] = 1.0
+        else:
+            assert False, 'invalid mode argument'
+
+        if self.cutoff is not None:
+            weights[ok] = num.where(
+                noise[ok] <= norm_noise * self.cutoff,
+                weights[ok], 0.0)
+
         if self.check_events:
             weights = weights*ev_ws
+
+        for itarget, target in enumerate(problem.waveform_targets):
+            logger.info((
+                'noise analysis for %s:\n'
+                '  var: %g\n'
+                '  std: %g\n'
+                '  contamination_weight: %g\n'
+                '  weight: %g') % (
+                    target.string_id(), var_ds[itarget],
+                    num.sqrt(var_ds[itarget]), ev_ws[itarget],
+                    weights[itarget]))
 
         for weight, target in zip(weights, problem.waveform_targets):
             target.analyser_results['noise'] = \
@@ -227,33 +270,56 @@ class NoiseAnalyser(Analyser):
 
 class NoiseAnalyserResult(AnalyserResult):
     weight = Float.T(
-        help='The inverse of the pre-event data variance. '
-             'If traces were checked for other event phase arrivals,'
-             ' the weight can be zero for contaminated traces.')
+        help='The inverse of the pre-event data variance or standard '
+             'deviation. If traces were checked for other event phase '
+             'arrivals, the weight can be zero for contaminated traces.')
 
 
 class NoiseAnalyserConfig(AnalyserConfig):
     """Configuration parameters for the pre-event noise analysis."""
+
     nwindows = Int.T(
         default=1,
         help='number of windows for trace splitting')
+
     pre_event_noise_duration = Float.T(
         default=0.,
         help='Total length of noise trace in the analysis')
+
     phase_def = String.T(
         default='P',
         help='Onset of phase_def used for upper limit of window')
+
     check_events = Bool.T(
         default=False,
         help='check the gCMT global catalogue for M>5 earthquakes'
              ' that produce phase arrivals'
              ' contaminating and affecting the noise analysis')
 
+    statistic = StringChoice.T(
+        choices=('var', 'std'),
+        default='var',
+        help='Set weight to inverse of noise variance (var) or standard '
+             'deviation (std).')
+
+    mode = StringChoice.T(
+        choices=('weighting', 'weeding'),
+        default='weighting',
+        help='Generate weights based on inverse of noise measure (weighting), '
+             'or discrete on/off style in combination with cutoff value '
+             '(weeding).')
+
+    cutoff = Float.T(
+        optional=True,
+        help='Set weight to zero, when noise level exceeds median by given '
+             'factor.')
+
     def get_analyser(self):
         return NoiseAnalyser(
             nwindows=self.nwindows,
             pre_event_noise_duration=self.pre_event_noise_duration,
-            check_events=self.check_events, phase_def=self.phase_def)
+            check_events=self.check_events, phase_def=self.phase_def,
+            statistic=self.statistic, mode=self.mode, cutoff=self.cutoff)
 
 
 __all__ = '''
