@@ -184,6 +184,15 @@ angular.module('reportApp', ['ngRoute'])
                 selected_problem_names.push(problem_name);
             }
         };
+
+        funcs.selected_toggle = function(problem_name) {
+            var i = selected_problem_names.indexOf(problem_name);
+            if (i > -1) {
+                selected_problem_names.splice(i, 1);
+            } else {
+                selected_problem_names.push(problem_name);
+            }
+        };
         
         funcs.selected_add_and_close_modal = function(problem_name) {
 
@@ -212,6 +221,10 @@ angular.module('reportApp', ['ngRoute'])
 
         funcs.get_selected = function() {
             return selected_problem_names;
+        };
+
+        funcs.is_selected = function(problem_name) {
+            return selected_problem_names.includes(problem_name);
         };
 
         funcs.get_report_entries = function() {
@@ -270,6 +283,10 @@ angular.module('reportApp', ['ngRoute'])
 
         var ordered_lines = {};
         var ordered_lines_istate = -1;
+
+        $scope.is_selected_class = function(problem_name) {
+            return rl.is_selected(problem_name) ? "selected" : "";
+        };
 
         $scope.get_ordered_report_entries = function() {
             if (ordered_lines_istate != rl.get_istate()) {

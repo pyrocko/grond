@@ -273,12 +273,21 @@ div#browser-warning {
     margin-bottom: 0px;
 }
 
+.scrollable {
+    max-height: 40em;
+    overflow-y: scroll;
+}
+
 /*
  * Modal
  */
 
 .modal-lg {
     max-width: 1100px;
+}
+
+.selected {
+    background-color: #c2e2ff !important;
 }
 
 .footer p {
