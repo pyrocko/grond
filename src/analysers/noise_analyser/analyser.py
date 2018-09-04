@@ -215,8 +215,8 @@ class NoiseAnalyser(Analyser):
                 logger.info(
                     'Noise Analyser returned a weight of 0 for all stations')
 
-        weights0 = norm_noise/var_ds
-        weights = num.where(var_ds==num.nan, 0., weights0)
+        weights0 = norm_noise / var_ds
+        weights = num.where(var_ds == num.nan, 0., weights0)
         if self.check_events:
             weights = weights*ev_ws
 

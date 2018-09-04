@@ -48,11 +48,13 @@ class TerminalMonitor(object):
         self.nlines_scroll = nlines_scroll
 
     def __enter__(self):
-        print('\033[2J\033[1;%ir\033[%i;1H' % (self.nlines_scroll, self.nlines_scroll-1), end=None)
+        print('\033[2J\033[1;%ir\033[%i;1H'
+              % (self.nlines_scroll, self.nlines_scroll-1), end=None)
         return self
 
     def __exit__(self, type, value, traceback):
-        print('\033[r\033[%i;1H\033[0J\033[%i;1H' % (self.nlines_scroll+1, self.nlines_scroll-1))
+        print('\033[r\033[%i;1H\033[0J\033[%i;1H'
+              % (self.nlines_scroll+1, self.nlines_scroll-1))
 
     def _start_show(self):
         print('\033[%i;1H\033[0J' % (self.nlines_scroll+1), end=None)
@@ -98,7 +100,6 @@ class GrondMonitor(threading.Thread):
 
         self.history.add_listener(self)
 
-
         with TerminalMonitor(10) as tm:
 
             self._tm = tm
@@ -110,7 +111,6 @@ class GrondMonitor(threading.Thread):
                 time.sleep(0.1)
                 if self.sig_terminate.is_set():
                     break
-
 
         logger.debug('monitor thread exiting')
 

@@ -122,6 +122,9 @@ class Environment(object):
             if len(event_names) == 1:
                 self._selected_event_names = event_names
             else:
+                if not event_names:
+                    raise EventSelectionFailed(
+                        'No event file found, check your config!')
                 raise EventSelectionFailed(
                     'Ambiguous event selection. Select from available events:'
                     '\n    %s\n  or \'all\' to use all available events'

@@ -55,7 +55,6 @@ class GrondScenario(object):
     def symlink_gfstores(self, engine):
         logger.info('Symlinking Green\'s function stores...')
 
-
         for store_id in self.stores_wanted:
             store = engine.get_store(store_id)
             dtarget = op.join(self.get_gf_stores_dir(), store_id)
