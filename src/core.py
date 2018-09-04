@@ -555,7 +555,7 @@ def process_event(ievent, g_data_id):
 
     tstop = time.time()
     logger.info(
-        'stop %i / %i (%g min)' % (ievent, nevents, (tstop - tstart)/60.))
+        'stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
 
     logger.info(
         'done with problem %s, rundir is %s' % (problem.name, rundir))
