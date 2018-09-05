@@ -33,7 +33,7 @@
     <nav style="top:3.5rem" class="navbar navbar-tabs navbar-expand fixed-top bg-dark shadow align-items-end p-0">
         <div class="col-2">
         </div>
-        <div class="col-5">
+        <div class="{{ compare_mode ? 'col-5' : 'col-10' }}">
             <ul class="nav nav-tabs">
                 <li class="nav-item ml-3" ng-repeat="problem_name in get_selected()">
                     <a 
