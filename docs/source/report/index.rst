@@ -1,7 +1,8 @@
 Report
 ======
 
-Grond's reports are presented in interactive HTML webpages where you can browse and compare different events and inversion runs.
+Grond's reports are presented in interactive HTML web pages where you can
+browse and compare different events and inversion runs.
 
 .. figure :: ../images/report_webpage.png
     :name: Grond Webpage
@@ -9,29 +10,66 @@ Grond's reports are presented in interactive HTML webpages where you can browse 
     :alt: Grond report webpage
     :figclass: align-center
 
-    **Figure 1**: Example of a Grond report, here the bootstrapped misfit evolution of a static inversion is shown. Use the left navigation panel to navigate the plots.
+    **Figure 1**: Example of a Grond report, here the bootstrapped misfit
+    evolution of a static inversion is shown. Use the left navigation panel to
+    navigate the plots.
 
-Online example report
----------------------
 
-Explore the `online example reports <https://pyrocko.org/grond/reports>`_ to see what information the inversion reveals.
+Online example reports
+----------------------
 
-Generate reports
-----------------
+Explore our `online example reports <https://pyrocko.org/grond/reports>`_ to
+see what information the inversion reveals.
 
-When an inversion is finished and with a set-up project structure you can create and open the report with:
+
+Generating reports
+------------------
+
+When an inversion is finished, you can create and open a report with:
 
 .. code-block:: sh
     
     grond report -so <rundir>
 
-The flags ``-s`` will spin up a webserver and ``-o`` will open the browser; more information is given from ``grond report --help``.
+By default, the report is generated in the directory ``reports``. Results from
+multiple runs are aggregated into a single ``reports`` directory by repeatedly
+calling ``grond report <rundir>``.
+
+The flag ``-s`` will serve the HTML pages locally with a built-in web server
+and ``-o`` will open it in your web browser (see :option:`grond report`
+``--help``). Alternatively, you can simply open the file ``reports/index.html``
+with your web browser. If doing so, it may be necessary to adjust browser
+permissions to access the report locally (through a ``file://...`` URL).
+
+
+Sharing reports on the local network
+------------------------------------
+
+When running Grond on a remote machine, run ``grond report -S`` to serve the
+reports directory on the local network. Point the web browser on your desktop
+machine to the URL printed on the terminal. If the default server port cannot
+be opened, choose a different one using ``--port=<number>`` with a port number
+in the range 1025 - 65535.
+
+
+Sharing reports on the internet
+-------------------------------
+
+The ``reports`` directory is self-contained and can be transferred to a
+different computer for viewing. Place it into a web server directory to share
+it with the world.
+
+For convenience, the archive file ``grond-reports.tar.gz`` contains the
+complete report directory. You can find it in the ``reports`` directory or
+under a link on the report web page. After unpacking, place the archive file
+into the unpacked directory to keep the archive file link operational.
 
 
 Plot types
 ----------
 
-To see which plots are available for a particular configuration, check out the subcommand
+To see which plots are available for a particular configuration, check out the
+subcommand
 
 .. code :: bash
 
