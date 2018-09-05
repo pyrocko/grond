@@ -24,10 +24,10 @@ def scale_axes(ax, scale):
     ax.get_yaxis().set_major_formatter(FormatScaled())
 
 
-class SatelliteTargetPlot(PlotConfig):
+class SatelliteTargetDisplacement(PlotConfig):
     ''' Maps showing surface displacements from satellite and modelled data '''
 
-    name = 'fits_satellite'
+    name = 'satellite'
     dpi = Int.T(
         default=250)
     size_cm = Tuple.T(
@@ -52,9 +52,13 @@ class SatelliteTargetPlot(PlotConfig):
             section='fits',
             feather_icon='navigation',
             description=u'Maps showing surface displacements'
-                        u' from satellite and modelled data.')
+                        u' from satellite and modelled data. '
+                        u'The ensemble\'s best fault model is outlined,'
+                        u' the gray dot indicates the initial location'
+                        u' before the optimisation. '
+                        u'Complete data extent is shown.')
 
-    def draw_static_fits(self, ds, history, optimiser):
+    def draw_static_fits(self, ds, history, optimiser, closeup=False):
         from pyrocko.orthodrome import latlon_to_ne_numpy
         problem = history.problem
 
@@ -142,8 +146,7 @@ class SatelliteTargetPlot(PlotConfig):
             urE, urN = map(max, ((turE, urE), (urN, turN)))
             llE, llN = map(min, ((tllE, llE), (llN, tllN)))
 
-        for ifig, (sat_target, result) in enumerate(
-                zip(sat_targets, results)):
+        def generate_plot(sat_target, result, ifig):
 
             scene = sat_target.scene
 
@@ -228,16 +231,74 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                 ax.set_xlim(llE, urE)
                 ax.set_ylim(llN, urN)
 
+            if closeup:
+                if scene.frame.isMeter():
+                    fn, fe = source.outline(cs='xy').T
+                elif scene.frame.isDegree():
+                    fn, fe = source.outline(cs='latlon').T
+                    fn -= source.lat
+                    fe -= source.lon
+
+                off_n = (fn[0] + fn[1]) / 2
+                off_e = (fe[0] + fe[1]) / 2
+
+                fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
+                                        + max(abs(fe-off_e))**2)
+                fault_size *= 1.25  # add 25%
+
+                for ax in axes:
+                    ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)
+                    ax.set_ylim(-fault_size/2 + off_n, fault_size/2 + off_n)
+
             cax = fig.add_axes((.1, .125, .85, .025))
             cax.tick_params(length=2)
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal')
             cbar.set_label('LOS Displacement [m]')
 
             fig.text(.02, .98, 'Scene ID: %s' % scene.meta.scene_id,
-                     va='top', alpha=.3)
+                     va='top', alpha=.5)
 
-            yield (item, fig)
+            return (item, fig)
+
+        for ifig, (sat_target, result) in enumerate(zip(sat_targets, results)):
+            yield generate_plot(sat_target, result, ifig)
+
+
+class SatelliteTargetDisplacementCloseup(PlotConfig):
+    name = 'satellite_closeup'
+    dpi = Int.T(
+        default=250)
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(22., 11.))
+    colormap = String.T(
+        default='RdBu',
+        help='Colormap for the surface displacements')
+
+    draw_static_fits = SatelliteTargetDisplacement.draw_static_fits
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimiser = environ.get_optimiser()
+        ds = environ.get_dataset()
+
+        environ.setup_modelling()
+
+        cm.create_group_mpl(
+            self,
+            self.draw_static_fits(ds, history, optimiser, closeup=True),
+            title=u'Satellite Displacements (Closeup)',
+            section='fits',
+            feather_icon='zoom-in',
+            description=u'Maps showing surface displacements'
+                        u' from satellite and modelled data. '
+                        u'The ensemble\'s best fault model is outlined,'
+                        u' the gray dot indicates the initial location'
+                        u' before the optimisation. '
+                        u'Map is focused around the fault\'s'
+                        u' extent.')
 
 
 def get_plot_classes():
-    return [SatelliteTargetPlot]
+    return [SatelliteTargetDisplacement, SatelliteTargetDisplacementCloseup]
