@@ -240,14 +240,37 @@ angular.module('reportApp', ['ngRoute'])
             return istate;
         };
 
-        funcs.get_path = function(problem_name) {
+		funcs.get_entry = function(problem_name) {
             for (var i=0; i<report_entries.length; i++) {
                 var entry = report_entries[i];
                 if (entry.problem_name == problem_name) {
-                    return entry.path;
+                    return entry;
                 }
             }
             return null;
+		};
+
+        funcs.get_path = function(problem_name) {
+			var entry = funcs.get_entry(problem_name);
+			if (entry) {
+				return entry.path;
+			} else {
+				return null;
+			}
+        };
+
+		funcs.get_grond_versions = function() {
+			var versions = new Set();
+
+			for (var i=0; i<report_entries.length; i++) {
+				var version = report_entries[i].grond_version;
+				if (version) versions.add(version);
+			}
+
+			var aversions = new Array.from(versions);
+			aversions.sort();
+			console.log(aversions);
+			return aversions;
         };
 
         return funcs;
@@ -737,6 +760,7 @@ angular.module('reportApp', ['ngRoute'])
     })
 
     .controller('Info', function(
-            $scope) {
+            $scope, ReportList) {
         $scope.version = REPORT_APP_VERSION;
+		$scope.get_report_grond_versions = ReportList.get_grond_versions;
     });

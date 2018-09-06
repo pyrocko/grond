@@ -29,6 +29,7 @@ class ReportIndexEntry(Object):
     problem_name = String.T()
     event_reference = Event.T(optional=True)
     event_best = Event.T(optional=True)
+    grond_version = String.T(optional=True)
 
 
 class ReportConfig(HasPaths):
@@ -158,7 +159,10 @@ def report(env, report_config=None, update_without_plotting=False):
             from grond import plot
             plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
 
-        rie = ReportIndexEntry(path='.', problem_name=problem.name)
+        rie = ReportIndexEntry(
+            path='.',
+            problem_name=problem.name,
+            grond_version=problem.grond_version)
 
         fn = op.join(report_path, 'event.solution.best.yaml')
         if op.exists(fn):

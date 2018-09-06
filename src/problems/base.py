@@ -20,6 +20,8 @@ from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
+from grond.version import __version__
+
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.base')
@@ -62,9 +64,13 @@ class Problem(Object):
     base_source = gf.Source.T(optional=True)
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
+    grond_version = String.T(optional=True)
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
+
+        if self.grond_version is None:
+            self.grond_version = __version__
 
         self._target_weights = None
         self._engine = None
@@ -73,8 +79,6 @@ class Problem(Object):
         if hasattr(self, 'problem_waveform_parameters') and self.has_waveforms:
             self.problem_parameters =\
                 self.problem_parameters + self.problem_waveform_parameters
-
-        logger.name = self.__class__.__name__
 
     @classmethod
     def get_plot_classes(cls):

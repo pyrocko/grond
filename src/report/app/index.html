@@ -55,7 +55,15 @@
                 <div class="col-2">
                 </div>
                 <div class="col-10">
-                    <p class="text-center">Busted with Grond - {{ version }} - <a href="https://pyrocko.org/" target="_blank">pyrocko.org</a></p>
+                    <p class="text-center">
+                        <a href="https://pyrocko.org/grond/" target="_blank">Busted with Grond</a> -
+                        <span ng-if="get_report_grond_versions().length > 0">Reports:
+                            <span ng-repeat="vers in get_report_grond_versions()">
+                                v{{ vers + ($last ? '' : ', ') }}
+                            </span> -
+                        </span>
+                        App: {{ version }}
+                    </p>
                 </div>
             </div>
         </div>
