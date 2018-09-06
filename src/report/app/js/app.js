@@ -1,6 +1,10 @@
 'use strict';
 
-var REPORT_APP_VERSION = 'v0.2';
+var REPORT_APP_VERSION = 'v1.0-beta';
+
+function mod(n, m) {
+  return ((n % m) + m) % m;
+}
 
 function copy_properties(source, target) {
     for (var prop in source) {
@@ -41,6 +45,7 @@ var yaml_type_map = [
     ['!pf.MomentTensor', Dummy],
     ['!grond.ParameterStats', Dummy],
     ['!grond.TargetBalancingAnalyserResult', Dummy],
+    ['!grond.NoiseAnalyserResult', Dummy],
     ['!grond.ResultStats', Dummy],
     ['!grond.WaveformMisfitTarget', Dummy],
     ['!grond.WaveformMisfitConfig', Dummy],
@@ -391,9 +396,35 @@ angular.module('reportApp', ['ngRoute'])
             $scope.primary_problem = problem_name;
         };
 
+        $scope.get_offset_problem_name = function(problem_name, offset, wrap) {
+            var sel =rl.get_selected();
+            var i = sel.indexOf(problem_name);
+            if (i == -1) return null;
+            i += offset
+			if (wrap) {
+				i = mod(i, sel.length);
+				console.log(i);
+			}
+            if (0 <= i && i < sel.length) return sel[i];
+            return null
+        };
+
         $scope.set_secondary_problem = function(problem_name) {
             $scope.secondary_problem = problem_name;
         };
+
+		$scope.tab_col_width = function() {
+			var n = rl.get_selected().length;
+			if ($scope.compare_mode) {
+				if (n > 2) return 'col-6';
+				if (n == 2) return 'col-4';
+				return 'col-6';
+			} else {
+				if (n > 4) return 'col-3';
+				if (n == 4) return 'col-2';
+				return 'col-3';
+			}
+		}
 
         var get_path = function(problem_name) {
             return rl.get_path(problem_name);

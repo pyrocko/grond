@@ -255,8 +255,19 @@ div#browser-warning {
 /*  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);*/
 }
 
+.navbar .nav-tabs a.nav-link:hover,
+.navbar .nav-tabs a.nav-link:active,
+.navbar .nav-tabs a.nav-link:focus {
+	border-color: transparent;
+}
+
 .navbar .nav-tabs a.nav-link {
     color: white;
+    overflow: hidden;
+}
+
+.navbar .nav-tabs a.disabled {
+    color: rgba(255, 255, 255, .1);
 }
 
 .navbar .nav-tabs a.active {
@@ -271,6 +282,7 @@ div#browser-warning {
 
 .navbar .nav-tabs .nav-item {
     margin-bottom: 0px;
+	text-align: center;
 }
 
 .scrollable {
