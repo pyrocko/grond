@@ -201,7 +201,7 @@ particularly for the ``DoubleDCProblem``.
         
 .. code-block :: yaml
 
-  problem_config: !grond.CMTProblemConfig
+  problem_config: !grond.DoubleDCProblemConfig
     name_template: '${event_name}_regional_mt'
     norm_exponent: 1
     distance_min: 0
