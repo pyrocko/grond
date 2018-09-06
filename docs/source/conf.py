@@ -37,7 +37,7 @@ import sphinx_sleekcat_theme
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest',
               'sphinx.ext.intersphinx',
-#              'sphinx.ext.imgconverter',
+#              'sphinx.ext.imgconverter',  # needed for LaTeX SVG output
               'sphinx.ext.todo',
               'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',

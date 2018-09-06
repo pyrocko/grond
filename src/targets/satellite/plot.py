@@ -5,23 +5,23 @@ from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
 from matplotlib import pyplot as plt
-from pyrocko.guts import Tuple, Float, String, Int
+from matplotlib import patches
+from pyrocko.guts import Tuple, Float, String, Int, Bool
 
 km = 1000.
 guts_prefix = 'grond'
 
 
-def scale_axes(ax, scale):
+def scale_axes(axis, scale, offset=0.):
     from matplotlib.ticker import ScalarFormatter
 
     class FormatScaled(ScalarFormatter):
 
         @staticmethod
         def __call__(value, pos):
-            return '%d' % (value * scale)
+            return '{:,.1f}'.format((offset + value) * scale).replace(',', ' ')
 
-    ax.get_xaxis().set_major_formatter(FormatScaled())
-    ax.get_yaxis().set_major_formatter(FormatScaled())
+    axis.set_major_formatter(FormatScaled())
 
 
 class SatelliteTargetDisplacement(PlotConfig):
@@ -36,6 +36,9 @@ class SatelliteTargetDisplacement(PlotConfig):
     colormap = String.T(
         default='RdBu',
         help='Colormap for the surface displacements')
+    relative_coordinates = Bool.T(
+        default=False,
+        help='Show relative coordinates, initial location centered at 0N, 0E')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -75,14 +78,38 @@ class SatelliteTargetDisplacement(PlotConfig):
         source = problem.get_source(xbest)
         results = problem.evaluate(xbest, targets=sat_targets)
 
-        def decorateAxes(ax, scene, title):
+        def initAxes(ax, scene, title, last_axes=False):
             ax.set_title(title)
             ax.tick_params(length=2)
+
             if scene.frame.isMeter():
-                ax.set_xlabel('East [km]')
-                scale_axes(ax, 1. / km)
+                ax.set_xlabel('Easting [km]')
+                scale_x = {'scale': 1./km}
+                scale_y = {'scale': 1./km}
+                if not self.relative_coordinates:
+                    import utm
+                    utm_E, utm_N, utm_zone, utm_zone_letter =\
+                        utm.from_latlon(source.lat, source.lon)
+                    scale_x['offset'] = utm_E
+                    scale_y['offset'] = utm_N
+
+                    if last_axes:
+                        ax.text(0.975, 0.025,
+                                'UTM Zone %d%s' % (utm_zone, utm_zone_letter),
+                                va='bottom', ha='right',
+                                fontsize=8, alpha=.7,
+                                transform=ax.transAxes)
+
             elif scene.frame.isDegree():
                 ax.set_xlabel('Lon [°]')
+                scale_x = {'scale': 1.}
+                scale_y = {'scale': 1.}
+                if not self.relative_coordinates:
+                    scale_x['offset'] = source.lon
+                    scale_y['offset'] = source.lat
+
+            scale_axes(ax.get_xaxis(), **scale_x)
+            scale_axes(ax.get_yaxis(), **scale_y)
             ax.set_aspect('equal')
 
         def drawSource(ax, scene):
@@ -97,7 +124,8 @@ class SatelliteTargetDisplacement(PlotConfig):
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
             ax.fill(fe, fn,
                     edgecolor=(0., 0., 0.),
-                    facecolor=(.5, .5, .5), alpha=0.5)
+                    facecolor=(.5, .5, .5), alpha=0.7)
+            ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
 
         def mapDisplacementGrid(displacements, scene):
             arr = num.full_like(scene.displacement, fill_value=num.nan)
@@ -122,6 +150,38 @@ class SatelliteTargetDisplacement(PlotConfig):
             ax.scatter(scene.quadtree.leaf_coordinates[:, 0] - offset_e,
                        scene.quadtree.leaf_coordinates[:, 1] - offset_n,
                        s=.25, c='black', alpha=.1)
+
+        def addArrow(ax, scene):
+            phi = num.nanmean(scene.phi)
+            los_dx = num.cos(phi + num.pi) * .0625
+            los_dy = num.sin(phi + num.pi) * .0625
+
+            az_dx = num.cos(phi - num.pi/2) * .125
+            az_dy = num.sin(phi - num.pi/2) * .125
+
+            anchor_x = .9 if los_dx < 0 else .1
+            anchor_y = .85 if los_dx < 0 else .975
+
+            az_arrow = patches.FancyArrow(
+                x=anchor_x-az_dx, y=anchor_y-az_dy,
+                dx=az_dx, dy=az_dy,
+                head_width=.025,
+                alpha=.5, fc='k',
+                head_starts_at_zero=False,
+                length_includes_head=True,
+                transform=ax.transAxes)
+
+            los_arrow = patches.FancyArrow(
+                x=anchor_x-az_dx/2, y=anchor_y-az_dy/2,
+                dx=los_dx, dy=los_dy,
+                head_width=.02,
+                alpha=.5, fc='k',
+                head_starts_at_zero=False,
+                length_includes_head=True,
+                transform=ax.transAxes)
+
+            ax.add_artist(az_arrow)
+            ax.add_artist(los_arrow)
 
         urE, urN, llE, llN = (0., 0., 0., 0.)
         for target in sat_targets:
@@ -153,9 +213,10 @@ class SatelliteTargetDisplacement(PlotConfig):
             fig = plt.figure()
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
-                1, 3,
-                wspace=.025, left=.1, bottom=.25,
-                right=.95)
+                2, 3,
+                wspace=.05, hspace=.2,
+                left=.1, right=.975, top=.95,
+                height_ratios=[12, 1])
 
             item = PlotItem(
                 name='fig_%i' % ifig,
@@ -192,7 +253,10 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
             cmw.set_clim(vmin=-abs_displ, vmax=abs_displ)
             cmw.set_array(stat_obs)
 
-            axes = [plt.subplot(gs[0, i]) for i in range(3)]
+            axes = [fig.add_subplot(gs[0, 0]),
+                    fig.add_subplot(gs[0, 1]),
+                    fig.add_subplot(gs[0, 2])]
+
             ax = axes[0]
             ax.imshow(mapDisplacementGrid(stat_obs, scene),
                       extent=im_extent, cmap=self.colormap,
@@ -200,12 +264,16 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
             drawSource(ax, scene)
-            decorateAxes(ax, scene, 'Data')
+            addArrow(ax, scene)
+            initAxes(ax, scene, 'Observed')
 
+            ax.text(.025, .025, 'Scene ID: %s' % scene.meta.scene_id,
+                    fontsize=8, alpha=.7,
+                    va='bottom', transform=ax.transAxes)
             if scene.frame.isDegree():
                 ax.set_ylabel('Lat [°]')
             elif scene.frame.isMeter():
-                ax.set_ylabel('North [km]')
+                ax.set_ylabel('Northing [km]')
 
             ax = axes[1]
             ax.imshow(mapDisplacementGrid(stat_syn, scene),
@@ -214,7 +282,8 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
             drawSource(ax, scene)
-            decorateAxes(ax, scene, 'Model')
+            addArrow(ax, scene)
+            initAxes(ax, scene, 'Model')
             ax.get_yaxis().set_visible(False)
 
             ax = axes[2]
@@ -224,7 +293,8 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                       origin='lower')
             drawLeaves(ax, scene, offset_e, offset_n)
             drawSource(ax, scene)
-            decorateAxes(ax, scene, 'Residual')
+            addArrow(ax, scene)
+            initAxes(ax, scene, 'Residual', last_axes=True)
             ax.get_yaxis().set_visible(False)
 
             for ax in axes:
@@ -250,13 +320,11 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
                     ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)
                     ax.set_ylim(-fault_size/2 + off_n, fault_size/2 + off_n)
 
-            cax = fig.add_axes((.1, .125, .85, .025))
-            cax.tick_params(length=2)
-            cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal')
+            cax = fig.add_subplot(gs[1, :])
+            cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
+                                use_gridspec=True,
+                                aspect=1000)
             cbar.set_label('LOS Displacement [m]')
-
-            fig.text(.02, .98, 'Scene ID: %s' % scene.meta.scene_id,
-                     va='top', alpha=.5)
 
             return (item, fig)
 
@@ -264,18 +332,8 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
             yield generate_plot(sat_target, result, ifig)
 
 
-class SatelliteTargetDisplacementCloseup(PlotConfig):
+class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
     name = 'satellite_closeup'
-    dpi = Int.T(
-        default=250)
-    size_cm = Tuple.T(
-        2, Float.T(),
-        default=(22., 11.))
-    colormap = String.T(
-        default='RdBu',
-        help='Colormap for the surface displacements')
-
-    draw_static_fits = SatelliteTargetDisplacement.draw_static_fits
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
