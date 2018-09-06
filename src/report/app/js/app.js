@@ -394,6 +394,11 @@ angular.module('reportApp', ['ngRoute'])
 
         $scope.get_selected = function() {
             var sel = rl.get_selected();
+
+            if (sel.length < 2) {
+                $scope.compare_mode = false;
+            }
+
             if (sel.length == 0) {
                 $scope.open_modal();
             }
