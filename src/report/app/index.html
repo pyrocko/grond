@@ -49,8 +49,7 @@
         <hr />
 
 
-        <div ng-controller="Info" class="container footer">
-
+        <div ng-controller="InfoController" class="container footer" ng-cloak>
             <div class="row no-gutters">
                 <div class="col-2">
                 </div>
@@ -62,7 +61,7 @@
                                 v{{ vers + ($last ? '' : ', ') }}
                             </span> -
                         </span>
-                        App: {{ version }}
+                        App: {{ get_version() }}
                     </p>
                 </div>
             </div>

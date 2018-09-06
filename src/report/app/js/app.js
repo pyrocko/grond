@@ -1,7 +1,5 @@
 'use strict';
 
-var REPORT_APP_VERSION = 'v1.0-beta';
-
 function mod(n, m) {
   return ((n % m) + m) % m;
 }
@@ -69,6 +67,7 @@ var yaml_type_map = [
     ['!grond.PlotItem', Dummy],
     ['!grond.PNG', Dummy],
     ['!grond.PDF', Dummy],
+    ['!grond.VersionInfo', Dummy],
 ];
 
 function make_constructor(type) {
@@ -269,7 +268,6 @@ angular.module('reportApp', ['ngRoute'])
 
 			var aversions = new Array.from(versions);
 			aversions.sort();
-			console.log(aversions);
 			return aversions;
         };
 
@@ -426,7 +424,6 @@ angular.module('reportApp', ['ngRoute'])
             i += offset
 			if (wrap) {
 				i = mod(i, sel.length);
-				console.log(i);
 			}
             if (0 <= i && i < sel.length) return sel[i];
             return null
@@ -759,8 +756,31 @@ angular.module('reportApp', ['ngRoute'])
         };
     })
 
-    .controller('Info', function(
-            $scope, ReportList) {
-        $scope.version = REPORT_APP_VERSION;
+    .factory('Info', function(YamlDoc) {
+        var version_info = null;
+        var funcs = {};
+
+        funcs.reload = function() {
+            YamlDoc.query(
+                'version_info.yaml',
+                function(doc) { version_info=doc; },
+                {schema: report_schema});
+        };
+
+        funcs.reload();
+
+        funcs.get_version = function() {
+            if (version_info) {
+                return version_info.grond_version;
+            } else {
+                return '?';
+            }
+        };
+
+        return funcs;
+    })
+
+    .controller('InfoController', function($scope, Info, ReportList) {
+        $scope.get_version = Info.get_version;
 		$scope.get_report_grond_versions = ReportList.get_grond_versions;
     });

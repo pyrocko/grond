@@ -214,6 +214,11 @@ def report_index(report_config=None):
         reports,
         filename=op.join(reports_base_path, 'report_list.yaml'))
 
+    from grond import info
+    guts.dump(
+        info.version_info(),
+        filename=op.join(reports_base_path, 'version_info.yaml'))
+
     app_dir = op.join(op.split(__file__)[0], 'app')
     copytree(app_dir, reports_base_path)
     logger.info('Created report in %s/index.html' % reports_base_path)
