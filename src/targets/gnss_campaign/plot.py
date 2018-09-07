@@ -17,9 +17,10 @@ logger = logging.getLogger('grond.targets.gnss_campaign.plot')
 
 
 class GNSSTargetMisfitPlot(PlotConfig):
-    ''' Maps showing surface displacements of GNSS campaigns and the model '''
+    ''' Maps showing horizontal surface displacements
+        of a GNSS campaign and model '''
 
-    name = 'fits_gnss'
+    name = 'gnss_fits'
 
     size_cm = Tuple.T(
         2, Float.T(),
@@ -52,10 +53,10 @@ class GNSSTargetMisfitPlot(PlotConfig):
             title=u'Static GNSS Surface Displacements',
             section='results',
             feather_icon='map',
-            description=u'Maps showing surface displacements of'
+            description=u'Maps showing horizontal surface displacements of'
                         u' GNSS campaigns and the mode.')
 
-    def draw_gnss_fits(self, ds, history, optimiser):
+    def draw_gnss_fits(self, ds, history, optimiser, vertical=False):
         problem = history.problem
 
         gnss_targets = problem.gnss_targets
@@ -73,32 +74,32 @@ class GNSSTargetMisfitPlot(PlotConfig):
         results = problem.evaluate(
             xbest, result_mode='full', targets=gnss_targets)
 
-        for itarget, (gnss_target, result) in enumerate(
-                zip(problem.gnss_targets, results)):
-            camp = gnss_target.campaign
+        def plot_gnss(gnss_target, result, ifig, vertical=False):
+            campaign = gnss_target.campaign
             item = PlotItem(
-                name='fig_%i' % itarget,
+                name='fig_%i' % ifig,
                 attributes={
                     'targets': gnss_target.path
                 },
                 title=u'Static GNSS Surface Displacements - Campaign %s'
-                      % camp.name,
+                      % campaign.name,
                 description=u'Static surface displacement from GNSS campaign '
                             u'%s (black vectors) and displacements derived '
-                            u'from best rupture model (red).' % camp.name)
+                            u'from best rupture model (red).' % campaign.name)
 
-            lat, lon = camp.get_center_latlon()
+            lat, lon = campaign.get_center_latlon()
 
             if self.radius is None:
-                radius = camp.get_radius()
+                radius = campaign.get_radius()
 
             if radius == 0.:
-                logger.warn('Radius of GNSS campaign %s too small, defaulting\
-                to 30 km' % camp.name)
+                logger.warn(
+                    'Radius of GNSS campaign %s too small, defaulting'
+                    ' to 30 km' % campaign.name)
                 radius = 30*km
 
             model_camp = gnss.GNSSCampaign(
-                stations=copy.deepcopy(camp.stations),
+                stations=copy.deepcopy(campaign.stations),
                 name='grond model')
             for ista, sta in enumerate(model_camp.stations):
                 sta.north.shift = result.statics_syn['displacement.n'][ista]
@@ -122,17 +123,30 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
-            m.add_gnss_campaign(camp, psxy_style={
-                'G': 'black',
-                'W': '0.5p,black',
-                })
+            if vertical:
+                m.add_gnss_campaign(campaign, psxy_style={
+                    'G': 'black',
+                    'W': '0.8p,black',
+                    }, vertical=True)
 
-            m.add_gnss_campaign(model_camp, psxy_style={
-                'G': 'red',
-                'W': '0.5p,red',
-                't': 30,
-                },
-                labels=False)
+                m.add_gnss_campaign(model_camp, psxy_style={
+                    'G': 'red',
+                    'W': '0.8p,red',
+                    't': 30,
+                    },
+                    vertical=True, labels=False)
+            else:
+                m.add_gnss_campaign(campaign, psxy_style={
+                    'G': 'black',
+                    'W': '0.8p,black',
+                    })
+
+                m.add_gnss_campaign(model_camp, psxy_style={
+                    'G': 'red',
+                    'W': '0.8p,red',
+                    't': 30,
+                    },
+                    labels=False)
 
             if isinstance(problem, CMTProblem):
                 from pyrocko import moment_tensor
@@ -163,7 +177,13 @@ class GNSSTargetMisfitPlot(PlotConfig):
                     t=60,
                     *m.jxyr)
 
-            yield (item, m)
+            return (item, m)
+
+        ifig = 0
+        for vertical in (False, True):
+            for gnss_target, result in zip(problem.gnss_targets, results):
+                yield plot_gnss(gnss_target, result, ifig, vertical)
+                ifig += 1
 
 
 def get_plot_classes():

@@ -89,7 +89,7 @@ Unwrapped static surface displacements have to be prepared in Kite format.
 .. glossary ::
     
     ``kite_scene_paths``
-        Folder where pre-processed `Kite <https://pyrocko.org/>`_ surface displacement scenes are stored.
+        List of folders where pre-processed `Kite <https://pyrocko.org/>`_ surface displacement scenes are stored.
 
 GNSS campaign data
 ------------------
@@ -99,6 +99,6 @@ Single measurements of surface displacement data from GNSS campaigns can be load
 .. glossary ::
 
     ``gnss_campaign_paths``
-        Folder where `GNSS data <https://pyrocko.org/docs/current/library/examples/gnss_data.html>`_  of static surface displacements are stored.
+        List of folders where `GNSS data <https://pyrocko.org/docs/current/library/examples/gnss_data.html>`_  of static surface displacements are stored.
 
 
