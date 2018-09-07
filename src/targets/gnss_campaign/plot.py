@@ -20,7 +20,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
     ''' Maps showing horizontal surface displacements
         of a GNSS campaign and model '''
 
-    name = 'gnss_fits'
+    name = 'GNSS'
 
     size_cm = Tuple.T(
         2, Float.T(),
@@ -51,7 +51,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
             self,
             self.draw_gnss_fits(ds, history, optimiser),
             title=u'Static GNSS Surface Displacements',
-            section='results',
+            section='fits',
             feather_icon='map',
             description=u'Maps showing horizontal surface displacements of'
                         u' GNSS campaigns and the mode.')

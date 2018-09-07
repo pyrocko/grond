@@ -314,7 +314,7 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
                 fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
                                         + max(abs(fe-off_e))**2)
-                fault_size *= 1.25  # add 25%
+                fault_size *= self.map_scale
 
                 for ax in axes:
                     ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)
@@ -334,6 +334,10 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
 class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
     name = 'satellite_closeup'
+
+    map_scale = Float.T(
+        default=2.,
+        help='Scale the map surroundings, larger value zooms out.')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
