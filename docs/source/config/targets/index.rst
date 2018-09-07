@@ -44,6 +44,30 @@ Parameters valid for all types of ``MisfitTargets`` are:
 Waveform targets
 ----------------
 
+.. code-block :: yaml
+  :caption: Example ``WaveformTarget`` configuration
+
+  - !grond.WaveformTargetGroup
+      normalisation_family: time_domain
+      path: all
+      weight: 1.0
+      distance_min: 10000.0
+      distance_max: 1000000.0
+      channels: [Z, R, T]
+      misfit_config: !grond.WaveformMisfitConfig
+        fmin: 0.01
+        fmax: 0.1
+        ffactor: 1.5
+        tmin: vel_surface:5.5
+        tmax: vel_surface:3.0
+        domain: time_domain
+        norm_exponent: 2
+        tautoshift_max: 0.0
+        autoshift_penalty_max: 0.0
+      interpolation: multilinear
+      store_id: crust2_ib
+
+
 .. glossary ::
 
   **Tapering**
@@ -88,33 +112,26 @@ Waveform targets
 
 Example :class:`~grond.targets.waveform.WaveformTargetGroup` configuration section:
 
-.. code-block :: yaml
-
-  - !grond.WaveformTargetGroup
-      enabled: true
-      normalisation_family: time_domain
-      path: all
-      weight: 1.0
-      distance_min: 10000.0
-      distance_max: 1000000.0
-      channels: [Z, R, T]
-      misfit_config: !grond.WaveformMisfitConfig
-        fmin: 0.01
-        fmax: 0.1
-        ffactor: 1.5
-        tmin: vel_surface:5.5
-        tmax: vel_surface:3.0
-        domain: time_domain
-        norm_exponent: 2
-        tautoshift_max: 0.0
-        autoshift_penalty_max: 0.0
-      interpolation: multilinear
-      store_id: crust2_ib
-
-
 
 Satellite targets
 -----------------
+
+.. code-block :: yaml
+    :caption: Example ``SatelliteTarget`` configuration
+
+    - !grond.SatelliteTargetGroup
+      normalisation_family: insar_target
+      path: all
+      weight: 1.0
+      kite_scenes: ['*all']
+      misfit_config: !grond.SatelliteMisfitConfig
+        optimise_orbital_ramp: true
+        ranges:
+          offset: -0.5 .. 0.5
+          ramp_east: -1e-4 .. 1e-4
+          ramp_north: -1e-4 .. 1e-4
+      interpolation: multilinear
+      store_id: crust2_ib_static
 
 Observations of spatial surface displacements as derived from unwrapped InSAR data. These data must be hold in a special container format and prepared using the `kite <https://pyrocko.org/#kite>`_ software package.
 
@@ -138,26 +155,21 @@ Please see `kite's documentation <https://pyrocko.org/docs/kite/current/>`_ for 
 
 Example :class:`~grond.targets.satellite.SatelliteTargetGroup` configuration section:
 
-.. code-block :: yaml
-
-    - !grond.SatelliteTargetGroup
-      enabled: true
-      normalisation_family: insar_target
-      path: all
-      weight: 1.0
-      kite_scenes: ['*all']
-      misfit_config: !grond.SatelliteMisfitConfig
-        optimise_orbital_ramp: true
-        ranges:
-          offset: -0.5 .. 0.5
-          ramp_east: -1e-4 .. 1e-4
-          ramp_north: -1e-4 .. 1e-4
-      interpolation: multilinear
-      store_id: crust2_ib_static
-
 
 GNSS campaign targets
 ---------------------
+
+.. code-block :: yaml
+    :caption: Example ``GNSSTarget`` configuration
+
+    - !grond.GNSSCampaignTargetGroup
+      normalisation_family: gnss_target
+      path: all
+      weight: 1.0
+      gnss_campaigns: ['*all']
+      misfit_config: !grond.GNSSCampaignMisfitConfig {}
+      interpolation: multilinear
+      store_id: crust2_ib_static
 
 True 3D surface displacement as measured by GNSS stations can be included in the inversion process by defining a :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup`. The station's displacement data has to be stored according to :mod:`~pyrocko.model.gnss_campaign`. Please refer to Pyrocko's documentation of the GNSS model (`See example <https://pyrocko.org/docs/current/library/examples/gnss_data.html>`_)
 
@@ -167,19 +179,6 @@ True 3D surface displacement as measured by GNSS stations can be included in the
     The campaigns are identified by their ``campaign_name``. Campaigns can be explicitly selected, or the wildcard ``*all`` can be used.
 
 Example :class:`~grond.targets.gnss_campaign.GNSSCampaignTargetGroup` configuration section:
-
-.. code-block :: yaml
-
-    - !grond.GNSSCampaignTargetGroup
-      enabled: true
-      normalisation_family: gnss_target
-      path: all
-      weight: 1.0
-      gnss_campaigns: ['*all']
-      misfit_config: !grond.GNSSCampaignMisfitConfig {}
-      interpolation: multilinear
-      store_id: crust2_ib_static
-
 
 
 .. _CosTaper: https://pyrocko.org/docs/current/library/reference/trace.html#module-pyrocko.trace

@@ -21,23 +21,8 @@ To define and configure a problem the part called ``problem_config`` in the conf
 General configuration
 ---------------------
 
-The following problem parameters are shared by all problems and are part of all
-problem configurations:
-
-.. glossary::
-
-  ``name_template``
-    can be any string and provides a stem for the result folders `runs` and `reports` to identify different optimisations. Meaningful is to use short event and problem identifications in this string.
-
-  ``norm_exponent``
-    defines the norm of combining several `normalization_family` in the global misfit. This integer value is 1 or larger. Please find here more information on the global `misfit calculation in Grond`_.
-
-  ``ranges``
-    defines the bounds of individual and specific source model parameters. See the details for the source ranges of different problems in the sections below.
-
-An example for the configuration of a rectangular fault problem is given here:
-
 .. code-block :: yaml
+  :caption: Generic example ``ProblemConfig``
 
   problem_config: !grond.RectangularProblemConfig
     name_template: '${event_name}'
@@ -54,8 +39,49 @@ An example for the configuration of a rectangular fault problem is given here:
       dip: '0 .. 60'
       rake: '60 .. 90'
 
+
+The following problem parameters are shared by all problems and are part of all
+problem configurations:
+
+.. glossary::
+
+  ``name_template``
+    can be any string and provides a stem for the result folders `runs` and `reports` to identify different optimisations. Meaningful is to use short event and problem identifications in this string.
+
+  ``norm_exponent``
+    defines the norm of combining several `normalization_family` in the global misfit. This integer value is 1 or larger. Please find here more information on the global `misfit calculation in Grond`_.
+
+  ``ranges``
+    defines the bounds of individual and specific source model parameters. See the details for the source ranges of different problems in the sections below.
+
+An example for the configuration of a rectangular fault problem is given here:
+
+
 ``CMTProblem`` configuration
 ----------------------------
+
+.. code-block :: yaml
+  :caption: Example ``CMTProblemConfig``
+
+  problem_config: !grond.CMTProblemConfig
+    name_template: '${event_name}_regional_mt'
+    norm_exponent: 1
+    distance_min: 0
+    mt_type: 'deviatoric'
+    ranges:
+      time: '-10 .. 10 | add'
+      north_shift: '-40e3 .. 40e3'
+      east_shift: '-40e3 .. 40e3'
+      depth: '4e3 .. 50e3'
+      magnitude: '4.0 .. 7.0'
+      rmnn: '-1.41421 .. 1.41421'
+      rmee: '-1.41421 .. 1.41421'
+      rmdd: '-1.41421 .. 1.41421'
+      rmne: '-1 .. 1'
+      rmnd: '-1 .. 1'
+      rmed: '-1 .. 1'
+      duration: '0. .. 0.'
+
 
 The Grond CMTProblem represents one of most popular problems in seismology.  
 Sought-after are moment tensor source models that well fit the observed seismic waveforms. The 
@@ -111,10 +137,14 @@ particularly for the ``CMTProblem``.
 
     ``duration``
       is the duration of the source time function in seconds.
-    
-**Example configuration**:
-    
+
+
+
+``DoubleDCProblem`` configuration
+---------------------------------
+
 .. code-block :: yaml
+  :caption: Example ``DoubleDCProblemConfig``
 
   problem_config: !grond.CMTProblemConfig
     name_template: '${event_name}_regional_mt'
@@ -127,17 +157,19 @@ particularly for the ``CMTProblem``.
       east_shift: '-40e3 .. 40e3'
       depth: '4e3 .. 50e3'
       magnitude: '4.0 .. 7.0'
-      rmnn: '-1.41421 .. 1.41421'
-      rmee: '-1.41421 .. 1.41421'
-      rmdd: '-1.41421 .. 1.41421'
-      rmne: '-1 .. 1'
-      rmnd: '-1 .. 1'
-      rmed: '-1 .. 1'
-      duration: '0. .. 0.'
-
-
-``DoubleDCProblem`` configuration
----------------------------------
+      strike1: '30. .. 180.'
+      dip1: '30. .. 90.'
+      rake1: '20. .. 150.'
+      strike2: '30. .. 180.'
+      dip2: '30. .. 90.'
+      rake2: '20. .. 150.'
+      delta_time: '5. .. 10.'
+      delta_depth: '0. .. 10000.'
+      azimuth: '0. .. 360.'
+      distance: '10000. .. 40000.' 
+      mix: '0.2 .. 0.8'
+      duration1: '5. .. 10.'
+      duration2: '5. .. 10.'
 
 This problem has two double-couple point sources (derived from ``DoubleDCSource``). They are dependent in location and relative timing to avoid overlapping in either space or time. The mechanisms, the durations and the moments of the two sources are independent. Using this model more complex earthquakes with two prominent rupture phases or with a change of mechanism along the rupture plane can be studied. Or simply the potential of a major source
 complexity of an earthquake can be tested.
@@ -196,38 +228,31 @@ particularly for the ``DoubleDCProblem``.
         
     ``duration1`` & ``duration2``
       are the durations of the first and second source's source time functions, respectively, in seconds.
-        
-**Example configuration**:
-        
-.. code-block :: yaml
 
-  problem_config: !grond.DoubleDCProblemConfig
-    name_template: '${event_name}_regional_mt'
-    norm_exponent: 1
-    distance_min: 0
-    mt_type: 'deviatoric'
-    ranges:
-      time: '-10 .. 10 | add'
-      north_shift: '-40e3 .. 40e3'
-      east_shift: '-40e3 .. 40e3'
-      depth: '4e3 .. 50e3'
-      magnitude: '4.0 .. 7.0'
-      strike1: '30. .. 180.'
-      dip1: '30. .. 90.'
-      rake1: '20. .. 150.'
-      strike2: '30. .. 180.'
-      dip2: '30. .. 90.'
-      rake2: '20. .. 150.'
-      delta_time: '5. .. 10.'
-      delta_depth: '0. .. 10000.'
-      azimuth: '0. .. 360.'
-      distance: '10000. .. 40000.' 
-      mix: '0.2 .. 0.8'
-      duration1: '5. .. 10.'
-      duration2: '5. .. 10.'
 
 ``RectangularProblem`` configuration
 ------------------------------------
+
+.. code-block :: yaml
+  :caption: Example ``RectangularProblemConfig``
+
+  problem_config: !grond.RectangularProblemConfig
+    name_template: '${event_name}_joint'
+    norm_exponent: 1
+    decimation_factor: 4
+    ranges:
+      north_shift: '-2000 .. 20000'
+      east_shift: '-2000 .. 20000'
+      depth: '5000 .. 30000'
+      length: '12000 .. 18000'
+      width: '4000 .. 14000'
+      slip: '0.2 .. 2.'
+      strike: '80 .. 330'
+      dip: '0 .. 60'
+      rake: '60 .. 90'
+      time: '-15. .. 10. | add'
+      nucleation_x: '-1. .. 1.'
+      nucleation_y: '-1. .. 1.'
 
 The rectangular source is a simple finite source model with a rectangular shape and uniform moment or slip across the rupture plane. It resembles the source model defined by `Haskell (1964)`_, but has a nucleation point from which spreads a circular rupture. The position of the nucleation point on the rupture plane can be part of the problem. Uniform and bilateral ruptures are therefore possible. With the ``RectangularProblem`` also directivity effects in the observations of large earthquake may be predicted.
 
@@ -282,28 +307,6 @@ For the source parameter configuration, please note that the last three paramete
 
     ``nucleation_y``
       relative along-dip position of the rupture nucleation point on the fault to the centre location. This parameter may range from -1 to 1. With 0 being in the centre, -1 being at the top fault edge, 1 at the bottom fault edge, and 0.5 is half-way between centroid and bottom fault edge.
-
-**Example configuration**:
-
-.. code-block :: yaml
-
-  problem_config: !grond.RectangularProblemConfig
-    name_template: '${event_name}_joint'
-    norm_exponent: 1
-    decimation_factor: 4
-    ranges:
-      north_shift: '-2000 .. 20000'
-      east_shift: '-2000 .. 20000'
-      depth: '5000 .. 30000'
-      length: '12000 .. 18000'
-      width: '4000 .. 14000'
-      slip: '0.2 .. 2.'
-      strike: '80 .. 330'
-      dip: '0 .. 60'
-      rake: '60 .. 90'
-      time: '-15. .. 10. | add'
-      nucleation_x: '-1. .. 1.'
-      nucleation_y: '-1. .. 1.'
 
 
 .. _misfit calculation in Grond: ../method/index.html#Misfit calculation
