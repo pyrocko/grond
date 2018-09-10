@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "grondown_w_phase.sh <catalog-name>"
+    echo "grondown_regional.sh <catalog-name>"
     exit 1
 fi
 
