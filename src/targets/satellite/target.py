@@ -30,7 +30,7 @@ class SatelliteMisfitConfig(MisfitConfig):
 
 
 class SatelliteTargetGroup(TargetGroup):
-    """Handles maps of static ground motion from satellite observations (InSAR)
+    r"""Handles maps of static ground motion from satellite observations (InSAR)
 
     The InSAR displacement maps post-processed by the `pyrocko` module `kite`
     are usually `Quadtree` downsampled (Jonsson, 2002). Each data point has a
@@ -210,7 +210,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return modelling_results[0]
 
     def init_bootstrap_residuals(self, nbootstraps, rstate=None):
-        logger.info('Scene %s Bootstrapping residuals from noise pertubations'
+        logger.info('Scene %s, bootstrapping residuals from noise pertubations'
                     ' ...' % self.scene_id)
         if rstate is None:
             rstate = num.random.RandomState()

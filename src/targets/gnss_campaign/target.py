@@ -87,6 +87,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     misfit_config = GNSSCampaignMisfitConfig.T()
 
     can_bootstrap_weights = True
+    can_bootstrap_residuals = True
 
     def __init__(self, **kwargs):
         gf.GNSSCampaignTarget.__init__(self, **kwargs)
@@ -198,6 +199,33 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     def prepare_modelling(self, engine, source, targets):
         return [self]
+
+    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+        logger.info('GNSS campaign %s, bootstrapping residuals'
+                    ' from measurement uncertainties ...'
+                    % self.campaign.name)
+        if rstate is None:
+            rstate = num.random.RandomState()
+
+        campaign = self.campaign
+        bootstraps = num.empty((nbootstraps, campaign.nstations))
+
+        sigmas = num.array([(s.north.sigma, s.east.sigma, s.up.sigma)
+                            for s in campaign.stations])
+        sigmas = num.abs(sigmas)
+
+        if not num.all(sigmas):
+            logger.warning('Bootstrapping GNSS stations is meaningless,'
+                           ' all station\'s sigma is 0.0!')
+
+        for ibs in range(nbootstraps):
+            syn_noise = rstate.normal(scale=sigmas.ravel()) \
+                .reshape(campaign.nstations, 3) \
+                .sum(axis=1)
+
+            bootstraps[ibs, :] = syn_noise
+
+        self.set_bootstrap_residuals(bootstraps)
 
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
