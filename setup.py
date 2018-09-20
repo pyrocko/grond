@@ -38,6 +38,7 @@ setup(
         'grond.problems.cmt',
         'grond.problems.double_dc',
         'grond.problems.rectangular',
+        'grond.problems.multirectangular',
         'grond.optimisers',
         'grond.optimisers.highscore',
         'grond.analysers',
