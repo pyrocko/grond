@@ -322,8 +322,7 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
 
             cax = fig.add_subplot(gs[1, :])
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
-                                use_gridspec=True,
-                                aspect=1000)
+                                use_gridspec=True)
             cbar.set_label('LOS Displacement [m]')
 
             return (item, fig)
