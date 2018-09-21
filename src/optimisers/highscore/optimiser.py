@@ -205,10 +205,15 @@ class DirectedSamplerPhase(SamplerPhase):
                         break
 
                     if ntries > self.ntries_sample_limit:
-                        raise GrondError(
+                        logger.warning(
                             'failed to produce a suitable '
                             'candidate sample from normal '
-                            'distribution')
+                            'distribution for parameter \'%s\''
+                            '- drawing from uniform instead.' %
+                            pnames[ipar])
+                        v = num.random.uniform(xbounds[ipar, 0],
+                                               xbounds[ipar, 1])
+                        break
 
                     ntries += 1
 
@@ -230,12 +235,15 @@ class DirectedSamplerPhase(SamplerPhase):
                 ok_mask_sum += ok_mask
 
                 if ntries_sample > self.ntries_sample_limit:
-                    raise GrondError(
+                    logger.warning(
                         'failed to produce a suitable candidate '
                         'sample from multivariate normal '
-                        'distribution, (%s)' %
+                        'distribution, (%s) - drawing from uniform instead' %
                         ', '.join('%s:%i' % xx for xx in
                                   zip(pnames, ok_mask_sum)))
+                    xbounds = problem.get_parameter_bounds()
+                    xcandi = problem.random_uniform(xbounds)
+                    break
 
             x = xcandi
 
