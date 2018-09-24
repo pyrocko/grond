@@ -108,7 +108,7 @@ class Dataset(object):
 
         if pyrocko_stations_filename is not None:
             logger.debug(
-                'Loading stations from file %s' %
+                'loading stations from file %s' %
                 pyrocko_stations_filename)
 
             for station in model.load_stations(pyrocko_stations_filename):
@@ -118,11 +118,20 @@ class Dataset(object):
 
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'Loading stations from StationXML file %s' %
+                    'loading stations from StationXML file %s' %
                     stationxml_filename)
 
                 sx = fs.load_xml(filename=stationxml_filename)
                 for station in sx.get_pyrocko_stations():
+                    channels = station.get_channels()
+                    if len(channels) == 1 and channels[0].name.endswith('Z'):
+                        logger.warning(
+                            'Station %s has vertical component'
+                            ' information only, adding mocked channels.'
+                            % station.nsl_string())
+                        station.add_channel(model.Channel('N'))
+                        station.add_channel(model.Channel('E'))
+
                     self.stations[station.nsl()] = station
 
     def add_events(self, events=None, filename=None):
@@ -245,15 +254,15 @@ class Dataset(object):
         try:
             from pyrocko.model import gnss  # noqa
         except ImportError:
-            raise ImportError('Module pyrocko.model.gnss not found,'
+            raise ImportError('module pyrocko.model.gnss not found,'
                               ' please upgrade pyrocko!')
-        logger.debug('Loading GNSS campaign from %s' % filename)
+        logger.debug('loading GNSS campaign from %s' % filename)
 
         campaign = load_all(filename=filename)
         self.gnss_campaigns.append(campaign[0])
 
     def add_kite_scenes(self, paths):
-        logger.info('Loading kite InSAR scenes...')
+        logger.info('loading kite InSAR scenes...')
         paths = util.select_files(
             paths,
             regex=r'\.npz',
@@ -263,16 +272,16 @@ class Dataset(object):
             self.add_kite_scene(filename=path)
 
         if not self.kite_scenes:
-            logger.warning('Could not find any kite scenes at %s' %
+            logger.warning('could not find any kite scenes at %s' %
                            self.kite_scene_paths)
 
     def add_kite_scene(self, filename):
         try:
             from kite import Scene
         except ImportError:
-            raise ImportError('Module kite could not be imported,'
-                              ' please install from http://pyrocko.org')
-        logger.debug('Loading kite scene from %s' % filename)
+            raise ImportError('module kite could not be imported,'
+                              ' please install from https://pyrocko.org')
+        logger.debug('loading kite scene from %s' % filename)
 
         scene = Scene()
         scene._log.setLevel(logger.level)
@@ -382,13 +391,13 @@ class Dataset(object):
     def get_kite_scene(self, scene_id=None):
         if scene_id is None:
             if len(self.kite_scenes) == 0:
-                raise AttributeError('No kite displacements defined')
+                raise AttributeError('no kite displacements defined')
             return self.kite_scenes[0]
         else:
             for scene in self.kite_scenes:
                 if scene.meta.scene_id == scene_id:
                     return scene
-        raise NotFound('No kite scene with id %s defined' % scene_id)
+        raise NotFound('no kite scene with id %s defined' % scene_id)
 
     def get_gnss_campaigns(self):
         return self.gnss_campaigns
