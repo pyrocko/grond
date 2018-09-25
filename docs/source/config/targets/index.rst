@@ -44,6 +44,8 @@ Parameters valid for all types of ``MisfitTargets`` are:
 Waveform targets
 ----------------
 
+See the :doc:`dataset configuration <../dataset/index>` for loading waveforms and response information.
+
 .. code-block :: yaml
   :caption: Example ``WaveformTarget`` configuration
 

@@ -250,6 +250,8 @@ particularly for the ``DoubleDCProblem``.
       strike: '80 .. 330'
       dip: '0 .. 60'
       rake: '60 .. 90'
+
+      # Dynamic constraints, not needed for static inversion
       time: '-15. .. 10. | add'
       nucleation_x: '-1. .. 1.'
       nucleation_y: '-1. .. 1.'

@@ -12,13 +12,19 @@ dataset_config: !grond.DatasetConfig
   # Optional prefix for all paths in this config file
   path_prefix: .
 
+  # File with hypocenter information and possibly reference solution
+  events_path: 'data/events/${event_name}/event.txt'
+
   # List of files with station coordinates.
   stations_stationxml_paths: 
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
   - 'data/events/${event_name}/waveforms/stations.iris.xml'
 
-  # File with hypocenter information and possibly reference solution
-  events_path: 'data/events/${event_name}/event.txt'
+  # List of files with instrument response information (can be the same as in
+  # stations_stationxml_paths above)
+  responses_stationxml_paths:
+  - 'data/events/${event_name}/waveforms/stations.geofon.xml'
+  - 'data/events/${event_name}/waveforms/stations.iris.xml'
 
   # List of directories with raw waveform data
   waveform_paths: ['data/events/${event_name}/waveforms/raw']
@@ -31,9 +37,3 @@ dataset_config: !grond.DatasetConfig
   # format as above)
   blacklist_paths:
   - 'data/events/${event_name}/waveforms/blacklist.txt'
-
-  # List of files with instrument response information (can be the same as in
-  # stations_stationxml_paths above)
-  responses_stationxml_paths:
-  - 'data/events/${event_name}/waveforms/stations.geofon.xml'
-  - 'data/events/${event_name}/waveforms/stations.iris.xml'
