@@ -4,7 +4,7 @@
         <div class="col">
             <h3 class="plot-title">{{ group.name | nounderscore }}</h3>
 
-            <p ng-if="!group.pri || !group.sec || group.pri.description == group.sec.description">
+            <p ng-if="!group.pri || !group.sec || group.pri.description == group.sec.description" style="white-space: pre;">
                 {{ group.pri.description }}
             </p>
         </div>
@@ -12,7 +12,7 @@
 
     <div class="row m-3">
         <div class="col" ng-repeat="doc in unfold_docs(group) | filter:doc_matches_keword track by $index">
-            <p ng-if="doc && !(!group.pri || !group.sec || group.pri.description == group.sec.description)">
+            <p ng-if="doc && !(!group.pri || !group.sec || group.pri.description == group.sec.description)" style="white-space: pre;">
                 {{ doc.description }}
             </p>
             <div ng-if="doc" class="{{ compare_mode ? 'text-center' : '' }}">
