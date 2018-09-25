@@ -22,11 +22,11 @@ class SatelliteMisfitConfig(MisfitConfig):
                  'ramp_east': '-1e-7 .. 1e-7',
                  'ramp_north': '-1e-7 .. 1e-7'
                  },
-        help='These parameters give bounds for an offset [m], a linear \
-             gradient in east direction [m/m] and a linear gradient in north \
-             direction [m/m]. Note, while the optimisation of these ramps \
-             is individual for each target, the ranges set here are common \
-             for all satellite targets.')
+        help='These parameters give bounds for an offset [m], a linear'
+             ' gradient in east direction [m/m] and a linear gradient in north'
+             ' direction [m/m]. Note, while the optimisation of these ramps'
+             ' is individual for each target, the ranges set here are common'
+             ' for all satellite targets.')
 
 
 class SatelliteTargetGroup(TargetGroup):
@@ -46,8 +46,7 @@ class SatelliteTargetGroup(TargetGroup):
         help='List of InSAR data files prepared \
               by the ``pyrocko`` module ``kite``')
     misfit_config = SatelliteMisfitConfig.T(
-        help='Carries the settings of the objective function for these targets'
-        )
+        help='Settings for the objective function of these targets')
 
     def get_targets(self, ds, event, default_path):
         logger.debug('Selecting satellite targets...')
