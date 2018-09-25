@@ -330,7 +330,8 @@ class HistogramPlot(PlotConfig):
             title=u'Solution Histrogram',
             section='solution',
             feather_icon='bar-chart-2',
-            description=u'Distribution of the problem\'s parameters.')
+            description=u'Propability Distribution of the'
+                         ' problem\'s parameters.')
 
     def draw_figures(self, history):
 
@@ -434,7 +435,9 @@ class HistogramPlot(PlotConfig):
                 par.scaled(problem.extract(xref, ipar)),
                 color=ref_color)
 
-            item = PlotItem(name=par.name)
+            item = PlotItem(
+                name=par.name,
+                title='Parameter Histograms')
             item.attributes['parameters'] = [par.name]
             yield item, fig
 
@@ -700,7 +703,71 @@ class MTLocationPlot(PlotConfig):
                 except beachball.BeachballError as e:
                     logger.warn(str(e))
 
-        item = PlotItem(name='main')
+        item = PlotItem(
+            name='main',
+            title='Moment Tensor Location')
+        return [[item, fig]]
+
+
+class MTFuzzyPlot(PlotConfig):
+    '''Fuzzy, propabalistic moment tensor plot '''
+
+    name = 'mt_fuzzy'
+    size_cm = Tuple.T(2, Float.T(), default=(10., 10.))
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history),
+            title='Fuzzy Moment Tensor',
+            section='solution',
+            feather_icon='wind',
+            description='A fuzzy moment tensor, illustrating the solution\'s'
+                        ' uncertainty.')
+
+    def draw_figures(self, history):
+        problem = history.problem
+
+        fig = plt.figure(figsize=self.size_inch)
+        axes = fig.gca()
+
+        gms = problem.combine_misfits(history.misfits)
+
+        isort = num.argsort(gms)[::-1]
+
+        gms = gms[isort]
+        models = history.models[isort, :]
+
+        kwargs = {
+            'beachball_type': 'full',
+            'size': 8,
+            'position': (5, 5),
+            'color_t': 'black',
+            'edgecolor': 'black'}
+
+        mts = []
+        for ix, x in enumerate(models):
+            if random.random() < 0.1:
+                source = problem.get_source(x)
+                mts.append(source.pyrocko_moment_tensor())
+
+        best_mt = mts[-1]
+
+        beachball.plot_fuzzy_beachball_mpl_pixmap(mts, axes, best_mt, **kwargs)
+
+        axes.set_xlim(0., 10.)
+        axes.set_ylim(0., 10.)
+        axes.set_axis_off()
+
+        item = PlotItem(
+            name='main',
+            title='Fuzzy Moment Tensor',
+            description='The opaqueness illustrates the propability'
+                        ' of all combined moment tensor solution.'
+                        'The red lines indicate the global best solution.')
         return [[item, fig]]
 
 
@@ -819,7 +886,9 @@ class HudsonPlot(PlotConfig):
         except beachball.BeachballError as e:
             logger.warn(str(e))
 
-        item = PlotItem(name='main')
+        item = PlotItem(
+            name='main',
+            title='Hudson Plot')
         return [[item, fig]]
 
 

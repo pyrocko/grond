@@ -210,7 +210,7 @@ class CMTProblem(Problem):
         from .. import plot
         plots = super(CMTProblem, cls).get_plot_classes()
         plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot,
-                      plot.MTLocationPlot])
+                      plot.MTLocationPlot, plot.MTFuzzyPlot])
         return plots
 
 
