@@ -69,7 +69,19 @@ class JointparPlot(PlotConfig):
             title=u'Jointpar Plot',
             section='solution',
             feather_icon='crosshair',
-            description=u'Source problem parameter\'s tradeoff plots.')
+            description=u'Source problem parameter\'s tradeoff plots.\n'
+                        u' The JointparPlot reveals relationships between' 
+                        u' model parameters, like strong correlations or'
+                        u' non-linear trade-offs. A subset of model solutions'
+                        u' (from harvest) is shown in two dimensions for all'
+                        u' possible parameter pairs as points. The point color'
+                        u' indicates the misfit for the model solution with'
+                        u' cold colors (blue) for high misfit models and warm'
+                        u' colors (red) for low misfit models. The plot extend'
+                        u' is defined by the given parameter bounds and'
+                        u' shows the model space of the optimsation. Dark '
+                        u' gray boxes show the reference parameters as given'
+                        u' in the event.txt.')
 
     def draw_figures(self, history, optimiser):
 
@@ -302,9 +314,9 @@ class HistogramPlot(PlotConfig):
 
     The histograms (by default shown as Gaussian kernel densities) show (red
     curved solid line) the distributions of the parameters (marginals) along
-    with some characteristics: The red solid vertical line gives the median of
+    with some characteristics:  The red solid vertical line gives the median of
     the distribution and the dashed red vertical line the mean value. Dark gray
-    vertical lines show reference values if given in the event.txt file. The
+    vertical lines show grond reference values (given in the event.txt file). The
     overlapping red-shaded areas show the 68% confidence intervals (innermost
     area), the 90% confidence intervals (middle area) and the minimum and
     maximum values (widest area). The plot ranges are defined by the given
@@ -330,8 +342,22 @@ class HistogramPlot(PlotConfig):
             title=u'Solution Histrogram',
             section='solution',
             feather_icon='bar-chart-2',
-            description=u'Propability Distribution of the'
-                         ' problem\'s parameters.')
+            description=u'Distribution of the problem\'s parameters.\n'
+			u' The histograms are shown either as Gaussian'
+                        u' kernel densities (red curved solid line) or'
+                        u' as bar plots '
+                        u' the distributions of the parameters (marginals)'
+                        u' along with some characteristics: \n The red solid'
+                        u' vertical line gives the median of the distribution'
+			u' and the dashed red vertical line the mean value. '
+			u' Dark gray vertical lines show reference parameter'
+                        u' values if' 
+			u' given in the event.txt file. The overlapping '
+			u' red-shaded areas show the 68% confidence intervals'
+			u' (innermost area), the 90% confidence intervals'
+			u' (middle area) and the minimum and maximum values'
+			u' (widest area). The plot ranges are defined by the'
+			u' given parameter bounds and show the model space.')
 
     def draw_figures(self, history):
 
@@ -345,6 +371,8 @@ class HistogramPlot(PlotConfig):
         method = self.method
         ref_color = mpl_color('aluminium6')
         stats_color = mpl_color('scarletred2')
+        bar_color = mpl_color('scarletred1')
+        stats_color3 = mpl_color('scarletred3')
 
         problem = history.problem
         misfits = history.misfits
@@ -401,13 +429,20 @@ class HistogramPlot(PlotConfig):
                 kde = scipy.stats.gaussian_kde(vs)
                 vps = num.linspace(vmin, vmax, 600)
                 pps = kde(vps)
-
+            
+                axes.plot(
+                    par.scaled(vps), par.inv_scaled(pps), color=stats_color)
+            
             elif method == 'histogram':
-                pps, edges = num.histogram(vs, density=True)
+                pps, edges = num.histogram(vs,
+                                           bins=num.linspace(vmin, vmax, num=40),
+                                           density=True)
                 vps = 0.5 * (edges[:-1] + edges[1:])
 
-            axes.plot(
-                par.scaled(vps), par.inv_scaled(pps), color=stats_color)
+
+                axes.bar(par.scaled(vps), par.inv_scaled(pps),
+                         par.scaled(2.*(vps - edges[:-1])),
+                         color=bar_color)
 
             pstats = rstats.parameter_stats_list[iselected]
 
@@ -426,10 +461,10 @@ class HistogramPlot(PlotConfig):
 
             axes.axvline(
                 par.scaled(pstats.median),
-                color=stats_color, alpha=0.5)
+                color=stats_color3, alpha=0.5)
             axes.axvline(
                 par.scaled(pstats.mean),
-                color=stats_color, ls=':', alpha=0.5)
+                color=stats_color3, ls=':', alpha=0.5)
 
             axes.axvline(
                 par.scaled(problem.extract(xref, ipar)),

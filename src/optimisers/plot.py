@@ -55,7 +55,17 @@ class SequencePlot(PlotConfig):
             title=u'Sequence Plots',
             section='optimiser',
             description=u'Sequence plots for all parameters of'
-                        u' the optimisation.',
+                        u' the optimisation.\n '
+                        u' The sequence of all the parameter values'
+                        u' is either a function of the optimisation'
+                        u' in progress or of the misfit from high to'
+                        u' low. This plot can be used to check on'
+                        u' convergence or see if model parameters push'
+                        u' the given bounds. \nThe color always shows the'
+                        u' relative misfit. Relatively high misfits'
+                        u' are in cold blue colors and relatively low'
+                        u' misfits in red. The last panel gives the '
+                        u' corresponding misfit values.',
             feather_icon='fast-forward')
 
     def draw_figures(self, history):
@@ -255,7 +265,16 @@ class ContributionsPlot(PlotConfig):
             title=u'Target Contributions',
             section='solution',
             feather_icon='thermometer',
-            description=u'Contributions of the targets towards the misfit.')
+            description=u' Contributions of the targets to the total misfit.\n'
+                        u' The relative contribution that each single target'
+                        u' has in the global misfit result is plotted relative'
+                        u' and unscales as a function of global misfit'
+                        u' (descending). \nThe target contribution is shown in'
+                        u' color-filled curves with the bottom curve on the'
+                        u' bottom and the best-fit target on top. This plot'
+                        u' can be used to analyse the balance of targets in'
+                        u' the optimisations and it indicates poorly fitting'
+                        u' targets easily.')
 
     def draw_figures(self, history):
 
@@ -424,7 +443,32 @@ class BootstrapPlot(PlotConfig):
             title=u'Bootstrap Misfit',
             section='optimiser',
             feather_icon='trending-down',
-            description=u'Evolution of the misfits for all bootstrap chains.')
+            description=u'Sorted misfit (descending) of single bootstrap '
+                        u' chains.\n'
+                        u' For each bootstrap configuration, all models are'
+                        u' sorted according to their misfit value (red lines)'
+                        u' and their global misfit value (black line). (They'
+                        u' are sorted individually for each line). The best' 
+                        u' model of every bootstrap configuration (right end' 
+                        u' model of red lines) is marked as a cross in the'
+                        u' global misfit configuration. The horizontal black' 
+                        u' lines indicate mean and +- standard deviation of' 
+                        u' the y-axis values of these crosses. \nIf the'
+                        u' bootstrap configurations converge to the same' 
+                        u' region in model-space, all crosses should be'
+                        u' close to the right end of the plot. If this'
+                        u' is not the case, some bootstrap configurations'
+                        u' have converged to very different places'
+                        u' in model-space. This would be an indicator that'
+                        u' there might be inconsistencies in the observations'
+                        u' (maybe due to faulty or noisy or misoriented data).'
+                        u' Also the shape of the curve in general can give'
+                        u' information. A well-behaved optimisation run has'
+                        u' approximately linear functions in this plot. Only'
+                        u' at the end they should have a higher downward'
+                        u' gradient. This would be the place where the '
+                        u' objective'
+                        u' functions of the bootstrap start to disagree.')
 
     def draw_figures(self, history, optimiser):
 

@@ -53,8 +53,15 @@ class GNSSTargetMisfitPlot(PlotConfig):
             title=u'Static GNSS Surface Displacements',
             section='fits',
             feather_icon='map',
-            description=u'Maps showing horizontal surface displacements of'
-                        u' GNSS campaigns and the mode.')
+            description=u' Maps showing station positions and statiom names' 
+                        u' of the GNSS targets. Arrows the observed surface' 
+                        u' displacements (black arrows) and synthetic' 
+                        u' displacements (red arrows). The top plot shows' 
+                        u' the horizontal displacements and the bottom plot' 
+                        u' the vertical displacements.The grey filled box' 
+                        u' shows the surface projection of the modelled '
+                        u' source, with the thick-lined edge marking the' 
+                        u' upper fault edge.')
 
     def draw_gnss_fits(self, ds, history, optimiser, vertical=False):
         problem = history.problem

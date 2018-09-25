@@ -162,7 +162,23 @@ class CheckWaveformsPlot(PlotConfig):
             section='checks',
             feather_icon='activity',
             description=u'Plot for checking the waveforms fit with a'
-                        u' number of synthetics.')
+                        u' number of synthetics.'
+                        u' Plot for checking the waveform fits for all'
+                        u' targets with a number of synthetics from models'
+                        u' randomly drawn from given model parameter ranges. '
+                        u' The top waveform plot shows the observed and'
+                        u' filtered target trace. The cosine-shaped forms'
+                        u'  around the observed trace shows the taper' 
+                        u' positions for the drawn models in different' 
+                        u' colors. '
+                        u' the middle trace plot shows the filtered '
+                        u' synthetic '
+                        u' waveforms of the drawn models and the bottom plot '
+                        u' shows the corresponding filtered and tapered'
+                        u' synthetic waveforms. The colors of taper and'
+                        u' synthetic traces are individual for each random'
+                        u' model. The given time is relative to the'
+                        u' reference event origin time.')
 
     def draw_figures(self, sources, targets, results_list):
         results_list = list(zip(*results_list))
@@ -296,7 +312,35 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             section='fits',
             feather_icon='activity',
             description=u'Plot showing all waveform fits for the ensemble'
-                        u' of solutions.')
+                        u' of solutions.'
+                        u' Best model\'s waveform fits for all targets.' 
+                        u' Each waveform plot gives a number of details:'
+                        u' 1) Target information (left side, from top to '
+                        u' bottom) gives station name with component, '
+                        u' distance to source, azimuth of station with '
+                        u' respect to source, manual target weight, target '
+                        u' misfit and starting time of the waveform '
+                        u' relative to the origin time. 2) The background'
+                        u' gray area shows the applied taper function. '
+                        u' 3) The waveforms shown are: the observed, '
+                        u' restituted trace (light grey) and the tapered '
+                        u' and filtered target trace (dark gray), the '
+                        u' synthetic trace (light red) and the filtered, '
+                        u' tapered and (if enabled) shifted synthetic '
+                        u' target trace (red). The amplitude of the traces '
+                        u' is scaled by the target weight (small weight,'
+                        u' small amplitude) and normed relative to the'
+                        u' maximum amplitude of the targets of the '
+                        u' corresponding normalisation family.'
+                        u' 4) Colored boxes on the upper right show '
+                        u' the relative weight of the target within the'
+                        u' entire dataset of the optimisation (top box, '
+                        u' orange) and the relative misfit contribution to'
+                        u' the global misfit of the optimisation (bottom '
+                        u' box, red). 5) Bottom trace (red, filled) shows '
+                        u' sample-wise the weighted misfit between observed '
+                        u' (dark grey line) and synthetic (red) target '
+                        u' waveforms.' )
 
     def draw_figures(self, ds, history):
 
@@ -721,7 +765,28 @@ class FitsWaveformPlot(PlotConfig):
             title=u'Waveform fits for best model',
             section='fits',
             feather_icon='activity',
-            description=u'Best model\'s waveform fits.')
+            description=u' Best model\'s fits for all waveform targets. '
+                        u' Each waveform plot gives a number of details:'
+                        u' 1) Target information (left side, from top to bottom) gives '
+                        u' station name with component, distance to source, azimuth of '
+                        u' station with respect to source, manual target weight, target '
+                        u' misfit and starting time of the waveform relative to the origin '
+                        u' time. 2) The background gray area shows the applied taper '
+                        u' function. 3) The waveforms shown are: the observed, restituted' 
+                        u' trace (light grey) and the tapered and filtered target trace '
+                        u' (dark gray), the synthetic trace (light red) and the filtered, '
+                        u' tapered and (if enabled) shifted synthetic target trace (red). '
+                        u' The amplitude of the traces is scaled by the target weight (small '
+                        u' weight, small amplitude) and normed relative to the maximum '
+                        u' amplitude of the targets of the corresponding normalisation '
+                        u' family. 4) Colored boxes on the upper right show the relative '
+                        u' weight of the target within the entire dataset of the '
+                        u' optimisation (top box, orange) and the relative misfit '
+                        u' contribution to the global misfit of the optimisation (bottom '
+                        u' box, red). 5) Bottom trace (red, filled) shows sample-wise the '
+                        u' weighted misfit between observed (dark grey line) and synthetic '
+                        u' (red) target waveforms. '
+)
 
     def draw_figures(self, ds, history):
 
