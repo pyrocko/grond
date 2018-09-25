@@ -14,7 +14,7 @@ All folder and file paths in the dataset support templating and prefixing:
 
 .. glossary ::
 
-    ``event_path``
+    ``events_path``
         File with hypocenter information and possibly reference solution.
 
     ``path_prefix``
