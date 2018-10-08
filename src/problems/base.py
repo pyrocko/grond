@@ -530,8 +530,8 @@ class Problem(Object):
 
         return self._family_mask
 
-
-    def evaluate(self, x, mask=None, result_mode='full', targets=None, nsources=None):
+    def evaluate(self, x, mask=None, result_mode='full',
+                 targets=None, nsources=None):
         patches = []
         outlines = []
         if self.nsources:
@@ -556,7 +556,9 @@ class Problem(Object):
         modelling_targets = []
         t2m_map = {}
         for itarget, target in enumerate(targets):
-            t2m_map[target] = target.prepare_modelling(engine, sources, targets)
+            t2m_map[target] = target.prepare_modelling(engine,
+                                                       sources,
+                                                       targets)
             if mask is None or mask[itarget]:
                 modelling_targets.extend(t2m_map[target])
 
