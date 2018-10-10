@@ -1,8 +1,9 @@
 import numpy as num
 import logging
-
+import sys
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
+from optparse import OptionParser
 
 from grond.meta import expand_template, Parameter
 
@@ -13,6 +14,8 @@ logger = logging.getLogger('grond.problems.multirectangular.problem')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
+
+#(options, args) = parser.parse_args(sys.argv[1:])
 
 class MultiRectangularProblemConfig(ProblemConfig):
 
@@ -44,9 +47,13 @@ class MultiRectangularProblemConfig(ProblemConfig):
 
 
 class MultiRectangularProblem(Problem):
+    nsource = None
+    for i in range(0, 100):
+        if "--nsources="+str(i) in sys.argv:
+            nsources = int(i)
+    if nsources is None:
+        print('input --nsources= to go command missing')
 
-    #nsources = Problem.nsources #here i need help
-    nsources = 2
     problem_parameters = []
     problem_waveform_parameters = []
 
@@ -105,10 +112,7 @@ class MultiRectangularProblem(Problem):
         return arr
 
     def get_source(self, x, i):
-        print(Problem.target_groups)
-
         d = self.get_parameter_dict(x, nsources=self.nsources)
-
         p = {}
         for k in self.base_source.keys():
             if k in d:
