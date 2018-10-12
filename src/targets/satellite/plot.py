@@ -54,19 +54,19 @@ class SatelliteTargetDisplacement(PlotConfig):
             title=u'Satellite Surface Displacements',
             section='fits',
             feather_icon='navigation',
-            description=u' Maps showing subsampled surface displacements as '   
-                        u' observed, modelled and the residual (observed minus'  
-                        u' modelled).\n The displacement values predicted by' 
-                        u' the orbit-ambiguity ramps are added to the modelled' 
-                        u' displacements (middle panels). The color shows the' 
-                        u' LOS displacement values associated with, and the' 
-                        u' extent of, every quadtree box. The light grey dots' 
-                        u' show the focal point of pixels combined in the' 
-                        u' quadtree box. This point corresponds to the' 
-                        u' position of the modelled data point.\n The large dark' 
-                        u' grey dot shows the reference source position. The' 
-                        u' grey filled box shows the surface projection of the' 
-                        u' modelled source, with the thick-lined edge marking' 
+            description=u' Maps showing subsampled surface displacements as '
+                        u' observed, modelled and the residual (observed minus'
+                        u' modelled).\n The displacement values predicted by'
+                        u' the orbit-ambiguity ramps are added to the modelled'
+                        u' displacements (middle panels). The color shows the'
+                        u' LOS displacement values associated with, and the'
+                        u' extent of, every quadtree box. The light grey dots'
+                        u' show the focal point of pixels combined in the'
+                        u' quadtree box. This point corresponds to the'
+                        u' position of the modelled data point.\n The large dark'
+                        u' grey dot shows the reference source position. The'
+                        u' grey filled box shows the surface projection of the'
+                        u' modelled source, with the thick-lined edge marking'
                         u' the upper fault edge. '
                         u' Complete data extent is shown.')
 
@@ -83,15 +83,15 @@ class SatelliteTargetDisplacement(PlotConfig):
         gms = gms[isort]
         models = history.models[isort, :]
         xbest = models[0, :]
-        #nsources = problem.nsources #help
+        # nsources = problem.nsources #help
         nsources = 2
         if nsources is not None:
-		sources = []
-        	for i in range(nsources):
-			sources.append(problem.get_source(xbest, i))
-	else:
-        	source = problem.get_source(xbest)
-
+            sources = []
+            for i in range(nsources):
+                source = problem.get_source(xbest, i)
+                sources.append(source)
+        else:
+            source = problem.get_source(xbest)
         results = problem.evaluate(xbest, targets=sat_targets)
 
         def initAxes(ax, scene, title, last_axes=False):
@@ -131,12 +131,13 @@ class SatelliteTargetDisplacement(PlotConfig):
         def drawSource(ax, scene):
             if scene.frame.isMeter():
                 if nsources is not None:
-                    fn = []
-                    fe = []
-                    for source in sources:
-                        fn_sub, fe_sub = source1.outline(cs='xy').T
-                    fe.append(fe_sub)
-                    fn.append(fn_sub)
+                    fns = []
+                    fes = []
+                    for subsource in sources:
+                        fn_sub, fe_sub = subsource.outline(cs='xy').T
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
+                        source = subsource
                 else:
                     fn, fe = source.outline(cs='xy').T
 
@@ -144,26 +145,26 @@ class SatelliteTargetDisplacement(PlotConfig):
                 if nsources is not None:
                     fns = []
                     fes = []
-                    for source in sources:
-                        fn_sub, fe_sub = source.outline(cs='latlon').T
-                    fn_sub -= source.lat
-                    fe_sub -= source.lon
-                    fes.append(fe_sub)
-                    fns.append(fn_sub)
+                    for subsource in sources:
+                        fn_sub, fe_sub = subsource.outline(cs='latlon').T
+                        fn_sub -= subsource.lat
+                        fe_sub -= subsource.lon
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
+                        source = subsource
 
                 else:
                     fn, fe = source.outline(cs='latlon').T
                     fn -= source.lat
                     fe -= source.lon
 
-
             # source is centered
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
             if nsources is not None:
                 for fe, fn in zip(fes, fns):
                     ax.fill(fe, fn,
-                        edgecolor=(0., 0., 0.),
-                        facecolor=(.5, .5, .5), alpha=0.5)
+                            edgecolor=(0., 0., 0.),
+                            facecolor=(.5, .5, .5), alpha=0.5)
                     ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
 
             else:
@@ -369,7 +370,7 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
             cax = fig.add_subplot(gs[1, :])
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
                                 use_gridspec=True)
-            
+
             cbar.set_label('LOS Displacement [m]')
 
             return (item, fig)
