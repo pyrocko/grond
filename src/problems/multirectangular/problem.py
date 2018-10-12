@@ -47,7 +47,7 @@ class MultiRectangularProblemConfig(ProblemConfig):
 
 
 class MultiRectangularProblem(Problem):
-    nsource = None
+    nsources = None
     for i in range(0, 100):
         if "--nsources="+str(i) in sys.argv:
             nsources = int(i)
