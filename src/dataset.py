@@ -224,12 +224,12 @@ class Dataset(object):
         for x in whitelist:
             if isinstance(x, str):
                 x = tuple(x.split('.'))
-            assert len(x) in (3, 4)
             if len(x) == 4:
                 self.whitelist_nslc.add(x)
                 self.whitelist_nsl_xx.add(x[:3])
-            if len(x) == 3:
+            else:
                 self.whitelist_nsl.add(x)
+
 
     def add_station_corrections(self, filename):
         self.station_corrections.update(
@@ -314,7 +314,12 @@ class Dataset(object):
             return True
 
         nsl = self.get_nsl(obj)
+
         try:
+            if nsl[0:2] in self.whitelist_nsl:
+                return True
+            if nsl[0:1] in self.whitelist_nsl:
+                return True
             nslc = self.get_nslc(obj)
             if nslc in self.whitelist_nslc:
                 return True
@@ -1064,3 +1069,4 @@ __all__ = '''
     load_station_corrections
     dump_station_corrections
 '''.split()
+
