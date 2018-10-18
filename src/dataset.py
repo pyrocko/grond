@@ -75,7 +75,8 @@ class Dataset(object):
         self.clippings = {}
         self.blacklist = set()
         self.whitelist_nslc = None
-        self.whitelist_nsl = None
+        self.whitelist_nsl_xx = None
+        self.whitelist = None
         self.station_corrections = {}
         self.station_factors = {}
         self.pick_markers = []
@@ -218,18 +219,17 @@ class Dataset(object):
 
         if self.whitelist_nslc is None:
             self.whitelist_nslc = set()
-            self.whitelist_nsl = set()
+            self.whitelist = set()
             self.whitelist_nsl_xx = set()
 
         for x in whitelist:
             if isinstance(x, str):
                 x = tuple(x.split('.'))
-            assert len(x) in (3, 4)
             if len(x) == 4:
                 self.whitelist_nslc.add(x)
                 self.whitelist_nsl_xx.add(x[:3])
-            if len(x) == 3:
-                self.whitelist_nsl.add(x)
+            else:
+                self.whitelist.add(x)
 
     def add_station_corrections(self, filename):
         self.station_corrections.update(
@@ -314,15 +314,21 @@ class Dataset(object):
             return True
 
         nsl = self.get_nsl(obj)
+
+        if (
+                nsl in self.whitelist or
+                nsl[1:2] in self.whitelist or
+                nsl[:2] in self.whitelist):
+
+            return True
+
         try:
             nslc = self.get_nslc(obj)
             if nslc in self.whitelist_nslc:
                 return True
 
-            return nsl in self.whitelist_nsl
-
         except InvalidObject:
-            return nsl in self.whitelist_nsl_xx or nsl in self.whitelist_nsl
+            return nsl in self.whitelist_nsl_xx
 
     def has_clipping(self, nsl_or_nslc, tmin, tmax):
         if nsl_or_nslc not in self.clippings:
