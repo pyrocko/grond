@@ -318,7 +318,7 @@ class Dataset(object):
         try:
             if nsl[0:2] in self.whitelist_nsl:
                 return True
-            if nsl[0:1] in self.whitelist_nsl:
+            if nsl[1:2] in self.whitelist_nsl:
                 return True
             nslc = self.get_nslc(obj)
             if nslc in self.whitelist_nslc:
