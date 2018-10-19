@@ -107,6 +107,7 @@ class SamplerPhase(Object):
         default=1000,
         help='Tries to find a valid preconstrained sample.')
     rseed = Int.T(
+        optional=True,
         default=None,
         help='Random state seed.')
 
