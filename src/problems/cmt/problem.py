@@ -154,10 +154,11 @@ class CMTProblem(Problem):
 
         return x
 
-    def random_uniform(self, xbounds):
+    def random_uniform(self, xbounds, rstate):
+
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
         x[5:11] = mtm.random_m6()
 
