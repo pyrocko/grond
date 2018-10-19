@@ -641,8 +641,8 @@ class HighScoreOptimiserConfig(OptimiserConfig):
 
     sampler_phases = List.T(
         SamplerPhase.T(),
-        default=[UniformSamplerPhase(niterations=1000, rseed=23),
-                 DirectedSamplerPhase(niterations=5000, rseed=23)],
+        default=[UniformSamplerPhase(niterations=1000, rseed=None),
+                 DirectedSamplerPhase(niterations=5000, rseed=None)],
         help='Stages of the sampler: Start with uniform sampling of the model'
              ' model space and narrow down through directed sampling.')
     chain_length_factor = Float.T(
