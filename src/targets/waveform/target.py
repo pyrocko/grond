@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import logging
 import math
 import numpy as num
@@ -30,7 +32,7 @@ class Trace(Object):
 
 
 class WaveformMisfitConfig(MisfitConfig):
-    fmin = Float.T(help='minimum frequency of bandpass filter')
+    fmin = Float.T(default=0.0, help='minimum frequency of bandpass filter')
     fmax = Float.T(help='maximum frequency of bandpass filter')
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T(
@@ -285,7 +287,11 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         config = self.misfit_config
         tmin_fit = source.time + store.t(config.tmin, source, self)
         tmax_fit = source.time + store.t(config.tmax, source, self)
-        tfade = 1.0/config.fmin
+        if config.fmin > 0.0:
+            tfade = 1.0/config.fmin
+        else:
+            tfade = 1.0/config.fmax
+
         if config.tfade is None:
             tfade_taper = tfade
         else:
@@ -326,7 +332,11 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         return tobs, tsyn
 
     def get_cutout_timespan(self, tmin, tmax, tfade):
-        tinc_obs = 1.0 / self.misfit_config.fmin
+
+        if self.misfit_config.fmin > 0:
+            tinc_obs = 1.0 / self.misfit_config.fmin
+        else:
+            tinc_obs = 10.0 / self.misfit_config.fmax
 
         tmin_obs = (math.floor(
             (tmin - tfade) / tinc_obs) - 1.0) * tinc_obs
@@ -372,7 +382,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         try:
             tr_obs = ds.get_waveform(
                 nslc,
-                tinc_cache=1.0/config.fmin,
+                tinc_cache=1.0/(config.fmin or 0.1*config.fmax),
                 tmin=tmin_fit+tobs_shift-tfade,
                 tmax=tmax_fit+tobs_shift+tfade,
                 tfade=tfade,

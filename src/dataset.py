@@ -524,7 +524,7 @@ class Dataset(object):
             trs[0].extend(
                 tmin + toffset_noise_extract - tpad,
                 tmax + toffset_noise_extract + tpad,
-                fillmethod='median')
+                fillmethod='repeat')
 
         if not want_incomplete and len(trs) != 1:
             if len(trs) == 0:
