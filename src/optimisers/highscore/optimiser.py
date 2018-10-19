@@ -37,10 +37,10 @@ def excentricity_compensated_probabilities(xs, sbx, factor):
     return probabilities
 
 
-def excentricity_compensated_choice(xs, sbx, factor):
+def excentricity_compensated_choice(xs, sbx, factor, rstate):
     probabilities = excentricity_compensated_probabilities(
         xs, sbx, factor)
-    r = num.random.random()
+    r = rstate.random_sample()
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
     ichoice = min(ichoice, xs.shape[0]-1)
     return ichoice
@@ -106,9 +106,16 @@ class SamplerPhase(Object):
     ntries_preconstrain_limit = Int.T(
         default=1000,
         help='Tries to find a valid preconstrained sample.')
+    rseed = Int.T(
+        default=None,
+        help='Random state seed.')
 
     def get_raw_sample(self, problem, iiter, chains):
         raise NotImplementedError
+
+    def get_rstate(self):
+        rstate = num.random.RandomState(self.rseed)
+        return rstate
 
     def get_sample(self, problem, iiter, chains):
         assert 0 <= iiter < self.niterations
@@ -141,7 +148,8 @@ class UniformSamplerPhase(SamplerPhase):
 
     def get_raw_sample(self, problem, iiter, chains):
         xbounds = problem.get_parameter_bounds()
-        return Sample(model=problem.random_uniform(xbounds))
+        rstate = self.get_rstate()
+        return Sample(model=problem.random_uniform(xbounds, rstate))
 
 
 class DirectedSamplerPhase(SamplerPhase):
@@ -187,7 +195,7 @@ class DirectedSamplerPhase(SamplerPhase):
             return s or 1.0
 
     def get_raw_sample(self, problem, iiter, chains):
-
+        rstate = self.get_rstate()
         factor = self.get_scatter_scale_factor(iiter)
         npar = problem.nparameters
         pnames = problem.parameter_names
@@ -202,12 +210,12 @@ class DirectedSamplerPhase(SamplerPhase):
                 models,
                 chains.standard_deviation_models(
                     ichain_choice, self.standard_deviation_estimator),
-                2.)
+                2., rstate)
 
             xchoice = chains.model(ichain_choice, ilink_choice)
 
         elif self.starting_point == 'random':
-            ilink_choice = num.random.randint(0, chains.nlinks)
+            ilink_choice = rstate.randint(0, chains.nlinks)
             xchoice = chains.model(ichain_choice, ilink_choice)
 
         elif self.starting_point == 'mean':
@@ -227,7 +235,7 @@ class DirectedSamplerPhase(SamplerPhase):
                 ntries = 0
                 while True:
                     if sx[ipar] > 0.:
-                        v = num.random.normal(
+                        v = rstate.normal(
                             xchoice[ipar],
                             factor*sx[ipar])
                     else:
@@ -245,7 +253,7 @@ class DirectedSamplerPhase(SamplerPhase):
                             'distribution for parameter \'%s\''
                             '- drawing from uniform instead.' %
                             pnames[ipar])
-                        v = num.random.uniform(xbounds[ipar, 0],
+                        v = rstate.uniform(xbounds[ipar, 0],
                                                xbounds[ipar, 1])
                         break
 
@@ -257,7 +265,7 @@ class DirectedSamplerPhase(SamplerPhase):
             ok_mask_sum = num.zeros(npar, dtype=num.int)
             while True:
                 ntries_sample += 1
-                xcandi = num.random.multivariate_normal(
+                xcandi = rstate.multivariate_normal(
                     xchoice, factor**2 * chains.cov(ichain_choice))
 
                 ok_mask = num.logical_and(
@@ -456,7 +464,7 @@ class HighScoreOptimiser(Optimiser):
         self._bootstrap_weights = None
         self._bootstrap_residuals = None
         self._status_chains = None
-        self.rstate = num.random.RandomState(self.bootstrap_seed)
+        self.rstate_bs = num.random.RandomState(self.bootstrap_seed)
 
     def init_bootstraps(self, problem):
         self.init_bootstrap_weights(problem)
@@ -470,7 +478,7 @@ class HighScoreOptimiser(Optimiser):
         ws = make_bayesian_weights(
             self.nbootstrap,
             nmisfits=problem.nmisfits,
-            rstate=self.rstate)
+            rstate=self.rstate_bs)
 
         imf = 0
         for it, t in enumerate(bootstrap_targets):
@@ -487,7 +495,7 @@ class HighScoreOptimiser(Optimiser):
                                 if t.can_bootstrap_residuals])
 
         for t in residual_targets:
-            t.init_bootstrap_residuals(self.nbootstrap, rstate=self.rstate)
+            t.init_bootstrap_residuals(self.nbootstrap, rstate=self.rstate_bs)
 
         for t in set(problem.targets) - residual_targets:
             t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
@@ -715,8 +723,8 @@ class HighScoreOptimiserConfig(OptimiserConfig):
 
     sampler_phases = List.T(
         SamplerPhase.T(),
-        default=[UniformSamplerPhase(niterations=1000),
-                 DirectedSamplerPhase(niterations=5000)],
+        default=[UniformSamplerPhase(niterations=1000, rseed=23),
+                 DirectedSamplerPhase(niterations=5000, rseed=23)],
         help='Stages of the sampler: Start with uniform sampling of the model'
              ' model space and narrow down through directed sampling.')
     chain_length_factor = Float.T(

@@ -249,8 +249,8 @@ class Problem(Object):
     def set_engine(self, engine):
         self._engine = engine
 
-    def random_uniform(self, xbounds):
-        x = num.random.uniform(0., 1., self.nparameters)
+    def random_uniform(self, xbounds, rstate):
+        x = rstate.uniform(0., 1., self.nparameters)
         x *= (xbounds[:, 1] - xbounds[:, 0])
         x += xbounds[:, 0]
         return x
