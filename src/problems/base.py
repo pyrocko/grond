@@ -28,6 +28,8 @@ logger = logging.getLogger('grond.problems.base')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
+g_rstate = num.random.RandomState()
+
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
@@ -545,9 +547,10 @@ class Problem(Object):
 
     def get_random_model(self):
         xbounds = self.get_parameter_bounds()
+        g_rstate
 
         while True:
-            x = self.random_uniform(xbounds)
+            x = self.random_uniform(xbounds, rstate=g_state)
             try:
                 return self.preconstrain(x)
 
