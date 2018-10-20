@@ -106,17 +106,22 @@ class SamplerPhase(Object):
     ntries_preconstrain_limit = Int.T(
         default=1000,
         help='Tries to find a valid preconstrained sample.')
-    rseed = Int.T(
+    seed = Int.T(
         optional=True,
-        default=None,
         help='Random state seed.')
+
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
+        self._rstate = None
+
+    def get_rstate(self):
+        if self._rstate is None:
+            self._rstate = num.random.RandomState(self.seed)
+
+        return self._rstate
 
     def get_raw_sample(self, problem, iiter, chains):
         raise NotImplementedError
-
-    def get_rstate(self):
-        rstate = num.random.RandomState(self.rseed)
-        return rstate
 
     def get_sample(self, problem, iiter, chains):
         assert 0 <= iiter < self.niterations
@@ -149,8 +154,7 @@ class UniformSamplerPhase(SamplerPhase):
 
     def get_raw_sample(self, problem, iiter, chains):
         xbounds = problem.get_parameter_bounds()
-        rstate = self.get_rstate()
-        return Sample(model=problem.random_uniform(xbounds, rstate))
+        return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
 
 
 class DirectedSamplerPhase(SamplerPhase):
@@ -255,7 +259,7 @@ class DirectedSamplerPhase(SamplerPhase):
                             '- drawing from uniform instead.' %
                             pnames[ipar])
                         v = rstate.uniform(xbounds[ipar, 0],
-                                               xbounds[ipar, 1])
+                                           xbounds[ipar, 1])
                         break
 
                     ntries += 1
@@ -465,7 +469,14 @@ class HighScoreOptimiser(Optimiser):
         self._bootstrap_weights = None
         self._bootstrap_residuals = None
         self._status_chains = None
-        self.rstate_bs = num.random.RandomState(self.bootstrap_seed)
+        self._rstate_bootstrap = None
+
+    def get_rstate_bootstrap(self):
+        if self._rstate_bootstrap is None:
+            self._rstate_bootstrap = num.random.RandomState(
+                self.bootstrap_seed)
+
+        return self._rstate_bootstrap
 
     def init_bootstraps(self, problem):
         self.init_bootstrap_weights(problem)
@@ -479,7 +490,7 @@ class HighScoreOptimiser(Optimiser):
         ws = make_bayesian_weights(
             self.nbootstrap,
             nmisfits=problem.nmisfits,
-            rstate=self.rstate_bs)
+            rstate=self.get_rstate_bootstrap())
 
         imf = 0
         for it, t in enumerate(bootstrap_targets):
@@ -496,7 +507,8 @@ class HighScoreOptimiser(Optimiser):
                                 if t.can_bootstrap_residuals])
 
         for t in residual_targets:
-            t.init_bootstrap_residuals(self.nbootstrap, rstate=self.rstate_bs)
+            t.init_bootstrap_residuals(
+                self.nbootstrap, rstate=self.get_rstate_bootstrap())
 
         for t in set(problem.targets) - residual_targets:
             t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
@@ -724,8 +736,8 @@ class HighScoreOptimiserConfig(OptimiserConfig):
 
     sampler_phases = List.T(
         SamplerPhase.T(),
-        default=[UniformSamplerPhase(niterations=1000, rseed=None),
-                 DirectedSamplerPhase(niterations=5000, rseed=None)],
+        default=[UniformSamplerPhase(niterations=1000),
+                 DirectedSamplerPhase(niterations=5000)],
         help='Stages of the sampler: Start with uniform sampling of the model'
              ' model space and narrow down through directed sampling.')
     chain_length_factor = Float.T(
