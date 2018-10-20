@@ -547,10 +547,9 @@ class Problem(Object):
 
     def get_random_model(self):
         xbounds = self.get_parameter_bounds()
-        g_rstate
 
         while True:
-            x = self.random_uniform(xbounds, rstate=g_state)
+            x = self.random_uniform(xbounds, rstate=g_rstate)
             try:
                 return self.preconstrain(x)
 

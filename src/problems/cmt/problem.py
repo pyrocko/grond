@@ -160,7 +160,7 @@ class CMTProblem(Problem):
         for i in range(self.nparameters):
             x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
-        x[5:11] = mtm.random_m6()
+        x[5:11] = mtm.random_m6(x=rstate.random_sample(6))
 
         return x.tolist()
 
