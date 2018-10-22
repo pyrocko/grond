@@ -289,7 +289,7 @@ class DirectedSamplerPhase(SamplerPhase):
                         ', '.join('%s:%i' % xx for xx in
                                   zip(pnames, ok_mask_sum)))
                     xbounds = problem.get_parameter_bounds()
-                    xcandi = problem.random_uniform(xbounds)
+                    xcandi = problem.random_uniform(xbounds, rstate)
                     break
 
             x = xcandi
