@@ -161,24 +161,20 @@ class CheckWaveformsPlot(PlotConfig):
             title=u'Waveform Check',
             section='checks',
             feather_icon='activity',
-            description=u'Plot for checking the waveforms fit with a'
-                        u' number of synthetics.'
-                        u' Plot for checking the waveform fits for all'
-                        u' targets with a number of synthetics from models'
-                        u' randomly drawn from given model parameter ranges. '
-                        u' The top waveform plot shows the observed and'
-                        u' filtered target trace. The cosine-shaped forms'
-                        u'  around the observed trace shows the taper' 
-                        u' positions for the drawn models in different' 
-                        u' colors. '
-                        u' the middle trace plot shows the filtered '
-                        u' synthetic '
-                        u' waveforms of the drawn models and the bottom plot '
-                        u' shows the corresponding filtered and tapered'
-                        u' synthetic waveforms. The colors of taper and'
-                        u' synthetic traces are individual for each random'
-                        u' model. The given time is relative to the'
-                        u' reference event origin time.')
+            description='''
+Plot to judge waveform time window settings and source model parameter ranges.
+
+For each waveform target, observed and synthetic waveforms are shown. For the
+latter, models are randomly drawn from the configured parameter search space.
+
+The top panel shows the observed waveform; filtered (faint gray), and filtered
+and tapered (black). The colored outline around the observed trace shows the
+taper position for each drawn model in a different color. The middle panel
+shows the filtered synthetic waveforms of the drawn models and the bottom plot
+shows the corresponding filtered and tapered synthetic waveforms. The colors of
+taper and synthetic traces are consistent for each random model. The given time
+is relative to the reference event origin time.
+            ''')
 
     def draw_figures(self, sources, targets, results_list):
         results_list = list(zip(*results_list))
@@ -311,36 +307,33 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             title=u'Waveform fits for the ensemble',
             section='fits',
             feather_icon='activity',
-            description=u'Plot showing all waveform fits for the ensemble'
-                        u' of solutions.'
-                        u' Best model\'s waveform fits for all targets.' 
-                        u' Each waveform plot gives a number of details:'
-                        u' 1) Target information (left side, from top to '
-                        u' bottom) gives station name with component, '
-                        u' distance to source, azimuth of station with '
-                        u' respect to source, manual target weight, target '
-                        u' misfit and starting time of the waveform '
-                        u' relative to the origin time. 2) The background'
-                        u' gray area shows the applied taper function. '
-                        u' 3) The waveforms shown are: the observed, '
-                        u' restituted trace (light grey) and the tapered '
-                        u' and filtered target trace (dark gray), the '
-                        u' synthetic trace (light red) and the filtered, '
-                        u' tapered and (if enabled) shifted synthetic '
-                        u' target trace (red). The amplitude of the traces '
-                        u' is scaled by the target weight (small weight,'
-                        u' small amplitude) and normed relative to the'
-                        u' maximum amplitude of the targets of the '
-                        u' corresponding normalisation family.'
-                        u' 4) Colored boxes on the upper right show '
-                        u' the relative weight of the target within the'
-                        u' entire dataset of the optimisation (top box, '
-                        u' orange) and the relative misfit contribution to'
-                        u' the global misfit of the optimisation (bottom '
-                        u' box, red). 5) Bottom trace (red, filled) shows '
-                        u' sample-wise the weighted misfit between observed '
-                        u' (dark grey line) and synthetic (red) target '
-                        u' waveforms.' )
+            description='''
+Plot showing waveform fits for the ensemble of solutions.
+
+Waveform fits for every nth model in the ensemble of bootstrap solutions. Each
+waveform plot gives a number of details:
+
+1) Target information (left side, from top to bottom) gives station name with
+component, distance to source, azimuth of station with respect to source,
+target weight, target misfit and starting time of the waveform relative to the
+origin time.
+
+2) The background gray area shows the applied taper function.
+
+3) The waveforms shown are: the restituted and filtered observed trace without
+tapering (light grey) and the same trace with tapering and processing (dark
+gray), the synthetic trace (light red) and the filtered, tapered and (if
+enabled) shifted and processed synthetic trace (colored). The colors of the
+synthetic traces indicate how well the corresponding models fit in the global
+weighting scheme (when all bootstrap weights are equal), from better fit (red)
+to worse fit (blue). The amplitudes of the traces are scaled according to the
+target weight (small weight, small amplitude) and normed relative to the
+maximum amplitude of the targets of the corresponding normalisation family.
+
+4) The bottom panel shows, depending on the type of comparison, sample-wise
+residuals for time domain comparisons (red filled), spectra of observed and
+synthetic traces for amplitude spectrum comparisons, or cross correlation
+traces.''')
 
     def draw_figures(self, ds, history):
 
@@ -765,28 +758,37 @@ class FitsWaveformPlot(PlotConfig):
             title=u'Waveform fits for best model',
             section='fits',
             feather_icon='activity',
-            description=u' Best model\'s fits for all waveform targets. '
-                        u' Each waveform plot gives a number of details:'
-                        u' 1) Target information (left side, from top to bottom) gives '
-                        u' station name with component, distance to source, azimuth of '
-                        u' station with respect to source, manual target weight, target '
-                        u' misfit and starting time of the waveform relative to the origin '
-                        u' time. 2) The background gray area shows the applied taper '
-                        u' function. 3) The waveforms shown are: the observed, restituted' 
-                        u' trace (light grey) and the tapered and filtered target trace '
-                        u' (dark gray), the synthetic trace (light red) and the filtered, '
-                        u' tapered and (if enabled) shifted synthetic target trace (red). '
-                        u' The amplitude of the traces is scaled by the target weight (small '
-                        u' weight, small amplitude) and normed relative to the maximum '
-                        u' amplitude of the targets of the corresponding normalisation '
-                        u' family. 4) Colored boxes on the upper right show the relative '
-                        u' weight of the target within the entire dataset of the '
-                        u' optimisation (top box, orange) and the relative misfit '
-                        u' contribution to the global misfit of the optimisation (bottom '
-                        u' box, red). 5) Bottom trace (red, filled) shows sample-wise the '
-                        u' weighted misfit between observed (dark grey line) and synthetic '
-                        u' (red) target waveforms. '
-)
+            description='''
+Plot showing observed and synthetic waveforms for the best fitting model.
+
+Best model's waveform fits for all targets. Each waveform plot gives a number
+of details:
+
+1) Target information (left side, from top to bottom) gives station name with
+component, distance to source, azimuth of station with respect to source,
+target weight, target misfit and starting time of the waveform relative to the
+origin time.
+
+2) The background gray area shows the applied taper function.
+
+3) The waveforms shown are: the restituted and filtered observed trace without
+tapering (light grey) and the same trace with tapering and processing (dark
+gray), the synthetic trace (light red) and the filtered, tapered and (if
+enabled) shifted and processed synthetic target trace (red). The traces are
+scaled according to the target weight (small weight, small amplitude) and
+normed relative to the maximum amplitude of the targets of the corresponding
+normalisation family.
+
+4) The bottom panel shows, depending on the type of comparison, sample-wise
+residuals for time domain comparisons (red filled), spectra of observed and
+synthetic traces for amplitude spectrum comparisons, or cross correlation
+traces.
+
+5) Colored boxes on the upper right show the relative weight of the target
+within the entire dataset of the optimisation (top box, orange) and the
+relative misfit contribution to the global misfit of the optimisation (bottom
+box, red).
+''')
 
     def draw_figures(self, ds, history):
 

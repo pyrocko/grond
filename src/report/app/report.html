@@ -2,7 +2,7 @@
     <script>$("#browser-warning").hide();</script>
 
     <nav class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
-        <a class="navbar-brand" href>Grond results</a>
+        <a href="" class="navbar-brand">Grond results</a>
         <input
                 class="form-control form-control-dark"
                 type="text"
@@ -11,14 +11,14 @@
                 ng-model="keyword" />
         <a
                 class="btn btn-primary ml-3"
-                href
+                href=""
                 ng-if="rl.get_selected().length > 1"
                 ng-click="toggle_compare_mode()">
             {{ compare_mode ? 'Compare off' : 'Compare' }}
         </a>
         <a
                 class="btn btn-primary ml-3"
-                href
+                href=""
                 ng-click="open_modal()">
             Open
         </a>
@@ -39,7 +39,7 @@
                     <a
                             ng-click="set_primary_problem(get_offset_problem_name(primary_problem, -1, true))"
                             class="nav-link {{ get_offset_problem_name(primary_problem, -1, false) ? '' : 'disabled' }}"
-                            href>◀</a>
+                            href="">◀</a>
                 </li>
                 <li
                         class="nav-item ml-2 {{ tab_col_width() }}"
@@ -48,7 +48,7 @@
                     <a
                             ng-click="set_primary_problem(problem_name)"
                             class="nav-link {{ (problem_name == primary_problem) ? 'active' : '' }}"
-                            href>
+                            href="">
                         {{ problem_name }}
                     </a>
                 </li>
@@ -56,7 +56,7 @@
                     <a
                             ng-click="set_primary_problem(get_offset_problem_name(primary_problem, 1, true))"
                             class="nav-link {{ get_offset_problem_name(primary_problem, 1, false) ? '' : 'disabled' }}"
-                            href>▶</a>
+                            href="">▶</a>
                 </li>
             </ul>
         </div>
@@ -66,7 +66,7 @@
                     <a
                             ng-click="set_secondary_problem(get_offset_problem_name(secondary_problem, -1, true))"
                             class="nav-link {{ get_offset_problem_name(secondary_problem, -1, false) ? '' : 'disabled' }}"
-                            href>◀</a>
+                            href="">◀</a>
                 </li>
                 <li
                         class="nav-item ml-2 {{ tab_col_width() }}"
@@ -75,7 +75,7 @@
                     <a
                             ng-click="set_secondary_problem(problem_name)"
                             class="nav-link {{ (problem_name == secondary_problem) ? 'active' : '' }}"
-                            href>
+                            href="">
                         {{ problem_name }}
                     </a>
                 </li>
@@ -83,7 +83,7 @@
                     <a
                             ng-click="set_secondary_problem(get_offset_problem_name(secondary_problem, 1, true))"
                             class="nav-link {{ get_offset_problem_name(secondary_problem, 1, false) ? '' : 'disabled' }}"
-                            href>▶</a>
+                            href="">▶</a>
                 </li>
             </ul>
         </div>

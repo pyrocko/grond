@@ -116,7 +116,7 @@ function parse_fields(fields, input, output, error, factor, parse) {
 }
 
 
-angular.module('reportApp', ['ngRoute'])
+angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
     .config(function($routeProvider, $locationProvider) {
         $locationProvider.hashPrefix('');
@@ -266,7 +266,7 @@ angular.module('reportApp', ['ngRoute'])
 				if (version) versions.add(version);
 			}
 
-			var aversions = new Array.from(versions);
+			var aversions = Array.from(versions);
 			aversions.sort();
 			return aversions;
         };
@@ -758,6 +758,30 @@ angular.module('reportApp', ['ngRoute'])
     .directive('reportListModal', function() {
         return {
             templateUrl: 'templates/report_list_modal.tmpl.html'
+        };
+    })
+
+    .directive('expandableText', function() {
+        return {
+            restrict: 'E',
+            scope: {
+                text: '=text',
+            },
+            controller: ['$scope', function ExpandableTextController($scope) {
+                $scope.hidden = true;
+
+                $scope.show = function() {
+                    $scope.hidden = false;
+                }
+
+                $scope.hide = function() {
+                    $scope.hidden = true;
+                }
+                $scope.paragraphs = function(txt) {
+                    return txt.split(/\s*\n\s*\n\s*/);
+                }
+            }],
+            templateUrl: 'templates/expandable_text.tmpl.html'
         };
     })
 
