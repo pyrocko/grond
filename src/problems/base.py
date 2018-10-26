@@ -80,10 +80,23 @@ class Problem(Object):
             self.problem_parameters =\
                 self.problem_parameters + self.problem_waveform_parameters
 
+        self.check()
+
     @classmethod
     def get_plot_classes(cls):
         from . import plot
         return plot.get_plot_classes()
+
+    def check(self):
+        paths = set()
+        for grp in self.target_groups:
+            if grp.path == 'all':
+                continue
+            if grp.path in paths:
+                raise ValueError('Path %s defined more than once! In %s'
+                                 % (grp.path, grp.__class__.__name__))
+            paths.add(grp.path)
+        logger.debug('TargetGroup check OK')
 
     def get_engine(self):
         return self._engine
