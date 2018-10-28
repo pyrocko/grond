@@ -3,11 +3,11 @@ import logging
 import random
 
 import numpy as num
-from matplotlib import cm, patches
+from matplotlib import cm, patches, colors as mcolors
 
 from pyrocko.guts import Tuple, Float, Int, String, List, Bool, StringChoice
 
-from pyrocko.plot import mpl_margins, mpl_color, mpl_init
+from pyrocko.plot import mpl_margins, mpl_color, mpl_init, mpl_graph_color
 from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
@@ -70,7 +70,7 @@ class JointparPlot(PlotConfig):
             section='solution',
             feather_icon='crosshair',
             description=u'Source problem parameter\'s tradeoff plots.\n'
-                        u' The JointparPlot reveals relationships between' 
+                        u' The JointparPlot reveals relationships between'
                         u' model parameters, like strong correlations or'
                         u' non-linear trade-offs. A subset of model solutions'
                         u' (from harvest) is shown in two dimensions for all'
@@ -94,6 +94,7 @@ class JointparPlot(PlotConfig):
         misfit_cutoff = self.misfit_cutoff
         draw_ellipses = self.draw_ellipses
         msize = 1.5
+        cmap = 'coolwarm'
 
         problem = history.problem
         if not problem:
@@ -127,6 +128,7 @@ class JointparPlot(PlotConfig):
             models = models[ibest]
 
         nmodels = models.shape[0]
+        kwargs = {}
 
         if color_parameter == 'dist':
             mx = num.mean(models, axis=0)
@@ -141,6 +143,21 @@ class JointparPlot(PlotConfig):
         elif color_parameter in problem.parameter_names:
             ind = problem.name_to_index(color_parameter)
             icolor = problem.extract(models, ind)
+
+        elif color_parameter in history.attribute_names:
+            icolor = history.get_attribute(color_parameter)[isort]
+            icolor_need = num.sort(num.unique(icolor))
+
+            colors = []
+            for i in range(icolor_need[-1]+1):
+                colors.append(mpl_graph_color(i))
+
+            cmap = mcolors.ListedColormap(colors)
+            cmap.set_under(mpl_color('aluminium3'))
+            kwargs.update(dict(vmin=0, vmax=icolor_need[-1]))
+        else:
+            raise meta.GrondError(
+                'invalid color_parameter: %s' % color_parameter)
 
         smap = {}
         iselected = 0
@@ -273,7 +290,7 @@ class JointparPlot(PlotConfig):
                     xpar.scaled(fx),
                     ypar.scaled(fy),
                     c=icolor,
-                    s=msize, alpha=0.5, cmap='coolwarm', edgecolors='none')
+                    s=msize, alpha=0.5, cmap=cmap, edgecolors='none', **kwargs)
 
                 if draw_ellipses:
                     cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))

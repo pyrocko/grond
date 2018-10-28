@@ -16,7 +16,7 @@ import time
 from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, List, Dict, Int
 
-from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden
+from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden, StringID
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
@@ -576,6 +576,14 @@ class ProblemDataNotAvailable(GrondError):
     pass
 
 
+class NoSuchAttribute(GrondError):
+    pass
+
+
+class InvalidAttributeName(GrondError):
+    pass
+
+
 class ModelHistory(object):
     '''
     Write, read and follow sequences of models produced in an optimisation run.
@@ -606,6 +614,8 @@ class ModelHistory(object):
 
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
+
+        self._attributes = {}
 
         if mode == 'r':
             self.verify_rundir(self.path)
@@ -768,7 +778,7 @@ class ModelHistory(object):
             new_models, new_misfits, new_bootstraps = load_problem_data(
                 self.path, self.problem,
                 nmodels_skip=self.nmodels, nchains=self.nchains)
-        except ValueError as e:
+        except ValueError:
             return
 
         self.extend(new_models, new_misfits, new_bootstraps)
@@ -781,6 +791,51 @@ class ModelHistory(object):
             slot = getattr(listener, event_name, None)
             if callable(slot):
                 slot(*args, **kwargs)
+
+    @property
+    def attribute_names(self):
+        apath = op.join(self.path, 'attributes')
+        if not os.path.exists(apath):
+            return []
+
+
+        return [fn for fn in os.listdir(apath)
+                if StringID.regex.match(fn)]
+
+    def get_attribute(self, name):
+        if name not in self._attributes:
+            if name not in self.attribute_names:
+                raise NoSuchAttribute(name)
+
+            path = op.join(self.path, 'attributes', name)
+
+            with open(path, 'rb') as f:
+                self._attributes[name] = num.fromfile(
+                    f, dtype='<i4',
+                    count=self.nmodels).astype(num.int)
+
+            assert self._attributes[name].shape == (self.nmodels,)
+
+        return self._attributes[name]
+
+    def set_attribute(self, name, attribute):
+        if not StringID.regex.match(name):
+            raise InvalidAttributeName(name)
+
+        attribute = attribute.astype(num.int)
+        assert attribute.shape == (self.nmodels,)
+
+        apath = op.join(self.path, 'attributes')
+
+        if not os.path.exists(apath):
+            os.mkdir(apath)
+
+        path = op.join(apath, name)
+
+        with open(path, 'wb') as f:
+            attribute.astype('<i4').tofile(f)
+
+        self._attributes[name] = attribute
 
 
 def get_nmodels(dirname, problem):
@@ -869,4 +924,6 @@ __all__ = '''
     ProblemDataNotAvailable
     load_problem_info
     load_problem_info_and_data
+    InvalidAttributeName
+    NoSuchAttribute
 '''.split()

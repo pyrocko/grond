@@ -45,6 +45,7 @@ setup(
         'grond.analysers.target_balancing',
         'grond.report',
         'grond.plot',
+        'grond.clustering',
     ],
     python_requires='>=3.5',
     entry_points={

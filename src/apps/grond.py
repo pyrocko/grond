@@ -30,6 +30,7 @@ subcommand_descriptions = {
     'go': 'run Grond optimisation',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
+    'cluster': 'run cluster analysis on result ensemble',
     'plot': 'plot optimisation result',
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
@@ -50,6 +51,9 @@ subcommand_usages = {
         'forward <rundir> [options]',
         'forward <configfile> <eventnames> ... [options]'),
     'harvest': 'harvest <rundir> [options]',
+    'cluster': (
+        'cluster <method> <rundir> [options]',
+        'cluster <clusteringconfigfile> <rundir> [options]'),
     'plot': (
         'plot <plotnames> ( <rundir> | <configfile> <eventname> ) [options]',
         'plot all ( <rundir> | <configfile> <eventname> ) [options]',
@@ -92,6 +96,7 @@ Subcommands:
     go              %(go)s
     forward         %(forward)s
     harvest         %(harvest)s
+    cluster         %(cluster)s
     plot            %(plot)s
     movie           %(movie)s
     export          %(export)s
@@ -660,6 +665,56 @@ def command_harvest(args):
         weed=options.weed)
 
 
+def command_cluster(args):
+    from grond import Clustering
+    from grond.clustering import metrics, methods, read_config, write_config
+
+    def setup(parser):
+        parser.add_option(
+            '--metric', dest='metric', metavar='METRIC',
+            default='kagan_angle',
+            choices=metrics.metrics,
+            help='metric to measure model distances. Choices: [%s]. Default: '
+                 'kagan_angle' % ', '.join(metrics.metrics))
+
+        parser.add_option(
+            '--write-config',
+            dest='write_config',
+            metavar='FILE',
+            help='write configuration (or default configuration) to FILE')
+
+    method = args[0] if args else ''
+    try:
+        parser, options, args = cl_parse(
+            'cluster', args[1:], setup=Clustering.cli_setup(method, setup),
+            details='Available clustering methods: [%s]. Use '
+                    '"grond cluster <method> --help" to get list of method '
+                    'dependent options.' % ', '.join(methods))
+
+        if method not in Clustering.name_to_class and not op.exists(method):
+            help_and_die(
+                parser,
+                'no such clustering method: %s' % method if method else
+                'no clustering method specified')
+
+        if op.exists(method):
+            clustering = read_config(method)
+        else:
+            clustering = Clustering.cli_instantiate(method, options)
+
+        if options.write_config:
+            write_config(clustering, options.write_config)
+        else:
+            if len(args) != 1:
+                help_and_die(parser, 'no rundir')
+            run_path, = args
+
+            grond.cluster(run_path, clustering, metric=options.metric)
+
+    except grond.GrondError as e:
+        die(str(e))
+
+
 def command_plot(args):
 
     import matplotlib
@@ -841,6 +896,7 @@ def command_report(args):
         parser.add_option(
             '--config',
             dest='config',
+            metavar='FILE',
             help='report configuration file to use')
         parser.add_option(
             '--write-config',
