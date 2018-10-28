@@ -90,6 +90,20 @@ table.stats th {
    border-top: none;
 }
 
+table.problem-info th {
+    width: 10em;
+}
+
+table.problem-info td,
+table.problem-info th {
+   padding-left: 0em;
+   padding-right: 2em;
+   padding-bottom: 0.2em;
+   padding-top: 0.2em;
+   white-space: nowrap;
+   border-top: none;
+}
+
 /*tr.row-parameter {*/
 /*  padding: .1rem;*/
 /*  line-height: 1;*/

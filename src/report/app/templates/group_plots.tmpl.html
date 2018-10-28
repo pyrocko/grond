@@ -10,7 +10,7 @@
     </div>
 
     <div class="row m-3">
-        <div class="col" ng-repeat="doc in unfold_docs(group) | filter:doc_matches_keword track by $index">
+        <div class="col" ng-repeat="doc in unfold_docs(group) | filter:doc_matches_keyword track by $index">
             <div ng-if="doc && !(!group.pri || !group.sec || group.pri.description == group.sec.description)">
                 <expandable-text text="doc.description"></expandable-text>
             </div>

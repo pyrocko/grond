@@ -2,7 +2,7 @@
     <script>$("#browser-warning").hide();</script>
 
     <nav class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
-        <a href="" class="navbar-brand">Grond results</a>
+        <a href="" class="navbar-brand">Grond Reports</a>
         <input
                 class="form-control form-control-dark"
                 type="text"
@@ -93,6 +93,12 @@
         <nav class="col-2 bg-light sidebar">
             <div class="sidebar-sticky ng-cloak">
                 <ul class="nav flex-column">
+                  <li class="nav-item" style="margin-bottom: 1em">
+                    <a href="" ng-click="select_groups_none()" class="nav-link">
+                        <span data-feather="home"></span>
+                        Overview
+                    </a>
+                  </li>
                   <li ng-if="have_groups_avail()" class="nav-item">
                     <a href="" ng-click="select_groups_all()" class="nav-link">
                         <span data-feather="book-open"></span>
@@ -115,10 +121,20 @@
         </nav>
 
         <main role="main" class="col-10 ml-auto mt-5">
+            <div ng-show="groups_selected().length == 0 || all_groups_selected()" ng-controller="InfoController" ng-cloak>
+                <div class="row m-3">
+                    <div class="col">
+                        <h1 class="plot-title">{{ get_info().title }}</h1>
+                        <p>{{ get_info().description }}</p>
+                    </div>
+                </div>
+
+            </div>
             <div ng-repeat="group in groups_selected()">
                 <group-plots ng-if="group.template == 'group-plots'"></group-plots>
                 <parameter-table ng-if="group.template == 'parameter-table'"></parameter-table>
                 <config-file ng-if="group.template == 'config-file'"></config-file>
+                <problem-info ng-if="group.template == 'problem-info'"></problem-info>
             </div>
         </main>
     </div>

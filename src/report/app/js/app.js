@@ -38,6 +38,7 @@ function ReportIndexEntry(obj) {
 }
 
 var yaml_type_map = [
+    ['!grond.ReportInfo', Dummy],
     ['!grond.ReportIndexEntry', ReportIndexEntry],
     ['!pf.Event', Dummy],
     ['!pf.MomentTensor', Dummy],
@@ -197,7 +198,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 selected_problem_names.push(problem_name);
             }
         };
-        
+
         funcs.selected_add_and_close_modal = function(problem_name) {
 
             funcs.selected_add(problem_name);
@@ -329,7 +330,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                     lines.push(line);
                 }
 
-                lines.sort(function(a, b) { 
+                lines.sort(function(a, b) {
                     var a_key = get_order_key(a.report_entry);
                     var b_key = get_order_key(b.report_entry);
 
@@ -367,7 +368,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
         $scope.rl = rl;
         $scope.primary_problem = null;
         $scope.secondary_problem = null;
-        
+
         $scope.compare_mode = false;
 
         $scope.toggle_compare_mode = function() {
@@ -381,7 +382,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 }
             } else {
                 $scope.secondary_problem = null;
-            } 
+            }
         };
 
         $scope.open_modal = function() {
@@ -529,13 +530,34 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
                     insert_group(problem_name, doc);
                 });
+
+                YamlDoc.query(
+                    get_path(problem_name) + '/problem.yaml',
+                    function(problem) {
+                        var doc = new Dummy({
+                            'name': 'problem info',
+                            'section': 'run',
+                            'feather_icon': 'book',
+                            'template': 'problem-info',
+                            'problem': problem});
+                        insert_group(problem_name, doc);
+                    },
+                    {schema: report_schema});
+            }
+        };
+
+        $scope.select_groups_none = function() {
+            $scope.groups_selected = function() {
+                return [];
             }
         };
 
         $scope.select_groups_all = function() {
-            $scope.groups_selected = function() {
-                return $scope.get_groups_avail();
-            };
+            $scope.groups_selected = $scope.get_groups_avail;
+        };
+
+        $scope.all_groups_selected = function() {
+            return $scope.get_groups_avail == $scope.groups_selected
         };
 
         $scope.select_group_by_name = function(group_name) {
@@ -594,7 +616,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
             var sgroup = groups.hasOwnProperty($scope.secondary_problem)
                 ? groups[$scope.secondary_problem] : [];
-            
+
             var group_map = new Map();
             var k = function(doc) {
                 return doc.section + ' ' + doc.name;
@@ -629,7 +651,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             groups_joined.sort(doc_order);
 
             for (var i=1; i<groups_joined.length; i++) {
-                groups_joined[i].first_in_section = 
+                groups_joined[i].first_in_section =
                     groups_joined[i-1].section !== groups_joined[i].section;
             }
 
@@ -722,7 +744,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
       //when the route is changed scroll to the proper element.
       $rootScope.$on('$routeChangeSuccess', function(newRoute, oldRoute) {
         $location.hash($routeParams.scrollTo);
-        $anchorScroll();  
+        $anchorScroll();
       });
     })
 
@@ -752,6 +774,12 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
     .directive('configFile', function() {
         return {
             templateUrl: 'templates/config_file.tmpl.html'
+        };
+    })
+
+    .directive('problemInfo', function() {
+        return {
+            templateUrl: 'templates/problem_info.tmpl.html'
         };
     })
 
@@ -786,23 +814,35 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
     })
 
     .factory('Info', function(YamlDoc) {
-        var version_info = null;
+        var info = null;
+        var index = null;
         var funcs = {};
 
         funcs.reload = function() {
             YamlDoc.query(
-                'version_info.yaml',
-                function(doc) { version_info=doc; },
+                'info.yaml',
+                function(doc) { info=doc; },
                 {schema: report_schema});
         };
 
         funcs.reload();
 
         funcs.get_version = function() {
-            if (version_info) {
-                return version_info.grond_version;
+            if (info) {
+                return info.version_info.grond_version;
             } else {
                 return '?';
+            }
+        };
+
+        funcs.get_info = function() {
+            if (info) {
+                return info;
+            } else {
+                return {
+                    'title': 'Grond Reports',
+                    'description': ''
+                };
             }
         };
 
@@ -812,4 +852,6 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
     .controller('InfoController', function($scope, Info, ReportList) {
         $scope.get_version = Info.get_version;
 		$scope.get_report_grond_versions = ReportList.get_grond_versions;
+
+        $scope.get_info = Info.get_info;
     });
