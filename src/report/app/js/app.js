@@ -46,6 +46,7 @@ var yaml_type_map = [
     ['!grond.TargetBalancingAnalyserResult', Dummy],
     ['!grond.NoiseAnalyserResult', Dummy],
     ['!grond.ResultStats', Dummy],
+    ['!grond.MisfitConfig', Dummy],
     ['!grond.WaveformMisfitTarget', Dummy],
     ['!grond.WaveformMisfitConfig', Dummy],
     ['!grond.WaveformTargetGroup', Dummy],
@@ -739,6 +740,18 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             return (!value) ? '' : value.replace(/_/g, ' ');
             };
     })
+
+    .filter('pformat', function() {
+        return function(txt) {
+            var pars = txt.split(/\s*\n\s*\n\s*/);
+            var out = '';
+            for (var i=0; i<pars.length; i++) {
+                out += '<p>' + pars[i] + '</p>';
+            }
+            return out;
+        };
+    })
+
 
     .run(function($rootScope, $location, $anchorScroll, $routeParams) {
       //when the route is changed scroll to the proper element.

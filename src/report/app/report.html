@@ -125,7 +125,7 @@
                 <div class="row m-3">
                     <div class="col">
                         <h1 class="plot-title">{{ get_info().title }}</h1>
-                        <p>{{ get_info().description }}</p>
+                        <div ng-bind-html="get_info().description | pformat"></div>
                     </div>
                 </div>
 
