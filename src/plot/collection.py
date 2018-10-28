@@ -3,8 +3,7 @@ import os.path as op
 import logging
 
 from pyrocko import guts, util
-from pyrocko.guts import Dict, List, Tuple, Float, Unicode, Object, String, \
-    StringPattern
+from pyrocko.guts import Dict, List, Tuple, Float, Unicode, Object, String
 
 from grond.meta import StringID
 from grond.plot.config import PlotFormat

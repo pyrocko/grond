@@ -143,7 +143,7 @@ class MisfitTarget(Object):
         return self.bootstrap_weights.reshape(nbootstraps, self.nmisfits)
 
     def init_bootstrap_residuals(self, nbootstrap, rstate=None):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def set_bootstrap_residuals(self, residuals):
         self.bootstrap_residuals = residuals
@@ -160,7 +160,7 @@ class MisfitTarget(Object):
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
 
-        raise NotImplemented('must be overloaded in subclass')
+        raise NotImplementedError('must be overloaded in subclass')
 
 
 __all__ = '''

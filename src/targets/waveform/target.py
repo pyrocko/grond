@@ -108,7 +108,7 @@ class WaveformTargetGroup(TargetGroup):
     channels = List.T(
         String.T(),
         optional=True,
-        help='set channels to include, e.g. \[\'Z\',\'T\'\]')
+        help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
@@ -224,7 +224,7 @@ class WaveformPiggybackSubtarget(Object):
     def evaluate(
             self, tr_proc_obs, trspec_proc_obs, tr_proc_syn, trspec_proc_syn):
 
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class WaveformPiggybackSubresult(Object):

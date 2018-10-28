@@ -69,19 +69,17 @@ class JointparPlot(PlotConfig):
             title=u'Jointpar Plot',
             section='solution',
             feather_icon='crosshair',
-            description=u'Source problem parameter\'s tradeoff plots.\n'
-                        u' The JointparPlot reveals relationships between'
-                        u' model parameters, like strong correlations or'
-                        u' non-linear trade-offs. A subset of model solutions'
-                        u' (from harvest) is shown in two dimensions for all'
-                        u' possible parameter pairs as points. The point color'
-                        u' indicates the misfit for the model solution with'
-                        u' cold colors (blue) for high misfit models and warm'
-                        u' colors (red) for low misfit models. The plot extend'
-                        u' is defined by the given parameter bounds and'
-                        u' shows the model space of the optimsation. Dark '
-                        u' gray boxes show the reference parameters as given'
-                        u' in the event.txt.')
+            description=u'''
+Source problem parameter's tradeoff plots.
+
+The JointparPlot reveals relationships between model parameters, like strong
+correlations or non-linear trade-offs. A subset of model solutions (from
+harvest) is shown in two dimensions for all possible parameter pairs as points.
+The point color indicates the misfit for the model solution with cold colors
+(blue) for high misfit models and warm colors (red) for low misfit models. The
+plot extend is defined by the given parameter bounds and shows the model space
+of the optimsation. Dark gray boxes show the reference parameters as given in
+the event.txt.''')
 
     def draw_figures(self, history, optimiser):
 
@@ -327,17 +325,17 @@ class JointparPlot(PlotConfig):
 
 class HistogramPlot(PlotConfig):
     '''
-    Histograms or Gaussian kernel densities (default) of all parameters
+    Histograms or Gaussian kernel densities (default) of all parameters.
 
     The histograms (by default shown as Gaussian kernel densities) show (red
     curved solid line) the distributions of the parameters (marginals) along
-    with some characteristics:  The red solid vertical line gives the median of
+    with some characteristics: The red solid vertical line gives the median of
     the distribution and the dashed red vertical line the mean value. Dark gray
-    vertical lines show grond reference values (given in the event.txt file). The
-    overlapping red-shaded areas show the 68% confidence intervals (innermost
-    area), the 90% confidence intervals (middle area) and the minimum and
-    maximum values (widest area). The plot ranges are defined by the given
-    parameter bounds and show the model space.
+    vertical lines show grond reference values (given in the event.txt file).
+    The overlapping red-shaded areas show the 68% confidence intervals
+    (innermost area), the 90% confidence intervals (middle area) and the
+    minimum and maximum values (widest area). The plot ranges are defined by
+    the given parameter bounds and show the model space.
     '''
 
     name = 'histogram'
@@ -359,22 +357,21 @@ class HistogramPlot(PlotConfig):
             title=u'Solution Histrogram',
             section='solution',
             feather_icon='bar-chart-2',
-            description=u'Distribution of the problem\'s parameters.\n'
-			u' The histograms are shown either as Gaussian'
-                        u' kernel densities (red curved solid line) or'
-                        u' as bar plots '
-                        u' the distributions of the parameters (marginals)'
-                        u' along with some characteristics: \n The red solid'
-                        u' vertical line gives the median of the distribution'
-			u' and the dashed red vertical line the mean value. '
-			u' Dark gray vertical lines show reference parameter'
-                        u' values if' 
-			u' given in the event.txt file. The overlapping '
-			u' red-shaded areas show the 68% confidence intervals'
-			u' (innermost area), the 90% confidence intervals'
-			u' (middle area) and the minimum and maximum values'
-			u' (widest area). The plot ranges are defined by the'
-			u' given parameter bounds and show the model space.')
+            description=u'''
+Distribution of the problem's parameters.
+
+The histograms are shown either as Gaussian kernel densities (red curved solid
+line) or as bar plots the distributions of the parameters (marginals) along
+with some characteristics:
+
+The red solid vertical line gives the median of the distribution and the dashed
+red vertical line the mean value. Dark gray vertical lines show reference
+parameter values if given in the event.txt file. The overlapping red-shaded
+areas show the 68% confidence intervals (innermost area), the 90% confidence
+intervals (middle area) and the minimum and maximum values (widest area). The
+plot ranges are defined by the given parameter bounds and show the model
+space.
+''')
 
     def draw_figures(self, history):
 
@@ -446,16 +443,16 @@ class HistogramPlot(PlotConfig):
                 kde = scipy.stats.gaussian_kde(vs)
                 vps = num.linspace(vmin, vmax, 600)
                 pps = kde(vps)
-            
+
                 axes.plot(
                     par.scaled(vps), par.inv_scaled(pps), color=stats_color)
-            
-            elif method == 'histogram':
-                pps, edges = num.histogram(vs,
-                                           bins=num.linspace(vmin, vmax, num=40),
-                                           density=True)
-                vps = 0.5 * (edges[:-1] + edges[1:])
 
+            elif method == 'histogram':
+                pps, edges = num.histogram(
+                    vs,
+                    bins=num.linspace(vmin, vmax, num=40),
+                    density=True)
+                vps = 0.5 * (edges[:-1] + edges[1:])
 
                 axes.bar(par.scaled(vps), par.inv_scaled(pps),
                          par.scaled(2.*(vps - edges[:-1])),
@@ -512,8 +509,9 @@ class MTDecompositionPlot(PlotConfig):
             title=u'Moment Tensor Decomopostion',
             section='solution',
             feather_icon='sun',
-            description=u'Moment tensor decomposition of the best-fitting'
-                        u' solution.')
+            description=u'''
+Moment tensor decomposition of the best-fitting solution.
+''')
 
     def draw_figures(self, history):
 
@@ -777,8 +775,9 @@ class MTFuzzyPlot(PlotConfig):
             title='Fuzzy Moment Tensor',
             section='solution',
             feather_icon='wind',
-            description='A fuzzy moment tensor, illustrating the solution\'s'
-                        ' uncertainty.')
+            description=u'''
+A fuzzy moment tensor, illustrating the solution's uncertainty.
+''')
 
     def draw_figures(self, history):
         problem = history.problem
@@ -817,14 +816,19 @@ class MTFuzzyPlot(PlotConfig):
         item = PlotItem(
             name='main',
             title='Fuzzy Moment Tensor',
-            description='The opaqueness illustrates the propability'
-                        ' of all combined moment tensor solution.'
-                        'The red lines indicate the global best solution.')
+            description=u'''
+The opaqueness illustrates the propability of all combined moment tensor
+solution. The red lines indicate the global best solution.
+''')
         return [[item, fig]]
 
 
 class HudsonPlot(PlotConfig):
-    ''' Illustration of the solution distribution of decomposed moment tensor '''  # noqa
+
+    '''
+    Illustration of the solution distribution of decomposed moment tensor.
+    '''
+
     name = 'hudson'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
@@ -841,7 +845,8 @@ class HudsonPlot(PlotConfig):
             title=u'Hudson Plot',
             section='solution',
             feather_icon='box',
-            description=u'Hudson plot of the best fitting moment tensor.')
+            description=u'''
+Hudson's source type plot with the ensemble of bootstrap solutions.''')
 
     def draw_figures(self, history):
 

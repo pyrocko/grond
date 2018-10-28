@@ -161,7 +161,7 @@ class CheckWaveformsPlot(PlotConfig):
             title=u'Waveform Check',
             section='checks',
             feather_icon='activity',
-            description='''
+            description=u'''
 Plot to judge waveform time window settings and source model parameter ranges.
 
 For each waveform target, observed and synthetic waveforms are shown. For the
@@ -307,7 +307,7 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             title=u'Waveform fits for the ensemble',
             section='fits',
             feather_icon='activity',
-            description='''
+            description=u'''
 Plot showing waveform fits for the ensemble of solutions.
 
 Waveform fits for every nth model in the ensemble of bootstrap solutions. Each
@@ -758,7 +758,7 @@ class FitsWaveformPlot(PlotConfig):
             title=u'Waveform fits for best model',
             section='fits',
             feather_icon='activity',
-            description='''
+            description=u'''
 Plot showing observed and synthetic waveforms for the best fitting model.
 
 Best model's waveform fits for all targets. Each waveform plot gives a number

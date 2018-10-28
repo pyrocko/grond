@@ -798,7 +798,6 @@ class ModelHistory(object):
         if not os.path.exists(apath):
             return []
 
-
         return [fn for fn in os.listdir(apath)
                 if StringID.regex.match(fn)]
 

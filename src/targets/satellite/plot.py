@@ -54,21 +54,20 @@ class SatelliteTargetDisplacement(PlotConfig):
             title=u'Satellite Surface Displacements',
             section='fits',
             feather_icon='navigation',
-            description=u' Maps showing subsampled surface displacements as '   
-                        u' observed, modelled and the residual (observed minus'  
-                        u' modelled).\n The displacement values predicted by' 
-                        u' the orbit-ambiguity ramps are added to the modelled' 
-                        u' displacements (middle panels). The color shows the' 
-                        u' LOS displacement values associated with, and the' 
-                        u' extent of, every quadtree box. The light grey dots' 
-                        u' show the focal point of pixels combined in the' 
-                        u' quadtree box. This point corresponds to the' 
-                        u' position of the modelled data point.\n The large dark' 
-                        u' grey dot shows the reference source position. The' 
-                        u' grey filled box shows the surface projection of the' 
-                        u' modelled source, with the thick-lined edge marking' 
-                        u' the upper fault edge. '
-                        u' Complete data extent is shown.')
+            description=u'''
+Maps showing subsampled surface displacements as observed, modelled and the
+residual (observed minus modelled).
+
+The displacement values predicted by the orbit-ambiguity ramps are added to the
+modelled displacements (middle panels). The color shows the LOS displacement
+values associated with, and the extent of, every quadtree box. The light grey
+dots show the focal point of pixels combined in the quadtree box. This point
+corresponds to the position of the modelled data point.
+
+The large dark grey dot shows the reference source position. The grey filled
+box shows the surface projection of the modelled source, with the thick-lined
+edge marking the upper fault edge. Complete data extent is shown.
+''')
 
     def draw_static_fits(self, ds, history, optimiser, closeup=False):
         from pyrocko.orthodrome import latlon_to_ne_numpy
@@ -232,10 +231,11 @@ class SatelliteTargetDisplacement(PlotConfig):
                 attributes={'targets': [sat_target.path]},
                 title=u'Satellite Surface Displacements - %s'
                       % scene.meta.scene_title,
-                description=u'''Surface displacements derived from
-satellite data, Scene {meta.scene_title} (id: {meta.scene_id}).
- (Left) the input data, (center) the
-modelled data and (right) the model residual.'''.format(meta=scene.meta))
+                description=u'''
+Surface displacements derived from satellite data, Scene {meta.scene_title}
+(id: {meta.scene_id}). (Left) the input data, (center) the modelled data and
+(right) the model residual.
+'''.format(meta=scene.meta))
 
             stat_obs = result.statics_obs
             stat_syn = result.statics_syn['displacement.los']
@@ -332,7 +332,7 @@ modelled data and (right) the model residual.'''.format(meta=scene.meta))
             cax = fig.add_subplot(gs[1, :])
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
                                 use_gridspec=True)
-            
+
             cbar.set_label('LOS Displacement [m]')
 
             return (item, fig)
@@ -362,23 +362,20 @@ class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
             title=u'Satellite Displacements (Closeup)',
             section='fits',
             feather_icon='zoom-in',
-            description=u' Maps showing subsampled surface displacements as '
-                        u' observed, modelled and the residual (observed minus'
-                        u' modelled).\n The displacement values predicted by'
-                        u' the orbit-ambiguity ramps are added to the modelled'
-                        u' displacements (middle panels). The color shows the'
-                        u' LOS displacement values associated with, and the'
-                        u' extent of, every quadtree box. The light grey dots'
-                        u' show the focal point of pixels combined in the'
-                        u' quadtree box. This point corresponds to the'
-                        u' position of the modelled data point.'
-                        u' \n The large dark'
-                        u' grey dot shows the reference source position. The'
-                        u' grey filled box shows the surface projection of the'
-                        u' modelled source, with the thick-lined edge marking'
-                        u' the upper fault edge. '
-                        u' Map is focused around the fault\'s'
-                        u' extent.')
+            description=u'''
+Maps showing subsampled surface displacements as observed, modelled and the
+residual (observed minus modelled).
+
+The displacement values predicted by the orbit-ambiguity ramps are added to the
+modelled displacements (middle panels). The color shows the LOS displacement
+values associated with, and the extent of, every quadtree box. The light grey
+dots show the focal point of pixels combined in the quadtree box. This point
+corresponds to the position of the modelled data point.
+
+The large dark grey dot shows the reference source position. The grey filled
+box shows the surface projection of the modelled source, with the thick-lined
+edge marking the upper fault edge. Map is focused around the fault's extent.
+''')
 
 
 def get_plot_classes():
