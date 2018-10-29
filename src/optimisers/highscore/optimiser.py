@@ -15,9 +15,15 @@ from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
 
+from .plot import HighScoreAcceptancePlot
+
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
+
+
+def nextpow2(i):
+    return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
@@ -288,10 +294,8 @@ class Chains(object):
         self.nlinks = 0
 
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
-        self.accept_log_len = 100
-        self.accept_log = num.ones(
-            (self.nchains, self.accept_log_len),
-            dtype=num.bool)
+        self._acceptance_history = num.zeros(
+            (self.nchains, 1024), dtype=num.bool)
 
         self.nread = 0
         history.add_listener(self)
@@ -326,13 +330,10 @@ class Chains(object):
                 self.nlinks -= 1
             else:
                 accept = num.ones(self.nchains, dtype=num.bool)
-            self.accept_log[:, n % self.accept_log_len] = accept
+
+            self.new_acceptance(accept)
             self.accept_sum += accept
             self.nread += 1
-
-    @property
-    def acceptance_rate(self):
-        return self.accept_log.sum(axis=1) / self.accept_log_len
 
     def append(self, iiter, model, misfits):
         self.goto(iiter)
@@ -387,6 +388,18 @@ class Chains(object):
         xs = self.models(ichain)
         return num.cov(xs.T)
 
+    @property
+    def acceptance_history(self):
+        return self._acceptance_history[:, :self.nread]
+
+    def new_acceptance(self, acceptance):
+        if self.nread >= self._acceptance_history.shape[1]:
+            new_buf = num.zeros((self.nchains, nextpow2(self.nread+1)))
+            new_buf[:, :self._acceptance_history.shape[1]] = \
+                self._acceptance_history
+            self._acceptance_history = new_buf
+        self._acceptance_history[:, self.nread] = acceptance
+
 
 class HighScoreOptimiser(Optimiser):
     '''Monte-Carlo-based directed search optimisation with bootstrap.'''
@@ -396,6 +409,9 @@ class HighScoreOptimiser(Optimiser):
     nbootstrap = Int.T(default=100)
     bootstrap_type = BootstrapTypeChoice.T(default='bayesian')
     bootstrap_seed = Int.T(default=23)
+
+    SPARKS = u'\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'
+    ACCEPTANCE_AVG_LEN = 100
 
     def __init__(self, **kwargs):
         Optimiser.__init__(self, **kwargs)
@@ -570,8 +586,6 @@ class HighScoreOptimiser(Optimiser):
         return sum([ph.niterations for ph in self.sampler_phases])
 
     def get_status(self, history):
-        sparks = u'\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'
-
         if self._status_chains is None:
             self._status_chains = self.chains(history.problem, history)
 
@@ -606,14 +620,18 @@ class HighScoreOptimiser(Optimiser):
 
         glob_misfits = chains.misfits(ichain=0)
 
+        acceptance_latest = chains.acceptance_history[
+            :, -min(chains.acceptance_history.shape[1], self.ACCEPTANCE_AVG_LEN):]  # noqa
+        acceptance_avg = acceptance_latest.mean(axis=1)
+
         def spark_plot(data, bins):
             hist, _ = num.histogram(data, bins)
             hist_max = num.max(hist)
             if hist_max == 0.0:
                 hist_max = 1.0
             hist = hist / hist_max
-            vec = num.digitize(hist, num.linspace(0., 1., len(sparks)))
-            return ''.join([sparks[b-1] for b in vec])
+            vec = num.digitize(hist, num.linspace(0., 1., len(self.SPARKS)))
+            return ''.join([self.SPARKS[b-1] for b in vec])
 
         return OptimiserStatus(
             row_names=row_names,
@@ -625,14 +643,16 @@ class HighScoreOptimiser(Optimiser):
                 u'Optimiser phase: {phase}, exploring {nchains} BS chains\n'  # noqa
                 u'Global chain misfit distribution: \u2080{mf_dist}\xb9\n'
                 u'Acceptance rate distribution:     \u2080{acceptance}'
-                u'\u2081\u2080\u2080\ufe6a'
+                u'\u2081\u2080\u2080\ufe6a (Median {acceptance_med:.1f}%)'
                 .format(
                     phase=phase.__class__.__name__,
                     nchains=chains.nchains,
                     mf_dist=spark_plot(
                         glob_misfits, num.linspace(0., 1., 25)),
                     acceptance=spark_plot(
-                        chains.acceptance_rate, num.linspace(0., 1., 25))
+                        acceptance_avg,
+                        num.linspace(0., 1., 25)),
+                    acceptance_med=num.median(acceptance_avg) * 100.
                     ))
 
     def get_movie_maker(
@@ -641,6 +661,12 @@ class HighScoreOptimiser(Optimiser):
         from . import plot
         return plot.HighScoreOptimiserPlot(
             self, problem, history, xpar_name, ypar_name, movie_filename)
+
+    @classmethod
+    def get_plot_classes(cls):
+        classes = Optimiser.get_plot_classes()
+        classes.append(HighScoreAcceptancePlot)
+        return classes
 
 
 class HighScoreOptimiserConfig(OptimiserConfig):

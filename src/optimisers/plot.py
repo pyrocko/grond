@@ -10,9 +10,6 @@ from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color, mpl_init
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
-from .highscore.plot import *  # noqa
-
-
 logger = logging.getLogger('grond.problem.plot')
 
 
@@ -510,7 +507,7 @@ functions of the bootstrap start to disagree.
         axes.set_xlabel(
             'Tested model, sorted descending by global misfit value')
 
-        return [[PlotItem(name='main'), fig]]
+        return [(PlotItem(name='main'), fig)]
 
 
 def get_plot_classes():
