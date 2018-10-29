@@ -836,6 +836,14 @@ class ModelHistory(object):
 
         self._attributes[name] = attribute
 
+    def ensure_bootstrap_misfits(self, optimiser):
+        if self.bootstrap_misfits is None:
+            problem = self.problem
+            self.bootstrap_misfits = problem.combine_misfits(
+                self.misfits,
+                extra_weights=optimiser.get_bootstrap_weights(problem),
+                extra_residuals=optimiser.get_bootstrap_residuals(problem))
+
 
 def get_nmodels(dirname, problem):
     fn = op.join(dirname, 'models')

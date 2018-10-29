@@ -198,6 +198,9 @@ class Environment(object):
                     nchains=self.get_optimiser().nchains,
                     path=meta.xjoin(self.get_rundir_path(), subset))
 
+            self._histories[subset].ensure_bootstrap_misfits(
+                self.get_optimiser())
+
         return self._histories[subset]
 
     def set_plot_collection_manager(self, pcm):
