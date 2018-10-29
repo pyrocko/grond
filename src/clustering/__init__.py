@@ -33,7 +33,7 @@ class Clustering(Object):
                     dest=prop.name,
                     type=pmap[prop.__class__],
                     default=prop.default(),
-                    help=prop.help)
+                    help=prop.help + ' (default: %default)')
 
         parser.add_option_group(group)
 

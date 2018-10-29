@@ -12,6 +12,7 @@ from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
+from grond.problems import NoSuchAttribute
 from grond import meta, core
 from matplotlib import pyplot as plt
 
@@ -144,7 +145,7 @@ the event.txt.''')
 
         elif color_parameter in history.attribute_names:
             icolor = history.get_attribute(color_parameter)[isort]
-            icolor_need = num.sort(num.unique(icolor))
+            icolor_need = num.unique(icolor)
 
             colors = []
             for i in range(icolor_need[-1]+1):
@@ -498,6 +499,9 @@ class MTDecompositionPlot(PlotConfig):
 
     name = 'mt_decomposition'
     size_cm = Tuple.T(2, Float.T(), default=(15., 5.))
+    cluster_attribute = meta.StringID.T(
+        optional=True,
+        help='name of attribute to use as cluster IDs')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -510,7 +514,7 @@ class MTDecompositionPlot(PlotConfig):
             section='solution',
             feather_icon='sun',
             description=u'''
-Moment tensor decomposition of the best-fitting solution.
+Moment tensor decomposition of the best-fitting and ensemble mean solutions.
 ''')
 
     def draw_figures(self, history):
@@ -528,10 +532,10 @@ Moment tensor decomposition of the best-fitting solution.
             logger.warn('empty models vector')
             return []
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)
-        iorder = num.empty_like(isort)
-        iorder[isort] = num.arange(iorder.size)[::-1]
+        # gms = problem.combine_misfits(history.misfits)
+        # isort = num.argsort(gms)
+        # iorder = num.empty_like(isort)
+        # iorder[isort] = num.arange(iorder.size)[::-1]
 
         mean_source = core.get_mean_source(
             problem, history.models)
@@ -540,6 +544,71 @@ Moment tensor decomposition of the best-fitting solution.
             problem, history.models, history.misfits)
 
         ref_source = problem.base_source
+
+        nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
+
+        cluster_sources = []
+        if self.cluster_attribute:
+            try:
+                iclusters = history.get_attribute(self.cluster_attribute)
+                iclusters_avail = num.unique(iclusters)
+
+                for icluster in iclusters_avail:
+                    models = history.models[iclusters == icluster]
+                    cluster_source = core.get_mean_source(problem, models)
+
+                    cluster_sources.append(
+                        (icluster, cluster_source,
+                         (100.0 * models.size) / history.models.size))
+
+                if cluster_sources and cluster_sources[0][0] == -1:
+                    cluster_sources.append(cluster_sources.pop(0))
+
+            except NoSuchAttribute:
+                logger.warn(
+                    'Attribute %s not set in run %s.\n'
+                    '  Skipping plotting of clusters.' % (
+                        self.cluster_attribute, history.problem.name))
+
+        def get_deco(source):
+            mt = source.pyrocko_moment_tensor()
+            return mt.standard_decomposition()
+
+        def cluster_label(icluster, perc):
+            if icluster == -1:
+                return 'Unclust. (%.0f%%)' % perc
+            else:
+                return 'Cluster %i (%.0f%%)' % (icluster, perc)
+
+        def cluster_color(i):
+            if i == -1:
+                return mpl_color('aluminium3')
+            else:
+                return mpl_graph_color(i)
+
+        lines = []
+        lines.append(
+            ('Ensemble best', get_deco(best_source), mpl_color('aluminium5')))
+
+        lines.append(
+            ('Ensemble mean', get_deco(mean_source), mpl_color('aluminium5')))
+
+        for (icluster, source, perc) in cluster_sources:
+            if len(lines) < nlines_max - 1:
+                lines.append(
+                    (cluster_label(icluster, perc),
+                     get_deco(source),
+                     cluster_color(icluster)))
+            else:
+                logger.warn(
+                    'Skipping display of cluster %i because figure height is '
+                    'too small. Figure height should be at least %g cm.' % (
+                        icluster, (3 + len(cluster_sources) + 1) * 5/4.))
+
+        lines.append(
+            ('Reference', get_deco(ref_source), mpl_color('aluminium3')))
+
+        moment_full_max = max(deco[-1][0] for (_, deco, _) in lines)
 
         for xpos, label in [
                 (0., 'Full'),
@@ -550,7 +619,7 @@ Moment tensor decomposition of the best-fitting solution.
 
             axes.annotate(
                 label,
-                xy=(1 + xpos, 3),
+                xy=(1 + xpos, nlines_max),
                 xycoords='data',
                 xytext=(0., 0.),
                 textcoords='offset points',
@@ -559,18 +628,8 @@ Moment tensor decomposition of the best-fitting solution.
                 color='black',
                 fontsize=fontsize)
 
-        decos = []
-        for source in [best_source, mean_source, ref_source]:
-            mt = source.pyrocko_moment_tensor()
-            deco = mt.standard_decomposition()
-            decos.append(deco)
-
-        moment_full_max = max(deco[-1][0] for deco in decos)
-
-        for ypos, label, deco, color_t in [
-                (2., 'Ensemble best', decos[0], mpl_color('aluminium5')),
-                (1., 'Ensemble mean', decos[1], mpl_color('scarletred1')),
-                (0., 'Reference', decos[2], mpl_color('aluminium3'))]:
+        for i, (label, deco, color_t) in enumerate(lines):
+            ypos = nlines_max - i - 1.0
 
             [(moment_iso, ratio_iso, m_iso),
              (moment_dc, ratio_dc, m_dc),
@@ -640,7 +699,7 @@ Moment tensor decomposition of the best-fitting solution.
 
         axes.axison = False
         axes.set_xlim(-2.25, 9.75)
-        axes.set_ylim(-0.5, 3.5)
+        axes.set_ylim(-0.5, nlines_max+0.5)
 
         item = PlotItem(name='main')
         return [[item, fig]]
