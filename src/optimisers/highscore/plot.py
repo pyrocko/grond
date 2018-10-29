@@ -5,6 +5,10 @@ import numpy as num
 from matplotlib import pyplot as plt
 
 from pyrocko.plot import mpl_init, mpl_margins
+from pyrocko.guts import Tuple, Float
+
+from grond.plot.config import PlotConfig
+from grond.plot.collection import PlotItem
 
 logger = logging.getLogger('grond.optimiser.highscore.plot')
 
@@ -258,5 +262,39 @@ class HighScoreOptimiserPlot(object):
         self.finish()
 
 
+class HighScoreAcceptancePlot(PlotConfig):
+    '''Model acceptance plot '''
+    name = 'acceptance'
+    size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(environ),
+            title=u'Acceptance Plots',
+            section='optimiser',
+            description=u'The acceptance rate of the bootstap chains',
+            feather_icon='check')
+
+    def draw_figures(self, environ):
+        optimiser = environ.get_optimiser()
+        problem = environ.get_problem()
+        history = environ.get_history()
+
+        chains = optimiser.chains(problem, history)
+        chains.goto(history.nmodels)
+
+        fig = plt.figure()
+        axes = fig.add_subplot(1, 1, 1)
+
+        acceptance = chains.acceptance_history
+        acceptance_cum = num.cumsum(acceptance, axis=1)
+        axes.plot(acceptance_cum)
+
+        return [(PlotItem(name='acceptance'), fig)]
+
+
 __all__ = [
-    'HighScoreOptimiserPlot']
+    'HighScoreOptimiserPlot', 'HighScoreAcceptancePlot']

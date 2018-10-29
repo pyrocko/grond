@@ -717,7 +717,6 @@ class ModelHistory(object):
 
     def extend(self, models, misfits, bootstrap_misfits=None):
         nmodels = self.nmodels
-
         n = models.shape[0]
 
         nmodels_capacity_want = max(
@@ -739,36 +738,17 @@ class ModelHistory(object):
         if self.path and self.mode == 'w':
             for i in range(n):
                 self.problem.dump_problem_data(
-                        self.path, models[i, :], misfits[i, :, :])
+                        self.path, models[i, :], misfits[i, :, :],
+                        bootstrap_misfits[i, :])
 
         self.emit('extend', nmodels, n, models, misfits)
 
     def append(self, model, misfits, bootstrap_misfits=None):
-        nmodels = self.nmodels
-
-        nmodels_capacity_want = max(
-            self.nmodels_capacity_min, nextpow2(nmodels + 1))
-
-        if nmodels_capacity_want != self.nmodels_capacity:
-            self.nmodels_capacity = nmodels_capacity_want
-
-        self._models_buffer[nmodels, :] = model
-        self._misfits_buffer[nmodels, :, :] = misfits
-
-        self.models = self._models_buffer[:nmodels+1, :]
-        self.misfits = self._misfits_buffer[:nmodels+1, :, :]
-
         if bootstrap_misfits is not None:
-            self._bootstraps_buffer[nmodels, :] = bootstrap_misfits
-            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+1, :]
+            bootstrap_misfits = bootstrap_misfits[num.newaxis, :]
 
-        if self.path and self.mode == 'w':
-            self.problem.dump_problem_data(
-                self.path, model, misfits, bootstrap_misfits)
-
-        self.emit(
-            'extend', nmodels, 1,
-            model[num.newaxis, :], misfits[num.newaxis, :, :])
+        return self.extend(model[num.newaxis, :], misfits[num.newaxis, :, :],
+                           bootstrap_misfits)
 
     def update(self):
         ''' Update history from path '''
