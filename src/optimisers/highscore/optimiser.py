@@ -15,8 +15,6 @@ from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
 
-from .plot import HighScoreAcceptancePlot
-
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
@@ -292,12 +290,12 @@ class Chains(object):
         self.chains_i = num.zeros(
             (self.nchains, nlinks_cap), dtype=num.int)
         self.nlinks = 0
+        self.nread = 0
 
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
         self._acceptance_history = num.zeros(
             (self.nchains, 1024), dtype=num.bool)
 
-        self.nread = 0
         history.add_listener(self)
 
     def goto(self, n=None):
@@ -309,10 +307,11 @@ class Chains(object):
         assert self.nread <= n
 
         while self.nread < n:
-            gbms = self.history.bootstrap_misfits[self.nread, :]
+            nread = self.nread
+            gbms = self.history.bootstrap_misfits[nread, :]
 
             self.chains_m[:, self.nlinks] = gbms
-            self.chains_i[:, self.nlinks] = n-1
+            self.chains_i[:, self.nlinks] = nread-1
             nbootstrap = self.chains_m.shape[0]
 
             self.nlinks += 1
@@ -325,7 +324,7 @@ class Chains(object):
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
             if self.nlinks == self.nlinks_cap:
-                accept = (chains_i[:, self.nlinks_cap-1] != n-1) \
+                accept = (chains_i[:, self.nlinks_cap-1] != nread-1) \
                     .astype(num.bool)
                 self.nlinks -= 1
             else:
@@ -334,6 +333,9 @@ class Chains(object):
             self.new_acceptance(accept)
             self.accept_sum += accept
             self.nread += 1
+
+    def load(self):
+        return self.goto()
 
     def append(self, iiter, model, misfits):
         self.goto(iiter)
@@ -664,9 +666,10 @@ class HighScoreOptimiser(Optimiser):
 
     @classmethod
     def get_plot_classes(cls):
-        classes = Optimiser.get_plot_classes()
-        classes.append(HighScoreAcceptancePlot)
-        return classes
+        from .plot import HighScoreAcceptancePlot
+        plots = Optimiser.get_plot_classes()
+        plots.append(HighScoreAcceptancePlot)
+        return plots
 
 
 class HighScoreOptimiserConfig(OptimiserConfig):
