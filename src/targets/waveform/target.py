@@ -12,6 +12,7 @@ from pyrocko.guts_array import Array
 from grond.dataset import NotFound
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
+from grond.meta import has_get_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -252,6 +253,7 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
     piggyback_subresults = List.T(WaveformPiggybackSubresult.T())
 
 
+@has_get_plot_classes
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()

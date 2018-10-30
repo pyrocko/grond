@@ -9,6 +9,7 @@ from ..base import (
     MisfitTarget, TargetGroup, MisfitResult)
 from . import measure as fm
 from grond import dataset
+from grond.meta import has_get_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform_phase_ratio.target')
@@ -129,6 +130,7 @@ class PhaseRatioResult(MisfitResult):
     b_syn = Float.T(optional=True)
 
 
+@has_get_plot_classes
 class PhaseRatioTarget(gf.Location, MisfitTarget):
 
     '''

@@ -16,7 +16,8 @@ import time
 from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, List, Dict, Int
 
-from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden, StringID
+from grond.meta import ADict, Parameter, GrondError, xjoin, Forbidden, \
+    StringID, has_get_plot_classes
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
@@ -51,6 +52,7 @@ class ProblemConfig(Object):
         raise NotImplementedError
 
 
+@has_get_plot_classes
 class Problem(Object):
     '''
     Base class for objective function setup.

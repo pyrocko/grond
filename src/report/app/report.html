@@ -111,9 +111,9 @@
                             ng-click="select_group_by_section_name(group.section)">
                         <span>{{ group.section }}</span>
                     </h6>
-                    <a href="" ng-click="select_group_by_name(group.name)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
+                    <a href="" ng-click="select_group_by_name_variant(group.name, group.variant)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
                         <span data-feather="{{ group.feather_icon }}"></span>
-                        {{ group.name | nounderscore }}
+                        {{ group.name | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}
                     </a>
                   </li>
                 </ul>

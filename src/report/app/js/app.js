@@ -503,6 +503,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                     get_path(problem_name) + '/stats.yaml',
                     function(doc) {
                         doc.name = 'parameter results';
+                        doc.variant = 'default'
                         doc.section = 'run';
                         doc.feather_icon = 'book';
                         doc.template = 'parameter-table';
@@ -523,6 +524,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 $http.get(get_path(problem_name) + '/config.yaml', {'responseType': 'text'}).then(function(data) {
                     var doc = new Dummy({
                         'name': 'config',
+                        'variant': 'default',
                         'section': 'run',
                         'feather_icon': 'code',
                         'template': 'config-file',
@@ -537,6 +539,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                     function(problem) {
                         var doc = new Dummy({
                             'name': 'problem info',
+                            'variant': 'default',
                             'section': 'run',
                             'feather_icon': 'book',
                             'template': 'problem-info',
@@ -561,11 +564,11 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             return $scope.get_groups_avail == $scope.groups_selected
         };
 
-        $scope.select_group_by_name = function(group_name) {
+        $scope.select_group_by_name_variant = function(group_name, group_variant) {
             $scope.groups_selected = function() {
                 return $scope.get_groups_avail().filter(
                     function(group) {
-                        if(group.name == group_name)
+                        if(group.name == group_name && group.variant == group_variant)
                             return true;
                         return false;
                     });
@@ -620,7 +623,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
             var group_map = new Map();
             var k = function(doc) {
-                return doc.section + ' ' + doc.name;
+                return doc.section + ' ' + doc.name + ' ' + doc.variant;
             }
             for (var i=0; i<pgroup.length; i++) {
                 group_map.set(k(pgroup[i]), [pgroup[i], null]);
@@ -641,6 +644,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                  groups_joined.push({
                     'section': g.section,
                     'name': g.name,
+                    'variant': g.variant,
                     'template': g.template,
                     'feather_icon': g.feather_icon,
                     'can_compare': ! $scope.compare_mode || (groups2[i][0] !== null && groups2[i][1] !== null),

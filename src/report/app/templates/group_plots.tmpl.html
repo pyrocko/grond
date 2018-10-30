@@ -2,7 +2,7 @@
 <div ng-if="group_matches_keyword(group)">
     <div class="row m-3">
         <div class="col">
-            <h3 class="plot-title">{{ group.name | nounderscore }}</h3>
+            <h3 class="plot-title">{{ group.name | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}</h3>
             <div ng-if="!group.pri || !group.sec || group.pri.description == group.sec.description">
                 <expandable-text text="group.pri.description"></expandable-text>
             </div>

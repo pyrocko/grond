@@ -729,14 +729,23 @@ def command_plot(args):
 
     parser, options, args = cl_parse('plot', args, setup, details)
 
-    if len(args) not in (2, 3):
+    if len(args) not in (1, 2, 3):
         help_and_die(parser, 'two or three arguments required')
 
-    env = Environment(args[1:])
+    if len(args) > 1:
+        env = Environment(args[1:])
+    else:
+        env = None
+
     from grond import plot
     if args[0] == 'list':
+        if env:
+            plot_classes = env.get_plot_classes()
+        else:
+            plot_classes = plot.get_all_plot_classes()
+
         plot_names, plot_doc = zip(*[(pc.name, pc.__doc__)
-                                     for pc in env.get_plot_classes()])
+                                     for pc in plot_classes])
         plot_descs = [doc.split('\n')[0].strip() for doc in plot_doc]
         left_spaces = max([len(pn) for pn in plot_names])
 
@@ -749,14 +758,20 @@ def command_plot(args):
         print(plot_config_collection)
 
     elif args[0] == 'all':
+        if env is None:
+            help_and_die(parser, 'two or three arguments required')
         plot_names = plot.get_plot_names(env)
         plot.make_plots(env, plot_names=plot_names)
 
     elif op.exists(args[0]):
+        if env is None:
+            help_and_die(parser, 'two or three arguments required')
         plots = plot.PlotConfigCollection.load(args[0])
         plot.make_plots(env, plots)
 
     else:
+        if env is None:
+            help_and_die(parser, 'two or three arguments required')
         plot_names = [name.strip() for name in args[0].split(',')]
         plot.make_plots(env, plot_names=plot_names)
 
@@ -920,7 +935,9 @@ def command_report(args):
 
         s_conf = ' --config="%s"' % options.config
     else:
-        conf = ReportConfig()
+        from grond import plot
+        conf = ReportConfig(
+            plot_config_collection=plot.get_plot_config_collection())
         conf.set_basepath('.')
 
     if options.write_config:

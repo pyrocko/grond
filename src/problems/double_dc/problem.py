@@ -4,7 +4,8 @@ import logging
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict
 
-from grond.meta import Forbidden, expand_template, Parameter
+from grond.meta import Forbidden, expand_template, Parameter, \
+    has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
 
@@ -43,6 +44,7 @@ class DoubleDCProblemConfig(ProblemConfig):
         return problem
 
 
+@has_get_plot_classes
 class DoubleDCProblem(Problem):
 
     problem_parameters = [

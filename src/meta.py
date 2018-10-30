@@ -19,6 +19,13 @@ except NameError:
 logger = logging.getLogger('grond.meta')
 km = 1e3
 
+classes_with_have_get_plot_classes = []
+
+
+def has_get_plot_classes(cls):
+    classes_with_have_get_plot_classes.append(cls)
+    return cls
+
 
 class StringID(StringPattern):
     pattern = r'^[A-Za-z][A-Za-z0-9._-]{0,64}$'

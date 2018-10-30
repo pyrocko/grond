@@ -7,6 +7,7 @@ from pyrocko.guts_array import Array
 from pyrocko.guts import Object, Float, Dict
 
 from grond.analysers.base import AnalyserResult
+from grond.meta import has_get_plot_classes
 
 
 guts_prefix = 'grond'
@@ -44,6 +45,7 @@ class MisfitConfig(Object):
     pass
 
 
+@has_get_plot_classes
 class MisfitTarget(Object):
 
     manual_weight = Float.T(
