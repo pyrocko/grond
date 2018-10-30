@@ -262,6 +262,12 @@ class HighScoreOptimiserPlot(object):
         self.finish()
 
 
+def rolling_window(a, window):
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1],)
+    return num.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+
+
 class HighScoreAcceptancePlot(PlotConfig):
     '''Model acceptance plot '''
     name = 'acceptance'
@@ -273,27 +279,59 @@ class HighScoreAcceptancePlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(environ),
-            title=u'Acceptance Plots',
+            title=u'Acceptance',
             section='optimiser',
-            description=u'The acceptance rate of the bootstap chains',
+            description=u'Illustration of model acceptance for'
+                        u' the bootstap chains.',
             feather_icon='check')
 
     def draw_figures(self, environ):
+        WINDOW_LEN = 200
         optimiser = environ.get_optimiser()
         problem = environ.get_problem()
         history = environ.get_history()
-
         chains = optimiser.chains(problem, history)
-        chains.goto(history.nmodels)
+        chains.load()
+
+        acceptance = chains.acceptance_history
+        acceptance_rate = num.mean(
+            rolling_window(acceptance, WINDOW_LEN), axis=-1) * 100.
+        acceptance_rate_median = num.median(acceptance_rate, axis=0)
 
         fig = plt.figure()
         axes = fig.add_subplot(1, 1, 1)
 
-        acceptance = chains.acceptance_history
-        acceptance_cum = num.cumsum(acceptance, axis=1)
-        axes.plot(acceptance_cum)
+        for ichain in range(chains.nchains):
+            axes.plot(acceptance_rate[ichain, :],
+                      color='red', alpha=0.2)
+        axes.plot(acceptance_rate_median, color='black')
 
-        return [(PlotItem(name='acceptance'), fig)]
+        axes.set_xlabel('Iteration')
+        axes.set_ylabel('Acceptance %')
+
+        axes.set_ylim(0., 100.)
+        axes.set_xlim(0., history.nmodels)
+        axes.grid(alpha=.2)
+
+        yield(PlotItem(
+            name='acceptance',
+            description=u'Acceptance rate within a moving window of'
+                        u' %d iterations.' % WINDOW_LEN),
+              fig)
+
+        fig = plt.figure()
+        axes = fig.add_subplot(1, 1, 1)
+
+        plt.imshow(chains.acceptance_history, aspect='auto', cmap='Greens')
+
+        axes.set_xlabel('Iteration')
+        axes.set_ylabel('Bootstrap Chain')
+        axes.grid(alpha=.4)
+
+        yield (PlotItem(
+            name='acceptance_img',
+            description=u'Model acceptance per bootstrap chain.'),
+               fig)
 
 
 __all__ = [
