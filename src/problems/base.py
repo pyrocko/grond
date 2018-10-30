@@ -135,7 +135,7 @@ class Problem(Object):
 
     def dump_problem_data(
             self, dirname, x, misfits, bootstraps=None,
-            accept=None, ibootstrap_choice=None, ibase=None):
+            ibootstrap_choice=None, ibase=None):
 
         fn = op.join(dirname, 'models')
         if not isinstance(x, num.ndarray):
@@ -156,11 +156,6 @@ class Problem(Object):
             fn = op.join(dirname, 'choices')
             with open(fn, 'ab') as f:
                 num.array((ibootstrap_choice, ibase), dtype='<i8').tofile(f)
-
-        if accept is not None:
-            fn = op.join(dirname, 'accepted')
-            with open(fn, 'ab') as f:
-                accept.astype('<i1').tofile(f)
 
     def name_to_index(self, name):
         pnames = [p.name for p in self.combined]
@@ -620,10 +615,7 @@ class ModelHistory(object):
         self._attributes = {}
 
         if mode == 'r':
-            self.verify_rundir(self.path)
-            models, misfits, bootstraps = load_problem_data(
-                path, problem, nchains=self.nchains)
-            self.extend(models, misfits, bootstraps)
+            self.load()
 
     @staticmethod
     def verify_rundir(rundir):
@@ -737,9 +729,13 @@ class ModelHistory(object):
 
         if self.path and self.mode == 'w':
             for i in range(n):
-                self.problem.dump_problem_data(
-                        self.path, models[i, :], misfits[i, :, :],
-                        bootstrap_misfits[i, :])
+                if bootstrap_misfits is not None:
+                    self.problem.dump_problem_data(
+                            self.path, models[i, :], misfits[i, :, :],
+                            bootstrap_misfits[i, :])
+                else:
+                    self.problem.dump_problem_data(
+                            self.path, models[i, :], misfits[i, :, :])
 
         self.emit('extend', nmodels, n, models, misfits)
 
@@ -749,6 +745,13 @@ class ModelHistory(object):
 
         return self.extend(model[num.newaxis, :], misfits[num.newaxis, :, :],
                            bootstrap_misfits)
+
+    def load(self):
+        self.mode = 'r'
+        self.verify_rundir(self.path)
+        models, misfits, bootstraps = load_problem_data(
+            self.path, self.problem, nchains=self.nchains)
+        self.extend(models, misfits, bootstraps)
 
     def update(self):
         ''' Update history from path '''
