@@ -730,7 +730,7 @@ def command_plot(args):
     parser, options, args = cl_parse('plot', args, setup, details)
 
     if len(args) not in (1, 2, 3):
-        help_and_die(parser, 'two or three arguments required')
+        help_and_die(parser, '1, 2 or 3 arguments required')
 
     if len(args) > 1:
         env = Environment(args[1:])
