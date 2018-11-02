@@ -3,6 +3,7 @@ import logging
 import numpy as num
 
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 from pyrocko.plot import mpl_init, mpl_margins, mpl_color
 from pyrocko.guts import Tuple, Float
@@ -325,11 +326,12 @@ class HighScoreAcceptancePlot(PlotConfig):
         axes.plot(acceptance_p_rate*100., color=mpl_color('skyblue2'))
 
         axes.set_xlabel('Iteration')
-        axes.set_ylabel('Acceptance %')
+        axes.set_ylabel('Acceptance')
 
         axes.set_ylim(0., 100.)
         axes.set_xlim(0., history.nmodels)
         axes.grid(alpha=.2)
+        axes.yaxis.set_major_formatter(FuncFormatter(lambda v, p: '%d%%' % v))
 
         iiter = 0
         bgcolors = [mpl_color('aluminium1'), mpl_color('aluminium2')]
@@ -357,7 +359,7 @@ class HighScoreAcceptancePlot(PlotConfig):
 
         axes.set_xlabel('Iteration')
         axes.set_ylabel('Bootstrap Chain')
-        axes.grid(alpha=.4)
+        axes.xaxis.grid(alpha=.4)
 
         yield (PlotItem(
             name='acceptance_img',
