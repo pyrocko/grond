@@ -311,7 +311,7 @@ class Chains(object):
             gbms = self.history.bootstrap_misfits[nread, :]
 
             self.chains_m[:, self.nlinks] = gbms
-            self.chains_i[:, self.nlinks] = nread-1
+            self.chains_i[:, self.nlinks] = nread
             nbootstrap = self.chains_m.shape[0]
 
             self.nlinks += 1
@@ -324,7 +324,7 @@ class Chains(object):
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
             if self.nlinks == self.nlinks_cap:
-                accept = (chains_i[:, self.nlinks_cap-1] != nread-1) \
+                accept = (chains_i[:, self.nlinks_cap-1] != nread) \
                     .astype(num.bool)
                 self.nlinks -= 1
             else:
