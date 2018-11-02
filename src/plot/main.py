@@ -17,7 +17,7 @@ def get_all_plot_classes():
     for cls in classes_with_have_get_plot_classes:
         plot_classes.update(cls.get_plot_classes())
 
-    return plot_classes
+    return sorted(list(plot_classes), key=lambda plot: plot.name)
 
 
 def get_plot_config_collection(env=None, plot_names=None):
