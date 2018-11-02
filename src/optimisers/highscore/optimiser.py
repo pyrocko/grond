@@ -10,7 +10,7 @@ from collections import OrderedDict
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
 
-from grond.meta import GrondError, Forbidden
+from grond.meta import GrondError, Forbidden, has_get_plot_classes
 from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
@@ -403,6 +403,7 @@ class Chains(object):
         self._acceptance_history[:, self.nread] = acceptance
 
 
+@has_get_plot_classes
 class HighScoreOptimiser(Optimiser):
     '''Monte-Carlo-based directed search optimisation with bootstrap.'''
 
