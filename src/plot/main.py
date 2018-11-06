@@ -47,7 +47,8 @@ def make_plots(
         env,
         plot_config_collection=None,
         plot_names=None,
-        plots_path=None):
+        plots_path=None,
+        show=False):
 
     if plot_config_collection is None:
         plot_config_collection = get_plot_config_collection(env, plot_names)
@@ -56,7 +57,7 @@ def make_plots(
         plots_path = env.get_plots_path()
 
     plots = plot_config_collection.plot_configs
-    manager = PlotCollectionManager(plots_path)
+    manager = PlotCollectionManager(plots_path, show=show)
     env.set_plot_collection_manager(manager)
 
     for plot in plots:

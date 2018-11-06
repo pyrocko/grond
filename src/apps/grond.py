@@ -717,17 +717,20 @@ def command_cluster(args):
 
 def command_plot(args):
 
-    import matplotlib
-    matplotlib.use('Agg')
-
-    from grond.environment import Environment
-
     def setup(parser):
-        pass
+        parser.add_option(
+            '--show', dest='show', action='store_true',
+            help='show plot for interactive inspection')
 
     details = ''
 
     parser, options, args = cl_parse('plot', args, setup, details)
+
+    if not options.show:
+        import matplotlib
+        matplotlib.use('Agg')
+
+    from grond.environment import Environment
 
     if len(args) not in (1, 2, 3):
         help_and_die(parser, '1, 2 or 3 arguments required')
@@ -761,19 +764,19 @@ def command_plot(args):
         if env is None:
             help_and_die(parser, 'two or three arguments required')
         plot_names = plot.get_plot_names(env)
-        plot.make_plots(env, plot_names=plot_names)
+        plot.make_plots(env, plot_names=plot_names, show=options.show)
 
     elif op.exists(args[0]):
         if env is None:
             help_and_die(parser, 'two or three arguments required')
         plots = plot.PlotConfigCollection.load(args[0])
-        plot.make_plots(env, plots)
+        plot.make_plots(env, plots, show=options.show)
 
     else:
         if env is None:
             help_and_die(parser, 'two or three arguments required')
         plot_names = [name.strip() for name in args[0].split(',')]
-        plot.make_plots(env, plot_names=plot_names)
+        plot.make_plots(env, plot_names=plot_names, show=options.show)
 
 
 def command_movie(args):

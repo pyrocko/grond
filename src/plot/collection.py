@@ -64,9 +64,10 @@ class PlotCollection(Object):
 
 class PlotCollectionManager(object):
 
-    def __init__(self, path):
+    def __init__(self, path, show=False):
         self._path = path
         self.load_collection()
+        self._show = show
 
     def load_collection(self):
         path = self.path_collection()
@@ -129,6 +130,7 @@ class PlotCollectionManager(object):
 
         self.dump_collection()
 
+        figs_to_close = []
         for item, fig in iter_item_figure:
             group.items.append(item)
             for format in group.formats:
@@ -141,13 +143,22 @@ class PlotCollectionManager(object):
 
                 logger.info('figure saved: %s' % path)
 
-            plt.close(fig)
+            if not self._show:
+                plt.close(fig)
+            else:
+                figs_to_close.append(fig)
 
         util.ensuredirs(path_group)
         group.validate()
         group.dump(filename=path_group)
         self._collection.group_refs.append(group_ref)
         self.dump_collection()
+
+        if self._show:
+            plt.show()
+
+        for fig in figs_to_close:
+            plt.close(fig)
 
     def create_group_automap(self, config, iter_item_figure, **kwargs):
         group = PlotGroup(
