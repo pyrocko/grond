@@ -4,8 +4,9 @@ import numpy as num
 
 from matplotlib import pyplot as plt
 
-from pyrocko.plot import mpl_init, mpl_margins
+from pyrocko.plot import mpl_init, mpl_margins, mpl_color
 from pyrocko.guts import Tuple, Float
+from pyrocko import trace
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
@@ -275,7 +276,6 @@ class HighScoreAcceptancePlot(PlotConfig):
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
-        mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
             self.draw_figures(environ),
@@ -295,16 +295,34 @@ class HighScoreAcceptancePlot(PlotConfig):
 
         acceptance = chains.acceptance_history
         acceptance_rate = num.mean(
-            rolling_window(acceptance, WINDOW_LEN), axis=-1) * 100.
-        acceptance_rate_median = num.median(acceptance_rate, axis=0)
+            rolling_window(acceptance, WINDOW_LEN), axis=-1)
 
-        fig = plt.figure()
+        acceptance_n = num.sum(acceptance, axis=0)
+
+        acceptance_any = num.minimum(acceptance_n, 1)
+
+        acceptance_any_rate = trace.moving_sum(
+                acceptance_any, WINDOW_LEN, mode='valid') / float(WINDOW_LEN)
+
+        acceptance_p = acceptance_n / float(acceptance.shape[0])
+
+        acceptance_p_rate = trace.moving_sum(
+            acceptance_p, WINDOW_LEN, mode='valid') \
+            / float(WINDOW_LEN) / acceptance_any_rate
+
+        mpl_init(fontsize=self.font_size)
+        fig = plt.figure(figsize=self.size_inch)
+        labelpos = mpl_margins(fig, w=7., h=5., units=self.font_size)
+
         axes = fig.add_subplot(1, 1, 1)
+        labelpos(axes, 2.5, 2.0)
 
         for ichain in range(chains.nchains):
-            axes.plot(acceptance_rate[ichain, :],
-                      color='red', alpha=0.2)
-        axes.plot(acceptance_rate_median, color='black')
+            axes.plot(acceptance_rate[ichain, :]*100.,
+                      color=mpl_color('scarletred2'), alpha=0.2)
+
+        axes.plot(acceptance_any_rate*100., color='black')
+        axes.plot(acceptance_p_rate*100., color=mpl_color('skyblue2'))
 
         axes.set_xlabel('Iteration')
         axes.set_ylabel('Acceptance %')
@@ -313,16 +331,29 @@ class HighScoreAcceptancePlot(PlotConfig):
         axes.set_xlim(0., history.nmodels)
         axes.grid(alpha=.2)
 
+        iiter = 0
+        bgcolors = [mpl_color('aluminium1'), mpl_color('aluminium2')]
+        for iphase, phase in enumerate(optimiser.sampler_phases):
+            axes.axvspan(
+                iiter, iiter+phase.niterations,
+                color=bgcolors[iphase % len(bgcolors)])
+
+            iiter += phase.niterations
+
         yield(PlotItem(
             name='acceptance',
             description=u'Acceptance rate within a moving window of'
                         u' %d iterations.' % WINDOW_LEN),
               fig)
 
-        fig = plt.figure()
-        axes = fig.add_subplot(1, 1, 1)
+        mpl_init(fontsize=self.font_size)
+        fig = plt.figure(figsize=self.size_inch)
+        labelpos = mpl_margins(fig, w=7., h=5., units=self.font_size)
 
-        plt.imshow(chains.acceptance_history, aspect='auto', cmap='Greens')
+        axes = fig.add_subplot(1, 1, 1)
+        labelpos(axes, 2.5, 2.0)
+
+        plt.imshow(acceptance_rate, aspect='auto', cmap='Greens')
 
         axes.set_xlabel('Iteration')
         axes.set_ylabel('Bootstrap Chain')
