@@ -346,10 +346,11 @@ targets easily.
         a = [1]
         ii = 0
 
-        target_idx = [str(it)*t.nmisfits
-                      for it, t in enumerate(problem.targets)]
-        target_idx = num.fromiter(map(float, ''.join(target_idx)),
-                                  dtype=int)
+        target_idx = num.zeros(jsort.size, dtype=num.int)
+        idx = 0
+        for itarget, target in enumerate(problem.targets):
+            target_idx[idx:idx+target.nmisfits] = itarget
+            idx += target.nmisfits
 
         for idx in jsort:
             target = problem.targets[target_idx[idx]]
