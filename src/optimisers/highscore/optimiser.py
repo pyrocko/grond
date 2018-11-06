@@ -396,7 +396,7 @@ class Chains(object):
 
     def new_acceptance(self, acceptance):
         if self.nread >= self._acceptance_history.shape[1]:
-            new_buf = num.zeros((self.nchains, nextpow2(self.nread+1)))
+            new_buf = num.zeros((self.nchains, nextpow2(self.nread+1)), dtype=num.bool)
             new_buf[:, :self._acceptance_history.shape[1]] = \
                 self._acceptance_history
             self._acceptance_history = new_buf
