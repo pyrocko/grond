@@ -139,7 +139,7 @@ def forward(rundir_or_config_path, event_names):
         rundir = rundir_or_config_path
         config = read_config(op.join(rundir, 'config.yaml'))
 
-        problem, xs, misfits = load_problem_info_and_data(
+        problem, xs, misfits, _ = load_problem_info_and_data(
             rundir, subset='harvest')
 
         gms = problem.combine_misfits(misfits)
@@ -195,10 +195,10 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     nchains = env.get_optimiser().nchains
 
     if problem is None:
-        problem, xs, misfits, bootstrap_misfits = \
+        problem, xs, misfits, bootstrap_misfits, _ = \
             load_problem_info_and_data(rundir, nchains=nchains)
     else:
-        xs, misfits, bootstrap_misfits = \
+        xs, misfits, bootstrap_misfits, _ = \
             load_problem_data(rundir, problem, nchains=nchains)
 
     logger.info('harvesting problem %s...' % problem.name)
@@ -710,8 +710,9 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     header = None
     for rundir in rundirs:
-        problem, xs, misfits, bootstrap_misfits = load_problem_info_and_data(
-            rundir, subset='harvest')
+        problem, xs, misfits, bootstrap_misfits, _ = \
+            load_problem_info_and_data(
+                rundir, subset='harvest')
 
         if type == 'vector':
             pnames_take = pnames_clean or \

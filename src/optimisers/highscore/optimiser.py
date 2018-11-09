@@ -72,6 +72,34 @@ class BootstrapTypeChoice(StringChoice):
     choices = ['bayesian', 'classic']
 
 
+def fnone(i):
+    return i if i is not None else -1
+
+
+class Sample(Object):
+
+    '''Sample model with context about how it was generated.'''
+
+    model = Array.T(shape=(None,), dtype=num.float, serialize_as='list')
+    iphase = Int.T(optional=True)
+    ichain_base = Int.T(optional=True)
+    ilink_base = Int.T(optional=True)
+    imodel_base = Int.T(optional=True)
+
+    def preconstrain(self, problem):
+        self.model = problem.preconstrain(self.model)
+
+    def pack_context(self):
+        i = num.zeros(4, dtype=num.int)
+        i[:] = (
+            fnone(self.iphase),
+            fnone(self.ichain_base),
+            fnone(self.ilink_base),
+            fnone(self.imodel_base))
+
+        return i
+
+
 class SamplerPhase(Object):
     niterations = Int.T(
         help='Number of iteration for this phase.')
@@ -88,8 +116,9 @@ class SamplerPhase(Object):
         ntries_preconstrain = 0
         for ntries_preconstrain in range(self.ntries_preconstrain_limit):
             try:
-                return problem.preconstrain(
-                    self.get_raw_sample(problem, iiter, chains))
+                sample = self.get_raw_sample(problem, iiter, chains)
+                sample.preconstrain(problem)
+                return sample
 
             except Forbidden:
                 pass
@@ -105,14 +134,14 @@ class InjectionSamplerPhase(SamplerPhase):
         help='Array with the reference model.')
 
     def get_raw_sample(self, problem, iiter, chains):
-        return self.xs_inject[iiter, :]
+        return Sample(model=self.xs_inject[iiter, :])
 
 
 class UniformSamplerPhase(SamplerPhase):
 
     def get_raw_sample(self, problem, iiter, chains):
         xbounds = problem.get_parameter_bounds()
-        return problem.random_uniform(xbounds)
+        return Sample(model=problem.random_uniform(xbounds))
 
 
 class DirectedSamplerPhase(SamplerPhase):
@@ -164,6 +193,7 @@ class DirectedSamplerPhase(SamplerPhase):
         pnames = problem.parameter_names
         xbounds = problem.get_parameter_bounds()
 
+        ilink_choice = None
         ichain_choice = num.argmin(chains.accept_sum)
 
         if self.starting_point == 'excentricity_compensated':
@@ -251,7 +281,11 @@ class DirectedSamplerPhase(SamplerPhase):
 
             x = xcandi
 
-        return x
+        return Sample(
+            model=x,
+            ichain_base=ichain_choice,
+            ilink_base=ilink_choice,
+            imodel_base=chains.imodel(ichain_choice, ilink_choice))
 
 
 def make_bayesian_weights(nbootstrap, nmisfits,
@@ -330,17 +364,14 @@ class Chains(object):
             else:
                 accept = num.ones(self.nchains, dtype=num.bool)
 
-            self.new_acceptance(accept)
+            self._append_acceptance(accept)
             self.accept_sum += accept
             self.nread += 1
 
     def load(self):
         return self.goto()
 
-    def append(self, iiter, model, misfits):
-        self.goto(iiter)
-
-    def extend(self, ioffset, n, models, misfits):
+    def extend(self, ioffset, n, models, misfits, sampler_contexts):
         self.goto(ioffset + n)
 
     def indices(self, ichain):
@@ -354,6 +385,9 @@ class Chains(object):
 
     def model(self, ichain, ilink):
         return self.history.models[self.chains_i[ichain, ilink], :]
+
+    def imodel(self, ichain, ilink):
+        return self.chains_i[ichain, ilink]
 
     def misfits(self, ichain=0):
         return self.chains_m[ichain, :self.nlinks]
@@ -394,7 +428,7 @@ class Chains(object):
     def acceptance_history(self):
         return self._acceptance_history[:, :self.nread]
 
-    def new_acceptance(self, acceptance):
+    def _append_acceptance(self, acceptance):
         if self.nread >= self._acceptance_history.shape[1]:
             new_buf = num.zeros(
                 (self.nchains, nextpow2(self.nread+1)), dtype=num.bool)
@@ -506,9 +540,9 @@ class HighScoreOptimiser(Optimiser):
 
     def get_sampler_phase(self, iiter):
         niter = 0
-        for phase in self.sampler_phases:
+        for iphase, phase in enumerate(self.sampler_phases):
             if iiter < niter + phase.niterations:
-                return phase, iiter - niter
+                return iphase, phase, iiter - niter
 
             niter += phase.niterations
 
@@ -542,17 +576,18 @@ class HighScoreOptimiser(Optimiser):
         isbad_mask = None
         self._tlog_last = 0
         for iiter in range(niter):
-            phase, iiter_phase = self.get_sampler_phase(iiter)
+            iphase, phase, iiter_phase = self.get_sampler_phase(iiter)
             self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
-            x = phase.get_sample(problem, iiter_phase, chains)
+            sample = phase.get_sample(problem, iiter_phase, chains)
+            sample.iphase = iphase
 
             if isbad_mask is not None and num.any(isbad_mask):
                 isok_mask = num.logical_not(isbad_mask)
             else:
                 isok_mask = None
 
-            misfits = problem.misfits(x, mask=isok_mask)
+            misfits = problem.misfits(sample.model, mask=isok_mask)
             bootstrap_misfits = problem.combine_misfits(
                 misfits,
                 extra_weights=self.get_bootstrap_weights(problem),
@@ -583,7 +618,10 @@ class HighScoreOptimiser(Optimiser):
                     'problem %s: all target misfit values are NaN'
                     % problem.name)
 
-            history.append(x, misfits, bootstrap_misfits)
+            history.append(
+                sample.model, misfits,
+                bootstrap_misfits,
+                sample.pack_context())
 
     @property
     def niterations(self):
@@ -606,7 +644,7 @@ class HighScoreOptimiser(Optimiser):
             arr[:data.size] = data
             return arr
 
-        phase = self.get_sampler_phase(history.nmodels-1)[0]
+        phase = self.get_sampler_phase(history.nmodels-1)[1]
 
         bs_mean = colum_array(chains.mean_model(ichain=None))
         bs_std = colum_array(chains.standard_deviation_models(
