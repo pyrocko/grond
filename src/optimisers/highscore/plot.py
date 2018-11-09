@@ -182,7 +182,7 @@ class HighScoreOptimiserPlot(object):
 
             self._volatile.append(paths)
 
-        phase, iiter_phase = self.optimiser.get_sampler_phase(self.iiter)
+        _, phase, iiter_phase = self.optimiser.get_sampler_phase(self.iiter)
 
         np = 1000
         models_prob = num.zeros((np, self.problem.nparameters))
@@ -282,12 +282,17 @@ class HighScoreAcceptancePlot(PlotConfig):
             self.draw_figures(environ),
             title=u'Acceptance',
             section='optimiser',
-            description=u'Illustration of model acceptance for'
-                        u' the bootstap chains.',
+            description=u'''
+Model acceptance and accepted model popularities.
+
+The plots in this section can be used to investigate performance and
+characteristics of the optimisation algorithm.
+''',
             feather_icon='check')
 
     def draw_figures(self, environ):
-        WINDOW_LEN = 200
+        nwindow = 200
+        show_raw_acceptance_rates = False
         optimiser = environ.get_optimiser()
         problem = environ.get_problem()
         history = environ.get_history()
@@ -295,21 +300,25 @@ class HighScoreAcceptancePlot(PlotConfig):
         chains.load()
 
         acceptance = chains.acceptance_history
-        acceptance_rate = num.mean(
-            rolling_window(acceptance, WINDOW_LEN), axis=-1)
+
+        nmodels_rate = history.nmodels - (nwindow - 1)
+        acceptance_rate = num.zeros((history.nchains, nmodels_rate))
+        for ichain in range(history.nchains):
+            acceptance_rate[ichain, :] = trace.moving_sum(
+                acceptance[ichain, :], nwindow, mode='valid') / float(nwindow)
 
         acceptance_n = num.sum(acceptance, axis=0)
 
         acceptance_any = num.minimum(acceptance_n, 1)
 
         acceptance_any_rate = trace.moving_sum(
-                acceptance_any, WINDOW_LEN, mode='valid') / float(WINDOW_LEN)
+                acceptance_any, nwindow, mode='valid') / float(nwindow)
 
-        acceptance_p = acceptance_n / float(acceptance.shape[0])
+        acceptance_p = acceptance_n / float(history.nchains)
 
-        acceptance_p_rate = trace.moving_sum(
-            acceptance_p, WINDOW_LEN, mode='valid') \
-            / float(WINDOW_LEN) / acceptance_any_rate
+        popularity = trace.moving_sum(
+            acceptance_p, nwindow, mode='valid') \
+            / float(nwindow) / acceptance_any_rate
 
         mpl_init(fontsize=self.font_size)
         fig = plt.figure(figsize=self.size_inch)
@@ -318,18 +327,41 @@ class HighScoreAcceptancePlot(PlotConfig):
         axes = fig.add_subplot(1, 1, 1)
         labelpos(axes, 2.5, 2.0)
 
-        for ichain in range(chains.nchains):
-            axes.plot(acceptance_rate[ichain, :]*100.,
-                      color=mpl_color('scarletred2'), alpha=0.2)
+        imodels = num.arange(history.nmodels)
 
-        axes.plot(acceptance_any_rate*100., color='black')
-        axes.plot(acceptance_p_rate*100., color=mpl_color('skyblue2'))
+        imodels_rate = imodels[nwindow-1:]
+
+        axes.plot(
+            acceptance_n/history.nchains * 100.,
+            '.',
+            ms=2.0,
+            color=mpl_color('skyblue2'),
+            label='Popularity of Accepted Models',
+            alpha=0.3)
+
+        if show_raw_acceptance_rates:
+            for ichain in range(chains.nchains):
+                axes.plot(imodels_rate, acceptance_rate[ichain, :]*100.,
+                          color=mpl_color('scarletred2'), alpha=0.2)
+
+        axes.plot(
+            imodels_rate,
+            popularity * 100.,
+            color=mpl_color('skyblue2'),
+            label='Popularity (moving average)')
+        axes.plot(
+            imodels_rate,
+            acceptance_any_rate*100.,
+            color='black',
+            label='Acceptance Rate (any chain)')
+
+        axes.legend()
 
         axes.set_xlabel('Iteration')
-        axes.set_ylabel('Acceptance')
+        axes.set_ylabel('Acceptance Rate, Model Popularity')
 
         axes.set_ylim(0., 100.)
-        axes.set_xlim(0., history.nmodels)
+        axes.set_xlim(0., history.nmodels - 1)
         axes.grid(alpha=.2)
         axes.yaxis.set_major_formatter(FuncFormatter(lambda v, p: '%d%%' % v))
 
@@ -342,11 +374,20 @@ class HighScoreAcceptancePlot(PlotConfig):
 
             iiter += phase.niterations
 
-        yield(PlotItem(
-            name='acceptance',
-            description=u'Acceptance rate within a moving window of'
-                        u' %d iterations.' % WINDOW_LEN),
-              fig)
+        yield (
+            PlotItem(
+                name='acceptance',
+                description=u'''
+Acceptance rate (black line) within a moving window of %d iterations.
+
+A model is considered accepted, if it is accepted in at least one chain. The
+popularity of accepted models is shown as blue dots. Popularity is defined as
+the percentage of chains accepting the model (100%% meaning acceptance in all
+chains). A moving average of the popularities is shown as blue line (same
+averaging interval as for the acceptance rate). Different background colors
+represent different sampler phases.
+''' % nwindow),
+            fig)
 
         mpl_init(fontsize=self.font_size)
         fig = plt.figure(figsize=self.size_inch)
@@ -355,16 +396,51 @@ class HighScoreAcceptancePlot(PlotConfig):
         axes = fig.add_subplot(1, 1, 1)
         labelpos(axes, 2.5, 2.0)
 
-        plt.imshow(acceptance_rate, aspect='auto', cmap='Greens')
+        nwindow2 = max(1, int(history.nmodels / (self.size_inch[1] * 100)))
+        print(nwindow2)
+        nmodels_rate2 = history.nmodels - (nwindow2 - 1)
+        acceptance_rate2 = num.zeros((history.nchains, nmodels_rate2))
+        for ichain in range(history.nchains):
+            acceptance_rate2[ichain, :] = trace.moving_sum(
+                acceptance[ichain, :], nwindow2, mode='valid') \
+                / float(nwindow2)
+
+        imodels_rate2 = imodels[nwindow2-1:]
+
+        axes.pcolormesh(
+            imodels_rate2,
+            num.arange(history.nchains),
+            num.log(0.01+acceptance_rate2),
+            cmap='GnBu')
+
+        if history.sampler_contexts is not None:
+            axes.plot(
+                imodels,
+                history.sampler_contexts[:, 1],
+                '.',
+                ms=2.0,
+                color='black',
+                label='Breeding Chain',
+                alpha=0.3)
 
         axes.set_xlabel('Iteration')
         axes.set_ylabel('Bootstrap Chain')
+        axes.set_xlim(0, history.nmodels - 1)
+        axes.set_ylim(0, history.nchains - 1)
+
         axes.xaxis.grid(alpha=.4)
 
-        yield (PlotItem(
-            name='acceptance_img',
-            description=u'Model acceptance per bootstrap chain.'),
-               fig)
+        yield (
+            PlotItem(
+                name='acceptance_img',
+                description=u'''
+Model acceptance per bootstrap chain averaged over %d models (background color,
+low to high acceptance as light to dark colors).
+
+Black dots mark the base chains used when sampling new models (directed sampler
+phases only).
+''' % nwindow2),
+            fig)
 
 
 __all__ = [
