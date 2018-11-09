@@ -17,10 +17,15 @@
             <div ng-if="doc" class="{{ compare_mode ? 'text-center' : '' }}">
                 <h6 ng-if="compare_mode">{{ doc.problem_name }}</h6>
                 <figure ng-if="doc" class="figure">
-                    <img 
-                        class="figure-img img-fluid"
-                        ng-src="{{ image_path(doc, item); }}"
-                        ng-repeat="item in doc.items | filter:keyword" />
+                    <span ng-repeat="item in doc.items | filter:keyword">
+                        <img
+                            class="figure-img img-fluid"
+                            ng-src="{{ image_path(doc, item); }}" />
+
+                        <div ng-if="item.description">
+                            <expandable-text text="item.description"></expandable-text>
+                        </div>
+                    </span>
                 </figure>
             </div>
         </div>
