@@ -84,9 +84,17 @@ class DBScan(Clustering):
         default=0.1,
         help='Maximum distance to search for neighbors.')
 
+    ncluster_limit = Int.T(
+        default=None,
+        help='Limit maximum number of clusters created to N.')
+
     def perform(self, similarity_matrix):
         from .dbscan import dbscan
-        return dbscan(similarity_matrix, nmin=self.nmin, eps=self.eps)
+        return dbscan(
+            similarity_matrix,
+            nmin=self.nmin,
+            eps=self.eps,
+            ncluster_limit=self.ncluster_limit)
 
 
 def read_config(path):
