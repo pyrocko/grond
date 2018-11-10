@@ -449,7 +449,7 @@ class HighScoreOptimiser(Optimiser):
     bootstrap_seed = Int.T(default=23)
 
     SPARKS = u'\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'
-    ACCEPTANCE_AVG_LEN = 100
+    ACCEPTANCE_AVG_LEN = 200
 
     def __init__(self, **kwargs):
         Optimiser.__init__(self, **kwargs)
@@ -662,9 +662,21 @@ class HighScoreOptimiser(Optimiser):
 
         glob_misfits = chains.misfits(ichain=0)
 
-        acceptance_latest = chains.acceptance_history[
-            :, -min(chains.acceptance_history.shape[1], self.ACCEPTANCE_AVG_LEN):]  # noqa
-        acceptance_avg = acceptance_latest.mean(axis=1)
+        nwindow = min(
+            chains.acceptance_history.shape[1],
+            self.ACCEPTANCE_AVG_LEN)
+        acceptance_latest = chains.acceptance_history[:, -nwindow:].copy()
+
+        acceptance_n = num.sum(acceptance_latest, axis=0)
+        acceptance_avg_rate = num.mean(acceptance_latest)
+        acceptance_any = num.minimum(acceptance_n, 1)
+        acceptance_any_rate = num.mean(acceptance_any)
+        acceptance_p = acceptance_n / float(self.nchains)
+        acceptance_p_nonzero = acceptance_p[acceptance_p != 0.0]
+        if acceptance_p_nonzero.size > 0:
+            popularity = num.mean(acceptance_p_nonzero)
+        else:
+            popularity = 0.0
 
         def spark_plot(data, bins):
             hist, _ = num.histogram(data, bins)
@@ -682,20 +694,21 @@ class HighScoreOptimiser(Optimiser):
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
             extra_header=  # noqa
-                u'Optimiser phase: {phase}, exploring {nchains} BS chains\n'  # noqa
-                u'Global chain misfit distribution: \u2080{mf_dist}\xb9\n'
-                u'Acceptance rate distribution:     \u2080{acceptance}'
-                u'\u2081\u2080\u2080\ufe6a (Median {acceptance_med:.1f}%)'
+                u'Optimiser phase: {phase}, exploring {nchains} chains\n'  # noqa
+                u'Global chain misfit distribution: \u2080{mf_dist}\u2081\n'
+                u'Acceptance rate (last {nwindow:3d}): {acceptance_any_rate:3.0f}% (any chain), {acceptance_avg_rate:3.0f}% (single chain average)\n'  # noqa
+                u'Popularity of accepted:     {popularity:3.0f}%  \u2080{popularity_dist}\u2081\u2080\u2080 \n'  # noqa
                 .format(
                     phase=phase.__class__.__name__,
                     nchains=chains.nchains,
                     mf_dist=spark_plot(
                         glob_misfits, num.linspace(0., 1., 25)),
-                    acceptance=spark_plot(
-                        acceptance_avg,
-                        num.linspace(0., 1., 25)),
-                    acceptance_med=num.median(acceptance_avg) * 100.
-                    ))
+                    acceptance_any_rate=acceptance_any_rate*100.,
+                    acceptance_avg_rate=acceptance_avg_rate*100.,
+                    popularity_dist=spark_plot(
+                        acceptance_p_nonzero*100., num.linspace(0., 100., 25)),
+                    popularity=popularity*100.,
+                    nwindow=nwindow))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
