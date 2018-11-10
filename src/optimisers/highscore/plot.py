@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 from pyrocko.plot import mpl_init, mpl_margins, mpl_color
-from pyrocko.guts import Tuple, Float
+from pyrocko.guts import Tuple, Float, Int
 from pyrocko import trace
 
 from grond.plot.config import PlotConfig
@@ -274,8 +274,16 @@ class HighScoreAcceptancePlot(PlotConfig):
     '''Model acceptance plot '''
     name = 'acceptance'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+    nwindow = Int.T(default=200)
 
     def make(self, environ):
+        history = environ.get_history()
+        if history.nmodels < self.nwindow:
+            logger.warn(
+                'need at least %i models to plot acceptance figures' % (
+                    self.nwindow))
+            return
+
         cm = environ.get_plot_collection_manager()
         cm.create_group_mpl(
             self,
@@ -291,7 +299,7 @@ characteristics of the optimisation algorithm.
             feather_icon='check')
 
     def draw_figures(self, environ):
-        nwindow = 200
+        nwindow = self.nwindow
         show_raw_acceptance_rates = False
         optimiser = environ.get_optimiser()
         problem = environ.get_problem()
@@ -302,6 +310,12 @@ characteristics of the optimisation algorithm.
         acceptance = chains.acceptance_history
 
         nmodels_rate = history.nmodels - (nwindow - 1)
+        if nmodels_rate <= 0:
+            logger.warn(
+                'need at least %i models to plot acceptance figures' % (
+                    nwindow))
+            return
+
         acceptance_rate = num.zeros((history.nchains, nmodels_rate))
         for ichain in range(history.nchains):
             acceptance_rate[ichain, :] = trace.moving_sum(
@@ -318,7 +332,7 @@ characteristics of the optimisation algorithm.
 
         popularity = trace.moving_sum(
             acceptance_p, nwindow, mode='valid') \
-            / float(nwindow) / acceptance_any_rate
+            / float(nwindow) / (acceptance_any_rate+0.001)
 
         mpl_init(fontsize=self.font_size)
         fig = plt.figure(figsize=self.size_inch)
@@ -397,7 +411,6 @@ represent different sampler phases.
         labelpos(axes, 2.5, 2.0)
 
         nwindow2 = max(1, int(history.nmodels / (self.size_inch[1] * 100)))
-        print(nwindow2)
         nmodels_rate2 = history.nmodels - (nwindow2 - 1)
         acceptance_rate2 = num.zeros((history.nchains, nmodels_rate2))
         for ichain in range(history.nchains):
