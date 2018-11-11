@@ -55,8 +55,9 @@ class JointparPlot(PlotConfig):
     color_parameter = String.T(default='misfit')
     exclude = List.T(String.T())
     include = List.T(String.T())
-    draw_ellipses = Bool.T(default=False)
+    show_ellipses = Bool.T(default=False)
     nsubplots = Int.T(default=6)
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -91,7 +92,7 @@ the event.txt.''')
         figsize = self.size_inch
         ibootstrap = self.ibootstrap
         misfit_cutoff = self.misfit_cutoff
-        draw_ellipses = self.draw_ellipses
+        show_ellipses = self.show_ellipses
         msize = 1.5
         cmap = 'coolwarm'
 
@@ -291,7 +292,7 @@ the event.txt.''')
                     c=icolor,
                     s=msize, alpha=0.5, cmap=cmap, edgecolors='none', **kwargs)
 
-                if draw_ellipses:
+                if show_ellipses:
                     cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
                     evals, evecs = eigh_sorted(cov)
                     evals = num.sqrt(evals)
@@ -307,14 +308,15 @@ the event.txt.''')
                     ell.set_facecolor('none')
                     axes.add_artist(ell)
 
-                fx = problem.extract(xref, jpar)
-                fy = problem.extract(xref, ipar)
+                if self.show_reference:
+                    fx = problem.extract(xref, jpar)
+                    fy = problem.extract(xref, ipar)
 
-                ref_color = mpl_color('aluminium6')
-                ref_color_light = 'none'
-                axes.plot(
-                    xpar.scaled(fx), ypar.scaled(fy), 's',
-                    mew=1.5, ms=5, mfc=ref_color_light, mec=ref_color)
+                    ref_color = mpl_color('aluminium6')
+                    ref_color_light = 'none'
+                    axes.plot(
+                        xpar.scaled(fx), ypar.scaled(fy), 's',
+                        mew=1.5, ms=5, mfc=ref_color_light, mec=ref_color)
 
         figs_flat = []
         for figs_row in figs:
@@ -346,6 +348,7 @@ class HistogramPlot(PlotConfig):
     method = StringChoice.T(
         choices=['gaussian_kde', 'histogram'],
         default='gaussian_kde')
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -481,9 +484,10 @@ space.
                 par.scaled(pstats.mean),
                 color=stats_color3, ls=':', alpha=0.5)
 
-            axes.axvline(
-                par.scaled(problem.extract(xref, ipar)),
-                color=ref_color)
+            if self.show_reference:
+                axes.axvline(
+                    par.scaled(problem.extract(xref, ipar)),
+                    color=ref_color)
 
             item = PlotItem(
                 name=par.name,
@@ -893,6 +897,7 @@ class HudsonPlot(PlotConfig):
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -987,20 +992,21 @@ Hudson's source type plot with the ensemble of bootstrap solutions.''')
             mfc='none',
             zorder=-2)
 
-        mt = problem.base_source.pyrocko_moment_tensor()
-        u, v = hudson.project(mt)
+        if self.show_reference:
+            mt = problem.base_source.pyrocko_moment_tensor()
+            u, v = hudson.project(mt)
 
-        try:
-            beachball.plot_beachball_mpl(
-                mt, axes,
-                beachball_type=beachball_type,
-                position=(u, v),
-                size=beachballsize,
-                color_t='red',
-                zorder=2,
-                linewidth=0.5)
-        except beachball.BeachballError as e:
-            logger.warn(str(e))
+            try:
+                beachball.plot_beachball_mpl(
+                    mt, axes,
+                    beachball_type=beachball_type,
+                    position=(u, v),
+                    size=beachballsize,
+                    color_t='red',
+                    zorder=2,
+                    linewidth=0.5)
+            except beachball.BeachballError as e:
+                logger.warn(str(e))
 
         item = PlotItem(
             name='main',
