@@ -4,7 +4,7 @@ from scipy import signal
 
 from matplotlib import cm, pyplot as plt
 
-from pyrocko.guts import Tuple, Float, Int, StringChoice
+from pyrocko.guts import Tuple, Float, Int, StringChoice, Bool
 from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color, mpl_init
 
 from grond.plot.config import PlotConfig
@@ -41,6 +41,7 @@ class SequencePlot(PlotConfig):
         default='iteration')
     subplot_layout = Tuple.T(2, Int.T(), default=(2, 3))
     marker_size = Float.T(default=1.5)
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -161,7 +162,8 @@ corresponding misfit values.
                 imodels[ibest], par.scaled(models[ibest, ipar]), s=msize,
                 c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha)
 
-            axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
+            if self.show_reference:
+                axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 
         for idep in range(ndep):
             # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
@@ -198,8 +200,9 @@ corresponding misfit values.
                 imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
                 edgecolors='none', cmap=cmap, alpha=alpha)
 
-            y = problem.make_dependant(xref, par.name)
-            axes.axhline(par.scaled(y), color='black', alpha=0.3)
+            if self.show_reference:
+                y = problem.make_dependant(xref, par.name)
+                axes.axhline(par.scaled(y), color='black', alpha=0.3)
 
         impl = (npar + ndep) % (nfx * nfy) + 1
         if impl == 1:
