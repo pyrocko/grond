@@ -341,17 +341,19 @@ the event.txt.''')
 
 class HistogramPlot(PlotConfig):
     '''
-    Histograms or Gaussian kernel densities (default) of all parameters.
+    Histograms or Gaussian kernel densities (default) of all parameters
+    (marginal distributions of model parameters).
 
     The histograms (by default shown as Gaussian kernel densities) show (red
     curved solid line) the distributions of the parameters (marginals) along
     with some characteristics: The red solid vertical line gives the median of
     the distribution and the dashed red vertical line the mean value. Dark gray
-    vertical lines show grond reference values (given in the event.txt file).
-    The overlapping red-shaded areas show the 68% confidence intervals
-    (innermost area), the 90% confidence intervals (middle area) and the
-    minimum and maximum values (widest area). The plot ranges are defined by
-    the given parameter bounds and show the model space.
+    vertical lines show reference values (given in the event.txt file). The
+    overlapping red-shaded areas show the 68% confidence intervals (innermost
+    area), the 90% confidence intervals (middle area) and the minimum and
+    maximum values (widest area). The plot ranges are defined by the given
+    parameter bounds and show the model space. Well resolved model parameters
+    show peaked distributions.
     '''
 
     name = 'histogram'

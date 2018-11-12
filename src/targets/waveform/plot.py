@@ -174,7 +174,7 @@ shows the filtered synthetic waveforms of the drawn models and the bottom plot
 shows the corresponding filtered and tapered synthetic waveforms. The colors of
 taper and synthetic traces are consistent for each random model. The given time
 is relative to the reference event origin time.
-            ''')
+''')
 
     def draw_figures(self, sources, targets, results_list):
         results_list = list(zip(*results_list))
@@ -308,10 +308,13 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             section='fits',
             feather_icon='activity',
             description=u'''
-Plot showing waveform fits for the ensemble of solutions.
+Plot showing waveform (attribute) fits for the ensemble of solutions.
 
-Waveform fits for every nth model in the ensemble of bootstrap solutions. Each
-waveform plot gives a number of details:
+Waveform fits for every nth model in the ensemble of bootstrap solutions.
+Depending on the target configuration different types of comparisons are
+possible: (i) time domain waveform differences, (ii) amplitude spectra, (iii)
+envelopes, (iv) cross correlation functions. Each waveform plot gives a number
+of details:
 
 1) Target information (left side, from top to bottom) gives station name with
 component, distance to source, azimuth of station with respect to source,
@@ -759,10 +762,13 @@ class FitsWaveformPlot(PlotConfig):
             section='fits',
             feather_icon='activity',
             description=u'''
-Plot showing observed and synthetic waveforms for the best fitting model.
+Plot showing observed and synthetic waveform (attributes) for the best fitting
+model.
 
-Best model's waveform fits for all targets. Each waveform plot gives a number
-of details:
+Best model's waveform fits for all targets. Depending on the target
+configurations different types of comparisons are possible: (i) time domain
+waveform differences, (ii) amplitude spectra, (iii) envelopes, (iv) cross
+correlation functions. Each waveform plot gives a number of details:
 
 1) Target information (left side, from top to bottom) gives station name with
 component, distance to source, azimuth of station with respect to source,
