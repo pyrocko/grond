@@ -345,7 +345,7 @@ class HistogramPlot(PlotConfig):
     include = List.T(String.T())
     method = StringChoice.T(
         choices=['gaussian_kde', 'histogram'],
-        default='gaussian_kde')
+        default='histogram')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
