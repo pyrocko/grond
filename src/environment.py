@@ -43,6 +43,9 @@ class Environment(object):
         self._selected_event_names = None
         self._config = None
         self._plot_collection_manager = None
+        if isinstance(args, str):
+            args = [args]
+
         if not args:
             args.append(op.curdir)
 
