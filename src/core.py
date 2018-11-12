@@ -251,6 +251,38 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     logger.info('done harvesting problem %s' % problem.name)
 
 
+def cluster(rundir, clustering, metric):
+    env = Environment([rundir])
+    history = env.get_history(subset='harvest')
+    problem = history.problem
+    models = history.models
+
+    events = [problem.get_source(model).pyrocko_event() for model in models]
+
+    from grond.clustering import metrics
+
+    if metric not in metrics.metrics:
+        raise GrondError('unknown metric: %s' % metric)
+
+    mat = metrics.compute_similarity_matrix(events, metric)
+
+    clusters = clustering.perform(mat)
+
+    labels = num.sort(num.unique(clusters))
+    bins = num.concatenate((labels, [labels[-1]+1]))
+    ns = num.histogram(clusters, bins)[0]
+
+    history.set_attribute('cluster', clusters)
+
+    for i in range(labels.size):
+        if labels[i] == -1:
+            logging.info(
+                'Number of unclustered events: %5i' % ns[i])
+        else:
+            logging.info(
+                'Number of events in cluster %i: %5i' % (labels[i], ns[i]))
+
+
 def get_event_names(config):
     return config.get_event_names()
 
@@ -734,6 +766,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 __all__ = '''
     forward
     harvest
+    cluster
     go
     get_event_names
     check

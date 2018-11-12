@@ -20,6 +20,7 @@ from grond import core, environment
 from grond.problems import ProblemInfoNotAvailable, ProblemDataNotAvailable
 from grond.version import __version__
 from grond import info
+from grond.plot import PlotConfigCollection, get_all_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -44,6 +45,8 @@ class ReportConfig(HasPaths):
         default=u'This interactive document aggregates earthquake source '
                 u'inversion results from optimisations performed with Grond.',
         help='Description shown on report overview page.')
+    plot_config_collection = PlotConfigCollection.T(
+        help='Configurations for plots to be included in the report.')
 
 
 class ReportInfo(Object):
@@ -53,6 +56,7 @@ class ReportInfo(Object):
 
 
 def read_config(path):
+    get_all_plot_classes()  # make sure all plot modules are imported
     try:
         config = guts.load(filename=path)
     except OSError:
@@ -171,7 +175,11 @@ def report(env, report_config=None, update_without_plotting=False):
 
         if not update_without_plotting:
             from grond import plot
-            plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
+            pcc = report_config.plot_config_collection.get_weeded(env)
+            plot.make_plots(
+                env,
+                plots_path=op.join(report_path, 'plots'),
+                plot_config_collection=pcc)
 
         rie = ReportIndexEntry(
             path='.',

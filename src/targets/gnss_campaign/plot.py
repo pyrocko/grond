@@ -53,15 +53,15 @@ class GNSSTargetMisfitPlot(PlotConfig):
             title=u'Static GNSS Surface Displacements',
             section='fits',
             feather_icon='map',
-            description=u' Maps showing station positions and statiom names' 
-                        u' of the GNSS targets. Arrows the observed surface' 
-                        u' displacements (black arrows) and synthetic' 
-                        u' displacements (red arrows). The top plot shows' 
-                        u' the horizontal displacements and the bottom plot' 
-                        u' the vertical displacements.The grey filled box' 
-                        u' shows the surface projection of the modelled '
-                        u' source, with the thick-lined edge marking the' 
-                        u' upper fault edge.')
+            description=u'''
+Maps showing station positions and statiom names of the GNSS targets.
+
+Arrows the observed surface displacements (black arrows) and synthetic
+displacements (red arrows). The top plot shows the horizontal displacements and
+the bottom plot the vertical displacements. The grey filled box shows the
+surface projection of the modelled source, with the thick-lined edge marking
+the upper fault edge.
+''')
 
     def draw_gnss_fits(self, ds, history, optimiser, vertical=False):
         problem = history.problem
@@ -90,9 +90,10 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 },
                 title=u'Static GNSS Surface Displacements - Campaign %s'
                       % campaign.name,
-                description=u'Static surface displacement from GNSS campaign '
-                            u'%s (black vectors) and displacements derived '
-                            u'from best rupture model (red).' % campaign.name)
+                description=u'''
+Static surface displacement from GNSS campaign %s (black vectors) and
+displacements derived from best rupture model (red).
+''' % campaign.name)
 
             lat, lon = campaign.get_center_latlon()
 

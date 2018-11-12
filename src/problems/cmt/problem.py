@@ -5,7 +5,8 @@ import logging
 from pyrocko import gf, util, moment_tensor as mtm
 from pyrocko.guts import String, Float, Dict, StringChoice
 
-from grond.meta import Forbidden, expand_template, Parameter
+from grond.meta import Forbidden, expand_template, Parameter, \
+    has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
 
@@ -45,6 +46,7 @@ class CMTProblemConfig(ProblemConfig):
         return problem
 
 
+@has_get_plot_classes
 class CMTProblem(Problem):
 
     problem_parameters = [

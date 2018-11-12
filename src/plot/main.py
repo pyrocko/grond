@@ -1,5 +1,5 @@
 import logging
-from grond.meta import GrondError
+from grond.meta import GrondError, classes_with_have_get_plot_classes
 from grond.environment import Environment, GrondEnvironmentError
 from grond.plot.collection import PlotCollectionManager
 from grond.plot.config import PlotConfigCollection
@@ -12,10 +12,23 @@ def get_plot_names(env):
     return [plot_class.name for plot_class in plot_classes]
 
 
-def get_plot_config_collection(env, plot_names=None):
+def get_all_plot_classes():
+    plot_classes = set()
+    for cls in classes_with_have_get_plot_classes:
+        plot_classes.update(cls.get_plot_classes())
+
+    return plot_classes
+
+
+def get_plot_config_collection(env=None, plot_names=None):
+
+    if env is None:
+        plot_classes = get_all_plot_classes()
+    else:
+        plot_classes = env.get_plot_classes()
 
     plots = []
-    for plot_class in env.get_plot_classes():
+    for plot_class in plot_classes:
         if plot_names is None or plot_class.name in plot_names:
             plots.append(plot_class())
 
@@ -68,5 +81,6 @@ def make_movie(dirname, xpar_name, ypar_name, movie_filename):
 __all__ = [
     'get_plot_names',
     'get_plot_config_collection',
+    'get_all_plot_classes',
     'make_plots',
     'make_movie']

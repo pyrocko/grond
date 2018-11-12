@@ -1,4 +1,4 @@
-from pyrocko.guts import Object, Float, Int, List, Tuple, String, load
+from pyrocko.guts import Object, Float, Int, List, Tuple, String, load, clone
 
 from grond.meta import GrondError
 
@@ -143,6 +143,17 @@ class PlotConfigCollection(Object):
                 'invalid plot collection configuration in file "%s"' % path)
 
         return collection
+
+    def get_weeded(self, env):
+        '''Get subset of plot configs supported by the current environment.'''
+
+        plot_classes = env.get_plot_classes()
+        plot_configs_avail = [
+            clone(pc)
+            for pc in self.plot_configs
+            if pc.__class__ in plot_classes]
+
+        return PlotConfigCollection(plot_configs=plot_configs_avail)
 
 
 __all__ = [

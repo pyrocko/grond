@@ -12,6 +12,7 @@ from pyrocko.guts_array import Array
 from grond.dataset import NotFound
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
+from grond.meta import has_get_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -108,7 +109,7 @@ class WaveformTargetGroup(TargetGroup):
     channels = List.T(
         String.T(),
         optional=True,
-        help='set channels to include, e.g. \[\'Z\',\'T\'\]')
+        help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
@@ -224,7 +225,7 @@ class WaveformPiggybackSubtarget(Object):
     def evaluate(
             self, tr_proc_obs, trspec_proc_obs, tr_proc_syn, trspec_proc_syn):
 
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class WaveformPiggybackSubresult(Object):
@@ -252,6 +253,7 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
     piggyback_subresults = List.T(WaveformPiggybackSubresult.T())
 
 
+@has_get_plot_classes
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()
