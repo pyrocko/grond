@@ -11,7 +11,7 @@ from collections import defaultdict
 import numpy as num
 
 from pyrocko.guts import Object, String, Float, List
-from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
+from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound
@@ -22,7 +22,7 @@ from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError
 from .config import read_config
-
+from . import stats
 from .environment import Environment
 from .monitor import GrondMonitor
 
@@ -78,56 +78,6 @@ def weed(origin, targets, limit, neighborhood=3):
 
 def sarr(a):
     return ' '.join('%15g' % x for x in a)
-
-
-def get_mean_x(xs):
-    return num.mean(xs, axis=0)
-
-
-def get_mean_x_and_gm(problem, xs, misfits):
-    gms = problem.combine_misfits(misfits)
-    return num.mean(xs, axis=0), num.mean(gms)
-
-
-def get_best_x(problem, xs, misfits):
-    gms = problem.combine_misfits(misfits)
-    ibest = num.argmin(gms)
-    return xs[ibest, :]
-
-
-def get_best_x_and_gm(problem, xs, misfits):
-    gms = problem.combine_misfits(misfits)
-    ibest = num.argmin(gms)
-    return xs[ibest, :], gms[ibest]
-
-
-def get_mean_source(problem, xs):
-    x_mean = get_mean_x(xs)
-    source = problem.get_source(x_mean)
-    return source
-
-
-def get_best_source(problem, xs, misfits):
-    x_best = get_best_x(problem, xs, misfits)
-    source = problem.get_source(x_best)
-    return source
-
-
-def mean_latlondist(lats, lons):
-    if len(lats) == 0:
-        return 0., 0., 1000.
-    else:
-        ns, es = od.latlon_to_ne_numpy(lats[0], lons[0], lats, lons)
-        n, e = num.mean(ns), num.mean(es)
-        dists = num.sqrt((ns-n)**2 + (es-e)**2)
-        lat, lon = od.ne_to_latlon(lats[0], lons[0], n, e)
-        return float(lat), float(lon), float(num.max(dists))
-
-
-def stations_mean_latlondist(stations):
-    lats = num.array([s.lat for s in stations])
-    lons = num.array([s.lon for s in stations])
-    return mean_latlondist(lats, lons)
 
 
 def forward(rundir_or_config_path, event_names):
@@ -737,11 +687,11 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             indices = None
 
         if what == 'best':
-            x_best, gm_best = get_best_x_and_gm(problem, xs, misfits)
+            x_best, gm_best = stats.get_best_x_and_gm(problem, xs, misfits)
             dump(x_best, gm_best, indices)
 
         elif what == 'mean':
-            x_mean, gm_mean = get_mean_x_and_gm(problem, xs, misfits)
+            x_mean, gm_mean = stats.get_mean_x_and_gm(problem, xs, misfits)
             dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':

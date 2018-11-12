@@ -12,13 +12,26 @@ from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import NoSuchAttribute
-from grond import meta, core
+from grond import meta, core, stats
 from matplotlib import pyplot as plt
 
 logger = logging.getLogger('grond.problem.plot')
 
 guts_prefix = 'grond'
+
+
+def cluster_label(icluster, perc):
+    if icluster == -1:
+        return 'Unclust. (%.0f%%)' % perc
+    else:
+        return 'Cluster %i (%.0f%%)' % (icluster, perc)
+
+
+def cluster_color(icluster):
+    if icluster == -1:
+        return mpl_color('aluminium3')
+    else:
+        return mpl_graph_color(icluster)
 
 
 def fixlim(lo, hi):
@@ -506,6 +519,7 @@ class MTDecompositionPlot(PlotConfig):
     cluster_attribute = meta.StringID.T(
         optional=True,
         help='name of attribute to use as cluster IDs')
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -541,54 +555,25 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
         # iorder = num.empty_like(isort)
         # iorder[isort] = num.arange(iorder.size)[::-1]
 
-        mean_source = core.get_mean_source(
+        mean_source = stats.get_mean_source(
             problem, history.models)
 
-        best_source = core.get_best_source(
+        best_source = stats.get_best_source(
             problem, history.models, history.misfits)
 
         ref_source = problem.base_source
 
         nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
 
-        cluster_sources = []
         if self.cluster_attribute:
-            try:
-                iclusters = history.get_attribute(self.cluster_attribute)
-                iclusters_avail = num.unique(iclusters)
-
-                for icluster in iclusters_avail:
-                    models = history.models[iclusters == icluster]
-                    cluster_source = core.get_mean_source(problem, models)
-
-                    cluster_sources.append(
-                        (icluster, cluster_source,
-                         (100.0 * models.size) / history.models.size))
-
-                if cluster_sources and cluster_sources[0][0] == -1:
-                    cluster_sources.append(cluster_sources.pop(0))
-
-            except NoSuchAttribute:
-                logger.warn(
-                    'Attribute %s not set in run %s.\n'
-                    '  Skipping plotting of clusters.' % (
-                        self.cluster_attribute, history.problem.name))
+            cluster_sources = history.mean_sources_by_cluster(
+                self.cluster_attribute)
+        else:
+            cluster_sources = []
 
         def get_deco(source):
             mt = source.pyrocko_moment_tensor()
             return mt.standard_decomposition()
-
-        def cluster_label(icluster, perc):
-            if icluster == -1:
-                return 'Unclust. (%.0f%%)' % perc
-            else:
-                return 'Cluster %i (%.0f%%)' % (icluster, perc)
-
-        def cluster_color(i):
-            if i == -1:
-                return mpl_color('aluminium3')
-            else:
-                return mpl_graph_color(i)
 
         lines = []
         lines.append(
@@ -597,8 +582,8 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
         lines.append(
             ('Ensemble mean', get_deco(mean_source), mpl_color('aluminium5')))
 
-        for (icluster, source, perc) in cluster_sources:
-            if len(lines) < nlines_max - 1:
+        for (icluster, perc, source) in cluster_sources:
+            if len(lines) < nlines_max - int(self.show_reference):
                 lines.append(
                     (cluster_label(icluster, perc),
                      get_deco(source),
@@ -607,10 +592,12 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
                 logger.warn(
                     'Skipping display of cluster %i because figure height is '
                     'too small. Figure height should be at least %g cm.' % (
-                        icluster, (3 + len(cluster_sources) + 1) * 5/4.))
+                        icluster, (3 + len(cluster_sources)
+                                   + int(self.show_reference)) * 5/4.))
 
-        lines.append(
-            ('Reference', get_deco(ref_source), mpl_color('aluminium3')))
+        if self.show_reference:
+            lines.append(
+                ('Reference', get_deco(ref_source), mpl_color('aluminium3')))
 
         moment_full_max = max(deco[-1][0] for (_, deco, _) in lines)
 
@@ -827,6 +814,9 @@ class MTFuzzyPlot(PlotConfig):
 
     name = 'mt_fuzzy'
     size_cm = Tuple.T(2, Float.T(), default=(10., 10.))
+    cluster_attribute = meta.StringID.T(
+        optional=True,
+        help='name of attribute to use as cluster IDs')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -840,50 +830,70 @@ class MTFuzzyPlot(PlotConfig):
             feather_icon='wind',
             description=u'''
 A fuzzy moment tensor, illustrating the solution's uncertainty.
-''')
+
+The opaqueness depicts the propability of all combined moment tensor
+solutions. The red lines indicate the %s best solution.
+''' % ('cluster' if self.cluster_attribute is not None else 'global'))
 
     def draw_figures(self, history):
         problem = history.problem
 
-        fig = plt.figure(figsize=self.size_inch)
-        axes = fig.gca()
+        by_cluster = history.imodels_by_cluster(
+            self.cluster_attribute)
 
-        gms = problem.combine_misfits(history.misfits)
+        for icluster, percentage, imodels in by_cluster:
+            misfits = history.misfits[imodels]
+            models = history.models[imodels]
 
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-        models = history.models[isort, :]
-
-        kwargs = {
-            'beachball_type': 'full',
-            'size': 8,
-            'position': (5, 5),
-            'color_t': 'black',
-            'edgecolor': 'black'}
-
-        mts = []
-        for ix, x in enumerate(models):
-            if random.random() < 0.1:
+            mts = []
+            for ix, x in enumerate(models):
                 source = problem.get_source(x)
                 mts.append(source.pyrocko_moment_tensor())
 
-        best_mt = mts[-1]
+            best_mt = stats.get_best_source(
+                problem, models, misfits).pyrocko_moment_tensor()
 
-        beachball.plot_fuzzy_beachball_mpl_pixmap(mts, axes, best_mt, **kwargs)
+            fig = plt.figure(figsize=self.size_inch)
+            fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+            axes = fig.add_subplot(1, 1, 1, aspect=1.0)
 
-        axes.set_xlim(0., 10.)
-        axes.set_ylim(0., 10.)
-        axes.set_axis_off()
+            if self.cluster_attribute is not None:
+                color = cluster_color(icluster)
+            else:
+                color = 'black'
 
-        item = PlotItem(
-            name='main',
-            title='Fuzzy Moment Tensor',
-            description=u'''
-The opaqueness illustrates the propability of all combined moment tensor
-solution. The red lines indicate the global best solution.
-''')
-        return [[item, fig]]
+            beachball.plot_fuzzy_beachball_mpl_pixmap(
+                mts, axes, best_mt,
+                beachball_type='full',
+                size=8.*math.sqrt(percentage/100.),
+                position=(5., 5.),
+                color_t=color,
+                edgecolor='black',
+                best_color=mpl_color('scarletred2'))
+
+            if self.cluster_attribute is not None:
+                axes.annotate(
+                    cluster_label(icluster, percentage),
+                    xy=(5., 0.),
+                    xycoords='data',
+                    xytext=(0., self.font_size/2.),
+                    textcoords='offset points',
+                    ha='center',
+                    va='bottom',
+                    color='black',
+                    fontsize=self.font_size)
+
+            axes.set_xlim(0., 10.)
+            axes.set_ylim(0., 10.)
+            axes.set_axis_off()
+
+            item = PlotItem(
+                name=(
+                    'cluster_%i' % icluster
+                    if icluster >= 0
+                    else 'unclustered'))
+
+            yield [item, fig]
 
 
 class HudsonPlot(PlotConfig):
@@ -910,7 +920,12 @@ class HudsonPlot(PlotConfig):
             section='solution',
             feather_icon='box',
             description=u'''
-Hudson's source type plot with the ensemble of bootstrap solutions.''')
+Hudson's source type plot with the ensemble of bootstrap solutions.
+
+For about 10% of the solutions (randomly chosen), the focal mechanism is
+depicted, others are represented as dots. The square marks the global best
+fitting solution.
+''')
 
     def draw_figures(self, history):
 
@@ -923,8 +938,8 @@ Hudson's source type plot with the ensemble of bootstrap solutions.''')
         beachball_type = self.beachball_type
 
         problem = history.problem
-        mean_source = core.get_mean_source(problem, history.models)
-        best_source = core.get_best_source(
+        mean_source = stats.get_mean_source(problem, history.models)
+        best_source = stats.get_best_source(
             problem, history.models, history.misfits)
 
         fig = plt.figure(figsize=self.size_inch)

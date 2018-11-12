@@ -21,6 +21,8 @@ from grond.meta import ADict, Parameter, GrondError, xjoin, Forbidden, \
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
+from grond import stats
+
 from grond.version import __version__
 
 
@@ -863,6 +865,48 @@ class ModelHistory(object):
                 self.misfits,
                 extra_weights=optimiser.get_bootstrap_weights(problem),
                 extra_residuals=optimiser.get_bootstrap_residuals(problem))
+
+    def imodels_by_cluster(self, cluster_attribute):
+        if cluster_attribute is None:
+            return [(-1, 100.0, num.arange(self.nmodels))]
+
+        by_cluster = []
+        try:
+            iclusters = self.get_attribute(cluster_attribute)
+            iclusters_avail = num.unique(iclusters)
+
+            for icluster in iclusters_avail:
+                imodels = num.where(iclusters == icluster)[0]
+                by_cluster.append(
+                    (icluster,
+                     (100.0 * imodels.size) / self.nmodels,
+                     imodels))
+
+            if by_cluster and by_cluster[0][0] == -1:
+                by_cluster.append(by_cluster.pop(0))
+
+        except NoSuchAttribute:
+            logger.warn(
+                'Attribute %s not set in run %s.\n'
+                '  Skipping model retrieval by clusters.' % (
+                    cluster_attribute, self.problem.name))
+
+        return by_cluster
+
+    def models_by_cluster(self, cluster_attribute):
+        if cluster_attribute is None:
+            return [(-1, 100.0, self.models)]
+
+        return [
+            (icluster, percentage, self.models[imodels])
+            for (icluster, percentage, imodels)
+            in self.imodels_by_cluster(cluster_attribute)]
+
+    def mean_sources_by_cluster(self, cluster_attribute):
+        return [
+            (icluster, percentage, stats.get_mean_source(self.problem, models))
+            for (icluster, percentage, models)
+            in self.models_by_cluster(cluster_attribute)]
 
 
 def get_nmodels(dirname, problem):
