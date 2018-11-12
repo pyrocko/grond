@@ -250,3 +250,13 @@ class Environment(object):
 
     def get_config_path(self):
         return self._config_path
+
+
+__all__ = [
+    'GrondEnvironmentError',
+    'EventSelectionFailed',
+    'NoCurrentEventAvailable',
+    'NoRundirAvailable',
+    'NoPlotCollectionManagerAvailable',
+    'Environment',
+]
