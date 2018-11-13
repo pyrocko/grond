@@ -267,12 +267,10 @@ result is plotted relative and unscales as a function of global misfit
 
 The target contribution is shown in color-filled curves with the bottom curve
 on the bottom and the best-fit target on top. This plot can be used to analyse
-the balance of targets in the optimisations and it indicates poorly fitting
-targets easily.
-
-For ideal configurations, the target contributions are of similar size. If the
-contribution of a single target is much larger than those of all others, the
-weighting should be modified.
+the balance of targets in the optimisations. For ideal configurations, the
+target contributions are of similar size. If the contribution of a single
+target is much larger than those of all others, the weighting should be
+modified.
 ''')
 
     def draw_figures(self, history):
