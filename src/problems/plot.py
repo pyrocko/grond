@@ -49,16 +49,7 @@ def eigh_sorted(mat):
 
 class JointparPlot(PlotConfig):
     '''
-    Plots of all two-dimensional model parameter distributions
-
-    The JointparPlot reveals relationships between model parameters, like
-    strong correlations or non-linear trade-offs. A subset of model solutions
-    (from harvest) is shown in two dimensions for all possible parameter pairs
-    as points. The point color indicates the misfit for the model solution with
-    cold colors (blue) for high misfit models and warm colors (red) for low
-    misfit models. The plot extend is defined by the given parameter bounds and
-    shows the model space of the optimsation. Dark gray boxes show the
-    reference solution if given in the event.txt.
+    Source problem parameter's tradeoff plots.
     '''
 
     name = 'jointpar'
@@ -76,6 +67,8 @@ class JointparPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         optimiser = environ.get_optimiser()
+        sref = 'Dark gray boxes mark reference solution.' \
+            if self.show_reference else ''
 
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
@@ -85,16 +78,14 @@ class JointparPlot(PlotConfig):
             section='solution',
             feather_icon='crosshair',
             description=u'''
-Source problem parameter's tradeoff plots.
+Source problem parameter's scatter plots, to evaluate the resolution of source
+parameters and possible trade-offs between pairs of model parameters.
 
-The JointparPlot reveals relationships between model parameters, like strong
-correlations or non-linear trade-offs. A subset of model solutions (from
-harvest) is shown in two dimensions for all possible parameter pairs as points.
-The point color indicates the misfit for the model solution with cold colors
-(blue) for high misfit models and warm colors (red) for low misfit models. The
-plot extend is defined by the given parameter bounds and shows the model space
-of the optimsation. Dark gray boxes show the reference parameters as given in
-the event.txt.''')
+A subset of model solutions (from harvest) is shown in two dimensions for all
+possible parameter pairs as points. The point color indicates the misfit for
+the model solution with cold colors (blue) for high misfit models and warm
+colors (red) for low misfit models. The plot ranges are defined by the given
+parameter bounds and shows the model space of the optimsation. %s''' % sref)
 
     def draw_figures(self, history, optimiser):
 
@@ -534,8 +525,14 @@ class MTDecompositionPlot(PlotConfig):
             section='solution',
             feather_icon='sun',
             description=u'''
-Moment tensor decomposition of the best-fitting and ensemble mean solutions.
-''')
+Moment tensor decomposition of the best-fitting solution into isotropic,
+deviatoric and best double couple components.
+
+Shown are the ensemble best, the ensemble mean%s and, if available, a reference
+mechanism. The symbol size indicates the relative strength of the components.
+The inversion result is consistent and stable if ensemble mean and ensemble
+best have similar symbol size and patterns.
+''' % (', cluster results' if self.cluster_attribute else ''))
 
     def draw_figures(self, history):
 
@@ -699,7 +696,6 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
 
 
 class MTLocationPlot(PlotConfig):
-    ''' Map of moment tensor location results '''
     name = 'location_mt'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
@@ -716,7 +712,13 @@ class MTLocationPlot(PlotConfig):
             title=u'Moment Tensor Location',
             section='solution',
             feather_icon='target',
-            description=u'Location plots of the best ensemble of solutions.')
+            description=u'''
+Location plot of the ensemble of best solutions in three different.
+
+The coordinate range is defined by the search space given in the config file.
+Symbols show best double-couple mechanisms, and colors indicate low (red) and
+high (blue) misfit.
+''')
 
     def draw_figures(self, history):
         from matplotlib import colors
@@ -833,8 +835,11 @@ class MTFuzzyPlot(PlotConfig):
             description=u'''
 A fuzzy moment tensor, illustrating the solution's uncertainty.
 
-The opaqueness depicts the propability of all combined moment tensor
-solutions. The red lines indicate the %s best solution.
+The P wave radiation pattern strength of every ensemble solution is stacked for
+all ray spokes. The projection shows the stacked radiation pattern. If the
+variability of the ensemble solutions is small, the fuzzy plot has clearly
+separated black and white fields, consistent with the nodal lines of the %s
+best solution (indicated in red).
 ''' % ('cluster' if self.cluster_attribute is not None else 'global'))
 
     def draw_figures(self, history):
