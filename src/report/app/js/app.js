@@ -1,5 +1,59 @@
 'use strict';
 
+
+// browser compatibility (IE)
+Math.log10 = Math.log10 || function(x) {
+    return Math.log(x) * Math.LOG10E;
+};
+
+if (!String.prototype.repeat) {
+  String.prototype.repeat = function(count) {
+    'use strict';
+    if (this == null) {
+      throw new TypeError('can\'t convert ' + this + ' to object');
+    }
+    var str = '' + this;
+    count = +count;
+    if (count != count) {
+      count = 0;
+    }
+    if (count < 0) {
+      throw new RangeError('repeat count must be non-negative');
+    }
+    if (count == Infinity) {
+      throw new RangeError('repeat count must be less than infinity');
+    }
+    count = Math.floor(count);
+    if (str.length == 0 || count == 0) {
+      return '';
+    }
+    // Ensuring count is a 31-bit integer allows us to heavily optimize the
+    // main part. But anyway, most current (August 2014) browsers can't handle
+    // strings 1 << 28 chars or longer, so:
+    if (str.length * count >= 1 << 28) {
+      throw new RangeError('repeat count must not overflow maximum string size');
+    }
+    var maxCount = str.length * count;
+    count = Math.floor(Math.log(count) / Math.log(2));
+    while (count) {
+       str += str;
+       count--;
+    }
+    str += str.substring(0, maxCount - str.length);
+    return str;
+  }
+}
+
+function includes(arr, str) {
+    return (arr.indexOf(str) !== -1);
+}
+
+function map_values_to_array(m) {
+    var a = [];
+    m.forEach(function(v, k, m) { a.push(v); });
+    return a;
+}
+
 function mod(n, m) {
   return ((n % m) + m) % m;
 }
@@ -186,7 +240,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
         };
 
         funcs.selected_add = function(problem_name) {
-            if (!selected_problem_names.includes(problem_name)) {
+            if (!includes(selected_problem_names, problem_name)) {
                 selected_problem_names.push(problem_name);
             }
         };
@@ -230,7 +284,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
         };
 
         funcs.is_selected = function(problem_name) {
-            return selected_problem_names.includes(problem_name);
+            return includes(selected_problem_names, problem_name);
         };
 
         funcs.get_report_entries = function() {
@@ -637,7 +691,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                     }
                 }
             }
-            var groups2 = Array.from(group_map.values());
+            var groups2 = map_values_to_array(group_map);
             var groups_joined = [];
             for (var i=0; i<groups2.length; i++) {
                 var g = groups2[i][0] !== null ? groups2[i][0] : groups2[i][1];
