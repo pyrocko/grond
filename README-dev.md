@@ -20,17 +20,23 @@ Notable changes must be documented in the file `CHANGELOG.md`. The format of
 the change log is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.0.0/).
 
-**Commit message conventions:**
+### Commit message conventions
 
 * start with lower case
-* colon-prepend affected component 
+* colon-prepend affected component
 * try to use imperative form
 * examples:
   - `docs: add section about weighting`
   - `waveform targets: correct typo in component names`
   - `waveform targets: fix issues with misaligned traces`
 
-**Rebase small changes before pushing:**
+### Branching policy
+
+* The `master` branch should point to a stable, tagged version of Grond.
+* The `dev` branch is used to aggregate new features before releasing.
+* Use topic branches to develop new features.
+
+### Rebase small changes before pushing
 
 Try to rebase little changes on top of master (or any other development branch)
 before pushing, it makes the history much better readable. Here is a safe way
@@ -61,10 +67,6 @@ If during push it refuses to upload ('not fast forward...') then repeat the
 procedure, because someone else has pushed between your fetch and push.
 
 **Tip:** use `rebase -i ...` to simplify/fixup/beautify your changeset.
-
-## Testing
-
-* TODO
 
 ## Code style
 
