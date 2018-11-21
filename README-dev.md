@@ -14,6 +14,12 @@ Grond uses Setuptools for its installation script. See `setup.py` and
 Git is used for version control. Use development branches for new features.
 Master branch should always point to a stable version.
 
+The Grond project  adheres to [Semantic Versioning](https://semver.org).
+
+Notable changes must be documented in the file `CHANGELOG.md`. The format of
+the change log is based on [Keep a
+Changelog](https://keepachangelog.com/en/1.0.0/).
+
 **Commit message conventions:**
 
 * start with lower case
