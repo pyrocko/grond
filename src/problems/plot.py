@@ -497,7 +497,7 @@ space.
 
             item = PlotItem(
                 name=par.name,
-                title='Parameter Histograms')
+                title=u'Parameter Histograms')
             item.attributes['parameters'] = [par.name]
             yield item, fig
 
@@ -809,7 +809,7 @@ high (blue) misfit.
 
         item = PlotItem(
             name='main',
-            title='Moment Tensor Location')
+            title=u'Moment Tensor Location')
         return [[item, fig]]
 
 
@@ -829,7 +829,7 @@ class MTFuzzyPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Fuzzy Moment Tensor',
+            title=u'Fuzzy Moment Tensor',
             section='solution',
             feather_icon='wind',
             description=u'''
@@ -1032,7 +1032,7 @@ fitting solution.
 
         item = PlotItem(
             name='main',
-            title='Hudson Plot')
+            title=u'Hudson Plot')
         return [[item, fig]]
 
 
