@@ -113,7 +113,9 @@ def copytree(src, dst):
             shutil.copy(srcname, dstname)
 
 
-def report(env, report_config=None, update_without_plotting=False):
+def report(env, report_config=None, update_without_plotting=False,
+           make_index=True, make_archive=True):
+
     if report_config is None:
         report_config = ReportConfig()
         report_config.set_basepath('.')
@@ -209,8 +211,11 @@ def report(env, report_config=None, update_without_plotting=False):
         if op.exists(report_path):
             shutil.rmtree(report_path)
 
-    report_index(report_config)
-    report_archive(report_config)
+    if make_index:
+        report_index(report_config)
+
+    if make_archive:
+        report_archive(report_config)
 
 
 def report_index(report_config=None):
@@ -367,6 +372,7 @@ def serve_report(
 __all__ = '''
     report
     report_index
+    report_archive
     ReportConfig
     ReportIndexEntry
     ReportInfo

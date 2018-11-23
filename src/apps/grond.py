@@ -927,14 +927,37 @@ def command_tag(args):
         die('errors occurred, see log messages above.')
 
 
+def make_report(env_args, event_name, conf, update_without_plotting):
+    from grond.environment import Environment
+    from grond.report import report
+    try:
+        env = Environment(env_args)
+        if event_name:
+            env.set_current_event_name(event_name)
+
+        report(
+            env, conf,
+            update_without_plotting=update_without_plotting,
+            make_index=False,
+            make_archive=False)
+
+        return True
+
+    except grond.GrondError as e:
+        logger.error(str(e))
+        return False
+
+
 def command_report(args):
 
     import matplotlib
     matplotlib.use('Agg')
 
+    from pyrocko import parimap
+
     from grond.environment import Environment
     from grond.report import \
-        report, report_index, serve_ip, serve_report, read_config, \
+        report_index, report_archive, serve_ip, serve_report, read_config, \
         write_config, ReportConfig
 
     def setup(parser):
@@ -992,6 +1015,10 @@ def command_report(args):
             dest='update_without_plotting',
             action='store_true',
             help='quick-and-dirty update parameter files without plotting')
+        parser.add_option(
+            '--parallel', dest='nparallel', type=int, default=1,
+            help='set number of reports to generate in parallel, '
+                 'If set to more than one, --status=quiet is implied.')
 
     parser, options, args = cl_parse('report', args, setup)
 
@@ -1026,42 +1053,44 @@ def command_report(args):
 
     if options.index_only:
         report_index(conf)
+        report_archive(conf)
         args = []
 
     reports_generated = False
 
+    payload = []
     if args and all(op.isdir(rundir) for rundir in args):
         rundirs = args
         all_failed = True
         for rundir in rundirs:
-            try:
-                env = Environment([rundir])
-                report(
-                    env, conf,
-                    update_without_plotting=options.update_without_plotting)
-
-                all_failed = False
-                reports_generated = True
-
-            except grond.GrondError as e:
-                logger.error(str(e))
-
-        if all_failed:
-            die('no reports generated')
+            payload.append(([rundir], None,
+                           conf, options.update_without_plotting))
 
     elif args:
         try:
             env = Environment(args)
             for event_name in env.get_selected_event_names():
-                env.set_current_event_name(event_name)
-                report(
-                    env, conf,
-                    update_without_plotting=options.update_without_plotting)
-
-                reports_generated = True
+                payload.append(args, event_name,
+                               conf, options.update_without_plotting)
 
         except grond.GrondError as e:
             die(str(e))
+
+    if payload:
+        reports_generated = []
+        for result in parimap.parimap(
+                make_report, *zip(*payload), nprocs=options.nparallel):
+
+            reports_generated.append(result)
+
+        all_failed = not any(reports_generated)
+        reports_generated = any(reports_generated)
+
+        if all_failed:
+            die('no reports generated')
+
+        report_index(conf)
+        report_archive(conf)
 
     if options.serve or options.serve_external:
         if options.serve_external:
