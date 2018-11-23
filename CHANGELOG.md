@@ -15,3 +15,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Plot descriptions improved
 - Grond plot now has a `--show` option to display MPL plots interactively.
 - Grond reports can now be viewed in IE.
+- User can now add self-defined labels to a run dir (`grond tag`). The labels
+  are shown in the report list.

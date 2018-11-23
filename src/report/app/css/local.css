@@ -309,7 +309,8 @@ div#browser-warning {
  */
 
 .modal-lg {
-    max-width: 1100px;
+    /*max-width: 1100px;*/
+    max-width: 1400px;
 }
 
 .selected {
