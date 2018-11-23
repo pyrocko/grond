@@ -2,7 +2,7 @@ import time
 import os.path as op
 
 from grond.config import read_config
-from grond import meta
+from grond import meta, run_info
 from grond.problems.base import load_optimiser_info, load_problem_info, \
     ModelHistory
 
@@ -171,6 +171,21 @@ class Environment(object):
             raise NoRundirAvailable()
 
         return self._rundir_path
+
+    def get_run_info_path(self):
+        return op.join(self.get_rundir_path(), 'run_info.yaml')
+
+    def get_run_info(self):
+        run_info_path = self.get_run_info_path()
+        if not op.exists(run_info_path):
+            info = run_info.RunInfo()
+            return info
+        else:
+            return run_info.read_info(run_info_path)
+
+    def set_run_info(self, info):
+        run_info_path = self.get_run_info_path()
+        run_info.write_info(info, run_info_path)
 
     def get_optimiser(self):
         if self._optimiser is None:

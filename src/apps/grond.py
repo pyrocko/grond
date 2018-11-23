@@ -34,6 +34,7 @@ subcommand_descriptions = {
     'plot': 'plot optimisation result',
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
+    'tag': 'add user-defined label to run directories',
     'report': 'create result report',
     'diff': 'compare two configs or other normalized Grond YAML files',
     'qc-polarization': 'check sensor orientations with polarization analysis',
@@ -62,6 +63,10 @@ subcommand_usages = {
         'plot config ( <rundir> | <configfile> <eventname> ) [options]'),
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
+    'tag': (
+        'tag add <tag> <rundir>',
+        'tag remove <tag> <rundir>',
+        'tag list <rundir>'),
     'report': (
         'report <rundir> ... [options]',
         'report <configfile> <eventnames> ...'),
@@ -100,6 +105,7 @@ Subcommands:
     plot            %(plot)s
     movie           %(movie)s
     export          %(export)s
+    tag             %(tag)s
     report          %(report)s
     diff            %(diff)s
     qc-polarization %(qc_polarization)s
@@ -859,6 +865,66 @@ def command_export(args):
 
     except grond.GrondError as e:
         die(str(e))
+
+
+def command_tag(args):
+
+    def setup(parser):
+        parser.add_option(
+            '-d', '--dir-names',
+            dest='show_dirnames',
+            action='store_true',
+            help='show directory names instead of run names')
+
+    parser, options, args = cl_parse('tag', args, setup)
+    if len(args) < 2:
+        help_and_die(parser, 'two or more arguments required')
+
+    action = args.pop(0)
+
+    if action not in ('add', 'remove', 'list'):
+        help_and_die(parser, 'invalid action: %s' % action)
+
+    if action in ('add', 'remove'):
+        if len(args) < 2:
+            help_and_die(parser, 'three or more arguments required')
+
+        tag = args.pop(0)
+
+        rundirs = args
+
+    if action == 'list':
+        rundirs = args
+
+    from grond.environment import Environment
+
+    errors = False
+    for rundir in rundirs:
+        try:
+            env = Environment([rundir])
+            if options.show_dirnames:
+                name = rundir
+            else:
+                name = env.get_problem().name
+
+            info = env.get_run_info()
+            if action == 'add':
+                info.add_tag(tag)
+                env.set_run_info(info)
+            elif action == 'remove':
+                info.remove_tag(tag)
+                env.set_run_info(info)
+            elif action == 'list':
+                print('%-60s : %s' % (
+                    name,
+                    ', '.join(info.tags)))
+
+        except grond.GrondError as e:
+            errors = True
+            logger.error(e)
+
+    if errors:
+        die('errors occurred, see log messages above.')
 
 
 def command_report(args):

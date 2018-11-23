@@ -21,6 +21,7 @@ from grond.problems import ProblemInfoNotAvailable, ProblemDataNotAvailable
 from grond.version import __version__
 from grond import info
 from grond.plot import PlotConfigCollection, get_all_plot_classes
+from grond.run_info import RunInfo
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -32,6 +33,7 @@ class ReportIndexEntry(Object):
     event_reference = Event.T(optional=True)
     event_best = Event.T(optional=True)
     grond_version = String.T(optional=True)
+    run_info = RunInfo.T(optional=True)
 
 
 class ReportConfig(HasPaths):
@@ -184,7 +186,8 @@ def report(env, report_config=None, update_without_plotting=False):
         rie = ReportIndexEntry(
             path='.',
             problem_name=problem.name,
-            grond_version=problem.grond_version)
+            grond_version=problem.grond_version,
+            run_info=env.get_run_info())
 
         fn = op.join(report_path, 'event.solution.best.yaml')
         if op.exists(fn):

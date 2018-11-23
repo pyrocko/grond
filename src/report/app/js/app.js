@@ -124,6 +124,7 @@ var yaml_type_map = [
     ['!grond.PNG', Dummy],
     ['!grond.PDF', Dummy],
     ['!grond.VersionInfo', Dummy],
+    ['!grond.RunInfo', Dummy],
 ];
 
 function make_constructor(type) {
