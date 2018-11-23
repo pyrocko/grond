@@ -175,7 +175,8 @@ function parse_fields(fields, input, output, error, factor, parse) {
 
 angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
-    .config(function($routeProvider, $locationProvider) {
+    .config(function($routeProvider, $locationProvider, $compileProvider) {
+        $compileProvider.debugInfoEnabled(false);
         $locationProvider.hashPrefix('');
         $routeProvider
             .when('/', {
