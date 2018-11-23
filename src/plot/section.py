@@ -30,7 +30,7 @@ class SectionPlotConfig(PlotConfig):
         2, Float.T(), default=(20., 20.))
 
     margins_em = Tuple.T(
-        2, Float.T(), default=(7., 5., 7., 5.))
+        4, Float.T(), default=(7., 5., 7., 5.))
 
     separator_em = Float.T(default=1.0)
 

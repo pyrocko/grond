@@ -786,7 +786,6 @@ high (blue) misfit.
 
             axes.add_patch(rect)
 
-
             # fxs = xpar.scaled(problem.extract(models, ixpar))
             # fys = ypar.scaled(problem.extract(models, iypar))
 
@@ -801,8 +800,6 @@ high (blue) misfit.
                 cmap=plt.get_cmap('coolwarm'))
 
             for ix, x in enumerate(models):
-                if ix % 10 != 0:
-                    continue
 
                 source = problem.get_source(x)
                 mt = source.pyrocko_moment_tensor()
