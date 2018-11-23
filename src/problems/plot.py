@@ -11,6 +11,7 @@ from pyrocko.plot import mpl_margins, mpl_color, mpl_init, mpl_graph_color
 from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
+from grond.plot.section import SectionPlotConfig, SectionPlot
 from grond.plot.collection import PlotItem
 from grond import meta, core, stats
 from matplotlib import pyplot as plt
@@ -695,9 +696,8 @@ best have similar symbol size and patterns.
         return [[item, fig]]
 
 
-class MTLocationPlot(PlotConfig):
+class MTLocationPlot(SectionPlotConfig):
     name = 'location_mt'
-    size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
@@ -706,6 +706,7 @@ class MTLocationPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         mpl_init(fontsize=self.font_size)
+        self._to_be_closed = []
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
@@ -713,12 +714,14 @@ class MTLocationPlot(PlotConfig):
             section='solution',
             feather_icon='target',
             description=u'''
-Location plot of the ensemble of best solutions in three different.
+Location plot of the ensemble of best solutions in three different sections.
 
 The coordinate range is defined by the search space given in the config file.
 Symbols show best double-couple mechanisms, and colors indicate low (red) and
 high (blue) misfit.
 ''')
+        for obj in self._to_be_closed:
+            obj.close()
 
     def draw_figures(self, history):
         from matplotlib import colors
@@ -730,11 +733,13 @@ high (blue) misfit.
         beachball_type = self.beachball_type
 
         problem = history.problem
+        sp = SectionPlot(config=self)
+        self._to_be_closed.append(sp)
 
-        fig = plt.figure(figsize=self.size_inch)
-        axes_en = fig.add_subplot(2, 2, 1)
-        axes_dn = fig.add_subplot(2, 2, 2)
-        axes_ed = fig.add_subplot(2, 2, 3)
+        fig = sp.fig
+        axes_en = sp.axes_xy
+        axes_dn = sp.axes_zy
+        axes_ed = sp.axes_xz
 
         bounds = problem.get_combined_bounds()
 
@@ -747,6 +752,17 @@ high (blue) misfit.
 
         iorder = num.arange(history.nmodels)
 
+        for parname, set_label, set_lim in [
+                ['east_shift', sp.set_xlabel, sp.set_xlim],
+                ['north_shift', sp.set_ylabel, sp.set_ylim],
+                ['depth', sp.set_zlabel, sp.set_zlim]]:
+
+            ipar = problem.name_to_index(parname)
+            par = problem.combined[ipar]
+            set_label(par.get_label())
+            xmin, xmax = fixlim(*par.scaled(bounds[ipar]))
+            set_lim(xmin, xmax)
+
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
                 (axes_dn, 'depth', 'north_shift'),
@@ -758,15 +774,18 @@ high (blue) misfit.
             xpar = problem.combined[ixpar]
             ypar = problem.combined[iypar]
 
-            axes.set_xlabel(xpar.get_label())
-            axes.set_ylabel(ypar.get_label())
-
             xmin, xmax = fixlim(*xpar.scaled(bounds[ixpar]))
             ymin, ymax = fixlim(*ypar.scaled(bounds[iypar]))
 
-            axes.set_aspect(1.0)
-            axes.set_xlim(xmin, xmax)
-            axes.set_ylim(ymin, ymax)
+            axes.set_facecolor(mpl_color('aluminium1'))
+
+            rect = patches.Rectangle(
+                (xmin, ymin), xmax-xmin, ymax-ymin,
+                facecolor=mpl_color('white'),
+                edgecolor=mpl_color('aluminium2'))
+
+            axes.add_patch(rect)
+
 
             # fxs = xpar.scaled(problem.extract(models, ixpar))
             # fys = ypar.scaled(problem.extract(models, iypar))
@@ -782,6 +801,9 @@ high (blue) misfit.
                 cmap=plt.get_cmap('coolwarm'))
 
             for ix, x in enumerate(models):
+                if ix % 10 != 0:
+                    continue
+
                 source = problem.get_source(x)
                 mt = source.pyrocko_moment_tensor()
                 fx = problem.extract(x, ixpar)
