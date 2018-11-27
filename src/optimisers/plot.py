@@ -162,7 +162,7 @@ corresponding misfit values.
 
             axes.scatter(
                 imodels[ibest], par.scaled(models[ibest, ipar]), s=msize,
-                c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha)
+                c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha,rasterized=True)
 
             axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 
@@ -199,7 +199,7 @@ corresponding misfit values.
             ys = problem.make_dependant(models[ibest, :], par.name)
             axes.scatter(
                 imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
-                edgecolors='none', cmap=cmap, alpha=alpha)
+                edgecolors='none', cmap=cmap, alpha=alpha,rasterized=True)
 
             y = problem.make_dependant(xref, par.name)
             axes.axhline(par.scaled(y), color='black', alpha=0.3)
