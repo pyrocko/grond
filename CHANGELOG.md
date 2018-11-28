@@ -22,3 +22,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Improved Plot short descriptions `grond plot list` 
 - Contributions Plot: cummulating nmisfits for `ScatteredTargets` (e.g. `SatelliteMisfitTarget`)
 - `ProblemConfig` added `nthreads` argument
+
