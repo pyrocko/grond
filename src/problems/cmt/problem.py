@@ -3,7 +3,7 @@ import math
 import logging
 
 from pyrocko import gf, util, moment_tensor as mtm
-from pyrocko.guts import String, Float, Dict, StringChoice
+from pyrocko.guts import String, Float, Dict, StringChoice, Int
 
 from grond.meta import Forbidden, expand_template, Parameter, \
     has_get_plot_classes
@@ -21,6 +21,7 @@ class CMTProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     mt_type = StringChoice.T(choices=['full', 'deviatoric'])
+    nthreads = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
         if event.depth is None:
@@ -41,7 +42,8 @@ class CMTProblemConfig(ProblemConfig):
             ranges=self.ranges,
             distance_min=self.distance_min,
             mt_type=self.mt_type,
-            norm_exponent=self.norm_exponent)
+            norm_exponent=self.norm_exponent,
+            nthreads=self.nthreads)
 
         return problem
 

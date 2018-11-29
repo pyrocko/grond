@@ -44,6 +44,7 @@ class ProblemConfig(Object):
     '''
     name_template = String.T()
     norm_exponent = Int.T(default=2)
+    nthreads = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
         '''
@@ -69,6 +70,7 @@ class Problem(Object):
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
     grond_version = String.T(optional=True)
+    nthreads = Int.T(default=1)
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -492,7 +494,8 @@ class Problem(Object):
 
         modelling_targets_unique = list(u2m_map.keys())
 
-        resp = engine.process(source, modelling_targets_unique)
+        resp = engine.process(source, modelling_targets_unique,
+                              nthreads=self.nthreads)
         modelling_results_unique = list(resp.results_list[0])
 
         modelling_results = [None] * len(modelling_targets)
