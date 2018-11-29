@@ -241,8 +241,7 @@ corresponding misfit values.
 
 
 class ContributionsPlot(PlotConfig):
-    '''
-    Relative contribution of single targets to the global misfit
+    ''' Relative contribution of single targets to the global misfit
     '''
 
     name = 'contributions'
@@ -306,8 +305,20 @@ modified.
             history.misfits, get_contributions=True)
 
         gcms = gcms[isort, :]
+        nmisfits = gcms.shape[1]
 
-        jsort = num.argsort(gcms[-1, :])[::-1]
+        target_idx = num.empty(nmisfits, dtype=num.int)
+        cum_gcms = num.empty((history.nmodels, problem.ntargets))
+
+        plot_targets = []
+        idx = 0
+        for itarget, target in enumerate(problem.targets):
+            cum_gcms[:, itarget] = gcms[:, idx:idx+target.nmisfits].sum(axis=1)
+            target_idx[idx:idx+target.nmisfits] = itarget
+            idx += target.nmisfits
+            plot_targets.append(target)
+
+        jsort = num.argsort(cum_gcms[-1, :])[::-1]
 
         # ncols = 4
         # nrows = ((problem.ntargets + 1) - 1) / ncols + 1
@@ -344,15 +355,9 @@ modified.
         a = [1]
         ii = 0
 
-        target_idx = num.zeros(jsort.size, dtype=num.int)
-        idx = 0
-        for itarget, target in enumerate(problem.targets):
-            target_idx[idx:idx+target.nmisfits] = itarget
-            idx += target.nmisfits
-
         for idx in jsort:
-            target = problem.targets[target_idx[idx]]
-            ms = gcms[:, idx]
+            target = plot_targets[idx]
+            ms = cum_gcms[:, idx]
 
             ms = num.where(num.isfinite(ms), ms, 0.0)
             if num.all(ms == 0.0):

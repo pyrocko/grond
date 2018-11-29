@@ -748,6 +748,14 @@ def command_plot(args):
 
     from grond import plot
     if args[0] == 'list':
+
+        def get_doc_title(doc):
+            for ln in doc.split('\n'):
+                ln = ln.strip()
+                if ln != '':
+                    return ln
+            return 'Undocumented.'
+
         if env:
             plot_classes = env.get_plot_classes()
         else:
@@ -755,7 +763,8 @@ def command_plot(args):
 
         plot_names, plot_doc = zip(*[(pc.name, pc.__doc__)
                                      for pc in plot_classes])
-        plot_descs = [doc.split('\n')[0].strip() for doc in plot_doc]
+
+        plot_descs = [get_doc_title(doc) for doc in plot_doc]
         left_spaces = max([len(pn) for pn in plot_names])
 
         for name, desc in zip(plot_names, plot_descs):
