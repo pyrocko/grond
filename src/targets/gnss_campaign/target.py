@@ -38,7 +38,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
              ' (`name` in `gnss.yaml` files).')
     misfit_config = GNSSCampaignMisfitConfig.T()
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting GNSS targets...')
         targets = []
 
@@ -91,6 +91,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     can_bootstrap_weights = True
     can_bootstrap_residuals = True
 
+    plot_misfits_cumulative = False
+
     def __init__(self, **kwargs):
         gf.GNSSCampaignTarget.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
@@ -104,6 +106,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     def string_id(self):
         return self.campaign_name
+
+    def misfits_string_id(self):
+        return ['%s.%s' % (self.path, station.code)
+                for station in self.campaign.stations]
 
     @property
     def nmisfits(self):
@@ -218,7 +224,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         if not num.all(sigmas):
             logger.warning('Bootstrapping GNSS stations is meaningless,'
-                           ' all station\'s sigma is 0.0!')
+                           ' all station\'s sigma are 0.0!')
 
         for ibs in range(nbootstraps):
             syn_noise = rstate.normal(scale=sigmas.ravel()) \

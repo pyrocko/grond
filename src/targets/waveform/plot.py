@@ -6,19 +6,22 @@ import numpy as num
 
 from matplotlib import pyplot as plt
 from matplotlib import cm, patches
+from matplotlib.ticker import FuncFormatter
 
 from pyrocko import plot, gf, trace
 from pyrocko.plot import mpl_init, mpl_color
 from pyrocko.guts import Tuple, Float, Int, String
 
 from grond import core, meta
-from .target import WaveformMisfitResult, WaveformMisfitTarget
+from .target import WaveformMisfitResult, WaveformMisfitTarget, \
+    WaveformTargetGroup
 
 from grond.plot.config import PlotConfig
 from grond.plot.common import light
 from grond.plot.collection import PlotItem
 
 guts_prefix = 'grond'
+km = 1e3
 
 logger = logging.getLogger('targets.waveform.plot')
 
@@ -1228,8 +1231,73 @@ box, red).
         return figs
 
 
+class StationDistribution(PlotConfig):
+    ''' Plot showing all waveform fits for the ensemble of solutions'''
+
+    name = 'station_distribution'
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(12., 12.),
+        help='width and length of the figure in cm')
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+
+        history = environ.get_history(subset='harvest')
+        problem = environ.get_problem()
+        dataset = environ.get_dataset()
+
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(problem, dataset, history),
+            title=u'Waveform fits for the ensemble',
+            section='checks',
+            feather_icon='target',
+            description=u'''
+Plot showing distribution of seismic or GNSS stations.
+''')
+
+    def draw_figures(self, problem, dataset, history):
+
+        event = problem.base_source
+        target_groups = [grp for grp in problem.target_groups
+                         if isinstance(grp, WaveformTargetGroup)]
+
+        def plot_distribution(target_group):
+            targets = target_group.get_targets(dataset, event)
+            fig = plt.figure(figsize=self.size_inch)
+            ax = fig.add_subplot(111, projection='polar')
+
+            backazimuths = num.array(
+                [t.get_backazimuth_for_waveform() for t in targets])
+            distances = num.array([
+                t.distance_to(event) for t in targets])
+            weights = num.array([
+                t.get_combined_weight() for t in targets])
+
+            ax.scatter(backazimuths, distances, s=weights*1e2,
+                       alpha=.4, c='blue')
+
+            ax.set_theta_zero_location("N")
+            ax.yaxis.set_major_formatter(
+                FuncFormatter(lambda x, pos: '%d km' % (x/km)))
+
+            fig.suptitle('Station Distribution for %s' % group.path)
+            print(len(targets))
+
+            return fig
+
+        for igroup, group in enumerate(target_groups):
+            item = PlotItem(name='station_distribution-%s' % group.path)
+            fig = plot_distribution(group)
+
+            yield (item, fig)
+
+
 def get_plot_classes():
     return [
+        StationDistribution,
         CheckWaveformsPlot,
         FitsWaveformPlot,
         FitsWaveformEnsemblePlot

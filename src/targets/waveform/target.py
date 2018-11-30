@@ -112,7 +112,7 @@ class WaveformTargetGroup(TargetGroup):
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')
         origin = event
         targets = []
