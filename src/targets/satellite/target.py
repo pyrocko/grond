@@ -48,7 +48,7 @@ class SatelliteTargetGroup(TargetGroup):
     misfit_config = SatelliteMisfitConfig.T(
         help='Settings for the objective function of these targets')
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting satellite targets...')
         targets = []
 

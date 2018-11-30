@@ -53,7 +53,7 @@ class PhaseRatioTargetGroup(TargetGroup):
         help='waterlevel added to both ratios when comparing on logarithmic '
              'scale, to avoid log(0)')
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting phase ratio targets...')
         origin = event
         targets = []

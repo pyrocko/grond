@@ -160,7 +160,8 @@ corresponding misfit values.
 
             axes.scatter(
                 imodels[ibest], par.scaled(models[ibest, ipar]), s=msize,
-                c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha,rasterized=True)
+                c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha,
+                rasterized=True)
 
             if self.show_reference:
                 axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
@@ -250,10 +251,11 @@ class ContributionsPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
+        dataset = environ.get_dataset()
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
-            self.draw_figures(history),
+            self.draw_figures(dataset, history),
             title=u'Target Contributions',
             section='solution',
             feather_icon='thermometer',
@@ -272,7 +274,7 @@ target is much larger than those of all others, the weighting should be
 modified.
 ''')
 
-    def draw_figures(self, history):
+    def draw_figures(self, dataset, history):
 
         fontsize = self.font_size
 
@@ -291,6 +293,9 @@ modified.
             logger.warn('empty models vector')
             return []
 
+        for target in problem.targets:
+            target.set_dataset(dataset)
+
         imodels = num.arange(history.nmodels)
 
         gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
@@ -305,18 +310,28 @@ modified.
             history.misfits, get_contributions=True)
 
         gcms = gcms[isort, :]
-        nmisfits = gcms.shape[1]
+        nmisfits = gcms.shape[1]  # noqa
 
-        target_idx = num.empty(nmisfits, dtype=num.int)
-        cum_gcms = num.empty((history.nmodels, problem.ntargets))
+        ncontributions = sum([1 if t.plot_misfits_cumulative else t.nmisfits
+                              for t in problem.targets])
+        cum_gcms = num.empty((history.nmodels, ncontributions))
 
-        plot_targets = []
+        # Squash matrix and sum large targets.nmisifts, eg SatelliteTarget
+        plot_target_labels = []
         idx = 0
         for itarget, target in enumerate(problem.targets):
-            cum_gcms[:, itarget] = gcms[:, idx:idx+target.nmisfits].sum(axis=1)
-            target_idx[idx:idx+target.nmisfits] = itarget
-            idx += target.nmisfits
-            plot_targets.append(target)
+            if target.plot_misfits_cumulative:
+                cum_gcms[:, itarget] = gcms[:, idx:idx+target.nmisfits] \
+                    .sum(axis=1)
+
+                idx += target.nmisfits
+                plot_target_labels.append(target.string_id())
+            else:
+                for msf in range(target.nmisfits):
+                    cum_gcms[:, itarget] = gcms[:, idx]
+                    idx += 1
+
+                plot_target_labels.extend(target.misfits_string_id())
 
         jsort = num.argsort(cum_gcms[-1, :])[::-1]
 
@@ -356,7 +371,7 @@ modified.
         ii = 0
 
         for idx in jsort:
-            target = plot_targets[idx]
+            target_label = plot_target_labels[idx]
             ms = cum_gcms[:, idx]
 
             ms = num.where(num.isfinite(ms), ms, 0.0)
@@ -376,7 +391,7 @@ modified.
             add_args = {}
             if ii < 20:
                 add_args['label'] = '%s (%.2g)' % (
-                    target.string_id(), num.mean(rel_ms[-1]))
+                    target_label, num.mean(rel_ms[-1]))
 
             axes.fill(
                 poly_x, rel_poly_y,
