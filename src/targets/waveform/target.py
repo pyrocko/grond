@@ -281,7 +281,6 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             for analyser in self.analyser_results.values():
                 w *= analyser.weight
             self._combined_weight = num.array([w], dtype=num.float)
-
         return self._combined_weight
 
     def get_taper_params(self, engine, source):
@@ -303,6 +302,10 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     def get_backazimuth_for_waveform(self):
         return backazimuth_for_waveform(self.azimuth, self.codes)
+
+    @property
+    def backazimuth(self):
+        return self.azimuth - 180.
 
     def get_freqlimits(self):
         config = self.misfit_config

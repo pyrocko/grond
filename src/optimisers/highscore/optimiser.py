@@ -563,7 +563,6 @@ class HighScoreOptimiser(Optimiser):
             self._tlog_last = t
 
     def optimise(self, problem, rundir=None):
-
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 

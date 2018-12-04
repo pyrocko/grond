@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from matplotlib import cm, patches
 from matplotlib.ticker import FuncFormatter
 
-from pyrocko import plot, gf, trace
+from pyrocko import plot, gf, trace, orthodrome
 from pyrocko.plot import mpl_init, mpl_color
 from pyrocko.guts import Tuple, Float, Int, String
 
@@ -1237,8 +1237,14 @@ class StationDistribution(PlotConfig):
     name = 'station_distribution'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(12., 12.),
+        default=(12., 13.),
         help='width and length of the figure in cm')
+    font_size = Float.T(
+        default=8,
+        help='Font Size of all fonts, except title')
+    font_size_title = Float.T(
+        default=10,
+        help='Font Size of title')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -1255,44 +1261,102 @@ class StationDistribution(PlotConfig):
             section='checks',
             feather_icon='target',
             description=u'''
-Plot showing distribution of seismic or GNSS stations.
+Plot showing distribution and weights of seismic or GNSS stations.
+
+
 ''')
 
     def draw_figures(self, problem, dataset, history):
 
         event = problem.base_source
-        target_groups = [grp for grp in problem.target_groups
-                         if isinstance(grp, WaveformTargetGroup)]
+        paths = set([grp.path for grp in problem.waveform_targets])
 
-        def plot_distribution(target_group):
-            targets = target_group.get_targets(dataset, event)
-            fig = plt.figure(figsize=self.size_inch)
-            ax = fig.add_subplot(111, projection='polar')
+        gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
+        isort = num.argsort(gms)[::-1]
+        gms = gms[isort]
+        gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
+        gcms = problem.combine_misfits(
+            history.misfits, get_contributions=True)
+        gcms = gcms[isort, :]
+        nmisfits = gcms.shape[1]  # noqa
 
-            backazimuths = num.array(
-                [t.get_backazimuth_for_waveform() for t in targets])
-            distances = num.array([
-                t.distance_to(event) for t in targets])
-            weights = num.array([
-                t.get_combined_weight() for t in targets])
+        for path in paths:
+            stations = list()
+            targets = list()
+            for t in [t for t in problem.waveform_targets if t.path == path]:
+                ns = '.'.join(t.codes[:2])
+                if ns in stations:
+                    continue
+                stations.append(ns)
+                targets.append(t)
 
-            ax.scatter(backazimuths, distances, s=weights*1e2,
-                       alpha=.4, c='blue')
+            item = PlotItem(name='station_distribution-%s' % path)
 
-            ax.set_theta_zero_location("N")
-            ax.yaxis.set_major_formatter(
-                FuncFormatter(lambda x, pos: '%d km' % (x/km)))
+            azimuths = num.array([event.azibazi_to(t)[0] for t in targets])
+            distances = num.array([t.distance_to(event) for t in targets])
+            weights = num.concatenate([t.get_combined_weight()
+                                       for t in targets])
+            paths = [t.path for t in targets]
 
-            fig.suptitle('Station Distribution for %s' % group.path)
-            print(len(targets))
+            fig, ax = self.plot_station_distribution(
+                azimuths, distances, weights, stations)
 
-            return fig
-
-        for igroup, group in enumerate(target_groups):
-            item = PlotItem(name='station_distribution-%s' % group.path)
-            fig = plot_distribution(group)
+            fig.suptitle('Station Distribution and Weight (%s)' % path,
+                         fontsize=self.font_size_title)
 
             yield (item, fig)
+
+    def plot_station_distribution(
+            self, azimuths, distances, weights, labels=None,
+            scatter_kwargs=dict(), annotate_kwargs=dict(), maxsize=10**2):
+
+        scatter_default = {
+            'alpha': .8,
+            'zorder': 10,
+            'c': 'blue'
+        }
+
+        annotate_default = {
+            'alpha': .8,
+            'color': 'k',
+            'fontsize': self.font_size,
+            'ha': 'right',
+            'va': 'top',
+            'xytext': (-5, -5),
+            'textcoords': 'offset points'
+
+        }
+
+        scatter_default.update(scatter_kwargs)
+        annotate_default.update(annotate_kwargs)
+
+        fig = plt.figure(figsize=self.size_inch)
+        ax = fig.add_subplot(111, projection='polar')
+
+        valid = ~num.isnan(weights)
+
+        weights[~valid] = weights[valid].min()
+        colors = [scatter_default['c'] if s else 'red' for s in valid]
+        scatter_default.pop('c')
+
+        weights_scaled = (weights / weights[valid].max()) * maxsize
+
+        ax.scatter(azimuths, distances, s=weights_scaled, c=colors,
+                   **scatter_default)
+
+        if labels is not None:
+            for ilbl, label in enumerate(labels):
+                ax.annotate(label, (azimuths[ilbl], distances[ilbl]),
+                            **annotate_default)
+
+        ax.set_theta_zero_location("N")
+        ax.tick_params('y', labelsize=self.font_size, labelcolor='gray')
+        ax.grid(alpha=.3)
+        ax.set_ylim(0, distances.max()*1.1)
+        ax.yaxis.set_major_formatter(
+            FuncFormatter(lambda x, pos: '%d km' % (x/km)))
+
+        return fig, ax
 
 
 def get_plot_classes():

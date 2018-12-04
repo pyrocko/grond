@@ -19,7 +19,7 @@ class RectangularProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     decimation_factor = Int.T(default=1)
     distance_min = Float.T(default=0.)
-    nthreads = Int.T(default=0)
+    nthreads = Int.T(default=4)
 
     def get_problem(self, event, target_groups, targets):
         base_source = gf.RectangularSource.from_pyrocko_event(
