@@ -314,24 +314,23 @@ modified.
 
         ncontributions = sum([1 if t.plot_misfits_cumulative else t.nmisfits
                               for t in problem.targets])
-        cum_gcms = num.empty((history.nmodels, ncontributions))
+        cum_gcms = num.zeros((history.nmodels, ncontributions))
 
         # Squash matrix and sum large targets.nmisifts, eg SatelliteTarget
         plot_target_labels = []
         idx = 0
         for itarget, target in enumerate(problem.targets):
+            target_gcms = gcms[:, idx:idx+target.nmisfits]
             if target.plot_misfits_cumulative:
-                cum_gcms[:, itarget] = gcms[:, idx:idx+target.nmisfits] \
-                    .sum(axis=1)
-
-                idx += target.nmisfits
+                cum_gcms[:, itarget] = target_gcms.sum(axis=1)
                 plot_target_labels.append(target.string_id())
             else:
-                for msf in range(target.nmisfits):
-                    cum_gcms[:, itarget] = gcms[:, idx]
-                    idx += 1
-
+                cum_gcms[:, itarget:itarget+target.nmisfits] = target_gcms
                 plot_target_labels.extend(target.misfits_string_id())
+
+            idx += target.nmisfits
+
+        # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
 
         jsort = num.argsort(cum_gcms[-1, :])[::-1]
 
