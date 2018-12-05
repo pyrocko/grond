@@ -1274,11 +1274,17 @@ Plot showing distribution and weights of seismic or GNSS stations.
         gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
         isort = num.argsort(gms)[::-1]
         gms = gms[isort]
-        gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
+
         gcms = problem.combine_misfits(
             history.misfits, get_contributions=True)
         gcms = gcms[isort, :]
+
         nmisfits = gcms.shape[1]  # noqa
+
+        idx = 0
+        for itarget, target in enumerate(problem.targets):
+            target.gcms = gcms[:, idx:idx+target.nmisfits]
+            idx += target.nmisfits
 
         for path in paths:
             stations = list()
@@ -1290,18 +1296,28 @@ Plot showing distribution and weights of seismic or GNSS stations.
                 stations.append(ns)
                 targets.append(t)
 
-            item = PlotItem(name='station_distribution-%s' % path)
-
             azimuths = num.array([event.azibazi_to(t)[0] for t in targets])
             distances = num.array([t.distance_to(event) for t in targets])
+
             weights = num.concatenate([t.get_combined_weight()
                                        for t in targets])
+            contibutions = num.concatenate([t.gcms for t in targets])
+
             paths = [t.path for t in targets]
 
+            item = PlotItem(name='station_distribution-%s' % path)
             fig, ax = self.plot_station_distribution(
                 azimuths, distances, weights, stations)
-
             fig.suptitle('Station Distribution and Weight (%s)' % path,
+                         fontsize=self.font_size_title)
+
+            yield (item, fig)
+
+            item = PlotItem(name='stations_distribution_contrib-%s' % path)
+            fig, ax = self.plot_station_distribution(
+                azimuths, distances, contibutions, stations)
+
+            fig.suptitle('Station Distribution and Contribution (%s)' % path,
                          fontsize=self.font_size_title)
 
             yield (item, fig)
