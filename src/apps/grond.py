@@ -1276,11 +1276,19 @@ def command_version(args):
         parser.add_option(
             '--short', dest='short', action='store_true',
             help='only print Grond\'s version number')
+        parser.add_option(
+            '--failsafe', dest='failsafe', action='store_true',
+            help='do not get irritated when some dependencies are missing')
 
     parser, options, args = cl_parse('version', args, setup)
 
     if options.short:
         print(grond.__version__)
+        return
+
+    elif not options.failsafe:
+        from grond import info
+        print(info.version_info())
         return
 
     print("grond: %s" % grond.__version__)
@@ -1319,6 +1327,9 @@ def command_version(args):
 
     import sys
     print('python: %s.%s.%s' % sys.version_info[:3])
+
+    if not options.failsafe:
+        die('fell back to failsafe version printing')
 
 
 if __name__ == '__main__':

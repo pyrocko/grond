@@ -1,12 +1,17 @@
-from pyrocko.guts import Object, String, Dict
+from pyrocko.guts import Object, String, Dict, Bool
 
-from grond.version import __version__
+from grond.setup_info import git_sha1, local_modifications, \
+    version, long_version, installed_date
 
 guts_prefix = 'grond'
 
 
 class VersionInfo(Object):
     grond_version = String.T(yamlstyle="'")
+    grond_long_version = String.T(yamlstyle="'")
+    git_sha1 = String.T(optional=True, yamlstyle="'")
+    local_modifications = Bool.T(optional=True)
+    installed_date = String.T(optional=True, yamlstyle="'")
     dependencies = Dict.T(String.T(), String.T(yamlstyle="'"))
 
 
@@ -49,7 +54,11 @@ def version_info():
     deps['python'] = '%s.%s.%s' % sys.version_info[:3]
 
     vi = VersionInfo(
-        grond_version=__version__,
+        grond_version=version,
+        grond_long_version=long_version,
+        git_sha1=git_sha1,
+        local_modifications=local_modifications,
+        installed_date=installed_date,
         dependencies=deps)
 
     return vi
