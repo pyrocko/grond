@@ -8,13 +8,12 @@ from matplotlib import pyplot as plt
 from matplotlib import cm, patches
 from matplotlib.ticker import FuncFormatter
 
-from pyrocko import plot, gf, trace, orthodrome
+from pyrocko import plot, gf, trace
 from pyrocko.plot import mpl_init, mpl_color
 from pyrocko.guts import Tuple, Float, Int, String
 
 from grond import core, meta
-from .target import WaveformMisfitResult, WaveformMisfitTarget, \
-    WaveformTargetGroup
+from .target import WaveformMisfitResult, WaveformMisfitTarget
 
 from grond.plot.config import PlotConfig
 from grond.plot.common import light
@@ -125,13 +124,89 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
+def layout(source, targets, nxmax, nymax):
+    if nxmax == 1 and nymax == 1:
+        nx = len(targets)
+        ny = 1
+        nxx = 1
+        nyy = 1
+        frame_to_target = {}
+        for ix, target in enumerate(sorted(targets, key=lambda t: t.path)):
+            frame_to_target[0, ix] = target
+
+        return frame_to_target, nx, ny, nxx, nyy
+
+    nframes = len(targets)
+
+    nx = int(math.ceil(math.sqrt(nframes)))
+    ny = (nframes - 1) // nx + 1
+
+    nxx = (nx - 1) // nxmax + 1
+    nyy = (ny - 1) // nymax + 1
+
+    # nz = nxx * nyy
+
+    xs = num.arange(nx) // ((max(2, nx) - 1.0) / 2.)
+    ys = num.arange(ny) // ((max(2, ny) - 1.0) / 2.)
+
+    xs -= num.mean(xs)
+    ys -= num.mean(ys)
+
+    fxs = num.tile(xs, ny)
+    fys = num.repeat(ys, nx)
+
+    data = []
+
+    for target in targets:
+        azi = source.azibazi_to(target)[0]
+        dist = source.distance_to(target)
+        x = dist * num.sin(num.deg2rad(azi))
+        y = dist * num.cos(num.deg2rad(azi))
+        data.append((x, y, dist))
+
+    gxs, gys, dists = num.array(data, dtype=num.float).T
+
+    iorder = num.argsort(dists)
+
+    gxs = gxs[iorder]
+    gys = gys[iorder]
+    targets_sorted = [targets[ii] for ii in iorder]
+
+    gxs -= num.mean(gxs)
+    gys -= num.mean(gys)
+
+    gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
+    if gmax == 0.:
+        gmax = 1.
+
+    gxs /= gmax
+    gys /= gmax
+
+    dists = num.sqrt(
+        (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
+        (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
+
+    distmax = num.max(dists)
+
+    availmask = num.ones(dists.shape[1], dtype=num.bool)
+    frame_to_target = {}
+    for itarget, target in enumerate(targets_sorted):
+        iframe = num.argmin(
+            num.where(availmask, dists[itarget], distmax + 1.))
+        availmask[iframe] = False
+        iy, ix = num.unravel_index(iframe, (ny, nx))
+        frame_to_target[iy, ix] = target
+
+    return frame_to_target, nx, ny, nxx, nyy
+
+
 class CheckWaveformsPlot(PlotConfig):
     ''' Plot for checking the waveforms fit with a number of synthetics '''
     name = 'check_waveform'
 
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(10., 7.5),
+        default=(9., 7.5),
         help='width and length of the figure in cm')
     n_random_synthetics = Int.T(
         default=10,
@@ -283,8 +358,14 @@ class FitsWaveformEnsemblePlot(PlotConfig):
     name = 'fits_waveform_ensemble'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(29.7, 21.0),
+        default=(9., 5.),
         help='width and length of the figure in cm')
+    nx = Int.T(
+        default=1,
+        help='horizontal number of subplots on every page')
+    ny = Int.T(
+        default=1,
+        help='vertical number of subplots on every page')
     misfit_cutoff = Float.T(
         optional=True,
         help='Plot fits for models up to this misfit value')
@@ -347,6 +428,9 @@ traces.''')
         misfit_cutoff = self.misfit_cutoff
         fontsize = self.font_size
         fontsize_title = self.font_size_title
+
+        nxmax = self.nx
+        nymax = self.ny
 
         problem = history.problem
 
@@ -505,69 +589,9 @@ traces.''')
         figs = []
         for cg in cgs:
             targets = cg_to_targets[cg]
-            nframes = len(targets)
 
-            nx = int(math.ceil(math.sqrt(nframes)))
-            ny = (nframes-1) // nx+1
-
-            nxmax = 4
-            nymax = 4
-
-            nxx = (nx-1) // nxmax + 1
-            nyy = (ny-1) // nymax + 1
-
-            # nz = nxx * nyy
-
-            xs = num.arange(nx) / ((max(2, nx) - 1.0) / 2.)
-            ys = num.arange(ny) / ((max(2, ny) - 1.0) / 2.)
-
-            xs -= num.mean(xs)
-            ys -= num.mean(ys)
-
-            fxs = num.tile(xs, ny)
-            fys = num.repeat(ys, nx)
-
-            data = []
-
-            for target in targets:
-                azi = source.azibazi_to(target)[0]
-                dist = source.distance_to(target)
-                x = dist*num.sin(num.deg2rad(azi))
-                y = dist*num.cos(num.deg2rad(azi))
-                data.append((x, y, dist))
-
-            gxs, gys, dists = num.array(data, dtype=num.float).T
-
-            iorder = num.argsort(dists)
-
-            gxs = gxs[iorder]
-            gys = gys[iorder]
-            targets_sorted = [targets[ii] for ii in iorder]
-
-            gxs -= num.mean(gxs)
-            gys -= num.mean(gys)
-
-            gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
-            if gmax == 0.:
-                gmax = 1.
-
-            gxs /= gmax
-            gys /= gmax
-
-            dists = num.sqrt(
-                (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
-                (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
-
-            distmax = num.max(dists)
-
-            availmask = num.ones(dists.shape[1], dtype=num.bool)
-            frame_to_target = {}
-            for itarget, target in enumerate(targets_sorted):
-                iframe = num.argmin(
-                    num.where(availmask, dists[itarget], distmax + 1.))
-                availmask[iframe] = False
-                iy, ix = num.unravel_index(iframe, (ny, nx))
-                frame_to_target[iy, ix] = target
+            frame_to_target, nx, ny, nxx, nyy = layout(
+                source, targets, nxmax, nymax)
 
             figures = {}
             for iy in range(ny):
@@ -680,15 +704,16 @@ traces.''')
                                 [tmark, tmark], [-0.9, 0.1],
                                 color=tap_color_annot)
 
+                        dur = tmarks[1] - tmarks[0]
                         for tmark, text, ha in [
                                 (tmarks[0],
                                  '$\\,$ ' + meta.str_duration(
                                     tmarks[0] - source.time),
-                                 'right'),
+                                 'left'),
                                 (tmarks[1],
                                  '$\\Delta$ ' + meta.str_duration(
-                                    tmarks[1] - tmarks[0]),
-                                 'left')]:
+                                    dur),
+                                 'right')]:
 
                             axes2.annotate(
                                 text,
@@ -703,6 +728,9 @@ traces.''')
                                 color=tap_color_annot,
                                 fontsize=fontsize)
 
+                        axes2.set_xlim(
+                            tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
+
                     scale_string = None
 
                     if target.misfit_config.domain == 'cc_max_norm':
@@ -712,7 +740,10 @@ traces.''')
                     if scale_string:
                         infos.append(scale_string)
 
-                    infos.append('.'.join(x for x in target.codes if x))
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
                     dist = source.distance_to(target)
                     azi = source.azibazi_to(target)[0]
                     infos.append(meta.str_dist(dist))
@@ -728,12 +759,13 @@ traces.''')
                         fontsize=fontsize,
                         fontstyle='normal')
 
-            for (iyy, ixx), (_, fig) in figures.items():
-                title = '.'.join(x for x in cg if x)
-                if len(figures) > 1:
-                    title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
+            if not (self.nx == 1 and self.ny == 1):
+                for (iyy, ixx), (_, fig) in figures.items():
+                    title = '.'.join(x for x in cg if x)
+                    if len(figures) > 1:
+                        title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
 
-                fig.suptitle(title, fontsize=fontsize_title)
+                    fig.suptitle(title, fontsize=fontsize_title)
 
         return figs
 
@@ -743,8 +775,14 @@ class FitsWaveformPlot(PlotConfig):
     name = 'fits_waveform'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(29.7, 21.),
+        default=(9., 5.),
         help='width and length of the figure in cm')
+    nx = Int.T(
+        default=1,
+        help='horizontal number of subplots on every page')
+    ny = Int.T(
+        default=1,
+        help='vertical number of subplots on every page')
     font_size = Float.T(
         default=8,
         help='Font Size of all fonts, except title')
@@ -803,6 +841,9 @@ box, red).
 
         fontsize = self.font_size
         fontsize_title = self.font_size_title
+
+        nxmax = self.nx
+        nymax = self.ny
 
         problem = history.problem
 
@@ -939,69 +980,9 @@ box, red).
         figs = []
         for cg in cgs:
             targets = cg_to_targets[cg]
-            nframes = len(targets)
 
-            nx = int(math.ceil(math.sqrt(nframes)))
-            ny = (nframes - 1) // nx + 1
-
-            nxmax = 4
-            nymax = 4
-
-            nxx = (nx - 1) // nxmax + 1
-            nyy = (ny - 1) // nymax + 1
-
-            # nz = nxx * nyy
-
-            xs = num.arange(nx) // ((max(2, nx) - 1.0) / 2.)
-            ys = num.arange(ny) // ((max(2, ny) - 1.0) / 2.)
-
-            xs -= num.mean(xs)
-            ys -= num.mean(ys)
-
-            fxs = num.tile(xs, ny)
-            fys = num.repeat(ys, nx)
-
-            data = []
-
-            for target in targets:
-                azi = source.azibazi_to(target)[0]
-                dist = source.distance_to(target)
-                x = dist * num.sin(num.deg2rad(azi))
-                y = dist * num.cos(num.deg2rad(azi))
-                data.append((x, y, dist))
-
-            gxs, gys, dists = num.array(data, dtype=num.float).T
-
-            iorder = num.argsort(dists)
-
-            gxs = gxs[iorder]
-            gys = gys[iorder]
-            targets_sorted = [targets[ii] for ii in iorder]
-
-            gxs -= num.mean(gxs)
-            gys -= num.mean(gys)
-
-            gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
-            if gmax == 0.:
-                gmax = 1.
-
-            gxs /= gmax
-            gys /= gmax
-
-            dists = num.sqrt(
-                (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
-                (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
-
-            distmax = num.max(dists)
-
-            availmask = num.ones(dists.shape[1], dtype=num.bool)
-            frame_to_target = {}
-            for itarget, target in enumerate(targets_sorted):
-                iframe = num.argmin(
-                    num.where(availmask, dists[itarget], distmax + 1.))
-                availmask[iframe] = False
-                iy, ix = num.unravel_index(iframe, (ny, nx))
-                frame_to_target[iy, ix] = target
+            frame_to_target, nx, ny, nxx, nyy = layout(
+                source, targets, nxmax, nymax)
 
             figures = {}
             for iy in range(ny):
@@ -1137,8 +1118,7 @@ box, red).
                         axes, result.processed_obs,
                         color=obs_color, lw=0.75)
 
-                    xdata = result.filtered_obs.get_xdata()
-                    axes.set_xlim(xdata[0], xdata[-1])
+                    # xdata = result.filtered_obs.get_xdata()
 
                     tmarks = [
                         result.processed_obs.tmin,
@@ -1148,15 +1128,15 @@ box, red).
                         axes2.plot(
                             [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
 
+                    dur = tmarks[1] - tmarks[0]
                     for tmark, text, ha in [
                             (tmarks[0],
                              '$\\,$ ' + meta.str_duration(
                                  tmarks[0] - source.time),
-                             'right'),
+                             'left'),
                             (tmarks[1],
-                             '$\\Delta$ ' + meta.str_duration(
-                                 tmarks[1] - tmarks[0]),
-                             'left')]:
+                             '$\\Delta$ ' + meta.str_duration(dur),
+                             'right')]:
 
                         axes2.annotate(
                             text,
@@ -1170,6 +1150,8 @@ box, red).
                             va='bottom',
                             color=tap_color_annot,
                             fontsize=fontsize)
+
+                    axes2.set_xlim(tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
 
                     rel_w = ws[itarget] / w_max
                     rel_c = gcms[itarget] / gcm_max
@@ -1203,7 +1185,11 @@ box, red).
                     if scale_string:
                         infos.append(scale_string)
 
-                    infos.append('.'.join(x for x in target.codes if x))
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
+
                     dist = source.distance_to(target)
                     azi = source.azibazi_to(target)[0]
                     infos.append(meta.str_dist(dist))
@@ -1221,12 +1207,14 @@ box, red).
                         fontsize=fontsize,
                         fontstyle='normal')
 
-            for (iyy, ixx), (_, fig) in figures.items():
-                title = '.'.join(x for x in cg if x)
-                if len(figures) > 1:
-                    title += ' (%i/%i, %i/%i)' % (iyy + 1, nyy, ixx + 1, nxx)
+            if not (self.nx == 1 and self.ny == 1):
+                for (iyy, ixx), (_, fig) in figures.items():
+                    title = '.'.join(x for x in cg if x)
+                    if len(figures) > 1:
+                        title += ' (%i/%i, %i/%i)' % (
+                            iyy + 1, nyy, ixx + 1, nxx)
 
-                fig.suptitle(title, fontsize=fontsize_title)
+                    fig.suptitle(title, fontsize=fontsize_title)
 
         return figs
 
