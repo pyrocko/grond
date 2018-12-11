@@ -777,7 +777,10 @@ high (blue) misfit.
             xmin, xmax = fixlim(*xpar.scaled(bounds[ixpar]))
             ymin, ymax = fixlim(*ypar.scaled(bounds[iypar]))
 
-            axes.set_facecolor(mpl_color('aluminium1'))
+            try:
+                axes.set_facecolor(mpl_color('aluminium1'))
+            except AttributeError:
+                axes.patch.set_facecolor(mpl_color('aluminium1'))
 
             rect = patches.Rectangle(
                 (xmin, ymin), xmax-xmin, ymax-ymin,
