@@ -756,6 +756,7 @@ def command_plot(args):
             for ln in doc.split('\n'):
                 ln = ln.strip()
                 if ln != '':
+                    ln = ln.strip('.')
                     return ln
             return 'Undocumented.'
 

@@ -342,6 +342,7 @@ Surface displacements derived from satellite data, Scene {meta.scene_title}
 
 
 class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
+    ''' Close-up of satellite surface displacements and modelled data. '''
     name = 'satellite_closeup'
 
     map_scale = Float.T(

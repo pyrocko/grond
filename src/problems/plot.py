@@ -697,6 +697,7 @@ best have similar symbol size and patterns.
 
 
 class MTLocationPlot(SectionPlotConfig):
+    ''' MT location plot of the best solutions in three cross-sections. '''
     name = 'location_mt'
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
@@ -714,7 +715,7 @@ class MTLocationPlot(SectionPlotConfig):
             section='solution',
             feather_icon='target',
             description=u'''
-Location plot of the ensemble of best solutions in three different sections.
+Location plot of the ensemble of best solutions in three cross-sections.
 
 The coordinate range is defined by the search space given in the config file.
 Symbols show best double-couple mechanisms, and colors indicate low (red) and
