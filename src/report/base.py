@@ -37,11 +37,11 @@ class ReportIndexEntry(Object):
 
 
 class ReportConfig(HasPaths):
-    reports_base_path = Path.T(default='reports')
-    report_sub_path = String.T(
+    report_base_path = Path.T(default='report')
+    entries_sub_path = String.T(
         default='${event_name}/${problem_name}')
     title = Unicode.T(
-        default=u'Grond Reports',
+        default=u'Grond Report',
         help='Title shown on report overview page.')
     description = Unicode.T(
         default=u'This interactive document aggregates earthquake source '
@@ -90,8 +90,8 @@ def write_config(config, path):
             'cannot write Grond report configuration file: %s' % path)
 
 
-def iter_report_dirs(reports_base_path):
-    for path, dirnames, filenames in os.walk(reports_base_path):
+def iter_report_entry_dirs(report_base_path):
+    for path, dirnames, filenames in os.walk(report_base_path):
         for dirname in dirnames:
             dirpath = op.join(path, dirname)
             stats_path = op.join(dirpath, 'problem.yaml')
@@ -122,54 +122,54 @@ def report(env, report_config=None, update_without_plotting=False,
 
     event_name = env.get_current_event_name()
     problem = env.get_problem()
-    logger.info('Creating report for event %s...' % event_name)
+    logger.info('Creating report entry for run "%s"' % problem.name)
 
     fp = report_config.expand_path
-    report_path = expand_template(
+    entry_path = expand_template(
         op.join(
-            fp(report_config.reports_base_path),
-            report_config.report_sub_path),
+            fp(report_config.report_base_path),
+            report_config.entries_sub_path),
         dict(
             event_name=event_name,
             problem_name=problem.name))
 
-    if op.exists(report_path) and not update_without_plotting:
-        shutil.rmtree(report_path)
+    if op.exists(entry_path) and not update_without_plotting:
+        shutil.rmtree(entry_path)
 
     try:
-        problem.dump_problem_info(report_path)
+        problem.dump_problem_info(entry_path)
 
         guts.dump(env.get_config(),
-                  filename=op.join(report_path, 'config.yaml'),
+                  filename=op.join(entry_path, 'config.yaml'),
                   header=True)
 
-        util.ensuredir(report_path)
-        plots_dir_out = op.join(report_path, 'plots')
+        util.ensuredir(entry_path)
+        plots_dir_out = op.join(entry_path, 'plots')
         util.ensuredir(plots_dir_out)
 
         event = env.get_dataset().get_event()
-        guts.dump(event, filename=op.join(report_path, 'event.reference.yaml'))
+        guts.dump(event, filename=op.join(entry_path, 'event.reference.yaml'))
 
         try:
             rundir_path = env.get_rundir_path()
 
             core.export(
                 'stats', [rundir_path],
-                filename=op.join(report_path, 'stats.yaml'))
+                filename=op.join(entry_path, 'stats.yaml'))
 
             core.export(
                 'best', [rundir_path],
-                filename=op.join(report_path, 'event.solution.best.yaml'),
+                filename=op.join(entry_path, 'event.solution.best.yaml'),
                 type='event-yaml')
 
             core.export(
                 'mean', [rundir_path],
-                filename=op.join(report_path, 'event.solution.mean.yaml'),
+                filename=op.join(entry_path, 'event.solution.mean.yaml'),
                 type='event-yaml')
 
             core.export(
                 'ensemble', [rundir_path],
-                filename=op.join(report_path, 'event.solution.ensemble.yaml'),
+                filename=op.join(entry_path, 'event.solution.ensemble.yaml'),
                 type='event-yaml')
 
         except (environment.NoRundirAvailable, ProblemInfoNotAvailable,
@@ -182,7 +182,7 @@ def report(env, report_config=None, update_without_plotting=False,
             pcc = report_config.plot_config_collection.get_weeded(env)
             plot.make_plots(
                 env,
-                plots_path=op.join(report_path, 'plots'),
+                plots_path=op.join(entry_path, 'plots'),
                 plot_config_collection=pcc)
 
         rie = ReportIndexEntry(
@@ -191,25 +191,27 @@ def report(env, report_config=None, update_without_plotting=False,
             grond_version=problem.grond_version,
             run_info=env.get_run_info())
 
-        fn = op.join(report_path, 'event.solution.best.yaml')
+        fn = op.join(entry_path, 'event.solution.best.yaml')
         if op.exists(fn):
             rie.event_best = guts.load(filename=fn)
 
-        fn = op.join(report_path, 'event.reference.yaml')
+        fn = op.join(entry_path, 'event.reference.yaml')
         if op.exists(fn):
             rie.event_reference = guts.load(filename=fn)
 
-        fn = op.join(report_path, 'index.yaml')
+        fn = op.join(entry_path, 'index.yaml')
         guts.dump(rie, filename=fn)
 
     except Exception as e:
         logger.warn(
-            'report generation failed, removing incomplete report dir: %s'
-            % report_path)
+            'failed to create report entry, removing incomplete subdirectory: '
+            '%s' % entry_path)
         raise e
 
-        if op.exists(report_path):
-            shutil.rmtree(report_path)
+        if op.exists(entry_path):
+            shutil.rmtree(entry_path)
+
+    logger.info('Done creating report entry for run "%s".' % problem.name)
 
     if make_index:
         report_index(report_config)
@@ -222,50 +224,51 @@ def report_index(report_config=None):
     if report_config is None:
         report_config = ReportConfig()
 
-    reports_base_path = report_config.reports_base_path
-    reports = []
-    for report_path in iter_report_dirs(reports_base_path):
+    report_base_path = report_config.report_base_path
+    entries = []
+    for entry_path in iter_report_entry_dirs(report_base_path):
 
-        fn = op.join(report_path, 'index.yaml')
+        fn = op.join(entry_path, 'index.yaml')
         if not os.path.exists(fn):
             logger.warn(
-                'Skipping indexing of incomplete report: %s' % report_path)
+                'Skipping indexing of incomplete report entry: %s'
+                % entry_path)
 
             continue
 
-        logger.info('Indexing %s...' % report_path)
+        logger.info('Indexing %s...' % entry_path)
 
         rie = guts.load(filename=fn)
-        report_relpath = op.relpath(report_path, reports_base_path)
+        report_relpath = op.relpath(entry_path, report_base_path)
         rie.path = report_relpath
-        reports.append(rie)
+        entries.append(rie)
 
     guts.dump_all(
-        reports,
-        filename=op.join(reports_base_path, 'report_list.yaml'))
+        entries,
+        filename=op.join(report_base_path, 'report_list.yaml'))
 
     guts.dump(
         ReportInfo(
             title=report_config.title,
             description=report_config.description,
             version_info=info.version_info()),
-        filename=op.join(reports_base_path, 'info.yaml'))
+        filename=op.join(report_base_path, 'info.yaml'))
 
     app_dir = op.join(op.split(__file__)[0], 'app')
-    copytree(app_dir, reports_base_path)
-    logger.info('Created report in %s/index.html' % reports_base_path)
+    copytree(app_dir, report_base_path)
+    logger.info('Created report in %s/index.html' % report_base_path)
 
 
 def report_archive(report_config):
     if report_config is None:
         report_config = ReportConfig()
 
-    reports_base_path = report_config.reports_base_path
+    report_base_path = report_config.report_base_path
 
     logger.info('Generating report\'s archive...')
-    with tarfile.open(op.join(reports_base_path, 'grond-reports.tar.gz'),
+    with tarfile.open(op.join(report_base_path, 'grond-report.tar.gz'),
                       mode='w:gz') as tar:
-        tar.add(reports_base_path, arcname='grond-reports')
+        tar.add(report_base_path, arcname='grond-report')
 
 
 def serve_ip(host):
@@ -314,7 +317,7 @@ def serve_report(
     if report_config is None:
         report_config = ReportConfig()
 
-    path = report_config.expand_path(report_config.reports_base_path)
+    path = report_config.expand_path(report_config.report_base_path)
     os.chdir(path)
 
     host, port = addr
