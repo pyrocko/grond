@@ -8,11 +8,13 @@ import numpy as num
 from collections import defaultdict
 from pyrocko import util, pile, model, config, trace, \
     marker as pmarker
+from pyrocko.io.io_common import FileLoadError
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import (Object, Tuple, String, Float, List, Bool, dump_all,
                           load_all)
 
-from .meta import Path, HasPaths, expand_template
+from .meta import Path, HasPaths, expand_template, GrondError
+
 from .synthetic_tests import SyntheticTest
 
 guts_prefix = 'grond'
@@ -42,7 +44,7 @@ class NotFound(Exception):
         return s
 
 
-class DatasetError(Exception):
+class DatasetError(GrondError):
     pass
 
 
@@ -981,7 +983,12 @@ class DatasetConfig(HasPaths):
             return self.expand_path(path, extra=extra)
 
         events = []
-        for fn in glob.glob(fp(self.events_path)):
+        events_path = fp(self.events_path)
+        fns = glob.glob(events_path)
+        if not fns:
+            raise DatasetError('No event files matching "%s".' % events_path)
+
+        for fn in fns:
             events.extend(model.load_events(filename=fn))
 
         event_names = [ev.name for ev in events]
@@ -1009,53 +1016,57 @@ class DatasetConfig(HasPaths):
                 return p
 
             ds = Dataset(event_name)
-            ds.add_stations(
-                pyrocko_stations_filename=fp(self.stations_path),
-                stationxml_filenames=fp(self.stations_stationxml_paths))
+            try:
+                ds.add_stations(
+                    pyrocko_stations_filename=fp(self.stations_path),
+                    stationxml_filenames=fp(self.stations_stationxml_paths))
 
-            ds.add_events(filename=fp(self.events_path))
+                ds.add_events(filename=fp(self.events_path))
 
-            if self.waveform_paths:
-                ds.add_waveforms(paths=fp(self.waveform_paths))
+                if self.waveform_paths:
+                    ds.add_waveforms(paths=fp(self.waveform_paths))
 
-            if self.kite_scene_paths:
-                ds.add_kite_scenes(paths=fp(self.kite_scene_paths))
+                if self.kite_scene_paths:
+                    ds.add_kite_scenes(paths=fp(self.kite_scene_paths))
 
-            if self.gnss_campaign_paths:
-                ds.add_gnss_campaigns(paths=fp(self.gnss_campaign_paths))
+                if self.gnss_campaign_paths:
+                    ds.add_gnss_campaigns(paths=fp(self.gnss_campaign_paths))
 
-            if self.clippings_path:
-                ds.add_clippings(markers_filename=fp(self.clippings_path))
+                if self.clippings_path:
+                    ds.add_clippings(markers_filename=fp(self.clippings_path))
 
-            if self.responses_sacpz_path:
-                ds.add_responses(
-                    sacpz_dirname=fp(self.responses_sacpz_path))
+                if self.responses_sacpz_path:
+                    ds.add_responses(
+                        sacpz_dirname=fp(self.responses_sacpz_path))
 
-            if self.responses_stationxml_paths:
-                ds.add_responses(
-                    stationxml_filenames=fp(self.responses_stationxml_paths))
+                if self.responses_stationxml_paths:
+                    ds.add_responses(
+                        stationxml_filenames=fp(
+                            self.responses_stationxml_paths))
 
-            if self.station_corrections_path:
-                ds.add_station_corrections(
-                    filename=fp(self.station_corrections_path))
+                if self.station_corrections_path:
+                    ds.add_station_corrections(
+                        filename=fp(self.station_corrections_path))
 
-            ds.apply_correction_factors = self.apply_correction_factors
-            ds.apply_correction_delays = self.apply_correction_delays
-            ds.extend_incomplete = self.extend_incomplete
+                ds.apply_correction_factors = self.apply_correction_factors
+                ds.apply_correction_delays = self.apply_correction_delays
+                ds.extend_incomplete = self.extend_incomplete
 
-            for picks_path in self.picks_paths:
-                ds.add_picks(
-                    filename=fp(picks_path))
+                for picks_path in self.picks_paths:
+                    ds.add_picks(
+                        filename=fp(picks_path))
 
-            ds.add_blacklist(self.blacklist)
-            ds.add_blacklist(filenames=fp(self.blacklist_paths))
-            if self.whitelist:
-                ds.add_whitelist(self.whitelist)
-            if self.whitelist_paths:
-                ds.add_whitelist(filenames=fp(self.whitelist_paths))
+                ds.add_blacklist(self.blacklist)
+                ds.add_blacklist(filenames=fp(self.blacklist_paths))
+                if self.whitelist:
+                    ds.add_whitelist(self.whitelist)
+                if self.whitelist_paths:
+                    ds.add_whitelist(filenames=fp(self.whitelist_paths))
 
-            ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
-            self._ds[event_name] = ds
+                ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
+                self._ds[event_name] = ds
+            except (FileLoadError, OSError) as e:
+                raise DatasetError(str(e))
 
         return self._ds[event_name]
 

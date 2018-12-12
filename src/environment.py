@@ -47,7 +47,7 @@ class Environment(object):
             args = [args]
 
         if not args:
-            args.append(op.curdir)
+            raise GrondEnvironmentError('missing arguments')
 
         if op.isdir(args[0]):
             self._rundir_path = args[0]

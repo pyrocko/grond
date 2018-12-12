@@ -5,12 +5,13 @@ import math
 import shutil
 import os
 from os import path as op
-from pyrocko.gf import Range
+from pyrocko import util
+from pyrocko.gf import Range, Timing
 
 logger = logging.getLogger('grond.init')
 km = 1e3
 
-INIT_EVENT = '''name = 2011-myanmar
+INIT_EVENT = '''name = myanmar_2011
 time = 2011-03-24 13:55:12.010
 latitude = 20.687
 longitude = 99.822
@@ -18,16 +19,15 @@ magnitude = 6.9
 moment = 1.9228e+19
 depth = 8000
 region = Myanmar
---------------------------------------------'''
+--------------------------------------------
+'''
 
 
 class GrondProject(object):
 
     def __init__(self):
         self.dataset_config = grond.DatasetConfig(
-            events_path='events.txt',
-            stations_path='stations.txt',
-            responses_stationxml_paths=['stationxml.xml'])
+            events_path='events.txt')
 
         self.project_config = None
         self.target_groups = []
@@ -39,36 +39,46 @@ class GrondProject(object):
         logger.info('Added waveforms')
         dsc = self.dataset_config
 
-        self.sub_dirs.append('data')
-        dsc.waveform_paths = ['data']
+        wd = op.join('data', 'waveforms')
+        self.sub_dirs.append(wd)
+        dsc.waveform_paths = [wd]
 
-        self.empty_files.append('stations.xml')
-        dsc.stations_path = 'stations.txt'
+        sp = op.join(wd, 'stations.xml')
+        dsc.stations_stationxml_paths = [sp]
+        dsc.responses_stationxml_paths = [sp]
 
         self.target_groups.append(
             grond.WaveformTargetGroup(
                 normalisation_family='time_domain',
-                path='all',
+                path='sw',
                 distance_min=10*km,
                 distance_max=1000*km,
                 channels=['Z', 'R', 'T'],
-                interpolation='multilinear',
+                interpolation='nearest_neighbor',
                 store_id='gf_store_id',
                 misfit_config=grond.WaveformMisfitConfig(
+                    tmin=Timing(phase_defs=['stored:any_P'], offset=-10.0),
+                    tmax=Timing(phase_defs=['vel_surface:2.5']),
+                    domain='time_domain',
+                    tautoshift_max=4.0,
+                    autoshift_penalty_max=0.05,
+                    norm_exponent=2,
                     fmin=0.01,
-                    fmax=0.1)))
+                    fmax=0.05,
+                    ffactor=1.5)))
 
     def add_insar(self):
         logger.info('Added InSAR')
         dsc = self.dataset_config
 
-        self.sub_dirs.append('scenes')
-        dsc.kite_scene_paths = ['scenes']
+        sd = op.join('data', 'insar')
+        self.sub_dirs.append(sd)
+        dsc.kite_scene_paths = [sd]
 
         self.target_groups.append(
             grond.SatelliteTargetGroup(
                 normalisation_family='static',
-                path='all',
+                path='insar',
                 interpolation='multilinear',
                 store_id='gf_static_store_id',
                 kite_scenes=['*all'],
@@ -83,16 +93,17 @@ class GrondProject(object):
             )
 
     def add_gnss(self):
-        logger.info('Added InSAR')
+        logger.info('Added GNSS')
         dsc = self.dataset_config
 
-        self.sub_dirs.append('scenes')
-        dsc.kite_scene_paths = ['scenes']
-
+        gd = op.join('data', 'gnss')
+        self.sub_dirs.append(gd)
+        gp = op.join(gd, 'my_campaign.yaml')
+        dsc.gnss_campaign_paths = [gp]
         self.target_groups.append(
             grond.GNSSCampaignTargetGroup(
                 normalisation_family='static',
-                path='all',
+                path='gnss',
                 interpolation='multilinear',
                 store_id='gf_static_store_id',
                 misfit_config=grond.GNSSCampaignMisfitConfig()
@@ -100,14 +111,14 @@ class GrondProject(object):
             )
 
     def set_cmt_source(self):
-        logger.info('Set problem to rectangular')
+        logger.info('Set problem to CMTProblem')
         pi2 = math.pi/2
         self.problem_config = grond.CMTProblemConfig(
             name_template='cmt_${event_name}',
             distance_min=2.*km,
             mt_type='deviatoric',
             ranges=dict(
-                time=Range(0, 10.0, relative='add'),
+                time=Range(-10.0, 10.0, relative='add'),
                 north_shift=Range(-16*km, 16*km),
                 east_shift=Range(-16*km, 16*km),
                 depth=Range(1*km, 11*km),
@@ -122,7 +133,7 @@ class GrondProject(object):
             )
 
     def set_rectangular_source(self):
-        logger.info('Set problem to rectangular')
+        logger.info('Set problem to RectangularProblem')
         self.problem_config = grond.RectangularProblemConfig(
             name_template='rect_source',
             ranges=dict(
@@ -172,12 +183,14 @@ class GrondProject(object):
         def p(*fn):
             return op.join(project_dir, *fn)
 
+        config.set_basepath(p())
+
         os.mkdir(op.abspath(project_dir))
         for d in self.sub_dirs:
-            os.mkdir(p(d))
+            util.ensuredir(p(d))
 
-        with open(p('config', 'config.gronf'), 'w') as f:
-            f.write(str(config))
+        grond.write_config(config, p('config', 'config.gronf'))
+
         with open(p('events.txt'), 'w') as f:
             f.write(INIT_EVENT)
 

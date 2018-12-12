@@ -450,22 +450,19 @@ def command_init(args):
         parser.add_option(
             '--targets', action='callback', dest='targets', type=str,
             callback=multiple_choice, callback_kwargs={
-                'choices': ('waveforms', 'gnss', 'insar')
+                'choices': ('waveforms', 'gnss', 'insar', 'all')
             },
             default='waveforms',
             help='select from:'
                  ' waveforms, gnss and insar. '
                  '(default: --targets=%default,'
-                 ' multiple selection by --targets=waveform,gnss,insar)')
+                 ' multiple selection by --targets=waveforms,gnss,insar)')
         parser.add_option(
-            '--problem', dest='problem', default='cmt',
+            '--problem', dest='problem',
             type='choice', choices=['cmt', 'rectangular'],
             help='problem to generate: \'dc\' (double couple)'
                  ' or\'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
-        parser.add_option(
-            '--full', dest='full', action='store_true',
-            help='create a full configuration, from targets above')
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing project folder')
@@ -475,28 +472,32 @@ def command_init(args):
     try:
         project = init.GrondProject()
 
-        if 'waveforms' in options.targets:
-            project.add_waveforms()
+        if 'all' in options.targets:
+            targets = ['waveforms', 'gnss', 'insar']
+        else:
+            targets = options.targets
+
+        if not options.problem:
+            if 'insar' in targets or 'gnss' in targets:
+                problem = 'rectangular'
+            else:
+                problem = 'cmt'
+        else:
+            problem = options.problem
+
+        if problem == 'rectangular':
+            project.set_rectangular_source()
+        elif problem == 'cmt':
             project.set_cmt_source()
-        if 'insar' in options.targets:
-            project.add_insar()
-            project.set_rectangular_source()
-        if 'gnss' in options.targets:
-            project.add_gnss()
-            project.set_rectangular_source()
 
-        if options.full:
-            project = init.GrondProject()
-
+        if 'waveforms' in targets:
             project.add_waveforms()
-            project.add_insar()
-            project.add_gnss()
-            project.set_rectangular_source()
 
-        if options.problem == 'cmt':
-            project.set_cmt_source()
-        elif options.problem == 'rectangular':
-            project.set_rectangular_source()
+        if 'insar' in targets:
+            project.add_insar()
+
+        if 'gnss' in targets:
+            project.add_gnss()
 
         if len(args) == 1:
             project_dir = args[0]
@@ -553,6 +554,8 @@ def command_check(args):
                  'solution.')
 
     parser, options, args = cl_parse('check', args, setup)
+    if len(args) < 1:
+        help_and_die(parser, 'missing arguments')
 
     try:
         env = Environment(args)
