@@ -5,7 +5,7 @@ from collections import defaultdict
 import numpy as num
 
 from matplotlib import pyplot as plt
-from matplotlib import cm, patches
+from matplotlib import cm, patches, lines
 from matplotlib.ticker import FuncFormatter
 
 from pyrocko import plot, gf, trace
@@ -1226,7 +1226,7 @@ class StationDistribution(PlotConfig):
     name = 'station_distribution'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(12., 12.),
+        default=(14., 13.),
         help='width and length of the figure in cm')
     font_size = Float.T(
         default=8,
@@ -1295,16 +1295,18 @@ Plot showing distribution and weights of seismic or GNSS stations.
             paths = [t.path for t in targets]
 
             item = PlotItem(name='station_distribution-%s' % path)
-            fig, ax = self.plot_station_distribution(
+            fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, weights, stations)
             fig.suptitle('Station Distribution and Weight (%s)' % path,
                          fontsize=self.font_size_title)
+            legend.set_title('Weight')
 
             yield (item, fig)
 
             item = PlotItem(name='stations_distribution_contrib-%s' % path)
-            fig, ax = self.plot_station_distribution(
+            fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, contibutions, stations)
+            legend.set_title('Contribution')
 
             fig.suptitle('Station Distribution and Contribution (%s)' % path,
                          fontsize=self.font_size_title)
@@ -1314,6 +1316,8 @@ Plot showing distribution and weights of seismic or GNSS stations.
     def plot_station_distribution(
             self, azimuths, distances, weights, labels=None,
             scatter_kwargs=dict(), annotate_kwargs=dict(), maxsize=10**2):
+
+        invalid_color = plot.mpl_color('scarletred2')
 
         scatter_default = {
             'alpha': .8,
@@ -1347,15 +1351,16 @@ Plot showing distribution and weights of seismic or GNSS stations.
 
         weights[~valid] = weights[valid].min()
         colors = [
-            scatter_default['c'] if s else plot.mpl_color('scarletred2') 
+            scatter_default['c'] if s else invalid_color
             for s in valid]
 
         scatter_default.pop('c')
 
         weights_scaled = (weights / weights[valid].max()) * maxsize
 
-        ax.scatter(azimuths*d2r, distances, s=weights_scaled, c=colors,
-                   **scatter_default)
+        stations = ax.scatter(
+            azimuths*d2r, distances, s=weights_scaled, c=colors,
+            **scatter_default)
 
         if labels is not None:
             for ilbl, label in enumerate(labels):
@@ -1370,7 +1375,44 @@ Plot showing distribution and weights of seismic or GNSS stations.
         ax.yaxis.set_major_formatter(
             FuncFormatter(lambda x, pos: '%d km' % (x/km)))
 
-        return fig, ax
+        # Legend
+        entries = 4
+        valid_marker = num.argmax(valid)
+        fc = stations.get_facecolor()[valid_marker]
+        ec = stations.get_edgecolor()[valid_marker]
+
+        def get_min_precision(values):
+            sig_prec = num.floor(
+                num.isfinite(num.log10(weights)))
+            return int(abs(sig_prec.min())) + 1
+
+        legend_artists = [
+            lines.Line2D(
+                [0], [0], ls='none',
+                marker='o', ms=num.sqrt(rad), mfc=fc, mec=ec)
+            for rad in num.linspace(maxsize, .1*maxsize, entries)
+        ]
+
+        sig_prec = get_min_precision(weights)
+        legend_annot = [
+            '{value:.{prec}f}'.format(value=val, prec=sig_prec)
+            for val in num.linspace(weights.max(), .1*weights.max(), entries)
+        ]
+
+        if not num.all(valid):
+            legend_artists.append(
+                lines.Line2D(
+                    [0], [0], ls='none',
+                    marker='o', ms=num.sqrt(maxsize),
+                    mfc=invalid_color, mec=invalid_color))
+            legend_annot.append('Excluded')
+
+        legend = fig.legend(
+            legend_artists, legend_annot,
+            loc=4, markerscale=1,
+            frameon=False)
+
+        return fig, ax, legend
 
 
 def get_plot_classes():

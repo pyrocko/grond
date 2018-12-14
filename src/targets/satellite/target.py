@@ -221,7 +221,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
-            if not ibs % 5:
+            if not (ibs+1) % 5:
                 logger.info('Calculating noise realisation %d/%d'
                             % (ibs, nbootstraps))
             bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
