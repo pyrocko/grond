@@ -21,6 +21,7 @@ from grond.plot.collection import PlotItem
 
 guts_prefix = 'grond'
 km = 1e3
+d2r = math.pi / 180.
 
 logger = logging.getLogger('targets.waveform.plot')
 
@@ -1225,7 +1226,7 @@ class StationDistribution(PlotConfig):
     name = 'station_distribution'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(12., 13.),
+        default=(12., 12.),
         help='width and length of the figure in cm')
     font_size = Float.T(
         default=8,
@@ -1335,6 +1336,11 @@ Plot showing distribution and weights of seismic or GNSS stations.
         annotate_default.update(annotate_kwargs)
 
         fig = plt.figure(figsize=self.size_inch)
+
+        plot.mpl_margins(
+            fig, nw=1, nh=1, w=5., h=5.,
+            units=self.font_size)
+
         ax = fig.add_subplot(111, projection='polar')
 
         valid = ~num.isnan(weights)
@@ -1345,15 +1351,16 @@ Plot showing distribution and weights of seismic or GNSS stations.
 
         weights_scaled = (weights / weights[valid].max()) * maxsize
 
-        ax.scatter(azimuths, distances, s=weights_scaled, c=colors,
+        ax.scatter(azimuths*d2r, distances, s=weights_scaled, c=colors,
                    **scatter_default)
 
         if labels is not None:
             for ilbl, label in enumerate(labels):
-                ax.annotate(label, (azimuths[ilbl], distances[ilbl]),
+                ax.annotate(label, (azimuths[ilbl]*d2r, distances[ilbl]),
                             **annotate_default)
 
-        ax.set_theta_zero_location("N")
+        ax.set_theta_zero_location('N')
+        ax.set_theta_direction(-1)
         ax.tick_params('y', labelsize=self.font_size, labelcolor='gray')
         ax.grid(alpha=.3)
         ax.set_ylim(0, distances.max()*1.1)
