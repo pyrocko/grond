@@ -34,7 +34,7 @@ Project folder layout
 
 To use Grond with your own dataset, we suggest the following folder structure.
 
-Single files and data formats listed here are explained below. The folders ``runs`` and ``reports`` are generated during and after the optimisation, respectively.
+Single files and data formats listed here are explained below. The folders ``runs`` and ``report`` are generated during and after the optimisation, respectively.
 
 .. code-block :: none
 
@@ -45,34 +45,34 @@ Single files and data formats listed here are explained below. The folders ``run
     │
     ├── data
     │   └── events  # several events could be set up here
-    │       ├── laquila2009   
+    │       ├── laquila2009
     │       │   ├── event.txt
-    │       │   ├── insar   
+    │       │   ├── insar
     │       │   │   ├── dsc_insar.npz
     │       │   │   ├── dsc_insar.yml
     │       │   │   :
     │       │   │
-    │       │   ├── waveforms   
+    │       │   ├── waveforms
     │       │   │   ├── raw    # contains Mini-SEED files
-    │       │   │   │   ├── trace_BK-CMB--BHE_2009-04-06_00-38-31.mseed 
-    │       │   │   │   ├── trace_BK-CMB--BHN_2009-04-06_00-38-31.mseed     
-    │       │   │   │   :  
+    │       │   │   │   ├── trace_BK-CMB--BHE_2009-04-06_00-38-31.mseed
+    │       │   │   │   ├── trace_BK-CMB--BHN_2009-04-06_00-38-31.mseed
+    │       │   │   │   :
     │       │   │   └── stations.xml
     │       │   │
     │       │   └── gnss
     │       │       └── gnss.yml
     │       :
     │
-    ├── gf_stores  # contains Green's functions 
+    ├── gf_stores  # contains Green's functions
     │   ├── Abruzzo_Ameri_nearfield # static near-field GF store
     │   │   └── ...
     │   ├── global_2s_25km  # dynamic far-field GF store
     │   │   └── ...
     │   :	
-    │   
+    │
     ├── runs  # created at runtime, contains individual optimisation results
     │   └── ...
-    └── reports 
+    └── report
         └── ...
 
 Input data (observations)
@@ -161,7 +161,7 @@ An empty project structure can be created with the subcommand :option:`grond ini
 .. tip::
 
     Existing project folders can be overwritten using ``grond init --force <project-folder>``
- 
+
 You can create an initial Grond configuration file for a centroid moment tensor optimisation based on global seismic waveforms with
 
 .. code-block :: sh
@@ -201,7 +201,7 @@ The scenario can contain the following synthetic observations:
 * GNSS surface displacements
 
 .. code-block :: sh
-    
+
     grond scenario --targets=waveforms,insar <project-folder>
 
 A map of the random scenario is plotted in :file:`scenario_map.pdf`.
@@ -243,8 +243,8 @@ During the optimisation, results are aggregated in an output directory, referred
     │   └── ...
     ├── data
     │   └── ...
-    ├── gf_stores      
-    │   └── ...  
+    ├── gf_stores
+    │   └── ...
     ├── runs  # contains individual optimisation results
     │   ├── laquila2009_joint.grun
     │   │   ├── ... # some bookkeeping yaml-files
@@ -256,7 +256,7 @@ During the optimisation, results are aggregated in an output directory, referred
     │   │       └── models
     │   :
     │
-    └── reports 
+    └── report
         └── ...
 
 
@@ -272,7 +272,7 @@ Finally, you may run
 
 	grond report <rundir>
 
-to aggregate and visualize results to a browsable summary, (by default) under the directory `reports`.
+to aggregate and visualize results to a browsable summary, (by default) under the directory `report`.
 
 .. code-block :: sh
 
@@ -282,9 +282,9 @@ to aggregate and visualize results to a browsable summary, (by default) under th
     │   └── ...
     ├── gf_stores
     │   └── ...
-    ├── runs  
-    │   └── ... 
-    └── reports  # contains all graphical presentations of the results in 'runs'
+    ├── runs
+    │   └── ...
+    └── report  # contains all graphical presentations of the results in 'runs'
         ├── index.html # open in browser to surf through all 'runs'
         ├── ... # more bookeeping yaml-files
         │
@@ -301,10 +301,10 @@ to aggregate and visualize results to a browsable summary, (by default) under th
         │   │       ├── fits_satellite # visual comparison of data and synthetics
         │   │       │   └── ...
         │   │       :
-                                     
 
 
-Please find detailed information on the reports and automatic plots in the section :doc:`/report/index`.
+
+Please find detailed information on the report and automatic plots in the section :doc:`/report/index`.
 
 The results can be exported in various ways by running the subcommand
 

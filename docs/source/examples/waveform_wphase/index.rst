@@ -151,7 +151,7 @@ To get some more insight into the setup, we can now run
 
     grond report -so config/wphase_cmt.gronf gfz2015sfdd
 
-This will plot some diagnostic figures, create web pages in a new directory :file:`reports`, and finally open these in a web browser.
+This will plot some diagnostic figures, create web pages in a new directory :file:`report`, and finally open these in a web browser.
 
 
 Starting the optimisation

@@ -137,7 +137,7 @@ Check out the YAML configuration in {config} and start the optimisation by:
     grond go {config}
 '''
     report = '''
-To open the reports in your web browser, run
+To open the report in your web browser, run
 
     grond report -s --open {config}
 '''
@@ -1030,7 +1030,7 @@ def command_report(args):
             help='quick-and-dirty update parameter files without plotting')
         parser.add_option(
             '--parallel', dest='nparallel', type=int, default=1,
-            help='set number of reports to generate in parallel, '
+            help='set number of runs to process in parallel, '
                  'If set to more than one, --status=quiet is implied.')
 
     parser, options, args = cl_parse('report', args, setup)
@@ -1058,18 +1058,18 @@ def command_report(args):
             die(str(e))
 
     if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
-        conf.reports_base_path = conf.rel_path(args[0])
+        conf.report_base_path = conf.rel_path(args[0])
         s_conf = ' %s' % args[0]
         args = []
 
-    reports_base_path = conf.expand_path(conf.reports_base_path)
+    report_base_path = conf.expand_path(conf.report_base_path)
 
     if options.index_only:
         report_index(conf)
         report_archive(conf)
         args = []
 
-    reports_generated = False
+    entries_generated = False
 
     payload = []
     if args and all(op.isdir(rundir) for rundir in args):
@@ -1090,17 +1090,17 @@ def command_report(args):
             die(str(e))
 
     if payload:
-        reports_generated = []
+        entries_generated = []
         for result in parimap.parimap(
                 make_report, *zip(*payload), nprocs=options.nparallel):
 
-            reports_generated.append(result)
+            entries_generated.append(result)
 
-        all_failed = not any(reports_generated)
-        reports_generated = any(reports_generated)
+        all_failed = not any(entries_generated)
+        entries_generated = any(entries_generated)
 
         if all_failed:
-            die('no reports generated')
+            die('no report entries generated')
 
         report_index(conf)
         report_archive(conf)
@@ -1121,14 +1121,14 @@ def command_report(args):
 
     elif options.open:
         import webbrowser
-        url = 'file://%s/index.html' % op.abspath(reports_base_path)
+        url = 'file://%s/index.html' % op.abspath(report_base_path)
         webbrowser.open(url)
 
     else:
-        if not reports_generated and not options.index_only:
+        if not entries_generated and not options.index_only:
             logger.info('nothing to do, see: grond report --help')
 
-    if reports_generated and not (options.serve or options.serve_external):
+    if entries_generated and not (options.serve or options.serve_external):
         logger.info(CLIHints('report', config=s_conf))
 
 

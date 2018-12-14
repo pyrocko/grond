@@ -153,7 +153,7 @@ To get some more insight into the setup, we can run
 
     grond report -so config/regional_cmt.gronf gfz2018pmjk
 
-This will plot some diagnostic figures, create web pages in a new directory :file:`reports`, and finally open these in a web browser.
+This will plot some diagnostic figures, create web pages in a new directory :file:`report`, and finally open these in a web browser.
 
 
 Starting the optimisation
