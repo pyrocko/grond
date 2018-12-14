@@ -1318,7 +1318,7 @@ Plot showing distribution and weights of seismic or GNSS stations.
         scatter_default = {
             'alpha': .8,
             'zorder': 10,
-            'c': 'blue'
+            'c': plot.mpl_color('skyblue2'),
         }
 
         annotate_default = {
@@ -1346,7 +1346,10 @@ Plot showing distribution and weights of seismic or GNSS stations.
         valid = ~num.isnan(weights)
 
         weights[~valid] = weights[valid].min()
-        colors = [scatter_default['c'] if s else 'red' for s in valid]
+        colors = [
+            scatter_default['c'] if s else plot.mpl_color('scarletred2') 
+            for s in valid]
+
         scatter_default.pop('c')
 
         weights_scaled = (weights / weights[valid].max()) * maxsize
