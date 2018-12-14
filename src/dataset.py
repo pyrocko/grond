@@ -650,6 +650,8 @@ class Dataset(object):
             obj = cache[nslc + cache_k]
             if isinstance(obj, Exception):
                 raise obj
+            elif obj is None:
+                raise NotFound('waveform not found!', nslc)
             else:
                 return obj
 
@@ -797,7 +799,7 @@ class Dataset(object):
 
         except NotFound as e:
             if cache is not None:
-                cache[nslc + cache_k] = e
+                cache[nslc + cache_k] = None
             raise
 
     def get_waveform(self, obj, tinc_cache=None, **kwargs):
