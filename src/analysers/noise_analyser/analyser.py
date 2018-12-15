@@ -160,10 +160,11 @@ class NoiseAnalyser(Analyser):
     within a 30 min time window before the start of the set pre-event noise
     window, only a warning is thrown.
 
-    It is also possible to remove data where the noise level exceeds the median
-    by a given factor (by setting there weight to 0). This can be done
-    exclusively (``mode='weeding'``) or in combination with weighting
-    (``mode='weighting'``).
+    It is further possible to disregard data with a noise level exceeding the 
+    median by a given ``cutoff`` factor. These weights are set to 0. This can be 
+    done exclusively (``mode='weeding'``) such that noise weights are either
+    1 or 0, or in combination with weighting below the median-times-cutoff 
+    noise level (``mode='weighting'``).
     '''
 
     def __init__(self, nwindows, pre_event_noise_duration,
@@ -311,8 +312,8 @@ class NoiseAnalyserConfig(AnalyserConfig):
 
     cutoff = Float.T(
         optional=True,
-        help='Set weight to zero, when noise level exceeds median by given '
-             'factor.')
+        help='Set weight to zero, when noise level exceeds median by the '
+             'given cutoff factor.')
 
     def get_analyser(self):
         return NoiseAnalyser(
