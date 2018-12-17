@@ -180,7 +180,9 @@ class NoiseAnalyser(Analyser):
 
     def analyse(self, problem, ds):
 
-        if self.pre_event_noise_duration == 0:
+        tdur = self.pre_event_noise_duration
+
+        if tdur == 0:
             return
 
         if not problem.has_waveforms:
@@ -203,8 +205,8 @@ class NoiseAnalyser(Analyser):
                     traces.append(
                         ds.get_waveform(
                             target.codes,
-                            tmin=arrival_time-self.pre_event_noise_duration,
-                            tmax=arrival_time-1./freqlimits[0],
+                            tmin=arrival_time-tdur-tfade,
+                            tmax=arrival_time-tfade,
                             tfade=tfade,
                             freqlimits=freqlimits,
                             deltat=deltat,
@@ -219,7 +221,7 @@ class NoiseAnalyser(Analyser):
 
         var_ds, ev_ws = seismic_noise_variance(
             traces, engine, event, problem.waveform_targets,
-            self.nwindows, self.pre_event_noise_duration,
+            self.nwindows, tdur,
             self.check_events, self.phase_def)
 
         if self.statistic == 'var':
