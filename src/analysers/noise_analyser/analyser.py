@@ -7,6 +7,7 @@ from pyrocko.guts import Int, Bool, Float, String, StringChoice
 from pyrocko.gf.meta import OutOfBounds
 from ..base import Analyser, AnalyserConfig, AnalyserResult
 from grond.dataset import NotFound
+from grond import meta
 
 logger = logging.getLogger('grond.analysers.NoiseAnalyser')
 
@@ -231,7 +232,7 @@ class NoiseAnalyser(Analyser):
         else:
             assert False, 'invalid statistic argument'
 
-        norm_noise = num.nanmedian(noise)
+        norm_noise = meta.nanmedian(noise)
         if norm_noise == 0:
             logger.info(
                 'Noise Analyser returned a weight of 0 for all stations')
