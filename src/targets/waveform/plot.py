@@ -1257,58 +1257,55 @@ Plot showing distribution and weights of seismic or GNSS stations.
 
     def draw_figures(self, problem, dataset, history):
 
-        event = problem.base_source
-        paths = set([grp.path for grp in problem.waveform_targets])
+        target_index = dict(
+            (target, i) for (i, target) in enumerate(problem.targets))
 
-        gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
-        isort = num.argsort(gms)[::-1]
+        gms = problem.combine_misfits(history.misfits)
+        isort = num.argsort(gms)
         gms = gms[isort]
+        misfits = history.misfits[isort, :]
+
+        ws = problem.get_target_weights()
 
         gcms = problem.combine_misfits(
-            history.misfits, get_contributions=True)
-        gcms = gcms[isort, :]
+            misfits[:1, :, :], get_contributions=True)[0, :]
 
-        nmisfits = gcms.shape[1]  # noqa
+        assert gcms.size == len(problem.targets)
 
-        idx = 0
-        for itarget, target in enumerate(problem.targets):
-            target.gcms = gcms[:, idx:idx+target.nmisfits]
-            idx += target.nmisfits
+        event = problem.base_source
 
-        for path in paths:
-            stations = list()
-            targets = list()
-            for t in [t for t in problem.waveform_targets if t.path == path]:
-                ns = '.'.join(t.codes[:2])
-                if ns in stations:
-                    continue
-                stations.append(ns)
-                targets.append(t)
+        cg_to_targets = meta.gather(
+            problem.waveform_targets,
+            lambda t: (t.path, t.codes[3]))
+
+        cgs = sorted(cg_to_targets.keys())
+
+        for cg in cgs:
+            cg_str = '.'.join(cg)
+
+            targets = cg_to_targets[cg]
+            itargets = num.array([target_index[target] for target in targets])
+
+            labels = ['.'.join(x for x in t.codes[:3] if x) for t in targets]
 
             azimuths = num.array([event.azibazi_to(t)[0] for t in targets])
             distances = num.array([t.distance_to(event) for t in targets])
 
-            weights = num.concatenate([t.get_combined_weight()
-                                       for t in targets])
-            contibutions = num.concatenate([t.gcms for t in targets])
-
-            paths = [t.path for t in targets]
-
-            item = PlotItem(name='station_distribution-%s' % path)
+            item = PlotItem(name='station_distribution-%s' % cg_str)
             fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, weights, stations)
-            fig.suptitle('Station Distribution and Weight (%s)' % path,
+                azimuths, distances, ws[itargets], labels)
+            fig.suptitle('Station Distribution and Weight (%s)' % cg_str,
                          fontsize=self.font_size_title)
             legend.set_title('Weight')
 
             yield (item, fig)
 
-            item = PlotItem(name='stations_distribution_contrib-%s' % path)
+            item = PlotItem(name='stations_distribution_contrib-%s' % cg_str)
             fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, contibutions, stations)
+                azimuths, distances, gcms[itargets], labels)
             legend.set_title('Contribution')
 
-            fig.suptitle('Station Distribution and Contribution (%s)' % path,
+            fig.suptitle('Station Distribution and Contribution (%s)' % cg_str,
                          fontsize=self.font_size_title)
 
             yield (item, fig)
@@ -1320,7 +1317,7 @@ Plot showing distribution and weights of seismic or GNSS stations.
         invalid_color = plot.mpl_color('scarletred2')
 
         scatter_default = {
-            'alpha': .8,
+            'alpha': .5,
             'zorder': 10,
             'c': plot.mpl_color('skyblue2'),
         }
@@ -1349,6 +1346,7 @@ Plot showing distribution and weights of seismic or GNSS stations.
 
         valid = ~num.isnan(weights)
 
+        weights = weights.copy()
         weights[~valid] = weights[valid].min()
         colors = [
             scatter_default['c'] if s else invalid_color
@@ -1356,7 +1354,9 @@ Plot showing distribution and weights of seismic or GNSS stations.
 
         scatter_default.pop('c')
 
-        weights_scaled = (weights / weights[valid].max()) * maxsize
+        weights_ref = plot.nice_value(weights[valid].max())
+
+        weights_scaled = (weights / weights_ref) * maxsize
 
         stations = ax.scatter(
             azimuths*d2r, distances, s=weights_scaled, c=colors,
@@ -1396,7 +1396,7 @@ Plot showing distribution and weights of seismic or GNSS stations.
         sig_prec = get_min_precision(weights)
         legend_annot = [
             '{value:.{prec}f}'.format(value=val, prec=sig_prec)
-            for val in num.linspace(weights.max(), .1*weights.max(), entries)
+            for val in num.linspace(weights_ref, .1*weights_ref, entries)
         ]
 
         if not num.all(valid):
