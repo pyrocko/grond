@@ -1409,7 +1409,7 @@ Plot showing distribution and weights of seismic or GNSS stations.
 
         legend = fig.legend(
             legend_artists, legend_annot,
-            loc=4, markerscale=1,
+            loc=4, markerscale=1, numpoints=1,
             frameon=False)
 
         return fig, ax, legend
