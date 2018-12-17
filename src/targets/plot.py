@@ -27,7 +27,7 @@ class StationDistributionPlot(PlotConfig):
         default=(14., 13.),
         help='width and length of the figure in cm')
     font_size = Float.T(
-        default=8,
+        default=6,
         help='Font Size of all fonts, except title')
     font_size_title = Float.T(
         default=10,
@@ -84,10 +84,13 @@ class StationDistributionPlot(PlotConfig):
             azimuths*d2r, distances, s=weights_scaled, c=colors,
             **scatter_default)
 
+        annotations = []
         if labels is not None:
             for ilbl, label in enumerate(labels):
-                ax.annotate(label, (azimuths[ilbl]*d2r, distances[ilbl]),
-                            **annotate_default)
+                ant = ax.annotate(label, (azimuths[ilbl]*d2r, distances[ilbl]),
+                                  **annotate_default)
+                annotations.append(ant)
+        print(ant, type(ant))
 
         ax.set_theta_zero_location('N')
         ax.set_theta_direction(-1)
@@ -131,7 +134,8 @@ class StationDistributionPlot(PlotConfig):
 
         legend = fig.legend(
             legend_artists, legend_annot,
-            loc=4, markerscale=1, numpoints=1,
+            fontsize=self.font_size_title, loc=4,
+            markerscale=1, numpoints=1,
             frameon=False)
 
         return fig, ax, legend

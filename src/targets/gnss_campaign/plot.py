@@ -236,14 +236,15 @@ the marker's size is scaled to the stations weight (mean of spatial components).
             azimuths = od.azibazi_numpy(
                 num.array(event.effective_lat)[num.newaxis],
                 num.array(event.effective_lon)[num.newaxis],
-                target.get_latlon()[:, 0], target.get_latlon()[:, 1])[0]
-            labels = target.misfits_string_id()
+                target.get_latlon()[:, 0],
+                target.get_latlon()[:, 1])[0]
+            labels = target.station_names
 
             item = PlotItem(name='station_distribution-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws, labels)
-            fig.suptitle('GNSS Station Distribution and Weight (%s)' % target.path,
-                         fontsize=self.font_size_title)
+            fig.suptitle('GNSS Station Distribution and Weight (%s)'
+                         % target.path, fontsize=self.font_size_title)
             legend.set_title('Weight')
 
             yield (item, fig)

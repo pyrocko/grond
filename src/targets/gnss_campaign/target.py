@@ -112,6 +112,11 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                 for station in self.campaign.stations]
 
     @property
+    def station_names(self):
+        return ['%s' % (station.code)
+                for station in self.campaign.stations]
+
+    @property
     def nmisfits(self):
         return self.lats.size
 
