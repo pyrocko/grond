@@ -16,11 +16,15 @@ km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
 
+class MTType(StringChoice):
+    choices = ['full', 'deviatoric', 'dc']
+
+
 class CMTProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
-    mt_type = StringChoice.T(choices=['full', 'deviatoric'])
+    mt_type = MTType.T(default='full')
     nthreads = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
@@ -76,8 +80,7 @@ class CMTProblem(Problem):
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
     distance_min = Float.T(default=0.0)
-    mt_type = StringChoice.T(
-        default='full', choices=['full', 'deviatoric', 'dc'])
+    mt_type = MTType.T(default='full')
 
     def __init__(self, **kwargs):
         Problem.__init__(self, **kwargs)
