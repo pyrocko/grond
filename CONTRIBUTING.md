@@ -82,7 +82,10 @@ Additionally,
   - 'modelling' rather than 'modeling'
   - 'analyser' rather than 'analyzer'
   - 'optimiser' rather than 'optimizer'
-* log messages: TODO
+* log and exception messages:
+  - capital beginning
+  - final period
+  - e.g. `raise ProblemDataNotAvailable('No problem data available (%s).' % dirname)`
 * docstrings: TODO
 
 ## Documentation
