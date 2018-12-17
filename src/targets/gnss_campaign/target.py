@@ -115,6 +115,10 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def nmisfits(self):
         return self.lats.size
 
+    @property
+    def nstations(self):
+        return self.nmisfits
+
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
 
@@ -160,6 +164,16 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                 num.fill_diagonal(covar, 1.)
             self._weights = num.asmatrix(covar).I
         return self._weights
+
+    @property
+    def station_weights(self):
+        station_weight = num.empty((3, self.nstations))
+        weights = num.diag(self.weights)
+        station_weight[0, :] = weights[0::3]
+        station_weight[1, :] = weights[1::3]
+        station_weight[2, :] = weights[2::3]
+
+        return num.mean(station_weight, axis=0)
 
     def post_process(self, engine, source, statics):
         """Applies the objective function.
