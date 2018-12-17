@@ -86,7 +86,12 @@ class GrondMonitor(threading.Thread):
 
     def run(self):
         logger.info('Waiting to follow environment %s' % self.rundir)
-        self.environment = Environment.discover(self.rundir)
+        env = Environment.discover(self.rundir)
+        if env is None:
+            logger.error('Could not attach to Grond environment.')
+            return
+
+        self.environment = env
         self.history = self.environment.get_history()
 
         optimiser_fn = op.join(self.rundir, 'optimiser.yaml')
