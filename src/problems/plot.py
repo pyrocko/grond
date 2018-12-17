@@ -365,7 +365,7 @@ class HistogramPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Solution Histrogram',
+            title=u'Solution Histogram',
             section='solution',
             feather_icon='bar-chart-2',
             description=u'''
@@ -451,7 +451,14 @@ space.
             axes.set_xlim(*fixlim(*par.scaled((vmin, vmax))))
 
             if method == 'gaussian_kde':
-                kde = scipy.stats.gaussian_kde(vs)
+                try:
+                    kde = scipy.stats.gaussian_kde(vs)
+                except Exception:
+                    logger.warn(
+                        'cannot create plot histogram with gaussian_kde: '
+                        'possibly all samples have the same value')
+                    continue
+
                 vps = num.linspace(vmin, vmax, 600)
                 pps = kde(vps)
 

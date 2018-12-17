@@ -302,6 +302,13 @@ characteristics of the optimisation algorithm.
         acceptance = chains.acceptance_history
 
         nmodels_rate = history.nmodels - (nwindow - 1)
+        if nmodels_rate < 1:
+            logger.warning(
+                'cannot create plot acceptance: insufficient number of tested '
+                'models')
+
+            return
+
         acceptance_rate = num.zeros((history.nchains, nmodels_rate))
         for ichain in range(history.nchains):
             acceptance_rate[ichain, :] = trace.moving_sum(
@@ -397,7 +404,6 @@ represent different sampler phases.
         labelpos(axes, 2.5, 2.0)
 
         nwindow2 = max(1, int(history.nmodels / (self.size_inch[1] * 100)))
-        print(nwindow2)
         nmodels_rate2 = history.nmodels - (nwindow2 - 1)
         acceptance_rate2 = num.zeros((history.nchains, nmodels_rate2))
         for ichain in range(history.nchains):

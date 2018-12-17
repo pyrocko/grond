@@ -199,7 +199,7 @@ corresponding misfit values.
             ys = problem.make_dependant(models[ibest, :], par.name)
             axes.scatter(
                 imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
-                edgecolors='none', cmap=cmap, alpha=alpha,rasterized=True)
+                edgecolors='none', cmap=cmap, alpha=alpha, rasterized=True)
 
             if self.show_reference:
                 y = problem.make_dependant(xref, par.name)
@@ -364,7 +364,7 @@ modified.
         rel_ms_sum = num.zeros(history.nmodels)
         rel_ms_smooth_sum = num.zeros(history.nmodels)
         ms_smooth_sum = num.zeros(history.nmodels)
-        b = num.hanning(min(100, history.nmodels//3))
+        b = num.hanning(min(100, history.nmodels//5))
         b /= num.sum(b)
         a = [1]
         ii = 0
@@ -379,7 +379,10 @@ modified.
 
             rel_ms = ms / gms
 
-            rel_ms_smooth = signal.filtfilt(b, a, rel_ms)
+            if b.shape[0] > 5:
+                rel_ms_smooth = signal.filtfilt(b, a, rel_ms)
+            else:
+                rel_ms_smooth = rel_ms
 
             ms_smooth = rel_ms_smooth * gms_softclip
 
