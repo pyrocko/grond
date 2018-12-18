@@ -141,7 +141,7 @@ class PlotCollectionManager(object):
                     path=path,
                     dpi=format.get_dpi(group.size_cm))
 
-                logger.info('figure saved: %s' % path)
+                logger.info('Figure saved: %s' % path)
 
             if not self._show:
                 plt.close(fig)
@@ -188,7 +188,7 @@ class PlotCollectionManager(object):
                     path=path,
                     resolution=format.get_dpi(group.size_cm))
 
-                logger.info('figure saved: %s' % path)
+                logger.info('Figure saved: %s' % path)
 
         util.ensuredirs(path_group)
         group.dump(filename=path_group)

@@ -1,201 +1,55 @@
-import grond
 import logging
 
-import math
-import shutil
-import os
-from os import path as op
-from pyrocko import util
-from pyrocko.gf import Range, Timing
+import glob
+import os.path as op
 
 logger = logging.getLogger('grond.init')
 km = 1e3
 
-INIT_EVENT = '''name = myanmar_2011
-time = 2011-03-24 13:55:12.010
-latitude = 20.687
-longitude = 99.822
-magnitude = 6.9
-moment = 1.9228e+19
-depth = 8000
-region = Myanmar
---------------------------------------------
-'''
 
+class GrondInit(object):
 
-class GrondProject(object):
+    folder = op.join(op.dirname(__file__), '..', 'data', 'init')
 
     def __init__(self):
-        self.dataset_config = grond.DatasetConfig(
-            events_path='events.txt')
+        pass
 
-        self.project_config = None
-        self.target_groups = []
+    def available_inits(self):
+        return {
+            'examples': tuple((self.filename_to_abbrv(fn),
+                               self._get_description(fn))
+                              for fn in self.example_files),
+            'events': tuple((self.filename_to_abbrv(fn),
+                             self._get_description(fn))
+                            for fn in self.event_files),
+        }
 
-        self.sub_dirs = ['gf_stores', 'config']
-        self.empty_files = []
+    @staticmethod
+    def filename_to_abbrv(filename):
+        return op.basename(filename).split('.')[0]
 
-    def add_waveforms(self):
-        logger.info('Added waveforms')
-        dsc = self.dataset_config
+    @property
+    def example_files(self):
+        return self._get_files('example_*.gronf')
 
-        wd = op.join('data', 'waveforms')
-        self.sub_dirs.append(wd)
-        dsc.waveform_paths = [wd]
+    @property
+    def section_files(self):
+        return self._get_files('section_*.gronf')
 
-        sp = op.join(wd, 'stations.xml')
-        dsc.stations_stationxml_paths = [sp]
-        dsc.responses_stationxml_paths = [sp]
+    @property
+    def snippet_files(self):
+        return self._get_files('snippet_*.gronf')
 
-        self.target_groups.append(
-            grond.WaveformTargetGroup(
-                normalisation_family='time_domain',
-                path='sw',
-                distance_min=10*km,
-                distance_max=1000*km,
-                channels=['Z', 'R', 'T'],
-                interpolation='nearest_neighbor',
-                store_id='gf_store_id',
-                misfit_config=grond.WaveformMisfitConfig(
-                    tmin=Timing(phase_defs=['stored:any_P'], offset=-10.0),
-                    tmax=Timing(phase_defs=['vel_surface:2.5']),
-                    domain='time_domain',
-                    tautoshift_max=4.0,
-                    autoshift_penalty_max=0.05,
-                    norm_exponent=2,
-                    fmin=0.01,
-                    fmax=0.05,
-                    ffactor=1.5)))
+    @property
+    def event_files(self):
+        return self._get_files('event_*.txt')
 
-    def add_insar(self):
-        logger.info('Added InSAR')
-        dsc = self.dataset_config
+    def _get_files(self, name):
+        return glob.glob(op.join(self.folder, name))
 
-        sd = op.join('data', 'insar')
-        self.sub_dirs.append(sd)
-        dsc.kite_scene_paths = [sd]
-
-        self.target_groups.append(
-            grond.SatelliteTargetGroup(
-                normalisation_family='static',
-                path='insar',
-                interpolation='multilinear',
-                store_id='gf_static_store_id',
-                kite_scenes=['*all'],
-                misfit_config=grond.SatelliteMisfitConfig(
-                    optimise_orbital_ramp=True,
-                    ranges={
-                        'offset': '-0.5 .. 0.5',
-                        'ramp_north': '-1e-4 .. 1e-4',
-                        'ramp_east': '-1e-4 .. 1e-4'
-                        }
-                    ))
-            )
-
-    def add_gnss(self):
-        logger.info('Added GNSS')
-        dsc = self.dataset_config
-
-        gd = op.join('data', 'gnss')
-        self.sub_dirs.append(gd)
-        gp = op.join(gd, 'my_campaign.yaml')
-        dsc.gnss_campaign_paths = [gp]
-        self.target_groups.append(
-            grond.GNSSCampaignTargetGroup(
-                normalisation_family='static',
-                path='gnss',
-                interpolation='multilinear',
-                store_id='gf_static_store_id',
-                misfit_config=grond.GNSSCampaignMisfitConfig()
-                )
-            )
-
-    def set_cmt_source(self):
-        logger.info('Set problem to CMTProblem')
-        pi2 = math.pi/2
-        self.problem_config = grond.CMTProblemConfig(
-            name_template='cmt_${event_name}',
-            distance_min=2.*km,
-            mt_type='deviatoric',
-            ranges=dict(
-                time=Range(-10.0, 10.0, relative='add'),
-                north_shift=Range(-16*km, 16*km),
-                east_shift=Range(-16*km, 16*km),
-                depth=Range(1*km, 11*km),
-                magnitude=Range(4.0, 6.0),
-                rmnn=Range(-pi2, pi2),
-                rmee=Range(-pi2, pi2),
-                rmdd=Range(-pi2, pi2),
-                rmne=Range(-1.0, 1.0),
-                rmnd=Range(-1.0, 1.0),
-                rmed=Range(-1.0, 1.0),
-                duration=Range(1.0, 15.0))
-            )
-
-    def set_rectangular_source(self):
-        logger.info('Set problem to RectangularProblem')
-        self.problem_config = grond.RectangularProblemConfig(
-            name_template='rect_source',
-            ranges=dict(
-                north_shift=Range(-20*km, 20*km),
-                east_shift=Range(-20*km, 20*km),
-                depth=Range(0*km, 10*km),
-                length=Range(20*km, 40*km),
-                width=Range(5*km, 12*km),
-                dip=Range(20, 70),
-                strike=Range(0, 180),
-                rake=Range(0, 90),
-                slip=Range(1, 3))
-            )
-
-    def check(self):
-        assert self.target_groups, 'No target_groups set!'
-        assert self.problem_config, 'No problem set!'
-
-    def get_config(self):
-        self.check()
-
-        engine_config = grond.EngineConfig(
-            gf_store_superdirs=['gf_stores'])
-
-        optimiser_config = grond.HighScoreOptimiserConfig()
-
-        return grond.Config(
-            rundir_template=op.join('rundir', '${problem_name}.grun'),
-            dataset_config=self.dataset_config,
-            problem_config=self.problem_config,
-            target_groups=self.target_groups,
-            optimiser_config=optimiser_config,
-            engine_config=engine_config)
-
-    def build(self, project_dir, force=False):
-        if op.exists(project_dir) and not force:
-            raise grond.GrondError(
-                'Directory "%s" already exists! Use --force to overwrite'
-                % project_dir)
-        elif op.exists(project_dir) and force:
-            logger.info('Overwriting directory %s.' % project_dir)
-            shutil.rmtree(project_dir)
-
-        logger.info('Creating empty project in folder %s' % project_dir)
-        config = self.get_config()
-
-        def p(*fn):
-            return op.join(project_dir, *fn)
-
-        config.set_basepath(p())
-
-        os.mkdir(op.abspath(project_dir))
-        for d in self.sub_dirs:
-            util.ensuredir(p(d))
-
-        grond.write_config(config, p('config', 'config.gronf'))
-
-        with open(p('events.txt'), 'w') as f:
-            f.write(INIT_EVENT)
-
-        for fn in self.empty_files:
-            open(p(fn), 'w').close()
-
-    def dump(self):
-        return self.get_config().dump()
+    def _get_description(self, filename):
+        with open(filename, 'rt') as f:
+            for ln in f.readlines():
+                if ln.startswith('#'):
+                    return ln.split(':')[-1].strip('# \n')
+            return 'No description!'

@@ -63,11 +63,11 @@ def read_config(path):
         config = guts.load(filename=path)
     except OSError:
         raise GrondError(
-            'cannot read Grond report configuration file: %s' % path)
+            'Cannot read Grond report configuration file: %s' % path)
 
     if not isinstance(config, ReportConfig):
         raise GrondError(
-            'invalid Grond report configuration in file "%s"' % path)
+            'Invalid Grond report configuration in file "%s".' % path)
 
     config.set_basepath(op.dirname(path) or '.')
     return config
@@ -87,7 +87,7 @@ def write_config(config, path):
 
     except OSError:
         raise GrondError(
-            'cannot write Grond report configuration file: %s' % path)
+            'Cannot write Grond report configuration file: %s' % path)
 
 
 def iter_report_entry_dirs(report_base_path):
@@ -122,7 +122,7 @@ def report(env, report_config=None, update_without_plotting=False,
 
     event_name = env.get_current_event_name()
     problem = env.get_problem()
-    logger.info('Creating report entry for run "%s"' % problem.name)
+    logger.info('Creating report entry for run "%s"...' % problem.name)
 
     fp = report_config.expand_path
     entry_path = expand_template(
@@ -204,7 +204,7 @@ def report(env, report_config=None, update_without_plotting=False,
 
     except Exception as e:
         logger.warn(
-            'failed to create report entry, removing incomplete subdirectory: '
+            'Failed to create report entry, removing incomplete subdirectory: '
             '%s' % entry_path)
         raise e
 
@@ -230,9 +230,8 @@ def report_index(report_config=None):
 
         fn = op.join(entry_path, 'index.yaml')
         if not os.path.exists(fn):
-            logger.warn(
-                'Skipping indexing of incomplete report entry: %s'
-                % entry_path)
+            logger.warn('Skipping indexing of incomplete report entry: %s'
+                        % entry_path)
 
             continue
 
@@ -359,14 +358,12 @@ def serve_report(
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
-        logger.info(
-            'Stopping report web service...')
+        logger.info('Stopping report web service...')
 
         httpd.shutdown()
         thread.join()
 
-        logger.info(
-            ' ... done')
+        logger.info('... done')
 
     else:
         logger.error('Failed to start web service.')

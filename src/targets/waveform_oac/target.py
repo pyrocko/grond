@@ -98,8 +98,8 @@ class WOACTarget(MisfitTarget):
                         mresult.piggyback_subresults.remove(sr)
                     except KeyError:
                         logger.error(
-                            'found inconsistency while gathering piggyback '
-                            'results')
+                            'Found inconsistency while gathering piggyback '
+                            'results.')
                         pass
 
         amps = num.array(amps, dtype=num.float)

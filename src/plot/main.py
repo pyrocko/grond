@@ -64,7 +64,7 @@ def make_plots(
         try:
             plot.make(env)
         except (GrondEnvironmentError, GrondError) as e:
-            logger.warning('cannot create plot %s: %s' % (
+            logger.warning('Cannot create plot %s: %s' % (
                 plot.name, str(e)))
 
 

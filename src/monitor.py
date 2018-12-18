@@ -85,7 +85,7 @@ class GrondMonitor(threading.Thread):
         self._tm = None
 
     def run(self):
-        logger.info('Waiting to follow environment %s' % self.rundir)
+        logger.info('Waiting to follow environment %s...' % self.rundir)
         env = Environment.discover(self.rundir)
         if env is None:
             logger.error('Could not attach to Grond environment.')
@@ -117,7 +117,7 @@ class GrondMonitor(threading.Thread):
                 if self.sig_terminate.is_set():
                     break
 
-        logger.debug('monitor thread exiting')
+        logger.debug('Monitor thread exiting.')
 
     @property
     def runtime(self):
@@ -188,7 +188,7 @@ class GrondMonitor(threading.Thread):
         self._tm.show('\n'.join(lines))
 
     def terminate(self):
-        logger.debug('setting thread termination flag')
+        logger.debug('Setting thread termination flag.')
         self.sig_terminate.set()
         self.join()
 

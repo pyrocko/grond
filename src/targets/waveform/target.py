@@ -80,7 +80,7 @@ class WaveformMisfitConfig(MisfitConfig):
 
 
 def log_exclude(target, reason):
-    logger.debug('excluding potential target %s: %s' % (
+    logger.debug('Excluding potential target %s: %s' % (
         target.string_id(), reason))
 
 
@@ -424,7 +424,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
         except NotFound as e:
             logger.debug(str(e))
-            raise gf.SeismosizerError('no waveform data, %s' % str(e))
+            raise gf.SeismosizerError('No waveform data: %s' % str(e))
 
     def prepare_modelling(self, engine, source, targets):
         return [self]

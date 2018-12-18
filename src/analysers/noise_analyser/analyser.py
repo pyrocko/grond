@@ -112,7 +112,7 @@ def seismic_noise_variance(traces, engine, event, targets,
                             stat_w = 0.
                             logger.info(
                                 'Noise analyser found event %s phase onset of '
-                                '%s for %s' % (
+                                '%s for %s.' % (
                                     ev.name, phase_def, target.name))
 
                         if arrival_time_pre > arrival_time-30.*60.\
@@ -121,7 +121,7 @@ def seismic_noise_variance(traces, engine, event, targets,
                             stat_w *= 1.
                             logger.info(
                                 'Noise analyser found event %s possibly '
-                                'contaminating the noise' % ev.name)
+                                'contaminating the noise.' % ev.name)
 
                             # this should be magnitude dependent
                     except Exception:
@@ -161,10 +161,10 @@ class NoiseAnalyser(Analyser):
     within a 30 min time window before the start of the set pre-event noise
     window, only a warning is thrown.
 
-    It is further possible to disregard data with a noise level exceeding the 
-    median by a given ``cutoff`` factor. These weights are set to 0. This can be 
-    done exclusively (``mode='weeding'``) such that noise weights are either
-    1 or 0, or in combination with weighting below the median-times-cutoff 
+    It is further possible to disregard data with a noise level exceeding the
+    median by a given ``cutoff`` factor. These weights are set to 0. This can
+    be done exclusively (``mode='weeding'``) such that noise weights are either
+    1 or 0, or in combination with weighting below the median-times-cutoff
     noise level (``mode='weighting'``).
     '''
 
@@ -235,7 +235,7 @@ class NoiseAnalyser(Analyser):
         norm_noise = meta.nanmedian(noise)
         if norm_noise == 0:
             logger.info(
-                'Noise Analyser returned a weight of 0 for all stations')
+                'Noise Analyser returned a weight of 0 for all stations.')
 
         ok = num.isfinite(noise)
         assert num.all(noise[ok] >= 0.0)

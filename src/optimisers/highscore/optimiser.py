@@ -463,7 +463,7 @@ class HighScoreOptimiser(Optimiser):
         self.init_bootstrap_residuals(problem)
 
     def init_bootstrap_weights(self, problem):
-        logger.info('Initializing Bayesian bootstrap weights')
+        logger.info('Initializing Bayesian bootstrap weights.')
         bootstrap_targets = set([t for t in problem.targets
                                  if t.can_bootstrap_weights])
 
@@ -482,7 +482,7 @@ class HighScoreOptimiser(Optimiser):
                 num.ones((self.nbootstrap, t.nmisfits)))
 
     def init_bootstrap_residuals(self, problem):
-        logger.info('Initializing Bayesian bootstrap residuals')
+        logger.info('Initializing Bayesian bootstrap residuals.')
         residual_targets = set([t for t in problem.targets
                                 if t.can_bootstrap_residuals])
 
@@ -614,7 +614,7 @@ class HighScoreOptimiser(Optimiser):
 
             if num.all(isbad_mask):
                 raise BadProblem(
-                    'problem %s: all target misfit values are NaN'
+                    'Problem %s: all target misfit values are NaN.'
                     % problem.name)
 
             history.append(

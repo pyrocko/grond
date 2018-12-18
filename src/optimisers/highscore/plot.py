@@ -256,8 +256,8 @@ class HighScoreOptimiserPlot(object):
         self.start()
 
         while self.iiter < self.history.nmodels:
-            logger.info('rendering frame %i/%i' % (
-                self.iiter+1, self.history.nmodels))
+            logger.info('Rendering frame %i/%i.'
+                        % (self.iiter+1, self.history.nmodels))
             self.draw_frame()
             self.iiter += 1
 
@@ -304,8 +304,8 @@ characteristics of the optimisation algorithm.
         nmodels_rate = history.nmodels - (nwindow - 1)
         if nmodels_rate < 1:
             logger.warning(
-                'cannot create plot acceptance: insufficient number of tested '
-                'models')
+                'Cannot create plot acceptance: insufficient number of tested '
+                'models.')
 
             return
 

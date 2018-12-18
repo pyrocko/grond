@@ -551,7 +551,7 @@ traces.''')
                 all_syn_trs.append(result.processed_syn)
 
         if not all_syn_trs:
-            logger.warn('no traces to show')
+            logger.warn('No traces to show!')
             return []
 
         def skey(tr):
@@ -954,7 +954,7 @@ box, red).
                 all_syn_specs.append(result.spectrum_syn)
 
         if not all_syn_trs:
-            logger.warn('no traces to show')
+            logger.warn('No traces to show!')
             return []
 
         def skey(tr):

@@ -284,13 +284,13 @@ modified.
 
         problem = history.problem
         if not problem:
-            logger.warn('problem not set')
+            logger.warn('Problem not set.')
             return []
 
         models = history.models
 
         if models.size == 0:
-            logger.warn('empty models vector')
+            logger.warn('Empty models vector.')
             return []
 
         for target in problem.targets:

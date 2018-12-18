@@ -102,7 +102,7 @@ class Problem(Object):
                 raise ValueError('Path %s defined more than once! In %s'
                                  % (grp.path, grp.__class__.__name__))
             paths.add(grp.path)
-        logger.debug('TargetGroup check OK')
+        logger.debug('TargetGroup check OK.')
 
     def get_engine(self):
         return self._engine
@@ -338,7 +338,7 @@ class Problem(Object):
             self.get_dependant_bounds()))
 
     def raise_invalid_norm_exponent(self):
-        raise GrondError('invalid norm exponent' % self.norm_exponent)
+        raise GrondError('Invalid norm exponent: %f' % self.norm_exponent)
 
     def get_norm_functions(self):
         if self.norm_exponent == 2:
@@ -472,7 +472,7 @@ class Problem(Object):
         self.set_target_parameter_values(x)
 
         if mask is not None and targets is not None:
-            raise ValueError('mask cannot be defined with targets set')
+            raise ValueError('Mask cannot be defined with targets set.')
         targets = targets if targets is not None else self.targets
 
         for target in targets:
@@ -943,7 +943,7 @@ def load_problem_info(dirname):
     except OSError as e:
         logger.debug(e)
         raise ProblemInfoNotAvailable(
-            'no problem info available (%s)' % dirname)
+            'No problem info available (%s).' % dirname)
 
 
 def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
@@ -996,7 +996,7 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
     except OSError as e:
         logger.debug(str(e))
         raise ProblemDataNotAvailable(
-            'no problem data available (%s)' % dirname)
+            'No problem data available (%s).' % dirname)
 
     return models, misfits, bootstraps, sampler_contexts
 

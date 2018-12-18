@@ -14,13 +14,12 @@ logger = logging.getLogger('grond.target').getChild('gnss_campaign')
 class GNSSCampaignMisfitResult(MisfitResult):
     """Carries the observations for a target and corresponding synthetics. """
     statics_syn = Dict.T(optional=True,
-                         help='synthetic gnss surface displacements')
+                         help='Synthetic gnss surface displacements')
     statics_obs = Dict.T(optional=True,
-                         help='observed gnss surface displacements')
+                         help='Observed gnss surface displacements')
 
 
 class GNSSCampaignMisfitConfig(MisfitConfig):
-
     pass
 
 
@@ -50,7 +49,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
             if not isinstance(self.misfit_config,
                               GNSSCampaignMisfitConfig):
                 raise AttributeError('misfit_config must be of type'
-                                     ' GNSSCampaignMisfitConfig')
+                                     ' GNSSCampaignMisfitConfig.')
 
             lats = num.array([s.lat for s in camp.stations])
             lons = num.array([s.lon for s in camp.stations])

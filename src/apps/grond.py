@@ -311,7 +311,7 @@ def multiple_choice(option, opt_str, value, parser, choices):
     options = value.split(',')
     for opt in options:
         if opt not in choices:
-            raise OptionValueError('invalid option %s - valid options are: %s'
+            raise OptionValueError('Invalid option %s - valid options are: %s'
                                    % (opt, ', '.join(choices)))
     setattr(parser.values, option.dest, options)
 
@@ -320,14 +320,14 @@ def magnitude_range(option, opt_str, value, parser):
     mag_range = value.split('-')
     if len(mag_range) != 2:
         raise OptionValueError(
-            'invalid magnitude %s - valid range is e.g. 6-7' % value)
+            'Invalid magnitude %s - valid range is e.g. 6-7.' % value)
     try:
         mag_range = tuple(map(float, mag_range))
     except ValueError:
-        raise OptionValueError('magnitudes must be numbers.')
+        raise OptionValueError('Magnitudes must be numbers.')
 
     if mag_range[0] > mag_range[1]:
-        raise OptionValueError('minimum magnitude must be larger than'
+        raise OptionValueError('Minimum magnitude must be larger than'
                                ' maximum magnitude.')
     setattr(parser.values, option.dest, mag_range)
 
@@ -443,6 +443,32 @@ def command_scenario(args):
 
 
 def command_init(args):
+
+    from .cmd_init import GrondInit
+
+    grond_init = GrondInit()
+
+    def setup(parser):
+        parser.add_option(
+            '--force', dest='force', action='store_true')
+
+    parser, options, args = cl_parse('init', args, setup)
+
+    if len(args) not in (1, 2):
+        help_and_die(parser, '1 or 2 arguments required')
+
+    if args[0] == 'list':
+        print('List of available configuration examples for grond:')
+
+        for section, entries in grond_init.available_inits().items():
+            padding = max([len(n) for n, _ in entries])
+            print('\n{title}:'.format(title=section.title()))
+            for name, desc in entries:
+                print('  {name:<{padding}}: {desc}'.format(
+                      name=name, desc=desc, padding=padding))
+
+
+def command_init_old(args):
 
     from . import cmd_init as init
 
@@ -937,7 +963,7 @@ def command_tag(args):
             logger.error(e)
 
     if errors:
-        die('errors occurred, see log messages above.')
+        die('Errors occurred, see log messages above.')
 
 
 def make_report(env_args, event_name, conf, update_without_plotting):
@@ -1126,7 +1152,7 @@ def command_report(args):
 
     else:
         if not entries_generated and not options.index_only:
-            logger.info('nothing to do, see: grond report --help')
+            logger.info('Nothing to do, see: grond report --help')
 
     if entries_generated and not (options.serve or options.serve_external):
         logger.info(CLIHints('report', config=s_conf))

@@ -162,7 +162,7 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
             kwargs.update(dict(vmin=0, vmax=icolor_need[-1]))
         else:
             raise meta.GrondError(
-                'invalid color_parameter: %s' % color_parameter)
+                'Invalid color_parameter: %s' % color_parameter)
 
         smap = {}
         iselected = 0
@@ -178,8 +178,8 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
         nselected = iselected
 
         if nselected < 2:
-            logger.warn('cannot draw joinpar figures with less than two '
-                        'parameters selected')
+            logger.warn('Cannot draw joinpar figures with less than two '
+                        'parameters selected.')
             return []
 
         nfig = (nselected - 2) // nsubplots + 1
@@ -455,8 +455,8 @@ space.
                     kde = scipy.stats.gaussian_kde(vs)
                 except Exception:
                     logger.warn(
-                        'cannot create plot histogram with gaussian_kde: '
-                        'possibly all samples have the same value')
+                        'Cannot create plot histogram with gaussian_kde: '
+                        'possibly all samples have the same value.')
                     continue
 
                 vps = num.linspace(vmin, vmax, 600)
@@ -554,7 +554,7 @@ best have similar symbol size and patterns.
         models = history.models
 
         if models.size == 0:
-            logger.warn('empty models vector')
+            logger.warn('Empty models vector.')
             return []
 
         # gms = problem.combine_misfits(history.misfits)

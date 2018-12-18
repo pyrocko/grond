@@ -111,7 +111,7 @@ class Dataset(object):
 
         if pyrocko_stations_filename is not None:
             logger.debug(
-                'loading stations from file %s' %
+                'Loading stations from file %s...' %
                 pyrocko_stations_filename)
 
             for station in model.load_stations(pyrocko_stations_filename):
@@ -121,7 +121,7 @@ class Dataset(object):
 
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'loading stations from StationXML file %s' %
+                    'Loading stations from StationXML file %s...' %
                     stationxml_filename)
 
                 sx = fs.load_xml(filename=stationxml_filename)
@@ -142,7 +142,7 @@ class Dataset(object):
             self.events.extend(events)
 
         if filename is not None:
-            logger.debug('Loading events from file %s' % filename)
+            logger.debug('Loading events from file %s...' % filename)
             self.events.extend(model.load_events(filename))
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
@@ -159,14 +159,14 @@ class Dataset(object):
 
     def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
         if sacpz_dirname:
-            logger.debug('Loading SAC PZ responses from %s' % sacpz_dirname)
+            logger.debug('Loading SAC PZ responses from %s...' % sacpz_dirname)
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
                 self.responses[x.codes].append(x)
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'Loading StationXML responses from %s' %
+                    'Loading StationXML responses from %s...' %
                     stationxml_filename)
 
                 self.responses_stationxml.append(
@@ -195,7 +195,7 @@ class Dataset(object):
                 self.clippings[k] = num.concatenate(self.clippings, atimes)
 
     def add_blacklist(self, blacklist=[], filenames=None):
-        logger.debug('Loading blacklisted stations')
+        logger.debug('Loading blacklisted stations...')
         if filenames:
             blacklist = list(blacklist)
             for filename in filenames:
@@ -204,7 +204,7 @@ class Dataset(object):
                         blacklist.extend(
                             s.strip() for s in f.read().splitlines())
                 else:
-                    logger.warning('no such blacklist file: %s' % filename)
+                    logger.warning('No such blacklist file: %s' % filename)
 
         for x in blacklist:
             if isinstance(x, str):
@@ -212,7 +212,7 @@ class Dataset(object):
             self.blacklist.add(x)
 
     def add_whitelist(self, whitelist=[], filenames=None):
-        logger.debug('Loading whitelisted stations')
+        logger.debug('Loading whitelisted stations...')
         if filenames:
             whitelist = list(whitelist)
             for filename in filenames:
@@ -256,15 +256,15 @@ class Dataset(object):
         try:
             from pyrocko.model import gnss  # noqa
         except ImportError:
-            raise ImportError('module pyrocko.model.gnss not found,'
+            raise ImportError('Module pyrocko.model.gnss not found,'
                               ' please upgrade pyrocko!')
-        logger.debug('loading GNSS campaign from %s' % filename)
+        logger.debug('Loading GNSS campaign from %s...' % filename)
 
         campaign = load_all(filename=filename)
         self.gnss_campaigns.append(campaign[0])
 
     def add_kite_scenes(self, paths):
-        logger.info('loading kite InSAR scenes...')
+        logger.info('Loading kite InSAR scenes...')
         paths = util.select_files(
             paths,
             regex=r'\.npz',
@@ -274,16 +274,16 @@ class Dataset(object):
             self.add_kite_scene(filename=path)
 
         if not self.kite_scenes:
-            logger.warning('could not find any kite scenes at %s' %
+            logger.warning('Could not find any kite scenes at %s' %
                            self.kite_scene_paths)
 
     def add_kite_scene(self, filename):
         try:
             from kite import Scene
         except ImportError:
-            raise ImportError('module kite could not be imported,'
-                              ' please install from https://pyrocko.org')
-        logger.debug('loading kite scene from %s' % filename)
+            raise ImportError('Module kite could not be imported,'
+                              ' please install from https://pyrocko.org.')
+        logger.debug('Loading kite scene from %s...' % filename)
 
         scene = Scene()
         scene._log.setLevel(logger.level)
@@ -294,7 +294,8 @@ class Dataset(object):
         except NotFound:
             self.kite_scenes.append(scene)
         else:
-            raise AttributeError('kite scene_id not unique for %s' % filename)
+            raise AttributeError('Kite scene_id not unique for "%s".'
+                                 % filename)
 
     def is_blacklisted(self, obj):
         try:
@@ -348,7 +349,8 @@ class Dataset(object):
             net, sta, loc = obj[:3]
         else:
             raise InvalidObject(
-                'cannot get nsl code from given object of type %s' % type(obj))
+                'Cannot get nsl code from given object of type "%s".'
+                % type(obj))
 
         return net, sta, loc
 
@@ -359,22 +361,22 @@ class Dataset(object):
             return obj
         else:
             raise InvalidObject(
-                'cannot get nslc code from given object %s' % type(obj))
+                'Cannot get nslc code from given object "%s"' % type(obj))
 
     def get_tmin_tmax(self, obj):
         if isinstance(obj, trace.Trace):
             return obj.tmin, obj.tmax
         else:
             raise InvalidObject(
-                'cannot get tmin and tmax from given object of type %s' %
+                'Cannot get tmin and tmax from given object of type "%s"' %
                 type(obj))
 
     def get_station(self, obj):
         if self.is_blacklisted(obj):
-            raise NotFound('station is blacklisted', self.get_nsl(obj))
+            raise NotFound('Station is blacklisted:', self.get_nsl(obj))
 
         if not self.is_whitelisted(obj):
-            raise NotFound('station is not on whitelist', self.get_nsl(obj))
+            raise NotFound('Station is not on whitelist:', self.get_nsl(obj))
 
         if isinstance(obj, model.Station):
             return obj
@@ -386,7 +388,7 @@ class Dataset(object):
             if k in self.stations:
                 return self.stations[k]
 
-        raise NotFound('no station information', keys)
+        raise NotFound('No station information:', keys)
 
     def get_stations(self):
         return [self.stations[k] for k in sorted(self.stations)
@@ -399,13 +401,13 @@ class Dataset(object):
     def get_kite_scene(self, scene_id=None):
         if scene_id is None:
             if len(self.kite_scenes) == 0:
-                raise AttributeError('no kite displacements defined')
+                raise AttributeError('No kite displacements defined.')
             return self.kite_scenes[0]
         else:
             for scene in self.kite_scenes:
                 if scene.meta.scene_id == scene_id:
                     return scene
-        raise NotFound('no kite scene with id %s defined' % scene_id)
+        raise NotFound('No kite scene with id "%s" defined.' % scene_id)
 
     def get_gnss_campaigns(self):
         return self.gnss_campaigns
@@ -421,7 +423,7 @@ class Dataset(object):
                 and (self.responses_stationxml is None
                      or len(self.responses_stationxml) == 0):
 
-            raise NotFound('no response information available')
+            raise NotFound('No response information available.')
 
         quantity_to_unit = {
             'displacement': 'M',
@@ -429,10 +431,10 @@ class Dataset(object):
             'acceleration': 'M/S**2'}
 
         if self.is_blacklisted(obj):
-            raise NotFound('response is blacklisted', self.get_nslc(obj))
+            raise NotFound('Response is blacklisted:', self.get_nslc(obj))
 
         if not self.is_whitelisted(obj):
-            raise NotFound('response is not on whitelist', self.get_nslc(obj))
+            raise NotFound('Response is not on whitelist:', self.get_nslc(obj))
 
         net, sta, loc, cha = self.get_nslc(obj)
         tmin, tmax = self.get_tmin_tmax(obj)
@@ -478,9 +480,9 @@ class Dataset(object):
             return candidates[0]
 
         elif len(candidates) == 0:
-            raise NotFound('no response found', (net, sta, loc, cha))
+            raise NotFound('No response found:', (net, sta, loc, cha))
         else:
-            raise NotFound('multiple responses found', (net, sta, loc, cha))
+            raise NotFound('Multiple responses found:', (net, sta, loc, cha))
 
     def get_waveform_raw(
             self, obj,
@@ -495,21 +497,21 @@ class Dataset(object):
 
         if self.is_blacklisted((net, sta, loc, cha)):
             raise NotFound(
-                'waveform is blacklisted', (net, sta, loc, cha))
+                'Waveform is blacklisted:', (net, sta, loc, cha))
 
         if not self.is_whitelisted((net, sta, loc, cha)):
             raise NotFound(
-                'waveform is not on whitelist', (net, sta, loc, cha))
+                'Waveform is not on whitelist:', (net, sta, loc, cha))
 
         if self.clip_handling == 'by_nsl':
             if self.has_clipping((net, sta, loc), tmin, tmax):
                 raise NotFound(
-                    'waveform clipped', (net, sta, loc))
+                    'Waveform clipped:', (net, sta, loc))
 
         elif self.clip_handling == 'by_nslc':
             if self.has_clipping((net, sta, loc, cha), tmin, tmax):
                 raise NotFound(
-                    'waveform clipped', (net, sta, loc, cha))
+                    'Waveform clipped:', (net, sta, loc, cha))
 
         trs = self.pile.all(
             tmin=tmin+toffset_noise_extract,
@@ -530,9 +532,9 @@ class Dataset(object):
 
         if not want_incomplete and len(trs) != 1:
             if len(trs) == 0:
-                message = 'waveform missing or incomplete'
+                message = 'Waveform missing or incomplete.'
             else:
-                message = 'waveform has gaps'
+                message = 'Waveform has gaps.'
 
             raise NotFound(
                 message,
@@ -603,7 +605,7 @@ class Dataset(object):
 
         if not projections:
             raise NotFound(
-                'cannot determine projection of data components',
+                'Cannot determine projection of data components:',
                 station.nsl())
 
         return projections
@@ -630,11 +632,11 @@ class Dataset(object):
 
         if self.is_blacklisted(nslc):
             raise NotFound(
-                'waveform is blacklisted', nslc)
+                'Waveform is blacklisted:', nslc)
 
         if not self.is_whitelisted(nslc):
             raise NotFound(
-                'waveform is not on whitelist', nslc)
+                'Waveform is not on whitelist:', nslc)
 
         assert tmin is not None
         assert tmax is not None
@@ -651,7 +653,7 @@ class Dataset(object):
             if isinstance(obj, Exception):
                 raise obj
             elif obj is None:
-                raise NotFound('waveform not found!', nslc)
+                raise NotFound('Waveform not found!', nslc)
             else:
                 return obj
 
@@ -839,20 +841,20 @@ class Dataset(object):
 
         if not ev_x:
             raise NotFound(
-                'no event information matching criteria (t=%s, magmin=%s)' %
+                'No event information matching criteria (t=%s, magmin=%s).' %
                 (t, magmin))
 
         return ev_x
 
     def get_event(self):
         if self._event_name is None:
-            raise NotFound('no main event selected in dataset')
+            raise NotFound('No main event selected in dataset!')
 
         for ev in self.events:
             if ev.name == self._event_name:
                 return ev
 
-        raise NotFound('no such event: %s' % self._event_name)
+        raise NotFound('No such event: %s'% self._event_name)
 
     def get_picks(self):
         if self._picks is None:
@@ -863,7 +865,7 @@ class Dataset(object):
                     name = marker.get_event().name
                     if name in names:
                         raise DatasetError(
-                            'duplicate event name "%s" in picks' % name)
+                            'Duplicate event name "%s" in picks.' % name)
 
                     names.add(name)
                     hash_to_name[marker.get_event_hash()] = name
@@ -878,14 +880,14 @@ class Dataset(object):
 
                     if ehash is None or ehash not in hash_to_name:
                         raise DatasetError(
-                            'unassociated pick %s.%s.%s, %s' %
+                            'Unassociated pick: %s.%s.%s, %s' %
                             (nsl + (phasename, )))
 
                     eventname = hash_to_name[ehash]
 
                     if (nsl, phasename, eventname) in picks:
                         raise DatasetError(
-                            'duplicate pick %s.%s.%s, %s' %
+                            'Duplicate pick: %s.%s.%s, %s' %
                             (nsl + (phasename, )))
 
                     picks[nsl, phasename, eventname] = marker
@@ -949,7 +951,7 @@ class DatasetConfig(HasPaths):
         help='List of text files with blacklisted stations.')
     blacklist = List.T(
         String.T(),
-        help='stations/components to be excluded according to their STA, '
+        help='Stations/components to be excluded according to their STA, '
              'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
     whitelist_paths = List.T(
         Path.T(),
@@ -957,7 +959,7 @@ class DatasetConfig(HasPaths):
     whitelist = List.T(
         String.T(),
         optional=True,
-        help='if not None, list of stations/components to include according '
+        help='If not None, list of stations/components to include according '
              'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
              'Note: ''when whitelisting on channel level, both, the raw and '
              'the processed channel codes have to be listed.')

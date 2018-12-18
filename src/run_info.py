@@ -12,20 +12,20 @@ logger = logging.getLogger('grond.report')
 class RunInfo(Object):
     tags = List.T(
         Unicode.T(),
-        help='list of user defined labels')
+        help='List of user defined labels')
 
     def add_tag(self, tag):
         if tag not in self.tags:
             self.tags.append(tag)
             self.tags.sort()
         else:
-            logger.warn('while adding tag: tag already set: %s' % tag)
+            logger.warn('While adding tag: tag already set: %s' % tag)
 
     def remove_tag(self, tag):
         try:
             self.tags.remove(tag)
         except ValueError:
-            logger.warn('while removing tag: tag not set: %s' % tag)
+            logger.warn('While removing tag: tag not set: %s' % tag)
 
 
 def read_info(path):
@@ -33,11 +33,11 @@ def read_info(path):
         info = guts.load(filename=path)
     except OSError:
         raise GrondError(
-            'cannot read Grond run info file: %s' % path)
+            'Cannot read Grond run info file: %s' % path)
 
     if not isinstance(info, RunInfo):
         raise GrondError(
-            'invalid Grond run info in file "%s"' % path)
+            'Invalid Grond run info in file "%s".' % path)
 
     return info
 
@@ -51,4 +51,4 @@ def write_info(info, path):
 
     except OSError:
         raise GrondError(
-            'cannot write Grond run info file: %s' % path)
+            'Cannot write Grond run info file: %s' % path)

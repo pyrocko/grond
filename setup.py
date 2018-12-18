@@ -133,7 +133,11 @@ setup(
             'report/app/favicon.png',
             'report/app/templates/*.html',
             'report/app/css/*.css',
-            'report/app/js/*.js']},
+            'report/app/js/*.js',
+
+            'data/init/*.gronf',
+            'data/init/*.txt'
+            ]},
 
     data_files=[],
 

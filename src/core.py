@@ -151,7 +151,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         xs, misfits, bootstrap_misfits, _ = \
             load_problem_data(rundir, problem, nchains=nchains)
 
-    logger.info('harvesting problem %s...' % problem.name)
+    logger.info('Harvesting problem %s...' % problem.name)
 
     optimiser = load_optimiser_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
@@ -198,7 +198,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
-    logger.info('done harvesting problem %s' % problem.name)
+    logger.info('Done harvesting problem %s.' % problem.name)
 
 
 def cluster(rundir, clustering, metric):
@@ -212,7 +212,7 @@ def cluster(rundir, clustering, metric):
     from grond.clustering import metrics
 
     if metric not in metrics.metrics:
-        raise GrondError('unknown metric: %s' % metric)
+        raise GrondError('Unknown metric: %s' % metric)
 
     mat = metrics.compute_similarity_matrix(events, metric)
 
@@ -239,7 +239,7 @@ def get_event_names(config):
 
 def check_problem(problem):
     if len(problem.targets) == 0:
-        raise GrondError('no targets available')
+        raise GrondError('No targets available')
 
 
 def check(
@@ -259,9 +259,9 @@ def check(
             problem = config.get_problem(event)
 
             _, nfamilies = problem.get_family_mask()
-            logger.info('problem: %s' % problem.name)
-            logger.info('number of target families: %i' % nfamilies)
-            logger.info('number of targets (total): %i' % len(problem.targets))
+            logger.info('Problem: %s' % problem.name)
+            logger.info('Number of target families: %i' % nfamilies)
+            logger.info('Number of targets (total): %i' % len(problem.targets))
 
             if target_string_ids:
                 problem.targets = [
@@ -269,7 +269,7 @@ def check(
                     if util.match_nslc(target_string_ids, target.string_id())]
 
             logger.info(
-                'number of targets (selected): %i' % len(problem.targets))
+                'Number of targets (selected): %i' % len(problem.targets))
 
             check_problem(problem)
 
@@ -410,7 +410,7 @@ def check(
                         (target.string_id() + ':', sok)))
 
         except GrondError as e:
-            logger.error('event %i, %s: %s' % (
+            logger.error('Event %i, %s: %s' % (
                 ievent,
                 event.name or util.time_to_str(event.time),
                 str(e)))
@@ -474,18 +474,18 @@ def process_event(ievent, g_data_id):
         elif force:
             shutil.rmtree(rundir)
         else:
-            logger.warn('skipping problem %s: rundir already exists: %s' %
+            logger.warn('Skipping problem %s: rundir already exists: %s' %
                         (problem.name, rundir))
             return
 
     util.ensuredir(rundir)
 
     logger.info(
-        'starting event %i / %i' % (ievent+1, nevents))
+        'Starting event %i / %i' % (ievent+1, nevents))
 
-    logger.info('rundir: %s' % rundir)
+    logger.info('Rundir: %s' % rundir)
 
-    logger.info('analysing problem %s' % problem.name)
+    logger.info('Analysing problem %s.' % problem.name)
 
     for analyser_conf in config.analyser_configs:
         analyser = analyser_conf.get_analyser()
@@ -537,10 +537,10 @@ def process_event(ievent, g_data_id):
 
     tstop = time.time()
     logger.info(
-        'stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
+        'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
 
     logger.info(
-        'done with problem %s, rundir is %s' % (problem.name, rundir))
+        'Done with problem %s, rundir is "%s".' % (problem.name, rundir))
 
 
 class ParameterStats(Object):
@@ -614,16 +614,16 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         shortform = False
 
     if what == 'stats' and type is not None:
-        raise GrondError('invalid argument combination: what=%s, type=%s' % (
+        raise GrondError('Invalid argument combination: what=%s, type=%s' % (
             repr(what), repr(type)))
 
     if what != 'stats' and shortform:
-        raise GrondError('invalid argument combination: what=%s, pnames=%s' % (
+        raise GrondError('Invalid argument combination: what=%s, pnames=%s' % (
             repr(what), repr(pnames)))
 
     if what != 'stats' and type != 'vector' and pnames is not None:
         raise GrondError(
-            'invalid argument combination: what=%s, type=%s, pnames=%s' % (
+            'Invalid argument combination: what=%s, type=%s, pnames=%s' % (
                 repr(what), repr(type), repr(pnames)))
 
     if filename is None:
@@ -656,7 +656,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             guts.dump_all([ev], stream=out)
 
         else:
-            raise GrondError('invalid argument: type=%s' % repr(type))
+            raise GrondError('Invalid argument: type=%s' % repr(type))
 
     header = None
     for rundir in rundirs:
@@ -708,7 +708,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
                 print(rs, file=out)
 
         else:
-            raise GrondError('invalid argument: what=%s' % repr(what))
+            raise GrondError('Invalid argument: what=%s' % repr(what))
 
     if out is not sys.stdout:
         out.close()
