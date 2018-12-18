@@ -296,7 +296,7 @@ class NoiseAnalyserConfig(AnalyserConfig):
 
     check_events = Bool.T(
         default=False,
-        help='check the gCMT global catalogue for M>5 earthquakes'
+        help='check the GlobalCMT for M>5 earthquakes'
              ' that produce phase arrivals'
              ' contaminating and affecting the noise analysis')
 

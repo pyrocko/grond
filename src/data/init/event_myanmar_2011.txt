@@ -1,8 +1,0 @@
-name = myanmar_2011
-time = 2011-03-24 13:55:12.010
-latitude = 20.687
-longitude = 99.822
-magnitude = 6.9
-moment = 1.9228e+19
-depth = 8000
-region = Myanmar

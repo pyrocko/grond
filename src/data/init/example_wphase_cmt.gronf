@@ -1,5 +1,5 @@
 %YAML 1.1
-# Example: Inversion of W-Phase from teleseismic observations
+# Example: Inversion of W-Phase from teleseismic observations.
 --- !grond.Config
 
 # All file paths referenced below are treated relative to the location of this

@@ -136,7 +136,8 @@ setup(
             'report/app/js/*.js',
 
             'data/init/*.gronf',
-            'data/init/*.txt'
+            'data/init/*.txt',
+            'data/init/*.md'
             ]},
 
     data_files=[],

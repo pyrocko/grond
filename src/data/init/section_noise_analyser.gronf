@@ -1,0 +1,29 @@
+%YAML 1.1
+# Section: Seismic noise analyser to weigh stations by SNR.
+analyser_configs:
+  - !grond.NoiseAnalyserConfig
+
+    # Number of windows for trace splitting
+    nwindows: 1
+
+    # Total length of noise trace in the analysis
+    pre_event_noise_duration: 500.
+
+    # Check for events from the GlobalCMT catalog with M>5
+    check_events: False
+
+    # Onset of phase_def used for upper limit of window:
+    # P or S (see pyrocko.cake)
+    phase_def: P
+
+    # Set weight to inverse of noise variance (var) or standard deviation (std).
+    statistic: var
+
+    # Generate weights based on inverse of noise measure (weighting),
+    # or discrete on/off style in combination with cutoff value 
+    # (weeding, see cutoff).
+    mode: weighting
+
+    # Set weight to zero, when noise level exceeds median by the given cutoff factor.
+    cutoff: 0.
+

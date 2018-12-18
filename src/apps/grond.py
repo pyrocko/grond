@@ -15,6 +15,19 @@ logger = logging.getLogger('grond.main')
 km = 1e3
 
 
+class Color:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+
 def d2u(d):
     if isinstance(d, dict):
         return dict((k.replace('-', '_'), v) for (k, v) in d.items())
@@ -448,24 +461,72 @@ def command_init(args):
 
     grond_init = GrondInit()
 
+    def print_section(entries):
+        if len(entries) == 0:
+            return '\tNone available.'
+
+        padding = max([len(n) for n in entries.keys()])
+        rstr = []
+        for name, desc in entries.items():
+            rstr.append('    {c.BOLD}{name:<{padding}}{c.END} : {desc}'.format(
+                        name=name, desc=desc, padding=padding, c=Color))
+        return '\n'.join(rstr)
+
+    help_text = '''Available configuration examples for grond.
+
+{c.BOLD}Example Projects{c.END}
+    Deploy a full project structure into a directory.
+
+    usage: grond init example_regional_cmt example-project/
+
+{examples_list}
+
+{c.BOLD}Config Sections{c.END}
+    Print out configuration snippets for various components.
+
+    usage: grond init section_noise_analyser
+
+{sections_list}
+'''.format(c=Color,
+           examples_list=print_section(grond_init.get_examples()),
+           sections_list=print_section(grond_init.get_sections()))
+
     def setup(parser):
         parser.add_option(
             '--force', dest='force', action='store_true')
 
-    parser, options, args = cl_parse('init', args, setup)
+    parser, options, args = cl_parse(
+        'init', args, setup,
+        'Use grond init list to show available initialisations')
 
     if len(args) not in (1, 2):
         help_and_die(parser, '1 or 2 arguments required')
 
     if args[0] == 'list':
-        print('List of available configuration examples for grond:')
+        print(help_text)
 
-        for section, entries in grond_init.available_inits().items():
-            padding = max([len(n) for n, _ in entries])
-            print('\n{title}:'.format(title=section.title()))
-            for name, desc in entries:
-                print('  {name:<{padding}}: {desc}'.format(
-                      name=name, desc=desc, padding=padding))
+    elif args[0].startswith('section_'):
+        sec = grond_init.get_content(args[0])
+        if not sec:
+            help_and_die(parser, 'Unknown section: %s' % args)
+
+        sys.stdout.write(sec)
+
+    elif args[0].startswith('example_'):
+        if len(args) == 1:
+            help_and_die(parser, 'Not project directory given!' % args)
+        if op.exists(op.abspath(args[1])) and not options.force:
+            help_and_die(
+                parser,
+                'Directory %s already exists! Use --force to overwrite.'
+                % args[1])
+        try:
+            grond_init.init_example(args[0], args[1], force=options.force)
+        except OSError as e:
+            print(str(e))
+
+    else:
+        help_and_die(parser, 'Unknown init: %s' % args)
 
 
 def command_init_old(args):
