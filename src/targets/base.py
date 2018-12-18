@@ -103,7 +103,7 @@ class MisfitTarget(Object):
     def string_id(self):
         return str(self.path)
 
-    def misfits_string_id(self):
+    def misfits_string_ids(self):
         raise NotImplementedError('%s does not implement misfits_string_id'
                                   % self.__class__.__name__)
 

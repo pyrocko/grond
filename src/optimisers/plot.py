@@ -326,7 +326,7 @@ modified.
                 plot_target_labels.append(target.string_id())
             else:
                 cum_gcms[:, itarget:itarget+target.nmisfits] = target_gcms
-                plot_target_labels.extend(target.misfits_string_id())
+                plot_target_labels.extend(target.misfits_string_ids())
 
             idx += target.nmisfits
 

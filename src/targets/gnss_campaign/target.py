@@ -107,7 +107,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def string_id(self):
         return self.campaign_name
 
-    def misfits_string_id(self):
+    def misfits_string_ids(self):
         return ['%s.%s' % (self.path, station.code)
                 for station in self.campaign.stations]
 
@@ -172,13 +172,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def station_weights(self):
-        station_weight = num.empty((3, self.nstations))
         weights = num.diag(self.weights)
-        station_weight[0, :] = weights[0::3]
-        station_weight[1, :] = weights[1::3]
-        station_weight[2, :] = weights[2::3]
 
-        return num.mean(station_weight, axis=0)
+        return num.mean([weights[0::3], weights[1::3], weights[2::3]], axis=0)
 
     def post_process(self, engine, source, statics):
         """Applies the objective function.
