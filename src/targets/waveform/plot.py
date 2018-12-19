@@ -552,7 +552,7 @@ traces.''')
 
         if not all_syn_trs:
             logger.warn('No traces to show!')
-            return []
+            return
 
         def skey(tr):
             return tr.meta['normalisation_family'], tr.meta['path']
@@ -587,7 +587,6 @@ traces.''')
         for imodel in range(nmodels):
             imodel_to_color.append(cmap.to_rgba(icolor[imodel]))
 
-        figs = []
         for cg in cgs:
             targets = cg_to_targets[cg]
 
@@ -617,8 +616,6 @@ traces.''')
                             top=1.0 - 0.06,
                             wspace=0.2,
                             hspace=0.2)
-
-                        figs.append(figures[iyy, ixx])
 
                     item, fig = figures[iyy, ixx]
 
@@ -760,6 +757,10 @@ traces.''')
                         fontsize=fontsize,
                         fontstyle='normal')
 
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
+
             if not (self.nx == 1 and self.ny == 1):
                 for (iyy, ixx), (_, fig) in figures.items():
                     title = '.'.join(x for x in cg if x)
@@ -768,7 +769,8 @@ traces.''')
 
                     fig.suptitle(title, fontsize=fontsize_title)
 
-        return figs
+            for item, fig in figures.values():
+                yield item, fig
 
 
 class FitsWaveformPlot(PlotConfig):
@@ -955,7 +957,7 @@ box, red).
 
         if not all_syn_trs:
             logger.warn('No traces to show!')
-            return []
+            return
 
         def skey(tr):
             return tr.meta['normalisation_family'], tr.meta['path']
@@ -978,7 +980,6 @@ box, red).
 
         cgs = sorted(cg_to_targets.keys())
 
-        figs = []
         for cg in cgs:
             targets = cg_to_targets[cg]
 
@@ -1008,8 +1009,6 @@ box, red).
                             top=1.0 - 0.06,
                             wspace=0.2,
                             hspace=0.2)
-
-                        figs.append(figures[iyy, ixx])
 
                     item, fig = figures[iyy, ixx]
 
@@ -1208,6 +1207,10 @@ box, red).
                         fontsize=fontsize,
                         fontstyle='normal')
 
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
+
             if not (self.nx == 1 and self.ny == 1):
                 for (iyy, ixx), (_, fig) in figures.items():
                     title = '.'.join(x for x in cg if x)
@@ -1217,7 +1220,8 @@ box, red).
 
                     fig.suptitle(title, fontsize=fontsize_title)
 
-        return figs
+            for item, fig in figures.values():
+                yield item, fig
 
 
 class WaveformStationDistribution(StationDistributionPlot):
