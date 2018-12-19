@@ -484,34 +484,34 @@ class HighScoreOptimiser(Optimiser):
 
     def init_bootstrap_weights(self, problem):
         logger.info('Initializing Bayesian bootstrap weights.')
-        bootstrap_targets = set([t for t in problem.targets
-                                 if t.can_bootstrap_weights])
+
+        nmisfits_w = sum(
+            t.nmisfits for t in problem.targets if t.can_bootstrap_weights)
 
         ws = make_bayesian_weights(
             self.nbootstrap,
-            nmisfits=problem.nmisfits,
+            nmisfits=nmisfits_w,
             rstate=self.get_rstate_bootstrap())
 
         imf = 0
-        for it, t in enumerate(bootstrap_targets):
-            t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
-            imf += t.nmisfits
-
-        for t in set(problem.targets) - bootstrap_targets:
-            t.set_bootstrap_weights(
-                num.ones((self.nbootstrap, t.nmisfits)))
+        for t in problem.targets:
+            if t.can_bootstrap_weights:
+                t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
+                imf += t.nmisfits
+            else:
+                t.set_bootstrap_weights(
+                    num.ones((self.nbootstrap, t.nmisfits)))
 
     def init_bootstrap_residuals(self, problem):
         logger.info('Initializing Bayesian bootstrap residuals.')
-        residual_targets = set([t for t in problem.targets
-                                if t.can_bootstrap_residuals])
 
-        for t in residual_targets:
-            t.init_bootstrap_residuals(
-                self.nbootstrap, rstate=self.get_rstate_bootstrap())
-
-        for t in set(problem.targets) - residual_targets:
-            t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
+        for t in problem.targets:
+            if t.can_bootstrap_residuals:
+                t.init_bootstrap_residuals(
+                    self.nbootstrap, rstate=self.get_rstate_bootstrap())
+            else:
+                t.set_bootstrap_residuals(
+                    num.zeros((self.nbootstrap, t.nmisfits)))
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
@@ -608,6 +608,7 @@ class HighScoreOptimiser(Optimiser):
                 isok_mask = None
 
             misfits = problem.misfits(sample.model, mask=isok_mask)
+
             bootstrap_misfits = problem.combine_misfits(
                 misfits,
                 extra_weights=self.get_bootstrap_weights(problem),
