@@ -1,0 +1,44 @@
+%YAML 1.1
+# Target: InSAR target configuration.
+- !grond.SatelliteTargetGroup
+
+  # Normalisation family (see the Grond documentation for how it works).
+  # Use distinct normalisation families when mixing misfit contributors with
+  # different magnitude scaling, like e.g. cross-correlation based misfit and 
+  # time-domain Lx norm.
+  normalisation_family: 'static'
+
+  # Just a name used to identify targets from this group. Use dot-separated path
+  # notation to group related contributors
+  path: 'insar'
+
+  # How to weight contributions from this group in the global misfit
+  weight: 1.0
+
+  # Selector for kite scene ids, '*all' is a wildcard and load all scenes present
+  kite_scenes: ['*all']
+
+  # Subsection on how to fit the traces
+  misfit_config: !grond.SatelliteMisfitConfig
+
+    # Optimise a planar orbital ramp
+    optimise_orbital_ramp: false
+
+    # Parameters for the orbital ramp
+    ranges:
+
+      # Vertical offset in [m]
+      offset: -0.5 .. 0.5
+
+      # Ranges for the East-West and North-South inclination of the ramp
+      ramp_east: -1e-4 .. 1e-4
+      ramp_north: -1e-4 .. 1e-4
+
+  # How to interpolate the Green's functions (available choices:
+  # 'nearest_neighbor', 'multilinear'). Choices other than 'nearest_neighbor'
+  # may require dense GF stores to avoid aliasing artifacts in the forward 
+  # modelling.
+  interpolation: multilinear
+
+  # Name of the GF Store to use
+  store_id: crust2_ib_static

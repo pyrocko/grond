@@ -6,14 +6,11 @@ This step-by-step guide explains how to obtain a probabilistic centroid moment t
 Setup
 -----
 
-To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the exercise project directory from Grond's git repositories to a place of your choice:
+To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then create the example project with:
 
 .. code-block :: sh
 
-    # git clone https://gitext.gfz-potsdam.de/heimann/grond.git  # <- done during installation
-    cd grond
-    cp -r examples/grond-playground-regional ~/grond-playground-regional
-    cd ~/grond-playground-regional
+    grond init example_regional-cmt grond-playground-regional/
 
 
 The project folder

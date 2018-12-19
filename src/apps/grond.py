@@ -166,7 +166,7 @@ To look at the results, run
 '''
 
     def __new__(cls, command, **kwargs):
-        return 'Hint:\n' +\
+        return '{c.BOLD}Hint{c.END}\n'.format(c=Color) +\
             getattr(cls, command).format(**kwargs)
 
 
@@ -504,29 +504,37 @@ def command_init(args):
 
     if args[0] == 'list':
         print(help_text)
+        sys.exit(0)
 
-    elif args[0].startswith('section_'):
-        sec = grond_init.get_content(args[0])
-        if not sec:
-            help_and_die(parser, 'Unknown section: %s' % args)
-
-        sys.stdout.write(sec)
-
-    elif args[0].startswith('example_'):
+    if args[0].startswith('example_'):
         if len(args) == 1:
-            help_and_die(parser, 'Not project directory given!' % args)
-        if op.exists(op.abspath(args[1])) and not options.force:
+            config = grond_init.get_content_example(args[0])
+            if not config:
+                help_and_die(parser, 'Unknown example: %s' % args[0])
+
+            sys.stdout.write(config)
+
+            print('\n{c.BOLD}Hint{c.END}\n\n'
+                  'To create a project, use: grond init {example} project-dir/'
+                  .format(c=Color, example=args[0]))
+
+        elif op.exists(op.abspath(args[1])) and not options.force:
             help_and_die(
                 parser,
                 'Directory %s already exists! Use --force to overwrite.'
                 % args[1])
-        try:
-            grond_init.init_example(args[0], args[1], force=options.force)
-        except OSError as e:
-            print(str(e))
+        else:
+            try:
+                grond_init.init_example(args[0], args[1], force=options.force)
+            except OSError as e:
+                print(str(e))
 
     else:
-        help_and_die(parser, 'Unknown init: %s' % args)
+        sec = grond_init.get_content_snippet(args[0])
+        if not sec:
+            help_and_die(parser, 'Unknown snippet: %s' % args[0])
+
+        sys.stdout.write(sec)
 
 
 def command_init_old(args):

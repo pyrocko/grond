@@ -7,15 +7,11 @@ Setup
 -----
 
 To repeat this exercise on your machine, you should first `install Pyrocko
-<https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the
-exercise project directory from Grond's git repos to a place of your choice.
+<https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then create the example project with:
 
 .. code-block :: sh
 
-    # git clone https://github.com/pyrocko/grond  # <- done during installation
-    cd grond
-    cp -r examples/grond-playground-insar ~/grond-playground-insar
-    cd ~/grond-playground-insar
+    grond init example_insar grond-playground-insar/
 
 
 The project folder

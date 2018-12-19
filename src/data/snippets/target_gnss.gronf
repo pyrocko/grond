@@ -1,0 +1,18 @@
+%YAML 1.1
+# Target: GNSS target configuration.
+- !grond.GNSSCampaignTargetGroup
+  normalisation_family: gnss_target
+  path: all
+  # Manual weight for the GNSS target
+  weight: 1.0
+
+  # The campaigns are identified by their campaign_name.
+  # Campaigns can be explicitly selected, or the wildcard *all can be used.
+  gnss_campaigns: ['*all']
+  misfit_config: !grond.GNSSCampaignMisfitConfig {}
+
+  # GF Interpolation
+  interpolation: multilinear
+
+  # GF Store ID
+  store_id: crust2_ib_static

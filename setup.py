@@ -135,9 +135,10 @@ setup(
             'report/app/css/*.css',
             'report/app/js/*.js',
 
-            'data/init/*.gronf',
-            'data/init/*.txt',
-            'data/init/*.md'
+            'data/snippets/*.gronf',
+            'data/snippets/*.md',
+            'data/examples/*/*',
+            'data/examples/*/*/*'
             ]},
 
     data_files=[],
