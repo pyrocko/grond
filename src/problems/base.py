@@ -123,7 +123,7 @@ class Problem(Object):
     nsources = Int.T(default=1)
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
-    grond_version = String.T(optional=True)
+
 
 
     def __init__(self, **kwargs):
