@@ -438,8 +438,11 @@ traces.''')
         for target in problem.targets:
             target.set_dataset(ds)
 
-        target_index = dict(
-            (target, i) for (i, target) in enumerate(problem.targets))
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)[::-1]
@@ -490,7 +493,9 @@ traces.''')
                     dtraces[-1].append(None)
                     continue
 
-                itarget = target_index[target]
+                itarget, itarget_end = target_index[target]
+                assert itarget_end == itarget + 1
+
                 w = target.get_combined_weight()
 
                 if target.misfit_config.domain == 'cc_max_norm':
@@ -646,7 +651,9 @@ traces.''')
                     else:
                         axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
 
-                    itarget = target_index[target]
+                    itarget, itarget_end = target_index[target]
+                    assert itarget_end == itarget + 1
+
                     for imodel, result in enumerate(target_to_results[target]):
 
                         syn_color = imodel_to_color[imodel]
@@ -853,8 +860,11 @@ box, red).
         for target in problem.targets:
             target.set_dataset(ds)
 
-        target_index = dict(
-            (target, i) for (i, target) in enumerate(problem.targets))
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)
@@ -885,7 +895,9 @@ box, red).
                 dtraces.append(None)
                 continue
 
-            itarget = target_index[target]
+            itarget, itarget_end = target_index[target]
+            assert itarget_end == itarget + 1
+
             w = target.get_combined_weight()
 
             if target.misfit_config.domain == 'cc_max_norm':
@@ -1040,7 +1052,9 @@ box, red).
                         axes.set_ylim(
                             -absmax * 1.33 * space_factor, absmax * 1.33)
 
-                    itarget = target_index[target]
+                    itarget, itarget_end = target_index[target]
+                    assert itarget_end == itarget + 1
+
                     result = target_to_result[target]
 
                     dtrace = dtraces[itarget]
@@ -1253,8 +1267,11 @@ the marker's size is scaled to the stations weight, which is obtained from
 
     def draw_figures(self, problem, dataset, history):
 
-        target_index = dict(
-            (target, i) for (i, target) in enumerate(problem.targets))
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)
@@ -1265,8 +1282,6 @@ the marker's size is scaled to the stations weight, which is obtained from
 
         gcms = problem.combine_misfits(
             misfits[:1, :, :], get_contributions=True)[0, :]
-
-        assert gcms.size == len(problem.targets)
 
         event = problem.base_source
 
@@ -1280,7 +1295,11 @@ the marker's size is scaled to the stations weight, which is obtained from
             cg_str = '.'.join(cg)
 
             targets = cg_to_targets[cg]
-            itargets = num.array([target_index[target] for target in targets])
+            assert all(target_index[target][0] == target_index[target][1] - 1
+                       for target in targets)
+
+            itargets = num.array(
+                [target_index[target][0] for target in targets])
 
             labels = ['.'.join(x for x in t.codes[:3] if x) for t in targets]
 
@@ -1290,8 +1309,9 @@ the marker's size is scaled to the stations weight, which is obtained from
             item = PlotItem(name='station_distribution-%s' % cg_str)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws[itargets], labels)
-            fig.suptitle('Seismic Station Distribution and Weight (%s)' % cg_str,
-                         fontsize=self.font_size_title)
+            fig.suptitle(
+                'Seismic Station Distribution and Weight (%s)' % cg_str,
+                fontsize=self.font_size_title)
             legend.set_title('Weight')
 
             yield (item, fig)

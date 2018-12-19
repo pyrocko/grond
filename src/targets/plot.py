@@ -90,7 +90,6 @@ class StationDistributionPlot(PlotConfig):
                 ant = ax.annotate(label, (azimuths[ilbl]*d2r, distances[ilbl]),
                                   **annotate_default)
                 annotations.append(ant)
-        print(ant, type(ant))
 
         ax.set_theta_zero_location('N')
         ax.set_theta_direction(-1)
