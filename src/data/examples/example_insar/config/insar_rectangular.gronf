@@ -1,5 +1,5 @@
 %YAML 1.1
-# Example: Inversion of planar RectangularSource from local InSAR Observations.
+# Example: Inversion of planar rectangular source model from InSAR observations.
 --- !grond.Config
 
 # All file paths referenced below are treated relative to the location of this
