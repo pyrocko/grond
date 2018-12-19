@@ -193,7 +193,7 @@ optimiser_config: !grond.HighScoreOptimiserConfig
 engine_config: !grond.EngineConfig
 
   # Whether to use GF store directories listed in ~/.pyrocko/config.pf
-  gf_stores_from_pyrocko_config: true
+  gf_stores_from_pyrocko_config: false
 
   # List of directories with GF stores
   gf_store_superdirs: ['gf_stores']
