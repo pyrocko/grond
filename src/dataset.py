@@ -21,6 +21,10 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.dataset')
 
 
+def quote_paths(paths):
+    return ', '.join('"%s"' % path for path in paths)
+
+
 class InvalidObject(Exception):
     pass
 
@@ -111,7 +115,7 @@ class Dataset(object):
 
         if pyrocko_stations_filename is not None:
             logger.debug(
-                'Loading stations from file %s...' %
+                'Loading stations from file "%s"...' %
                 pyrocko_stations_filename)
 
             for station in model.load_stations(pyrocko_stations_filename):
@@ -121,7 +125,7 @@ class Dataset(object):
 
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'Loading stations from StationXML file %s...' %
+                    'Loading stations from StationXML file "%s"...' %
                     stationxml_filename)
 
                 sx = fs.load_xml(filename=stationxml_filename)
@@ -129,7 +133,7 @@ class Dataset(object):
                     channels = station.get_channels()
                     if len(channels) == 1 and channels[0].name.endswith('Z'):
                         logger.warning(
-                            'Station %s has vertical component'
+                            'Station "%s" has vertical component'
                             ' information only, adding mocked channels.'
                             % station.nsl_string())
                         station.add_channel(model.Channel('N'))
@@ -142,31 +146,33 @@ class Dataset(object):
             self.events.extend(events)
 
         if filename is not None:
-            logger.debug('Loading events from file %s...' % filename)
+            logger.debug('Loading events from file "%s"...' % filename)
             self.events.extend(model.load_events(filename))
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
                       show_progress=False):
         cachedirname = config.config().cache_dir
-        logger.debug('Selecting waveform files %s' % paths)
+
+        logger.debug('Selecting waveform files %s...' % quote_paths(paths))
         fns = util.select_files(paths, regex=regex,
                                 show_progress=show_progress)
         cache = pile.get_cache(cachedirname)
-        logger.debug('Scanning waveform files %s' % paths)
+        logger.debug('Scanning waveform files %s...' % quote_paths(paths))
         self.pile.load_files(sorted(fns), cache=cache,
                              fileformat=fileformat,
                              show_progress=show_progress)
 
     def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
         if sacpz_dirname:
-            logger.debug('Loading SAC PZ responses from %s...' % sacpz_dirname)
+            logger.debug(
+                'Loading SAC PZ responses from "%s"...' % sacpz_dirname)
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
                 self.responses[x.codes].append(x)
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'Loading StationXML responses from %s...' %
+                    'Loading StationXML responses from "%s"...' %
                     stationxml_filename)
 
                 self.responses_stationxml.append(
@@ -258,7 +264,7 @@ class Dataset(object):
         except ImportError:
             raise ImportError('Module pyrocko.model.gnss not found,'
                               ' please upgrade pyrocko!')
-        logger.debug('Loading GNSS campaign from %s...' % filename)
+        logger.debug('Loading GNSS campaign from "%s"...' % filename)
 
         campaign = load_all(filename=filename)
         self.gnss_campaigns.append(campaign[0])
@@ -274,8 +280,8 @@ class Dataset(object):
             self.add_kite_scene(filename=path)
 
         if not self.kite_scenes:
-            logger.warning('Could not find any kite scenes at %s' %
-                           self.kite_scene_paths)
+            logger.warning('Could not find any kite scenes at %s.' %
+                           quote_paths(self.kite_scene_paths))
 
     def add_kite_scene(self, filename):
         try:
@@ -283,7 +289,7 @@ class Dataset(object):
         except ImportError:
             raise ImportError('Module kite could not be imported,'
                               ' please install from https://pyrocko.org.')
-        logger.debug('Loading kite scene from %s...' % filename)
+        logger.debug('Loading kite scene from "%s"...' % filename)
 
         scene = Scene()
         scene._log.setLevel(logger.level)
@@ -799,7 +805,7 @@ class Dataset(object):
                 raise NotFound(
                     'waveform not available', station.nsl() + (channel,))
 
-        except NotFound as e:
+        except NotFound:
             if cache is not None:
                 cache[nslc + cache_k] = None
             raise
@@ -854,7 +860,7 @@ class Dataset(object):
             if ev.name == self._event_name:
                 return ev
 
-        raise NotFound('No such event: %s'% self._event_name)
+        raise NotFound('No such event: %s' % self._event_name)
 
     def get_picks(self):
         if self._picks is None:
@@ -1012,10 +1018,10 @@ class DatasetConfig(HasPaths):
                 if isinstance(p, list):
                     for path in p:
                         if not op.exists(path):
-                            logger.warn('Given path %s does not exist!' % path)
+                            logger.warn('Path %s does not exist.' % path)
                 else:
                     if not op.exists(p):
-                        logger.warn('Given path %s does not exist!' % p)
+                        logger.warn('Path %s does not exist.' % p)
 
                 return p
 

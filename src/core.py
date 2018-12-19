@@ -151,7 +151,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         xs, misfits, bootstrap_misfits, _ = \
             load_problem_data(rundir, problem, nchains=nchains)
 
-    logger.info('Harvesting problem %s...' % problem.name)
+    logger.info('Harvesting problem "%s"...' % problem.name)
 
     optimiser = load_optimiser_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
@@ -198,7 +198,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
-    logger.info('Done harvesting problem %s.' % problem.name)
+    logger.info('Done harvesting problem "%s".' % problem.name)
 
 
 def cluster(rundir, clustering, metric):
@@ -410,7 +410,7 @@ def check(
                         (target.string_id() + ':', sok)))
 
         except GrondError as e:
-            logger.error('Event %i, %s: %s' % (
+            logger.error('Event %i, "%s": %s' % (
                 ievent,
                 event.name or util.time_to_str(event.time),
                 str(e)))
@@ -474,7 +474,7 @@ def process_event(ievent, g_data_id):
         elif force:
             shutil.rmtree(rundir)
         else:
-            logger.warn('Skipping problem %s: rundir already exists: %s' %
+            logger.warn('Skipping problem "%s": rundir already exists: %s' %
                         (problem.name, rundir))
             return
 
@@ -485,7 +485,7 @@ def process_event(ievent, g_data_id):
 
     logger.info('Rundir: %s' % rundir)
 
-    logger.info('Analysing problem %s.' % problem.name)
+    logger.info('Analysing problem "%s".' % problem.name)
 
     for analyser_conf in config.analyser_configs:
         analyser = analyser_conf.get_analyser()
@@ -514,7 +514,7 @@ def process_event(ievent, g_data_id):
             from .optimisers import highscore
             if not isinstance(optimiser, highscore.HighScoreOptimiser):
                 raise GrondError(
-                    'optimiser does not support injections')
+                    'Optimiser does not support injections.')
 
             optimiser.sampler_phases[0:0] = [
                 highscore.InjectionSamplerPhase(xs_inject=xs_inject)]
@@ -540,7 +540,7 @@ def process_event(ievent, g_data_id):
         'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
 
     logger.info(
-        'Done with problem %s, rundir is "%s".' % (problem.name, rundir))
+        'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
 
 
 class ParameterStats(Object):
