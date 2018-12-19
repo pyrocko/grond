@@ -2,18 +2,14 @@
 
 The filename's prefix defines the configuration's category and shall start with one of the following:
 
-* `example_*.gronf`
-  For complete configuration examples
 * `section_*.gronf`
   For sections
 * `snippet_*.gronf`
   Pure snippets
-* `event_*.txt`
-  For event files
 
 ## Convention
 
-First comment describes the category as *Example*, *Section* or *Snippet*, followed by a collon. (the category is optional).
+First comment describes the category as, *Section* or *Snippet*, followed by a collon. (the category is optional).
 
 ```yaml
 %YAML 1.1
