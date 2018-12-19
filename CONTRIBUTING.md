@@ -44,7 +44,7 @@ to do so.
 
 *If we have already commited and merged changes to local master:*
 
-```bash
+```sh
 git checkout master
 git fetch origin    # important, otherwise we rebase to outdated
 git rebase origin/master
@@ -53,7 +53,7 @@ git push origin master
 
 *Or after we have commited to a feature branch:*
 
-```bash
+```sh
 git checkout feature
 git fetch origin
 git rebase origin/master
@@ -85,7 +85,9 @@ Additionally,
 * log and exception messages:
   - capital beginning
   - final period
+  - Progress actions should end with `...`, e.g. `Generating report's archive...`
   - e.g. `raise ProblemDataNotAvailable('No problem data available (%s).' % dirname)`
+  - in-text names must be quoted; not needed after colons
 * docstrings: TODO
 
 ## Documentation
