@@ -867,6 +867,8 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             restrict: 'E',
             scope: {
                 text: '=text',
+                title: '=title',
+                lead: '=lead',
             },
             controller: ['$scope', function ExpandableTextController($scope) {
                 $scope.hidden = true;
