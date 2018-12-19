@@ -123,7 +123,7 @@ class Problem(Object):
     nsources = Int.T(default=1)
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
-
+    grond_version = String.T(optional=True)
 
 
     def __init__(self, **kwargs):
@@ -533,9 +533,10 @@ class Problem(Object):
     def evaluate(self, x, mask=None, result_mode='full',
                  targets=None, nsources=None):
         patches = []
+        nsources = 2 # for testing
         outlines = []
-        if self.nsources:
-            for i in range(self.nsources):
+        if nsources == 2: #if self.nsources:
+            for i in range(nsources):
                 source = self.get_source(x, i)
                 patches.append(source)
                 outlines.append(source.outline())

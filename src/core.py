@@ -325,6 +325,7 @@ def check(
 
             results_list = []
             sources = []
+            nsources = 2 # for testing
             if n_random_synthetics == 0:
                 x = problem.get_reference_model()
                 sources.append(problem.base_source)
@@ -334,7 +335,8 @@ def check(
             else:
                 for i in range(n_random_synthetics):
                     x = problem.get_random_model()
-                    sources.append(problem.get_source(x))
+                    for j in range(nsources): #test
+                        sources.append(problem.get_source(x,j))
                     results = problem.evaluate(x)
                     results_list.append(results)
 
@@ -688,21 +690,26 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         print('#', ' '.join(['%16s' % x for x in pnames]), file=out)
 
     def dump(x, gm, indices):
+        nsources = 2 # fix for testing
+        sources = []
+        events = []
         if type == 'vector':
             print(' ', ' '.join(
                 '%16.7g' % problem.extract(x, i) for i in indices),
                 '%16.7g' % gm, file=out)
 
         elif type == 'source':
-            source = problem.get_source(x)
+            for i in range(nsources):
+                source = problem.get_source(x,i)
             guts.dump(source, stream=out)
 
         elif type == 'event':
-            ev = problem.get_source(x).pyrocko_event()
+            for i in range(nsources):
+                ev = problem.get_source(x,i).pyrocko_event()
             model.dump_events([ev], stream=out)
 
         elif type == 'event-yaml':
-            ev = problem.get_source(x).pyrocko_event()
+            ev = problem.get_source(x,0).pyrocko_event()
             guts.dump_all([ev], stream=out)
 
         else:

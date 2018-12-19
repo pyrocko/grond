@@ -5,7 +5,7 @@ from pyrocko.model import gnss
 from pyrocko.plot import automap
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import CMTProblem, RectangularProblem
+from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem
 
 import copy
 from pyrocko.guts import Tuple, Float, Bool
@@ -75,8 +75,15 @@ the upper fault edge.
         gms = gms[isort]
         models = history.models[isort, :]
         xbest = models[0, :]
-
-        source = problem.get_source(xbest)
+        
+        nsources = 2
+        if nsources is not None:
+            sources = []
+            for i in range(nsources):
+                source = problem.get_source(xbest, i)
+                sources.append(source)
+        else:
+            source = problem.get_source(xbest)
 
         results = problem.evaluate(
             xbest, result_mode='full', targets=gnss_targets)
@@ -185,6 +192,17 @@ displacements derived from best rupture model (red).
                     t=60,
                     *m.jxyr)
 
+            elif isinstance(problem, MultiRectangularProblem):
+                if nsources is not None:
+                    for subsource in sources:
+                        m.gmt.psxy(
+                            in_rows=subsource.outline(cs='lonlat'),
+                            L='+p2p,black',
+                            W='1p,black',
+                            G='black',
+                            t=60,
+                            *m.jxyr)
+            
             return (item, m)
 
         ifig = 0

@@ -1,6 +1,6 @@
 import numpy as num
 import logging
-import sys
+#import sys
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 from optparse import OptionParser
@@ -37,7 +37,7 @@ class MultiRectangularProblemConfig(ProblemConfig):
         problem = MultiRectangularProblem(
             name=expand_template(self.name_template, subs),
             base_source=base_source,
-            distance_min=self.distance_min,
+            distance_min=self.distance_min, 
             target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
@@ -47,17 +47,17 @@ class MultiRectangularProblemConfig(ProblemConfig):
 
 
 class MultiRectangularProblem(Problem):
-    nsources = None
-    for i in range(0, 100):
-        if "--nsources="+str(i) in sys.argv:
-            nsources = int(i)
-    if nsources is None:
-        print('input --nsources= to go command missing')
+    nsources = 2 # only way to receive necessary information?
+    #for i in range(0, 100): #  sys.argv not working
+    #    if "--nsources="+str(i) in sys.argv:
+    #        nsources = int(i)
+    #if nsources is None:
+    #    print('input --nsources= to go command missing')
 
     problem_parameters = []
     problem_waveform_parameters = []
 
-    for i in range(nsources):
+    for i in range(1,nsources+1):
         problem_parameters.append(Parameter('north_shift%s' % i,
                                             'm',
                                             label='Northing',
@@ -112,6 +112,7 @@ class MultiRectangularProblem(Problem):
         return arr
 
     def get_source(self, x, i):
+        i = i+1 # for realistic numbers
         d = self.get_parameter_dict(x, nsources=self.nsources)
         p = {}
         for k in self.base_source.keys():
