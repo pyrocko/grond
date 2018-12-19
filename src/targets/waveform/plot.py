@@ -1306,23 +1306,23 @@ the marker's size is scaled to the stations weight, which is obtained from
             azimuths = num.array([event.azibazi_to(t)[0] for t in targets])
             distances = num.array([t.distance_to(event) for t in targets])
 
-            item = PlotItem(name='station_distribution-%s' % cg_str)
+            item = PlotItem(
+                name='station_distribution-%s' % cg_str,
+                title=u'Seismic station distribution and weights (%s)'
+                % cg_str)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws[itargets], labels)
-            fig.suptitle(
-                'Seismic Station Distribution and Weight (%s)' % cg_str,
-                fontsize=self.font_size_title)
             legend.set_title('Weight')
 
             yield (item, fig)
 
-            item = PlotItem(name='stations_distribution_contrib-%s' % cg_str)
+            item = PlotItem(
+                name='stations_distribution_contrib-%s' % cg_str,
+                title=u'Seismic station distribution and misfit contributions '
+                      u'(%s)' % cg_str)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, gcms[itargets], labels)
             legend.set_title('Contribution')
-
-            fig.suptitle('Seismic Station Distribution and Contribution (%s)'
-                         % cg_str, fontsize=self.font_size_title)
 
             yield (item, fig)
 
