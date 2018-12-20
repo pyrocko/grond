@@ -1,8 +1,10 @@
 <div ng-if="text">
     <div ng-repeat="p in paragraphs(text)">
         <p ng-show="!hidden || $first">
-            <span ng-if="$first && lead">{{ lead }}</span>
-            <strong ng-if="$first && title">{{ title }}:</strong>
+            <span style="display: block;">
+                <span ng-if="$first && lead">{{ lead }}</span>
+                <strong ng-if="$first && title">{{ title }}:</strong>
+            </span>
             {{ p }}
             <a href="" ng-if="hidden && $first && !$last" ng-click="show()">more...</a>
         </p>

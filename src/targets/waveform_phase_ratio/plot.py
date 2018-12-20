@@ -69,7 +69,7 @@ class FitsPhaseRatioPlot(PlotConfig):
 
         cm.create_group_mpl(
             self, self.draw_figures(ds, history),
-            title=u'Fits of phase ratios',
+            title=u'Fits Phase Ratios',
             section='fits',
             feather_icon='activity',
             description=u'''

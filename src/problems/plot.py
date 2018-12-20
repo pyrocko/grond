@@ -365,7 +365,7 @@ class HistogramPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Solution Histogram',
+            title=u'Histogram',
             section='solution',
             feather_icon='bar-chart-2',
             description=u'''
@@ -527,7 +527,7 @@ class MTDecompositionPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Moment Tensor Decomopostion',
+            title=u'MT Decomposition',
             section='solution',
             feather_icon='sun',
             description=u'''
@@ -716,7 +716,7 @@ class MTLocationPlot(SectionPlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Moment Tensor Location',
+            title=u'MT Location',
             section='solution',
             feather_icon='target',
             description=u'''
@@ -855,7 +855,7 @@ class MTFuzzyPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Fuzzy Moment Tensor',
+            title=u'Fuzzy MT',
             section='solution',
             feather_icon='wind',
             description=u'''

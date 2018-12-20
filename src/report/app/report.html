@@ -113,7 +113,7 @@
                     </h6>
                     <a href="" ng-click="select_group_by_name_variant(group.name, group.variant)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
                         <span data-feather="{{ group.feather_icon }}"></span>
-                        {{ group.name | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}
+                        {{ group.pri.title | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}
                     </a>
                   </li>
                 </ul>

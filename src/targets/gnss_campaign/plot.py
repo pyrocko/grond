@@ -54,7 +54,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
         cm.create_group_automap(
             self,
             self.draw_gnss_fits(ds, history, optimiser),
-            title=u'Static GNSS Surface Displacements',
+            title=u'GNSS Displacements',
             section='fits',
             feather_icon='map',
             description=u'''
@@ -213,7 +213,7 @@ class GNSSStationDistribution(StationDistributionPlot):
         cm.create_group_mpl(
             self,
             self.draw_figures(problem, dataset, history),
-            title=u'Waveform fits for the ensemble',
+            title=u'GNSS Station Distribution',
             section='checks',
             feather_icon='target',
             description=u'''

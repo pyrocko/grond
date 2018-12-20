@@ -558,8 +558,9 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 YamlDoc.query(
                     get_path(problem_name) + '/stats.yaml',
                     function(doc) {
+                        doc.title = 'Parameter Results';
                         doc.name = 'parameter results';
-                        doc.variant = 'default'
+                        doc.variant = 'default';
                         doc.section = 'run';
                         doc.feather_icon = 'book';
                         doc.template = 'parameter-table';
@@ -579,6 +580,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
                 $http.get(get_path(problem_name) + '/config.yaml', {'responseType': 'text'}).then(function(data) {
                     var doc = new Dummy({
+                        'title': 'Problem Config',
                         'name': 'config',
                         'variant': 'default',
                         'section': 'run',
@@ -594,6 +596,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                     get_path(problem_name) + '/problem.yaml',
                     function(problem) {
                         var doc = new Dummy({
+                            'title': 'Problem Info',
                             'name': 'problem info',
                             'variant': 'default',
                             'section': 'run',

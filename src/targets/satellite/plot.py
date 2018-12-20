@@ -32,7 +32,7 @@ class SatelliteTargetDisplacement(PlotConfig):
         default=250)
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(22., 10.))
+        default=(22., 12.))
     colormap = String.T(
         default='RdBu',
         help='Colormap for the surface displacements')
@@ -51,7 +51,7 @@ class SatelliteTargetDisplacement(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_static_fits(ds, history, optimiser),
-            title=u'Satellite Surface Displacements',
+            title=u'InSAR Displacements',
             section='fits',
             feather_icon='navigation',
             description=u'''
@@ -232,9 +232,9 @@ edge marking the upper fault edge. Complete data extent is shown.
                 title=u'Satellite Surface Displacements - %s'
                       % scene.meta.scene_title,
                 description=u'''
-Surface displacements derived from satellite data, Scene {meta.scene_title}
-(id: {meta.scene_id}). (Left) the input data, (center) the modelled data and
-(right) the model residual.
+Surface displacements derived from satellite data.
+(Left) the input data, (center) the modelled
+data and (right) the model residual.
 '''.format(meta=scene.meta))
 
             stat_obs = result.statics_obs
@@ -360,7 +360,7 @@ class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
         cm.create_group_mpl(
             self,
             self.draw_static_fits(ds, history, optimiser, closeup=True),
-            title=u'Satellite Displacements (Closeup)',
+            title=u'InSAR Displacements (Closeup)',
             section='fits',
             feather_icon='zoom-in',
             description=u'''
