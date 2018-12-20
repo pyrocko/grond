@@ -5,7 +5,7 @@ from scipy import signal
 from matplotlib import cm, pyplot as plt
 
 from pyrocko.guts import Tuple, Float, Int, StringChoice, Bool
-from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color, mpl_init
+from pyrocko.plot import mpl_margins, mpl_graph_color, mpl_init
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
@@ -33,13 +33,13 @@ class SequencePlot(PlotConfig):
     '''
 
     name = 'sequence'
-    size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+    size_cm = Tuple.T(2, Float.T(), default=(10., 6.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)
     sort_by = StringChoice.T(
         choices=['iteration', 'misfit'],
         default='iteration')
-    subplot_layout = Tuple.T(2, Int.T(), default=(2, 3))
+    subplot_layout = Tuple.T(2, Int.T(), default=(1, 1))
     marker_size = Float.T(default=1.5)
     show_reference = Bool.T(default=True)
 
@@ -136,8 +136,8 @@ corresponding misfit values.
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    w=7., h=5.,
-                    wspace=7., hspace=2., units=fontsize)
+                    left=6, right=2, top=1, bottom=5,
+                    wspace=0., hspace=0., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
                 item.attributes['parameters'] = []
@@ -171,10 +171,10 @@ corresponding misfit values.
             impl = (npar + idep) % (nfx * nfy) + 1
 
             if impl == 1:
-                fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+                fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    w=7., h=5.,
+                    left=6, right=2, top=1, bottom=5,
                     wspace=7., hspace=2., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
@@ -207,9 +207,11 @@ corresponding misfit values.
 
         impl = (npar + ndep) % (nfx * nfy) + 1
         if impl == 1:
-            fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
-            labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
-                                   hspace=2., units=fontsize)
+            fig = plt.figure(figsize=self.size_inch)
+            labelpos = mpl_margins(
+                fig, nw=nfx, nh=nfy,
+                left=6, right=2, top=1, bottom=5,
+                wspace=7., hspace=2., units=fontsize)
 
             item = PlotItem(name='fig_%i' % (len(figs)+1))
             item.attributes['parameters'] = []
