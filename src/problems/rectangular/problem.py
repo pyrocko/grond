@@ -22,6 +22,11 @@ class RectangularProblemConfig(ProblemConfig):
     nthreads = Int.T(default=4)
 
     def get_problem(self, event, target_groups, targets):
+        if self.decimation_factor != 1:
+            logger.warn(
+                'Decimation factor for rectangular source set to %i. Results '
+                'may be inaccurate.' % self.decimation_factor)
+
         base_source = gf.RectangularSource.from_pyrocko_event(
             event,
             anchor='top',
