@@ -125,7 +125,7 @@ optimisation with Grond, so let's have a look at it. It is a `YAML`_ file. If
 you have never heard about this file format, read section
 :doc:`/config/structure` for an overview.
 
-.. literalinclude :: ../../../../examples/grond-playground-wphase/config/wphase_cmt.gronf
+.. literalinclude :: ../../../../examples/example_wphase/config/wphase_cmt.gronf
     :language: yaml
     :caption: config/wphase_cmt.gronf (in project folder)
 

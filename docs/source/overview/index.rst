@@ -213,9 +213,9 @@ Grond is configured in in ``.gronf`` files using YAML markup language, see secti
 
 The :doc:`/examples/index` section provides commented configuration files for different earthquake source problems explaining many of the options:
 
-* Regional point-source optimizations based on waveforms: :download:`regional_cmt.gronf <../../../examples/grond-playground-regional/config/regional_cmt.gronf>`
-* Teleseismic point-source optimizations based on W phase waveforms: :download:`wphase_cmt.gronf <../../../examples/grond-playground-wphase/config/wphase_cmt.gronf>`
-* Finite source optimizations based on unwrapped InSAR observations: :download:`insar_rectangular.gronf <../../../examples/grond-playground-insar/config/insar_rectangular.gronf>`
+* Regional point-source optimizations based on waveforms: :download:`regional_cmt.gronf <../../../examples/example_regional_cmt/config/regional_cmt.gronf>`
+* Teleseismic point-source optimizations based on W phase waveforms: :download:`wphase_cmt.gronf <../../../examples/example_wphase/config/wphase_cmt.gronf>`
+* Finite source optimizations based on unwrapped InSAR observations: :download:`insar_rectangular.gronf <../../../examples/example_insar/config/insar_rectangular.gronf>`
 
 See the :doc:`/examples/index` for a detailed walk-through.
 

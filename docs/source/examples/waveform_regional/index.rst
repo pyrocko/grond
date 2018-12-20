@@ -122,7 +122,7 @@ optimisation with Grond, so let's have a look at it. It is a `YAML`_ file. If
 you have never heard about this file format, read section
 :doc:`/config/structure` for an overview.
 
-.. literalinclude :: ../../../../examples/grond-playground-regional/config/regional_cmt.gronf
+.. literalinclude :: ../../../../examples/example_regional_cmt/config/regional_cmt.gronf
     :language: yaml
     :caption: config/regional_cmt.gronf (in project folder)
 
