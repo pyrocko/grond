@@ -136,7 +136,10 @@ corresponding misfit values.
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    left=6, right=2, top=1, bottom=5,
+                    left=6.,
+                    right=2. if self.subplot_layout[0] == 1 else 6.,
+                    top=1. if self.subplot_layout[1] == 1 else 5.,
+                    bottom=5.,
                     wspace=0., hspace=0., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
@@ -174,7 +177,10 @@ corresponding misfit values.
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    left=6, right=2, top=1, bottom=5,
+                    left=6.,
+                    right=2. if self.subplot_layout[0] == 1 else 6.,
+                    top=1. if self.subplot_layout[1] == 1 else 5.,
+                    bottom=5.,
                     wspace=7., hspace=2., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
@@ -210,7 +216,10 @@ corresponding misfit values.
             fig = plt.figure(figsize=self.size_inch)
             labelpos = mpl_margins(
                 fig, nw=nfx, nh=nfy,
-                left=6, right=2, top=1, bottom=5,
+                left=6.,
+                right=2. if self.subplot_layout[0] == 1 else 6.,
+                top=1. if self.subplot_layout[0] == 1 else 5.,
+                bottom=5.,
                 wspace=7., hspace=2., units=fontsize)
 
             item = PlotItem(name='fig_%i' % (len(figs)+1))
