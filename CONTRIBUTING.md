@@ -51,6 +51,12 @@ git rebase origin/master
 git push origin master
 ```
 
+with `git config --global pull.rebase true` this can be shortcutted to
+
+```sh
+git pull
+```
+
 *Or after we have commited to a feature branch:*
 
 ```sh
