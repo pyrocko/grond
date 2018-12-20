@@ -21,17 +21,17 @@ logger = logging.getLogger('targets.plot')
 class StationDistributionPlot(PlotConfig):
     ''' Plot showing all waveform fits for the ensemble of solutions'''
 
-    name = 'station_distribution'
+    name = 'seismic_stations_base'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(14., 13.),
+        default=(16., 13.),
         help='width and length of the figure in cm')
     font_size = Float.T(
-        default=6,
-        help='Font Size of all fonts, except title')
-    font_size_title = Float.T(
         default=10,
-        help='Font Size of title')
+        help='font size of all text, except station labels')
+    font_size_labels = Float.T(
+        default=6,
+        help='font size of station labels')
 
     def plot_station_distribution(
             self, azimuths, distances, weights, labels=None,
@@ -48,7 +48,7 @@ class StationDistributionPlot(PlotConfig):
         annotate_default = {
             'alpha': .8,
             'color': 'k',
-            'fontsize': self.font_size,
+            'fontsize': self.font_size_labels,
             'ha': 'right',
             'va': 'top',
             'xytext': (-5, -5),
@@ -61,7 +61,7 @@ class StationDistributionPlot(PlotConfig):
         fig = plt.figure(figsize=self.size_inch)
 
         plot.mpl_margins(
-            fig, nw=1, nh=1, w=5., h=5.,
+            fig, nw=1, nh=1, left=3., right=10., top=3., bottom=3.,
             units=self.font_size)
 
         ax = fig.add_subplot(111, projection='polar')
@@ -132,7 +132,7 @@ class StationDistributionPlot(PlotConfig):
 
         legend = fig.legend(
             legend_artists, legend_annot,
-            fontsize=self.font_size_title, loc=4,
+            fontsize=self.font_size, loc=4,
             markerscale=1, numpoints=1,
             frameon=False)
 

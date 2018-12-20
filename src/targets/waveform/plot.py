@@ -1241,28 +1241,34 @@ box, red).
 class WaveformStationDistribution(StationDistributionPlot):
     ''' Plot showing all waveform fits for the ensemble of solutions'''
 
-    name = 'seismic_station_distribution'
+    name = 'seismic_stations'
 
     def make(self, environ):
+        from grond.problems.base import ProblemDataNotAvailable
+        from grond.environment import NoRundirAvailable
+
         cm = environ.get_plot_collection_manager()
         mpl_init(fontsize=self.font_size)
 
-        history = environ.get_history(subset='harvest')
         problem = environ.get_problem()
         dataset = environ.get_dataset()
+        try:
+            history = environ.get_history(subset='harvest')
+        except (NoRundirAvailable, ProblemDataNotAvailable):
+            history = None
 
         cm.create_group_mpl(
             self,
             self.draw_figures(problem, dataset, history),
-            title=u'Waveform fits for the ensemble',
+            title=u'Seismic station locations',
             section='checks',
             feather_icon='target',
             description=u'''
-Plots showing the seismimc station distribution, their weight and contribution.
+Plot showing seismic station locations and attributes.
 
-This polar plot visualises the station distribution in distance and azimuth,
-the marker's size is scaled to the stations weight, which is obtained from
-`TargetBalancer` and/or `NoiseAnalyser`.
+Station locations in dependence of distance and azimuth are shown. The center
+of the plot corresponds to the origin of the search space, not to the optimised
+location of the source.
 ''')
 
     def draw_figures(self, problem, dataset, history):
@@ -1273,15 +1279,15 @@ the marker's size is scaled to the stations weight, which is obtained from
             target_index[target] = i, i+target.nmisfits
             i += target.nmisfits
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)
-        gms = gms[isort]
-        misfits = history.misfits[isort, :]
-
         ws = problem.get_target_weights()
 
-        gcms = problem.combine_misfits(
-            misfits[:1, :, :], get_contributions=True)[0, :]
+        if history:
+            gms = problem.combine_misfits(history.misfits)
+            isort = num.argsort(gms)
+            gms = gms[isort]
+            misfits = history.misfits[isort, :]
+            gcms = problem.combine_misfits(
+                misfits[:1, :, :], get_contributions=True)[0, :]
 
         event = problem.base_source
 
@@ -1307,23 +1313,33 @@ the marker's size is scaled to the stations weight, which is obtained from
             distances = num.array([t.distance_to(event) for t in targets])
 
             item = PlotItem(
-                name='station_distribution-%s' % cg_str,
-                title=u'Station weights (%s)'
-                % cg_str)
+                name='seismic_stations_weights_%s' % cg_str,
+                title=u'Station weights (%s)' % cg_str,
+                description=u'\n\nMarkers are scaled according to the weighting '
+                            u'factor of the corresponding target\'s '
+                            u'contribution in the misfit function.')
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws[itargets], labels)
-            legend.set_title('Weight')
+            legend.set_title(
+                'Weight',
+                prop=dict(size=self.font_size))
 
             yield (item, fig)
 
-            item = PlotItem(
-                name='stations_distribution_contrib-%s' % cg_str,
-                title=u'Station misfit contributions (%s)' % cg_str)
-            fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, gcms[itargets], labels)
-            legend.set_title('Contribution')
+            if history:
+                item = PlotItem(
+                    name='seismic_stations_contributions_%s' % cg_str,
+                    title=u'Station misfit contributions (%s)' % cg_str,
+                    description=u'\n\nMarkers are scaled according to their '
+                                u'misfit contribution for the globally best '
+                                u'source model.')
+                fig, ax, legend = self.plot_station_distribution(
+                    azimuths, distances, gcms[itargets], labels)
+                legend.set_title(
+                    'Contribution',
+                    prop=dict(size=self.font_size))
 
-            yield (item, fig)
+                yield (item, fig)
 
 
 def get_plot_classes():
