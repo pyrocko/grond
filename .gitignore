@@ -108,3 +108,7 @@ docs/source/cli/
 
 # ctags
 tags
+
+# Anaconda
+miniconda.sh
+maintenance/anaconda/grond-anaconda-deploy
