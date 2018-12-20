@@ -11,8 +11,8 @@ import grond
 try:
     from pyrocko import util, marker
 except ImportError:
-    print('Pyrocko is required for grond!'
-          'Go to https://pyrocko.org for installtion instructions.')
+    print('Pyrocko is required for Grond!'
+          'Go to https://pyrocko.org/ for installation instructions.')
 
 
 logger = logging.getLogger('grond.main')
