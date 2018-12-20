@@ -83,12 +83,12 @@ class StationDistributionPlot(PlotConfig):
             azimuths*d2r, distances, s=weights_scaled, c=colors,
             **scatter_default)
 
-        annotations = []
-        if labels is not None:
-            for ilbl, label in enumerate(labels):
-                ant = ax.annotate(label, (azimuths[ilbl]*d2r, distances[ilbl]),
-                                  **annotate_default)
-                annotations.append(ant)
+        if len(labels) < 30:  # TODO: remove after impl. of collision detection
+            if labels is not None:
+                for ilbl, label in enumerate(labels):
+                    ax.annotate(
+                        label, (azimuths[ilbl]*d2r, distances[ilbl]),
+                        **annotate_default)
 
         ax.set_theta_zero_location('N')
         ax.set_theta_direction(-1)
