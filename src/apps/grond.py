@@ -56,8 +56,11 @@ subcommand_descriptions = {
 }
 
 subcommand_usages = {
-    'init': 'init [options] <project_dir>',
-    'scenario': 'scenario [options] <project_dir>',
+    'init': (
+        'init list [options]',
+        'init <example> [options]',
+        'init <example> <projectdir> [options]'),
+    'scenario': 'scenario [options] <projectdir>',
     'events': 'events <configfile>',
     'check': 'check <configfile> <eventnames> ... [options]',
     'go': 'go <configfile> <eventnames> ... [options]',
@@ -475,16 +478,22 @@ def command_init(args):
     help_text = '''Available configuration examples for grond.
 
 {c.BOLD}Example Projects{c.END}
+
     Deploy a full project structure into a directory.
 
-    usage: grond init example_regional_cmt example-project/
+    usage: grond init <example> <projectdir>
+
+    where <example> is any of
 
 {examples_list}
 
 {c.BOLD}Config Sections{c.END}
+
     Print out configuration snippets for various components.
 
-    usage: grond init section_noise_analyser
+    usage: grond init <example>
+
+    where <example> is any of
 
 {sections_list}
 '''.format(c=Color,
@@ -497,7 +506,7 @@ def command_init(args):
 
     parser, options, args = cl_parse(
         'init', args, setup,
-        'Use grond init list to show available initialisations')
+        'Use grond init list to show available examples.')
 
     if len(args) not in (1, 2):
         help_and_die(parser, '1 or 2 arguments required')
@@ -515,13 +524,13 @@ def command_init(args):
             sys.stdout.write(config)
 
             print('\n{c.BOLD}Hint{c.END}\n\n'
-                  'To create a project, use: grond init {example} project-dir/'
+                  'To create a project, use: grond init <example> <projectdir>'
                   .format(c=Color, example=args[0]))
 
         elif op.exists(op.abspath(args[1])) and not options.force:
             help_and_die(
                 parser,
-                'Directory %s already exists! Use --force to overwrite.'
+                'Directory "%s" already exists! Use --force to overwrite.'
                 % args[1])
         else:
             try:
@@ -1178,8 +1187,8 @@ def command_report(args):
         try:
             env = Environment(args)
             for event_name in env.get_selected_event_names():
-                payload.append(args, event_name,
-                               conf, options.update_without_plotting)
+                payload.append((args, event_name,
+                                conf, options.update_without_plotting))
 
         except grond.GrondError as e:
             die(str(e))

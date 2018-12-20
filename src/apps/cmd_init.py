@@ -74,10 +74,6 @@ class GrondInit(object):
 
     def init_example(self, abbrv, path, force=False):
 
-        def log(path, names):
-            logger.info('Copying %s', path)
-            return []
-
         path = op.abspath(path)
         if op.exists(path) and not force:
             raise OSError('Directory already exists: %s' % op.basename(path))
@@ -85,7 +81,7 @@ class GrondInit(object):
             pass
         example_dir = self.abbrv_to_example_dir(abbrv)
 
-        logger.info('Initialising example %s in %s' % (example_dir, path))
+        logger.info('Initialising example "%s" in "%s".' % (abbrv, path))
         copy_tree(example_dir, path)
 
     def abbrv_to_filename(self, abbrv):

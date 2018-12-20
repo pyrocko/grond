@@ -324,3 +324,7 @@ div#browser-warning {
 .footer a {
     color: #aaa;
 }
+
+div.figure-caption {
+    margin-bottom: 1em;
+}

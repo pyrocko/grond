@@ -503,9 +503,7 @@ space.
                     par.scaled(problem.extract(xref, ipar)),
                     color=ref_color)
 
-            item = PlotItem(
-                name=par.name,
-                title=u'Parameter Histograms')
+            item = PlotItem(name=par.name)
             item.attributes['parameters'] = [par.name]
             yield item, fig
 
@@ -837,9 +835,7 @@ high (blue) misfit.
                 except beachball.BeachballError as e:
                     logger.warn(str(e))
 
-        item = PlotItem(
-            name='main',
-            title=u'Moment Tensor Location')
+        item = PlotItem(name='main')
         return [[item, fig]]
 
 
@@ -1061,8 +1057,7 @@ fitting solution.
                 logger.warn(str(e))
 
         item = PlotItem(
-            name='main',
-            title=u'Hudson Plot')
+            name='main')
         return [[item, fig]]
 
 

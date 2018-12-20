@@ -185,11 +185,16 @@ def report(env, report_config=None, update_without_plotting=False,
                 plots_path=op.join(entry_path, 'plots'),
                 plot_config_collection=pcc)
 
+        try:
+            run_info = env.get_run_info()
+        except environment.NoRundirAvailable:
+            run_info = None
+
         rie = ReportIndexEntry(
             path='.',
             problem_name=problem.name,
             grond_version=problem.grond_version,
-            run_info=env.get_run_info())
+            run_info=run_info)
 
         fn = op.join(entry_path, 'event.solution.best.yaml')
         if op.exists(fn):

@@ -37,7 +37,7 @@ class StationDistributionPlot(PlotConfig):
             self, azimuths, distances, weights, labels=None,
             scatter_kwargs=dict(), annotate_kwargs=dict(), maxsize=10**2):
 
-        invalid_color = plot.mpl_color('scarletred2')
+        invalid_color = plot.mpl_color('aluminium3')
 
         scatter_default = {
             'alpha': .5,
@@ -53,7 +53,6 @@ class StationDistributionPlot(PlotConfig):
             'va': 'top',
             'xytext': (-5, -5),
             'textcoords': 'offset points'
-
         }
 
         scatter_default.update(scatter_kwargs)

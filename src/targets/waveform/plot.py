@@ -1308,7 +1308,7 @@ the marker's size is scaled to the stations weight, which is obtained from
 
             item = PlotItem(
                 name='station_distribution-%s' % cg_str,
-                title=u'Seismic station distribution and weights (%s)'
+                title=u'Station weights (%s)'
                 % cg_str)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws[itargets], labels)
@@ -1318,8 +1318,7 @@ the marker's size is scaled to the stations weight, which is obtained from
 
             item = PlotItem(
                 name='stations_distribution_contrib-%s' % cg_str,
-                title=u'Seismic station distribution and misfit contributions '
-                      u'(%s)' % cg_str)
+                title=u'Station misfit contributions (%s)' % cg_str)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, gcms[itargets], labels)
             legend.set_title('Contribution')

@@ -18,12 +18,13 @@
                 <h6 ng-if="compare_mode">{{ doc.problem_name }}</h6>
                 <figure ng-if="doc" class="figure">
                     <span ng-repeat="item in doc.items | filter:keyword">
+
                         <img
                             class="figure-img img-fluid"
                             ng-src="{{ image_path(doc, item); }}" />
 
-                        <div ng-if="item.description">
-                            <expandable-text text="item.description"></expandable-text>
+                        <div class=figure-caption" ng-if="item.title || item.description">
+                            <expandable-text lead="'(' + ($index+1) + ')'" title="item.title" text="item.description"></expandable-text>
                         </div>
                     </span>
                 </figure>

@@ -111,8 +111,8 @@ def seismic_noise_variance(traces, engine, event, targets,
 
                             stat_w = 0.
                             logger.info(
-                                'Noise analyser found event %s phase onset of '
-                                '%s for %s.' % (
+                                'Noise analyser found event "%s" phase onset '
+                                'of "%s" for target "%s".' % (
                                     ev.name, phase_def, target.name))
 
                         if arrival_time_pre > arrival_time-30.*60.\
@@ -120,7 +120,7 @@ def seismic_noise_variance(traces, engine, event, targets,
                                 pre_event_noise_duration:
                             stat_w *= 1.
                             logger.info(
-                                'Noise analyser found event %s possibly '
+                                'Noise analyser found event "%s" possibly '
                                 'contaminating the noise.' % ev.name)
 
                             # this should be magnitude dependent
@@ -258,7 +258,7 @@ class NoiseAnalyser(Analyser):
 
         for itarget, target in enumerate(problem.waveform_targets):
             logger.info((
-                'noise analysis for %s:\n'
+                'Noise analysis for target "%s":\n'
                 '  var: %g\n'
                 '  std: %g\n'
                 '  contamination_weight: %g\n'
