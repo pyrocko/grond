@@ -6,10 +6,14 @@ import sys
 import os.path as op
 import logging
 from optparse import OptionParser, OptionValueError
-
-from pyrocko import util, marker
-
 import grond
+
+try:
+    from pyrocko import util, marker
+except ImportError:
+    print('Pyrocko is required for grond!'
+          'Go to https://pyrocko.org for installtion instructions.')
+
 
 logger = logging.getLogger('grond.main')
 km = 1e3
