@@ -12,6 +12,8 @@ from grond.plot.collection import PlotItem
 
 from .target import PhaseRatioTarget
 
+guts_prefix = 'grond'
+
 
 def S(text):
     return ' '.join(text.split())

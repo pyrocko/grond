@@ -14,6 +14,8 @@ from grond.plot.collection import PlotItem
 
 logger = logging.getLogger('grond.optimiser.highscore.plot')
 
+guts_prefix = 'grond'
+
 
 class HighScoreOptimiserPlot(object):
 

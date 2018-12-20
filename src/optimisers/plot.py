@@ -12,6 +12,8 @@ from grond.plot.collection import PlotItem
 
 logger = logging.getLogger('grond.problem.plot')
 
+guts_prefix = 'grond'
+
 
 def fixlim(lo, hi):
     if lo == hi:
