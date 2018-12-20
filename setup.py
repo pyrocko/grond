@@ -138,8 +138,9 @@ setup(
 
             'data/snippets/*.gronf',
             'data/snippets/*.md',
-            'data/examples/*/*',
-            'data/examples/*/*/*'
+            'data/examples/*/*.*',
+            'data/examples/*/*/*.*'
+            'data/examples/*/*/grondown'
             ]},
 
     data_files=[],
