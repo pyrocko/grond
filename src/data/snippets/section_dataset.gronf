@@ -15,7 +15,7 @@ dataset_config: !grond.DatasetConfig
   path_prefix: .
 
   # List of files with station coordinates in Pyrocko format.
-  stations_path: builtins.str (grond.meta.Path), optional
+  stations_path: 'data/events/${event_name}/waveforms/stations.txt'
 
   # List of files with station coordinates.
   stations_stationxml_paths: 
@@ -26,19 +26,21 @@ dataset_config: !grond.DatasetConfig
   events_path: 'data/events/${event_name}/event.txt'
 
   # List of directories with raw waveform data
-  waveform_paths: ['data/events/${event_name}/waveforms/raw']
+  waveform_paths: 
+  - 'data/events/${event_name}/waveforms/raw'
 
   # List of directories with kite InSAR scenes
-  kite_scene_paths: ['data/events/${event_name}/insar']
+  kite_scene_paths: 
+  - 'data/events/${event_name}/insar'
 
   # List of directories with GNSS data
-  gnss_campaign_paths: ['data/events/${event_name}/gnss']
+  gnss_campaign_paths: 
+  - 'data/events/${event_name}/gnss'
 
   # List of files with instrument response information (can be the same as in
   # stations_stationxml_paths above)
   responses_stationxml_paths:
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
-  'data/events/${event_name}/event.txt'
 
   # List of SACPZ response files for restitution of the raw waveform data.
   responses_sacpz_path: 'data/events/${event_name}/responce.pz'
@@ -63,8 +65,10 @@ dataset_config: !grond.DatasetConfig
   whitelist_paths:
   - 'data/events/${event_name}/waveforms/whitelist.txt'
 
-  # if not None, list of stations/components to include according to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.
-  # Note: when whitelisting on channel level, both, the raw and the processed channel codes have to be listed.
+  # if not None, list of stations/components to include according
+  # to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.
+  # Note: when whitelisting on channel level, both, the raw and the processed 
+  # channel codes have to be listed.
   whitelist: ['GE.ZGQ', 'GE.FFAR']
 
   # File containing the clipping information for waveform data
