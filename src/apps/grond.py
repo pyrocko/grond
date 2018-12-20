@@ -1187,8 +1187,8 @@ def command_report(args):
         try:
             env = Environment(args)
             for event_name in env.get_selected_event_names():
-                payload.append(args, event_name,
-                               conf, options.update_without_plotting)
+                payload.append((args, event_name,
+                                conf, options.update_without_plotting))
 
         except grond.GrondError as e:
             die(str(e))
