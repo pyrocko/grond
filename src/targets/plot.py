@@ -95,6 +95,7 @@ class StationDistributionPlot(PlotConfig):
         ax.tick_params('y', labelsize=self.font_size, labelcolor='gray')
         ax.grid(alpha=.3)
         ax.set_ylim(0, distances.max()*1.1)
+        ax.yaxis.set_major_locator(plt.MaxNLocator(4))
         ax.yaxis.set_major_formatter(
             FuncFormatter(lambda x, pos: '%d km' % (x/km)))
 
