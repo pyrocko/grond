@@ -151,43 +151,34 @@ modelled (section :ref:`project-scenario`).
 Initializing an empty project
 .............................
 
-An empty project structure can be created with the subcommand :option:`grond init`. Different configurations can be added by flags (see :option:`grond init` ``--help``).
+An empty project structure for some standard problems can be created with the subcommand :option:`grond init` ``<example>``. Different examples are available. Also configurations
+of targets can be initialized (see :option:`grond init` ``--help``).
 
 .. code-block :: sh
 
-    grond init <project-folder>
+    grond init <example> <project-folder>
     cd <project-folder>
 
 .. tip::
 
-    Existing project folders can be overwritten using ``grond init --force <project-folder>``
+    Existing project folders can be overwritten using ``grond init  <example> <project-folder> --force``
 
-You can create an initial Grond configuration file for a centroid moment tensor optimisation based on global seismic waveforms with
-
-.. code-block :: sh
-
-    grond init > config/<filename>.gronf
-
-This is the default and corresponds to
+You can create an initial Grond configuration file for a centroid moment tensor optimisation based on regional seismic waveforms with
 
 .. code-block :: sh
 
-    grond init --target=waveforms > config/<filename>.gronf
+    grond init example_regional_cmt > config/<filename>.gronf
 
-Identically, for static near-field displacement (InSAR, GNSS data sets) and finite source optimisation setups, initial Grond configuration file can be created with
 
-.. code-block :: sh
-
-    grond init --target=insar > config/<filename>.gronf
-    grond init --target=gnss  > config/<filename>.gronf
-
-The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged. A Grond configuration file showing all possible options with their default values is given using:
+Identically, for global waveform optimisations and/or InSAR data use, an initial Grond 
+configuration file can be created. For some particular examples for the configuration 
+of data and targets use
 
 .. code-block :: sh
 
-    grond init --full > config/<filename>.gronf
+    grond init list
 
-.. _project-scenario:
+The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged.
 
 Initializing a scenario project from forward modelling
 ......................................................
