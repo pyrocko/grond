@@ -35,7 +35,7 @@ class SequencePlot(PlotConfig):
     '''
 
     name = 'sequence'
-    size_cm = Tuple.T(2, Float.T(), default=(10., 6.))
+    size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)
     sort_by = StringChoice.T(
@@ -138,11 +138,11 @@ corresponding misfit values.
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    left=6.,
-                    right=2. if self.subplot_layout[0] == 1 else 6.,
-                    top=1. if self.subplot_layout[1] == 1 else 5.,
+                    left=7.,
+                    right=2.,
+                    top=1.,
                     bottom=5.,
-                    wspace=0., hspace=0., units=fontsize)
+                    wspace=7., hspace=2., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
                 item.attributes['parameters'] = []
@@ -179,9 +179,9 @@ corresponding misfit values.
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    left=6.,
-                    right=2. if self.subplot_layout[0] == 1 else 6.,
-                    top=1. if self.subplot_layout[1] == 1 else 5.,
+                    left=7.,
+                    right=2.,
+                    top=1.,
                     bottom=5.,
                     wspace=7., hspace=2., units=fontsize)
 
@@ -218,9 +218,9 @@ corresponding misfit values.
             fig = plt.figure(figsize=self.size_inch)
             labelpos = mpl_margins(
                 fig, nw=nfx, nh=nfy,
-                left=6.,
-                right=2. if self.subplot_layout[0] == 1 else 6.,
-                top=1. if self.subplot_layout[0] == 1 else 5.,
+                left=7.,
+                right=2.,
+                top=1.,
                 bottom=5.,
                 wspace=7., hspace=2., units=fontsize)
 
