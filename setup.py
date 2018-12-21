@@ -8,7 +8,7 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 
 
-version = '1.0.0_beta'
+version = '1.0.0-beta'
 
 
 class CustomInstallCommand(install):
