@@ -60,7 +60,7 @@ different computer for viewing. Place it into a web server directory to share
 it with the world.
 
 For convenience, the archive file ``grond-report.tar.gz`` contains the
-complete report directory. You can find it in the ``repors`` directory or
+complete report directory. You can find it in the ``report`` directory or
 under a link on the report web page. After unpacking, place the archive file
 into the unpacked directory to keep the archive file link operational.
 
