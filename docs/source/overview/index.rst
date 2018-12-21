@@ -141,7 +141,7 @@ Initializing a Grond project
 
 Grond ships with two options to quickstart a new project folder structure (see
 :ref:`project-layout`), including Grond's YAML configuration files. For real
-data, you may use ``grond init <project-folder>`` (section
+data, you may use ``grond init <example> <project-folder>`` (section
 :ref:`project-init`). For synthetic testing, with ``grond scenario
 <project-folder>`` a fully synthetic dataset can be customised and forward
 modelled (section :ref:`project-scenario`).
@@ -151,34 +151,42 @@ modelled (section :ref:`project-scenario`).
 Initializing an empty project
 .............................
 
-An empty project structure for some standard problems can be created with the subcommand :option:`grond init` ``<example>``. Different examples are available. Also configurations
-of targets can be initialized (see :option:`grond init` ``--help``).
+Grond can handle many different kinds of optimisation problems so
+there can be no generic Grond configuration. However, to quickly create an empty project 
+we offer initial configurations for a few standard problems. 
+
+Check your options with
 
 .. code-block :: sh
 
-    grond init <example> <project-folder>
-    cd <project-folder>
+   grond init list
+   
+and then create your configuration with one of the :doc:`/examples/index`.
 
+.. code-block :: sh 
+
+   grond init <example>
+
+The configuration can be automatically embedded in a new project folder with 
+
+.. code-block :: sh
+
+   grond init <example> <project-folder>
+   cd <project-folder>
+   
 .. tip::
 
-    Existing project folders can be overwritten using ``grond init  <example> <project-folder> --force``
+    Existing project folders are overwritten using ``grond init <example> <project-folder> --force``
 
-You can create an initial Grond configuration file for a centroid moment tensor optimisation based on regional seismic waveforms with
-
-.. code-block :: sh
-
-    grond init example_regional_cmt > config/<filename>.gronf
-
-
-Identically, for global waveform optimisations and/or InSAR data use, an initial Grond 
-configuration file can be created. For some particular examples for the configuration 
-of data and targets use
+Also only certain parts of a configuration file can be initialised, e. g. for 
+certain targets: 
 
 .. code-block :: sh
 
-    grond init list
+    grond init target_waveform
 
-The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged.
+
+Consult :option:`grond init` ``--help`` for your options. The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged.
 
 Initializing a scenario project from forward modelling
 ......................................................
@@ -200,7 +208,7 @@ A map of the random scenario is plotted in :file:`scenario_map.pdf`.
 Configuration
 -------------
 
-Grond is configured in in ``.gronf`` files using YAML markup language, see section :doc:`/config/index`.
+Grond is configured in ``.gronf`` files using YAML markup language, see section :doc:`/config/index`.
 
 The :doc:`/examples/index` section provides commented configuration files for different earthquake source problems explaining many of the options:
 
@@ -331,7 +339,7 @@ strategies.
         In a typical Grond setup, many modelling targets may contribute to the global misfit. For example, an individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
 
     Config file
-        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`. See :doc:`/config/structure`.
+        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init` ``<example>`` after consulting  :option:`grond init` ``list``. See :doc:`/config/structure`.
 
     Rundir
         The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the :option:`grond go` subcommand.
