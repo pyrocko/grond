@@ -1,10 +1,13 @@
 import time
+import logging
 import os.path as op
 
 from grond.config import read_config
 from grond import meta, run_info
 from grond.problems.base import load_optimiser_info, load_problem_info, \
     ModelHistory
+
+logger = logging.getLogger('grond.environment')
 
 
 class GrondEnvironmentError(meta.GrondError):
@@ -232,7 +235,7 @@ class Environment(object):
 
     def setup_modelling(self):
         '''Must be called before any modelling can be done.'''
-
+        logger.debug('Setting up modelling...')
         self.get_config().setup_modelling_environment(self.get_problem())
         ds = self.get_dataset()
         for target in self.get_problem().targets:
