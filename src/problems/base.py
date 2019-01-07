@@ -106,9 +106,6 @@ class Problem(Object):
             paths.add(grp.path)
         logger.debug('TargetGroup check OK.')
 
-    def get_engine(self):
-        return self._engine
-
     def copy(self):
         o = copy.copy(self)
         o._target_weights = None
@@ -250,6 +247,14 @@ class Problem(Object):
 
     def set_engine(self, engine):
         self._engine = engine
+
+    def get_engine(self):
+        return self._engine
+
+    def get_gf_store(self, target):
+        if self.get_engine() is None:
+            raise GrondError('Cannot get GF Store, modelling is not set up!')
+        return self.get_engine().get_store(target.store_id)
 
     def random_uniform(self, xbounds, rstate):
         x = rstate.uniform(0., 1., self.nparameters)
