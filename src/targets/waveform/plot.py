@@ -1315,8 +1315,8 @@ location of the source.
             item = PlotItem(
                 name='seismic_stations_weights_%s' % cg_str,
                 title=u'Station weights (%s)' % cg_str,
-                description=u'\n\nMarkers are scaled according to the weighting '
-                            u'factor of the corresponding target\'s '
+                description=u'\n\nMarkers are scaled according to the '
+                            u'weighting factor of the corresponding target\'s '
                             u'contribution in the misfit function.')
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws[itargets], labels)
