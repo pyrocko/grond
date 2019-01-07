@@ -4,6 +4,7 @@ All notable changes to Grond will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+<<<<<<< HEAD
 ## [1.1.0] 2019-01-22
 
 ### Added
@@ -23,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - GNSS Plotting function
 
 ## [1.0.0] 2019-01-07
+=======
+## [1.0.0]
+>>>>>>> version number
 
 ### Added
 - Cluster analysis on result ensemble with `grond cluster`.
