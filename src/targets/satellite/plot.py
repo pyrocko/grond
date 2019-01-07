@@ -318,8 +318,12 @@ data and (right) the model residual.
                     fn -= source.lat
                     fe -= source.lon
 
-                off_n = (fn[0] + fn[1]) / 2
-                off_e = (fe[0] + fe[1]) / 2
+                if fn.size > 1:
+                    off_n = (fn[0] + fn[1]) / 2
+                    off_e = (fe[0] + fe[1]) / 2
+                else:
+                    off_n = fn[0]
+                    off_e = fe[0]
 
                 fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
                                         + max(abs(fe-off_e))**2)
