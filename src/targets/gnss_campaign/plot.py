@@ -220,7 +220,8 @@ class GNSSStationDistribution(StationDistributionPlot):
 Plots showing the GNSS station distribution and their weight.
 
 This polar plot visualises the station distribution in distance and azimuth,
-the marker's size is scaled to the stations weight (mean of spatial components).
+the marker's size is scaled to the stations weight (mean of spatial
+components).
 ''')
 
     def draw_figures(self, problem, dataset, history):
