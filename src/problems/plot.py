@@ -709,6 +709,7 @@ class MTLocationPlot(SectionPlotConfig):
         default='dc')
 
     def make(self, environ):
+        environ.setup_modelling()
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         mpl_init(fontsize=self.font_size)
@@ -811,7 +812,9 @@ high (blue) misfit.
             for ix, x in enumerate(models):
 
                 source = problem.get_source(x)
-                mt = source.pyrocko_moment_tensor()
+                mt = source.pyrocko_moment_tensor(
+                    store=problem.get_gf_store(problem.targets[0]),
+                    target=problem.targets[0])
                 fx = problem.extract(x, ixpar)
                 fy = problem.extract(x, iypar)
                 sx, sy = xpar.scaled(fx), ypar.scaled(fy)
