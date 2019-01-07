@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import logging
 
 import glob
@@ -63,9 +65,10 @@ class GrondInit(object):
 
     @staticmethod
     def _get_example_config(example_dir):
-        config_file = glob.glob(op.join(example_dir, 'config', '*.gronf'))
+        fpath_template = op.join(example_dir, 'config', '*.gronf')
+        config_file = glob.glob(fpath_template)
         if len(config_file) == 0:
-            raise OSError('No example config file found!')
+            raise OSError('No example config file found: %s' % fpath_template)
         return config_file[0]
 
     @staticmethod
