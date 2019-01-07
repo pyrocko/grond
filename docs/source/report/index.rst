@@ -65,8 +65,8 @@ under a link on the report web page. After unpacking, place the archive file
 into the unpacked directory to keep the archive file link operational.
 
 
-Plot types
-----------
+Available plots
+---------------
 
 To see which plots are available for a particular configuration, check out the
 subcommand

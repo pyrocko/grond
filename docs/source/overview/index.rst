@@ -36,6 +36,10 @@ To use Grond with your own dataset, we suggest the following folder structure.
 
 Single files and data formats listed here are explained below. The folders ``runs`` and ``report`` are generated during and after the optimisation, respectively.
 
+.. tip ::
+    
+    Use ``grond init <example> <project_folder>`` to create an example project following this layout! See :ref:`project-init` for more information.
+
 .. code-block :: none
 
     ├── config
@@ -187,6 +191,8 @@ certain targets:
 
 
 Consult :option:`grond init` ``--help`` for your options. The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged.
+
+.. _project-scenario:
 
 Initializing a scenario project from forward modelling
 ......................................................
