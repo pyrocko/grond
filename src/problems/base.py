@@ -497,7 +497,7 @@ class Problem(Object):
         modelling_targets_unique = list(u2m_map.keys())
 
         resp = engine.process(source, modelling_targets_unique,
-                              calc_timeseries=False, nthreads=self.nthreads)
+                              nthreads=self.nthreads)
         modelling_results_unique = list(resp.results_list[0])
 
         modelling_results = [None] * len(modelling_targets)
