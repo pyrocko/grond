@@ -244,8 +244,6 @@ components).
             item = PlotItem(name='station_distribution-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws, labels)
-            fig.suptitle('GNSS Station Distribution and Weight (%s)'
-                         % target.path, fontsize=self.font_size_title)
             legend.set_title('Weight')
 
             yield (item, fig)
