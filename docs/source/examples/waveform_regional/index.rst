@@ -180,7 +180,7 @@ Once the optimisation is finished we can generate and open the final report with
 
 .. code-block :: sh
 
-    grond report -so config/regional_cmt.gronf
+    grond report -so runs/cmt_gfz2018pmjk.grun
 
 
 Example report
