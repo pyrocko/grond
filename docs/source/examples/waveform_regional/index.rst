@@ -10,7 +10,7 @@ To repeat this exercise on your machine, you should first `install Pyrocko <http
 
 .. code-block :: sh
 
-    grond init example_regional-cmt grond-playground-regional/
+    grond init example_regional_cmt grond-playground-regional/
 
 
 The project folder
