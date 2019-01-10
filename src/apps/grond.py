@@ -474,7 +474,14 @@ def command_init(args):
 
         padding = max([len(n) for n in entries.keys()])
         rstr = []
+        lcat = None
         for name, desc in entries.items():
+
+            cat = name.split('_')[0]
+            if lcat is not None and lcat != cat:
+                rstr.append('')
+            lcat = cat
+
             rstr.append('    {c.BOLD}{name:<{padding}}{c.END} : {desc}'.format(
                         name=name, desc=desc, padding=padding, c=Color))
         return '\n'.join(rstr)
@@ -487,7 +494,7 @@ def command_init(args):
 
     usage: grond init <example> <projectdir>
 
-    where <example> is any of
+    where <example> is any of the following:
 
 {examples_list}
 
@@ -495,9 +502,9 @@ def command_init(args):
 
     Print out configuration snippets for various components.
 
-    usage: grond init <example>
+    usage: grond init <section>
 
-    where <example> is any of
+    where <section> is any of the following:
 
 {sections_list}
 '''.format(c=Color,
