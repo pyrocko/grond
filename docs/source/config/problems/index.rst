@@ -4,18 +4,18 @@ Problems
 The problem is the optimisation task - the specific :term:`source` model we invert.
 The search ranges and inversion conditions can be configured flexibly. So far defined problems in Grond are the optimisations of different source types, which are derived from `Pyrocko Sources`_.
 
-These problems are:
+The optimisation problems which can be solved with Grond are:
 
-* :ref:`cmt`
+* :ref:`CMTProblem <cmt>`
     A problem that solves for a centroid moment tensor point source (derived from Pyrocko's ``CMTSource``). This problem fits the very general earthquake source analysis based on far-field seismic waveforms.
 
-* :ref:`double_dc`
+* :ref:`DoubleDCProblem <double_dc>`
     A problem that solves for two double-couple point sources (derived from ``DoubleDCSource``). This problem can be used to solve for somewhat complex, *segmented earthquake sources* to better fit far-field seismic data.
     
-* :ref:`rectangular`
+* :ref:`RectangularProblem <rectangular>`
     A problem that solves for a rectangular finite source (derived from Pyrocko's ``RectangularSource``). This problem fits well to large earthquakes and/or problems for which near-field surface displacement data (InSAR, GNSS, etc.) are available.
 
-* :ref:`volume_point`
+* :ref:`VolumePointProblem <volume_point>`
     A problem that solves for a spherical volume point (infinite) to model magmatic or volcanic processes. Only static targets (GNSS or InSAR) are supported.
 
 To define and configure a problem the part called ``problem_config`` in the configuration is set up.
