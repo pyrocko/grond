@@ -1,0 +1,52 @@
+%YAML 1.1
+# Problem: Two Double Couple (Double DC).
+problem_config: !grond.DoubleDCProblemConfig
+
+  # Name used to identify the output
+  name_template: '${event_name}_double_dc'
+
+  # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
+  norm_exponent: 2
+
+  # Station distances to consider [m]
+  distance_min: 0
+  distance_max: 200e3
+
+  # Type of moment tensor to restrict to.
+  # Choose from 'full', 'devicatoric' or 'dc'.
+  mt_type: 'dc'
+
+  # Define the ranges of the solution space
+  ranges:
+
+    # Time relative to hypocenter origin time [s]
+    time: '-10 .. 10 | add'
+
+    # Centroid location with respect to hypocenter origin [m]
+    north_shift: '-40e3 .. 40e3'
+    east_shift: '-40e3 .. 40e3'
+    depth: '4e3 .. 50e3'
+
+    magnitude: '4.0 .. 7.0'
+
+    # Orientation for 1. DC
+    strike1: '30. .. 180.'
+    dip1: '30. .. 90.'
+    rake1: '20. .. 150.'
+
+    # Orientation for 2. DC
+    strike2: '30. .. 180.'
+    dip2: '30. .. 90.'
+    rake2: '20. .. 150.'
+
+    # Time and depth deltas between DCs, [s] and [m]
+    delta_time: '5. .. 10.'
+    delta_depth: '0. .. 10000.'
+
+    azimuth: '0. .. 360.'
+    distance: '10000. .. 40000.' 
+    mix: '0.2 .. 0.8'
+
+    # Duration for each DC event
+    duration1: '5. .. 10.'
+    duration2: '5. .. 10.'
