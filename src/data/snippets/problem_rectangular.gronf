@@ -1,0 +1,51 @@
+%YAML 1.1
+# Problem: Finite rectangular plane with uniform slip.
+problem_config: !grond.RectangularProblemConfig
+
+  # Name used to identify the output
+  name_template: '${event_name}_joint'
+
+  # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
+  norm_exponent: 2
+
+  # Station distances to consider [m]
+  distance_min: 0
+  distance_max: 200e3
+
+  # Decimation factor to control the number of sub-sources. Higher decimation
+  # speeds up the computation at the price of resolution. 
+
+  # The number of subsources used in the modelling is dependent on the spatial
+  # spacing of the Green's function in the GF Store. The decimation_factor
+  # parameter allows to decrease the resolution of the discretised source model
+  # (use fewer sub-sources) for speedy computation with inaccurate results (for
+  # testing purposes). Higher value means faster computation and less accurate
+  # result. Default is 1.
+  decimation_factor: 4
+
+  # Definition of model parameter space to be searched in the optimisation
+  ranges:
+
+    # Time shift in [s], only important when using waveforms
+    time: '-10 .. 10 | add'
+
+    # Spatial shifts in [m]
+    north_shift: '-2000 .. 20000'
+    east_shift: '-2000 .. 20000'
+    depth: '5000 .. 30000'
+
+    # Dimensions and orientation of the fault plane, in [m] and [deg]
+    length: '12000 .. 18000'
+    width: '4000 .. 14000'
+
+    strike: '80 .. 330'
+    dip: '0 .. 60'
+    rake: '60 .. 90'
+
+    # Slip on the fault plance [m]
+    slip: '0.2 .. 2.'
+
+    # Dynamic constraints, not needed for static inversion
+    time: '-15. .. 10. | add'
+    nucleation_x: '-1. .. 1.'
+    nucleation_y: '-1. .. 1.'

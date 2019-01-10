@@ -1,0 +1,39 @@
+%YAML 1.1
+# Problem: Centroid moment tensor (CMT).
+problem_config: !grond.CMTProblemConfig
+
+  # Name used to identify the output
+  name_template: '${event_name}_cmt'
+
+  # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
+  norm_exponent: 2
+
+  # Station distances to consider [m]
+  distance_min: 0
+  distance_max: 200e3
+
+  # Type of moment tensor to restrict to.
+  # Choose from 'full', 'devicatoric' or 'dc'.
+  mt_type: 'full'
+
+  # Define the ranges of the solution space
+  ranges:
+
+    # Time relative to hypocenter origin time [s]
+    time: '-10 .. 10 | add'
+
+    # Centroid location with respect to hypocenter origin [m]
+    north_shift: '-40e3 .. 40e3'
+    east_shift: '-40e3 .. 40e3'
+    depth: '4e3 .. 50e3'
+
+    magnitude: '4.0 .. 7.0'
+    duration: '0. .. 0.'
+
+    # Ranges for the moment tensor
+    rmnn: '-1.41421 .. 1.41421'
+    rmee: '-1.41421 .. 1.41421'
+    rmdd: '-1.41421 .. 1.41421'
+    rmne: '-1 .. 1'
+    rmnd: '-1 .. 1'
+    rmed: '-1 .. 1'
