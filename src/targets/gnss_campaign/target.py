@@ -162,7 +162,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         if self._weights is None:
             covar = self.campaign.get_covariance_matrix()
 
-            if not num.all(covar.diagonal()):
+            if not num.any(covar.diagonal()):
                 logger.warning('GNSS Stations have an empty covariance matrix.'
                                ' Weights will be all equal.')
                 num.fill_diagonal(covar, 1.)
@@ -187,12 +187,13 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
-        syn = num.array([statics['displacement.n'],
-                         statics['displacement.e'],
-                         -statics['displacement.d']])\
+        syn = num.array([
+              statics['displacement.n'],
+              statics['displacement.e'],
+              -statics['displacement.d']])\
             .ravel(order='F')
 
-        res = obs - syn
+        res = num.abs(obs - syn)
 
         misfit_value = res * weights
         misfit_norm = obs * weights
