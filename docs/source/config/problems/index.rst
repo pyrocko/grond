@@ -6,14 +6,17 @@ The search ranges and inversion conditions can be configured flexibly. So far de
 
 These problems are:
 
-* ``CMTProblem``
+* :ref:`cmt`
     A problem that solves for a centroid moment tensor point source (derived from Pyrocko's ``CMTSource``). This problem fits the very general earthquake source analysis based on far-field seismic waveforms.
 
-* ``DoubleDCProblem``
+* :ref:`double_dc`
     A problem that solves for two double-couple point sources (derived from ``DoubleDCSource``). This problem can be used to solve for somewhat complex, *segmented earthquake sources* to better fit far-field seismic data.
     
-* ``RectangularProblem``
+* :ref:`rectangular`
     A problem that solves for a rectangular finite source (derived from Pyrocko's ``RectangularSource``). This problem fits well to large earthquakes and/or problems for which near-field surface displacement data (InSAR, GNSS, etc.) are available.
+
+* :ref:`volume_point`
+    A problem that solves for a spherical volume point (infinite) to model magmatic or volcanic processes. Only static targets (GNSS or InSAR) are supported.
 
 To define and configure a problem the part called ``problem_config`` in the configuration is set up.
 
@@ -54,6 +57,8 @@ problem configurations:
 
 An example for the configuration of a rectangular fault problem is given here:
 
+
+.. _cmt:
 
 ``CMTProblem`` configuration
 ----------------------------
@@ -117,7 +122,7 @@ particularly for the ``CMTProblem``.
     ``duration``
       is the duration of the source time function in seconds.
 
-
+.. _double_dc:
 
 ``DoubleDCProblem`` configuration
 ---------------------------------
@@ -186,6 +191,8 @@ particularly for the ``DoubleDCProblem``.
       are the durations of the first and second source's source time functions, respectively, in seconds.
 
 
+.. _rectangular:
+
 ``RectangularProblem`` configuration
 ------------------------------------
 
@@ -247,6 +254,8 @@ For the source parameter configuration, please note that the last three paramete
     ``nucleation_y``
       relative along-dip position of the rupture nucleation point on the fault to the centre location. This parameter may range from -1 to 1. With 0 being in the centre, -1 being at the top fault edge, 1 at the bottom fault edge, and 0.5 is half-way between centroid and bottom fault edge.
 
+
+.. _volume_point:
 
 ``VolumePointProblem`` configuration
 ------------------------------------
