@@ -7,7 +7,7 @@ from pyrocko import orthodrome as od
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import CMTProblem, RectangularProblem
+from grond.problems import CMTProblem, RectangularProblem, VolumePointProblem
 
 from ..plot import StationDistributionPlot
 
@@ -99,12 +99,19 @@ Static surface displacement from GNSS campaign %s (black vectors) and
 displacements derived from best rupture model (red).
 ''' % campaign.name)
 
-            lat, lon = campaign.get_center_latlon()
+            event = source.pyrocko_event()
+            locations = campaign.stations + [event]
+
+            lat, lon = od.geographic_midpoint_locations(locations)
 
             if self.radius is None:
-                radius = campaign.get_radius()
+                coords = num.array([loc.effective_latlon for loc in locations])
+                radius = od.distance_accurate50m_numpy(
+                            lat[num.newaxis], lon[num.newaxis],
+                            coords[:, 0].max(), coords[:, 1]).max()
+                radius *= 1.1
 
-            if radius == 0.:
+            if radius < 30.*km:
                 logger.warn(
                     'Radius of GNSS campaign %s too small, defaulting'
                     ' to 30 km' % campaign.name)
@@ -164,8 +171,8 @@ displacements derived from best rupture model (red).
                 from pyrocko import moment_tensor
                 from pyrocko.plot import gmtpy
 
-                event = source.pyrocko_event()
                 mt = event.moment_tensor.m_up_south_east()
+                ev_lat, ev_lon = event.effective_latlon
 
                 xx = num.trace(mt) / 3.
                 mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
@@ -176,7 +183,7 @@ displacements derived from best rupture model (red).
                 symbol_size = 20.
                 m.gmt.psmeca(
                     S='%s%g' % ('d', symbol_size / gmtpy.cm),
-                    in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
+                    in_rows=[(ev_lon, ev_lat, 10) + m6 + (1, 0, 0)],
                     M=True,
                     *m.jxyr)
 
@@ -188,6 +195,24 @@ displacements derived from best rupture model (red).
                     G='black',
                     t=60,
                     *m.jxyr)
+
+            elif isinstance(problem, VolumePointProblem):
+                ev_lat, ev_lon = event.effective_latlon
+                dV = abs(source.volume_change)
+                print(dV)
+                sphere_radius = num.cbrt(dV / (4./3.*num.pi))
+
+                volcanic_circle = [
+                    ev_lon,
+                    ev_lat,
+                    '%fe' % sphere_radius
+                ]
+                m.gmt.psxy(
+                    S='E-',
+                    in_rows=[volcanic_circle],
+                    W='1p,black',
+                    G='orange3',
+                    *m.jxyr,)
 
             return (item, m)
 
