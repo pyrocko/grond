@@ -9,12 +9,13 @@ from grond.meta import expand_template, Parameter, \
 from ..base import Problem, ProblemConfig
 
 guts_prefix = 'grond'
-logger = logging.getLogger('grond.problems.explosion.problem')
+logger = logging.getLogger('grond.problems.volume_point')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
+as_km3 = dict(scale_factor=km**3, scale_unit='km^3')
 
 
-class VolumeProblemConfig(ProblemConfig):
+class VolumePointProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nthreads = Int.T(default=1)
@@ -30,7 +31,7 @@ class VolumeProblemConfig(ProblemConfig):
             event_name=event.name,
             event_time=util.time_to_str(event.time))
 
-        problem = VolumeProblem(
+        problem = VolumePointProblem(
             name=expand_template(self.name_template, subs),
             base_source=base_source,
             target_groups=target_groups,
@@ -44,13 +45,13 @@ class VolumeProblemConfig(ProblemConfig):
 
 
 @has_get_plot_classes
-class VolumeProblem(Problem):
+class VolumePointProblem(Problem):
 
     problem_parameters = [
         Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('east_shift', 'm', label='Easting', **as_km),
         Parameter('depth', 'm', label='Depth', **as_km),
-        Parameter('volume_change', 'm^3', label='Volume Change')
+        Parameter('volume_change', 'm^3', label='Volume Change', **as_km3)
     ]
 
     problem_waveform_parameters = [
@@ -73,16 +74,16 @@ class VolumeProblem(Problem):
         p = {k: float(self.ranges[k].make_relative(self.base_source[k], d[k]))
              for k in self.base_source.keys() if k in d}
 
+        stf = None
         if self.has_waveforms:
             stf = gf.HalfSinusoidSTF(duration=float(d.duration))
-        else:
-            stf = None
 
         source = self.base_source.clone(stf=stf, **p)
         return source
 
     @classmethod
     def get_plot_classes(cls):
-        from .. import plot
-        plots = [plot.MTLocationPlot]
+        from . import plot
+        plots = super().get_plot_classes()
+        plots.extend([plot.VolumePointLocationPlot])
         return plots
