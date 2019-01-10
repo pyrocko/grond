@@ -578,7 +578,7 @@ class HighScoreOptimiser(Optimiser):
             logger.info(
                 '%s at %i/%i (%s, %i/%i)' % (
                     problem.name,
-                    iiter, niter,
+                    iiter+1, niter,
                     phase.__class__.__name__, iiter_phase, phase.niterations))
 
             self._tlog_last = t
