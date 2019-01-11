@@ -1,3 +1,4 @@
+import logging
 import numpy as num
 from matplotlib import cm, gridspec
 
@@ -8,7 +9,10 @@ from matplotlib import pyplot as plt
 from matplotlib import patches
 from pyrocko.guts import Tuple, Float, String, Int, Bool
 
-km = 1000.
+logger = logging.getLogger('grond.targets.satellite.plot')
+
+km = 1e3
+d2r = num.pi/180.
 guts_prefix = 'grond'
 
 
@@ -97,7 +101,8 @@ edge marking the upper fault edge. Complete data extent is shown.
                 if not self.relative_coordinates:
                     import utm
                     utm_E, utm_N, utm_zone, utm_zone_letter =\
-                        utm.from_latlon(source.lat, source.lon)
+                        utm.from_latlon(source.effective_lat,
+                                        source.effective_lon)
                     scale_x['offset'] = utm_E
                     scale_y['offset'] = utm_N
 
@@ -107,26 +112,27 @@ edge marking the upper fault edge. Complete data extent is shown.
                                 va='bottom', ha='right',
                                 fontsize=8, alpha=.7,
                                 transform=ax.transAxes)
+                ax.set_aspect('equal')
 
             elif scene.frame.isDegree():
                 ax.set_xlabel('Lon [°]')
                 scale_x = {'scale': 1.}
                 scale_y = {'scale': 1.}
                 if not self.relative_coordinates:
-                    scale_x['offset'] = source.lon
-                    scale_y['offset'] = source.lat
+                    scale_x['offset'] = source.effective_lon
+                    scale_y['offset'] = source.effective_lat
+                ax.set_aspect(1./num.cos(source.effective_lon*d2r))
 
             scale_axes(ax.get_xaxis(), **scale_x)
             scale_axes(ax.get_yaxis(), **scale_y)
-            ax.set_aspect('equal')
 
         def drawSource(ax, scene):
             if scene.frame.isMeter():
                 fn, fe = source.outline(cs='xy').T
             elif scene.frame.isDegree():
                 fn, fe = source.outline(cs='latlon').T
-                fn -= source.lat
-                fe -= source.lon
+                fn -= source.effective_lat
+                fe -= source.effective_lon
 
             # source is centered
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
@@ -197,10 +203,10 @@ edge marking the upper fault edge. Complete data extent is shown.
             if target.scene.frame.isMeter():
                 off_n, off_e = map(float, latlon_to_ne_numpy(
                     target.scene.frame.llLat, target.scene.frame.llLon,
-                    source.lat, source.lon))
+                    source.effective_lat, source.effective_lon))
             if target.scene.frame.isDegree():
-                off_n = source.lat - target.scene.frame.llLat
-                off_e = source.lon - target.scene.frame.llLon
+                off_n = source.effective_lat - target.scene.frame.llLat
+                off_e = source.effective_lon - target.scene.frame.llLon
 
             turE, turN, tllE, tllN = zip(
                 *[(l.gridE.max()-off_e,
@@ -244,10 +250,10 @@ data and (right) the model residual.
             if scene.frame.isMeter():
                 offset_n, offset_e = map(float, latlon_to_ne_numpy(
                     scene.frame.llLat, scene.frame.llLon,
-                    source.lat, source.lon))
+                    source.effective_lat, source.effective_lon))
             elif scene.frame.isDegree():
-                offset_n = source.lat - scene.frame.llLat
-                offset_e = source.lon - scene.frame.llLon
+                offset_n = source.effective_lat - scene.frame.llLat
+                offset_e = source.effective_lon - scene.frame.llLon
 
             im_extent = (scene.frame.E.min() - offset_e,
                          scene.frame.E.max() - offset_e,
@@ -315,8 +321,8 @@ data and (right) the model residual.
                     fn, fe = source.outline(cs='xy').T
                 elif scene.frame.isDegree():
                     fn, fe = source.outline(cs='latlon').T
-                    fn -= source.lat
-                    fe -= source.lon
+                    fn -= source.effective_lat
+                    fe -= source.effective_lon
 
                 off_n = (fn[0] + fn[1]) / 2
                 off_e = (fe[0] + fe[1]) / 2
