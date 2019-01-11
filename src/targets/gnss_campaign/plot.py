@@ -142,30 +142,36 @@ displacements derived from best rupture model (red).
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
+            offset_scale = num.array(
+                [num.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
+                 for s in campaign.stations + model_camp.stations]).max()
+
             if vertical:
                 m.add_gnss_campaign(campaign, psxy_style={
                     'G': 'black',
                     'W': '0.8p,black',
-                    }, vertical=True)
+                    },
+                    offset_scale=offset_scale, vertical=True)
 
                 m.add_gnss_campaign(model_camp, psxy_style={
                     'G': 'red',
                     'W': '0.8p,red',
                     't': 30,
                     },
-                    vertical=True, labels=False)
+                    offset_scale=offset_scale, vertical=True, labels=False)
             else:
                 m.add_gnss_campaign(campaign, psxy_style={
                     'G': 'black',
                     'W': '0.8p,black',
-                    })
+                    },
+                    offset_scale=offset_scale)
 
                 m.add_gnss_campaign(model_camp, psxy_style={
                     'G': 'red',
                     'W': '0.8p,red',
                     't': 30,
                     },
-                    labels=False)
+                    offset_scale=offset_scale, labels=False)
 
             if isinstance(problem, CMTProblem):
                 from pyrocko import moment_tensor
