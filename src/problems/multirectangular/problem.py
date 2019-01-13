@@ -112,8 +112,8 @@ class MultiRectangularProblem(Problem):
         return arr
 
     def get_source(self, x, i):
+        d = self.get_parameter_dict(x[0+12*i:12+i*12], nsources=2)#x, nsources=self.nsources) # not looking nice but needed for correct usage of params #from branch multisource_new
         i = i+1 # for realistic numbers
-        d = self.get_parameter_dict(x, nsources=self.nsources)
         p = {}
         for k in self.base_source.keys():
             if k in d:
