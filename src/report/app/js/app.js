@@ -61,6 +61,8 @@ var yaml_type_map = [
     ['!grond.FeatureMeasure', Dummy],
     ['!grond.CMTProblem', Dummy],
     ['!grond.RectangularProblem', Dummy],
+    ['!grond.DoubleDCProblem', Dummy],
+    ['!grond.MultiRectangularProblem', Dummy],
     ['!pf.MTSource', Dummy],
     ['!pf.RectangularSource', Dummy],
     ['!pf.HalfSinusoidSTF', Dummy],
