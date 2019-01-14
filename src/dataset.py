@@ -1002,6 +1002,7 @@ class DatasetConfig(HasPaths):
             events.extend(model.load_events(filename=fn))
 
         event_names = [ev.name for ev in events]
+        event_names.sort()
         return event_names
 
     def get_dataset(self, event_name):
