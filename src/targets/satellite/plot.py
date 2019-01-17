@@ -54,7 +54,7 @@ class SatelliteTargetDisplacement(PlotConfig):
             title=u'Satellite Surface Displacements',
             section='fits',
             feather_icon='navigation',
-            description=u' Maps showing subsampled surface displacements as '
+            description=u' Maps showing subsampled surface displacements as'
                         u' observed, modelled and the residual (observed minus'
                         u' modelled).\n The displacement values predicted by'
                         u' the orbit-ambiguity ramps are added to the modelled'
@@ -88,8 +88,9 @@ class SatelliteTargetDisplacement(PlotConfig):
         if nsources is not None:
             sources = []
             for i in range(nsources):
-                source = problem.get_source(xbest, i)
-                sources.append(source)
+                source_i = problem.get_source(xbest, i)
+                sources.append(source_i)
+            source = sources[0]
         else:
             source = problem.get_source(xbest)
         results = problem.evaluate(xbest, targets=sat_targets)
@@ -137,7 +138,6 @@ class SatelliteTargetDisplacement(PlotConfig):
                         fn_sub, fe_sub = subsource.outline(cs='xy').T
                         fes.append(fe_sub)
                         fns.append(fn_sub)
-                        source = subsource
                 else:
                     fn, fe = source.outline(cs='xy').T
 
@@ -151,7 +151,6 @@ class SatelliteTargetDisplacement(PlotConfig):
                         fe_sub -= subsource.lon
                         fes.append(fe_sub)
                         fns.append(fn_sub)
-                        source = subsource
 
                 else:
                     fn, fe = source.outline(cs='latlon').T
@@ -351,17 +350,57 @@ Surface displacements derived from satellite data, Scene {meta.scene_title}
 
             if closeup:
                 if scene.frame.isMeter():
-                    fn, fe = source.outline(cs='xy').T
+                    if nsources is not None:
+                        fns = []
+                        fes = []
+                        for subsource in sources:
+                            fn_sub, fe_sub = subsource.outline(cs='xy').T
+                            fes.append(fe_sub)
+                            fns.append(fn_sub)
+                        fnv = list(fns[0])
+                        fnv.extend(list(fns[1]))
+                        fnv = num.array(fnv)
+                        fev = list(fes[0])
+                        fev.extend(list(fes[1]))
+                        fev = num.array(fev)
+                        off_n = (fns[0][0] + fns[1][1]) / 2
+                        off_e = (fes[0][0] + fes[1][1]) / 2
+                    else:
+                        fn, fe = source.outline(cs='xy').T
+                        off_n = (fn[0] + fn[1]) / 2
+                        off_e = (fe[0] + fe[1]) / 2
+                        fnv = fn
+                        fev = fe
+
                 elif scene.frame.isDegree():
-                    fn, fe = source.outline(cs='latlon').T
-                    fn -= source.lat
-                    fe -= source.lon
+                    if nsources is not None:
+                        fns = []
+                        fes = []
+                        for subsource in sources:
+                            fn_sub, fe_sub = subsource.outline(cs='latlon').T
+                            fn_sub -= subsource.lat
+                            fe_sub -= subsource.lon
+                            fes.append(fe_sub)
+                            fns.append(fn_sub)
+                        fnv = list(fns[0])
+                        fnv.extend(list(fns[1]))
+                        fnv = num.array(fnv)
+                        fev = list(fes[0])
+                        fev.extend(list(fes[1]))
+                        fev = num.array(fev)
+                        off_n = (fns[0][0] + fns[1][1]) / 2
+                        off_e = (fes[0][0] + fes[1][1]) / 2
+                    else:
+                        fn, fe = source.outline(cs='latlon').T
+                        fn -= source.lat
+                        fe -= source.lon
+                        off_n = (fn[0] + fn[1]) / 2
+                        off_e = (fe[0] + fe[1]) / 2
+                        fnv = fn
+                        fev = fe
 
-                off_n = (fn[0] + fn[1]) / 2
-                off_e = (fe[0] + fe[1]) / 2
-
-                fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
-                                        + max(abs(fe-off_e))**2)
+                fault_size = 2*num.sqrt(max(abs(fnv-off_n))**2
+                                        + max(abs(fev-off_e))**2)
                 fault_size *= self.map_scale
 
                 for ax in axes:
