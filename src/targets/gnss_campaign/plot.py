@@ -205,7 +205,6 @@ displacements derived from best rupture model (red).
             elif isinstance(problem, VolumePointProblem):
                 ev_lat, ev_lon = event.effective_latlon
                 dV = abs(source.volume_change)
-                print(dV)
                 sphere_radius = num.cbrt(dV / (4./3.*num.pi))
 
                 volcanic_circle = [
