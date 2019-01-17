@@ -60,46 +60,40 @@ class MultiRectangularProblem(Problem):
     for i in range(1,nsources+1):
         problem_parameters.append(Parameter('north_shift%s' % i,
                                             'm',
-                                            label='Northing_%s' %i,
+                                            label='Northing %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('east_shift%s' % i,
                                             'm',
-                                            label='Easting_%s' %i,
+                                            label='Easting %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('depth%s' % i, 'm',
-                                            label='Depth_%s' %i,
+                                            label='Depth %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('length%s' % i,
                                             'm',
-                                            label='Length_%s' %i,
+                                            label='Length %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('width%s' % i, 'm',
-                                            label='Width_%s' %i,
+                                            label='Width %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('dip%s' % i, 'deg',
-                                            label='Dip_%s' %i))
+                                            label='Dip %s' %i))
         problem_parameters.append(Parameter('strike%s' % i,
                                             'deg',
                                             label='Strike_%s' %i))
         problem_parameters.append(Parameter('rake%s' % i, 'deg',
-                                            label='Rake_%s' %i))
+                                            label='Rake %s' %i))
         problem_parameters.append(Parameter('slip%s' % i, 'm',
-                                            label='Slip_%s' %i))
+                                            label='Slip %s' %i))
 
-        problem_waveform_parameters.append(Parameter(
-                                            'nucleation_x%s' % i,
+        problem_parameters.append(Parameter('nucleation_x%s' % i,
                                             'offset',
-                                            label='Nucleation X %s' %i)
-                                           )
-        problem_waveform_parameters.append(Parameter(
-                                            'nucleation_y%s' % i,
+                                            label='Nucleation X %s' %i))
+        problem_parameters.append(Parameter('nucleation_y%s' % i,
                                             'offset',
-                                            label='Nucleation Y %s' %i)
-                                           )
-        problem_waveform_parameters.append(Parameter(
-                                            'time%s' % i, 's',
-                                             label='Time %s' %i)
-                                           )
+                                            label='Nucleation Y %s' %i))
+        problem_parameters.append(Parameter('time%s' % i, 's',
+                                             label='Time %s' %i))
 
     dependants = []
     distance_min = Float.T(default=0.0)

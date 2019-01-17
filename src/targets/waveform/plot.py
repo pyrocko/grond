@@ -192,7 +192,7 @@ is relative to the reference event origin time.
                     yield item, fig
 
     def draw_figure(self, sources, target, results):
-        t0_mean = num.mean([s.time for s in sources])
+        t0_min = num.min([s.time for s in sources])
 
         # distances = [
         #    s.distance_to(target) for s in sources]
@@ -238,7 +238,7 @@ is relative to the reference event origin time.
             if result.tobs_shift != 0.0:
                 t0 = result.tsyn_pick
             else:
-                t0 = t0_mean
+                t0 = t0_min
 
             t = result.filtered_obs.get_xdata()
             ydata = result.filtered_obs.get_ydata() / yabsmax
