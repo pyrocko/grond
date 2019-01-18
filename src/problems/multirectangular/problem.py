@@ -1,6 +1,6 @@
 import numpy as num
 import logging
-import sys
+#import sys
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 from optparse import OptionParser
@@ -37,7 +37,7 @@ class MultiRectangularProblemConfig(ProblemConfig):
         problem = MultiRectangularProblem(
             name=expand_template(self.name_template, subs),
             base_source=base_source,
-            distance_min=self.distance_min,
+            distance_min=self.distance_min, 
             target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
@@ -57,49 +57,43 @@ class MultiRectangularProblem(Problem):
     problem_parameters = []
     problem_waveform_parameters = []
 
-    for i in range(nsources):
+    for i in range(1,nsources+1):
         problem_parameters.append(Parameter('north_shift%s' % i,
                                             'm',
-                                            label='Northing',
+                                            label='Northing %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('east_shift%s' % i,
                                             'm',
-                                            label='Easting',
+                                            label='Easting %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('depth%s' % i, 'm',
-                                            label='Depth',
+                                            label='Depth %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('length%s' % i,
                                             'm',
-                                            label='Length',
+                                            label='Length %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('width%s' % i, 'm',
-                                            label='Width',
+                                            label='Width %s' %i,
                                             **as_km))
         problem_parameters.append(Parameter('dip%s' % i, 'deg',
-                                            label='Dip'))
+                                            label='Dip %s' %i))
         problem_parameters.append(Parameter('strike%s' % i,
                                             'deg',
-                                            label='Strike'))
+                                            label='Strike %s' %i))
         problem_parameters.append(Parameter('rake%s' % i, 'deg',
-                                            label='Rake'))
+                                            label='Rake %s' %i))
         problem_parameters.append(Parameter('slip%s' % i, 'm',
-                                            label='Slip'))
+                                            label='Slip %s' %i))
 
-        problem_waveform_parameters.append(Parameter(
-                                            'nucleation_x%s' % i,
+        problem_parameters.append(Parameter('nucleation_x%s' % i,
                                             'offset',
-                                            label='Nucleation X')
-                                           )
-        problem_waveform_parameters.append(Parameter(
-                                            'nucleation_y%s' % i,
+                                            label='Nucleation X %s' %i))
+        problem_parameters.append(Parameter('nucleation_y%s' % i,
                                             'offset',
-                                            label='Nucleation Y')
-                                           )
-        problem_waveform_parameters.append(Parameter(
-                                            'time%s' % i, 's',
-                                             label='Time')
-                                           )
+                                            label='Nucleation Y %s' %i))
+        problem_parameters.append(Parameter('time%s' % i, 's',
+                                             label='Time %s' %i))
 
     dependants = []
     distance_min = Float.T(default=0.0)
@@ -112,7 +106,8 @@ class MultiRectangularProblem(Problem):
         return arr
 
     def get_source(self, x, i):
-        d = self.get_parameter_dict(x, nsources=self.nsources)
+        d = self.get_parameter_dict(x[0+12*i:12+i*12], nsources=2)#x, nsources=self.nsources) # not looking nice but needed for correct usage of params #from branch multisource_new
+        i = i+1 # for realistic numbers
         p = {}
         for k in self.base_source.keys():
             if k in d:

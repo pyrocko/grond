@@ -72,12 +72,13 @@ class FitsPhaseRatioPlot(PlotConfig):
             title=u'Fits of phase ratios',
             section='fits',
             feather_icon='activity',
-            description=S(u'''
-                Observed (black markers) and synthetic waveform amplitude phase
-                ratio estimates (colored markers) at different stations for
-                every Nth model in the bootstrap solution ensemble (N=%i).
-                %s
-                ''' % (self.istride_ensemble, scolor)))
+            description=u'''
+Observed (black markers) and synthetic waveform amplitude phase ratio estimates
+(colored markers) at different stations for every Nth model in the bootstrap
+solution ensemble (N=%i).
+
+%s
+''' % (self.istride_ensemble, scolor))
 
     def draw_figures(self, ds, history):
         problem = history.problem

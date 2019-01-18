@@ -5,7 +5,7 @@ from pyrocko.model import gnss
 from pyrocko.plot import automap
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import CMTProblem, RectangularProblem
+from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem
 
 import copy
 from pyrocko.guts import Tuple, Float, Bool
@@ -53,15 +53,15 @@ class GNSSTargetMisfitPlot(PlotConfig):
             title=u'Static GNSS Surface Displacements',
             section='fits',
             feather_icon='map',
-            description=u' Maps showing station positions and statiom names' 
-                        u' of the GNSS targets. Arrows the observed surface' 
-                        u' displacements (black arrows) and synthetic' 
-                        u' displacements (red arrows). The top plot shows' 
-                        u' the horizontal displacements and the bottom plot' 
-                        u' the vertical displacements.The grey filled box' 
-                        u' shows the surface projection of the modelled '
-                        u' source, with the thick-lined edge marking the' 
-                        u' upper fault edge.')
+            description=u'''
+Maps showing station positions and statiom names of the GNSS targets.
+
+Arrows the observed surface displacements (black arrows) and synthetic
+displacements (red arrows). The top plot shows the horizontal displacements and
+the bottom plot the vertical displacements. The grey filled box shows the
+surface projection of the modelled source, with the thick-lined edge marking
+the upper fault edge.
+''')
 
     def draw_gnss_fits(self, ds, history, optimiser, vertical=False):
         problem = history.problem
@@ -75,8 +75,15 @@ class GNSSTargetMisfitPlot(PlotConfig):
         gms = gms[isort]
         models = history.models[isort, :]
         xbest = models[0, :]
-
-        source = problem.get_source(xbest)
+        
+        nsources = 2
+        if nsources is not None:
+            sources = []
+            for i in range(nsources):
+                source = problem.get_source(xbest, i)
+                sources.append(source)
+        else:
+            source = problem.get_source(xbest)
 
         results = problem.evaluate(
             xbest, result_mode='full', targets=gnss_targets)
@@ -90,9 +97,10 @@ class GNSSTargetMisfitPlot(PlotConfig):
                 },
                 title=u'Static GNSS Surface Displacements - Campaign %s'
                       % campaign.name,
-                description=u'Static surface displacement from GNSS campaign '
-                            u'%s (black vectors) and displacements derived '
-                            u'from best rupture model (red).' % campaign.name)
+                description=u'''
+Static surface displacement from GNSS campaign %s (black vectors) and
+displacements derived from best rupture model (red).
+''' % campaign.name)
 
             lat, lon = campaign.get_center_latlon()
 
@@ -184,6 +192,17 @@ class GNSSTargetMisfitPlot(PlotConfig):
                     t=60,
                     *m.jxyr)
 
+            elif isinstance(problem, MultiRectangularProblem):
+                if nsources is not None:
+                    for subsource in sources:
+                        m.gmt.psxy(
+                            in_rows=subsource.outline(cs='lonlat'),
+                            L='+p2p,black',
+                            W='1p,black',
+                            G='black',
+                            t=60,
+                            *m.jxyr)
+            
             return (item, m)
 
         ifig = 0

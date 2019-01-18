@@ -1,0 +1,8 @@
+<div>
+    <div ng-repeat="p in paragraphs(text)">
+        <p ng-show="!hidden || $first">{{ p }}
+            <a href="" ng-if="hidden && $first && !$last" ng-click="show()">more...</a>
+        </p>
+        <a href="" ng-if="!hidden && $last && !$first" ng-click="hide()">collapse</a>
+    </div>
+</div>

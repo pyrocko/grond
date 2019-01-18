@@ -2,7 +2,7 @@
     <script>$("#browser-warning").hide();</script>
 
     <nav class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
-        <a class="navbar-brand" href>Grond results</a>
+        <a href="" class="navbar-brand">Grond Reports</a>
         <input
                 class="form-control form-control-dark"
                 type="text"
@@ -11,14 +11,14 @@
                 ng-model="keyword" />
         <a
                 class="btn btn-primary ml-3"
-                href
+                href=""
                 ng-if="rl.get_selected().length > 1"
                 ng-click="toggle_compare_mode()">
             {{ compare_mode ? 'Compare off' : 'Compare' }}
         </a>
         <a
                 class="btn btn-primary ml-3"
-                href
+                href=""
                 ng-click="open_modal()">
             Open
         </a>
@@ -39,7 +39,7 @@
                     <a
                             ng-click="set_primary_problem(get_offset_problem_name(primary_problem, -1, true))"
                             class="nav-link {{ get_offset_problem_name(primary_problem, -1, false) ? '' : 'disabled' }}"
-                            href>◀</a>
+                            href="">◀</a>
                 </li>
                 <li
                         class="nav-item ml-2 {{ tab_col_width() }}"
@@ -48,7 +48,7 @@
                     <a
                             ng-click="set_primary_problem(problem_name)"
                             class="nav-link {{ (problem_name == primary_problem) ? 'active' : '' }}"
-                            href>
+                            href="">
                         {{ problem_name }}
                     </a>
                 </li>
@@ -56,7 +56,7 @@
                     <a
                             ng-click="set_primary_problem(get_offset_problem_name(primary_problem, 1, true))"
                             class="nav-link {{ get_offset_problem_name(primary_problem, 1, false) ? '' : 'disabled' }}"
-                            href>▶</a>
+                            href="">▶</a>
                 </li>
             </ul>
         </div>
@@ -66,7 +66,7 @@
                     <a
                             ng-click="set_secondary_problem(get_offset_problem_name(secondary_problem, -1, true))"
                             class="nav-link {{ get_offset_problem_name(secondary_problem, -1, false) ? '' : 'disabled' }}"
-                            href>◀</a>
+                            href="">◀</a>
                 </li>
                 <li
                         class="nav-item ml-2 {{ tab_col_width() }}"
@@ -75,7 +75,7 @@
                     <a
                             ng-click="set_secondary_problem(problem_name)"
                             class="nav-link {{ (problem_name == secondary_problem) ? 'active' : '' }}"
-                            href>
+                            href="">
                         {{ problem_name }}
                     </a>
                 </li>
@@ -83,7 +83,7 @@
                     <a
                             ng-click="set_secondary_problem(get_offset_problem_name(secondary_problem, 1, true))"
                             class="nav-link {{ get_offset_problem_name(secondary_problem, 1, false) ? '' : 'disabled' }}"
-                            href>▶</a>
+                            href="">▶</a>
                 </li>
             </ul>
         </div>
@@ -93,6 +93,12 @@
         <nav class="col-2 bg-light sidebar">
             <div class="sidebar-sticky ng-cloak">
                 <ul class="nav flex-column">
+                  <li class="nav-item" style="margin-bottom: 1em">
+                    <a href="" ng-click="select_groups_none()" class="nav-link">
+                        <span data-feather="home"></span>
+                        Overview
+                    </a>
+                  </li>
                   <li ng-if="have_groups_avail()" class="nav-item">
                     <a href="" ng-click="select_groups_all()" class="nav-link">
                         <span data-feather="book-open"></span>
@@ -105,9 +111,9 @@
                             ng-click="select_group_by_section_name(group.section)">
                         <span>{{ group.section }}</span>
                     </h6>
-                    <a href="" ng-click="select_group_by_name(group.name)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
+                    <a href="" ng-click="select_group_by_name_variant(group.name, group.variant)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
                         <span data-feather="{{ group.feather_icon }}"></span>
-                        {{ group.name | nounderscore }}
+                        {{ group.name | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}
                     </a>
                   </li>
                 </ul>
@@ -115,10 +121,20 @@
         </nav>
 
         <main role="main" class="col-10 ml-auto mt-5">
+            <div ng-show="groups_selected().length == 0 || all_groups_selected()" ng-controller="InfoController" ng-cloak>
+                <div class="row m-3">
+                    <div class="col">
+                        <h1 class="plot-title">{{ get_info().title }}</h1>
+                        <div ng-bind-html="get_info().description | pformat"></div>
+                    </div>
+                </div>
+
+            </div>
             <div ng-repeat="group in groups_selected()">
                 <group-plots ng-if="group.template == 'group-plots'"></group-plots>
                 <parameter-table ng-if="group.template == 'parameter-table'"></parameter-table>
                 <config-file ng-if="group.template == 'config-file'"></config-file>
+                <problem-info ng-if="group.template == 'problem-info'"></problem-info>
             </div>
         </main>
     </div>

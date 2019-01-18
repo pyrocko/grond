@@ -1,7 +1,7 @@
 import logging
 
 from pyrocko.guts import Object
-from grond.meta import GrondError
+from grond.meta import GrondError, has_get_plot_classes
 
 guts_prefix = 'grond'
 
@@ -12,6 +12,7 @@ class BadProblem(GrondError):
     pass
 
 
+@has_get_plot_classes
 class Optimiser(Object):
 
     def optimise(self, problem):

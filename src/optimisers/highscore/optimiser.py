@@ -282,11 +282,17 @@ class Chains(object):
         self.nchains = nchains
         self.nlinks_cap = nlinks_cap
         self.chains_m = num.zeros(
-            (self.nchains, nlinks_cap), num.float)
+            (self.nchains, nlinks_cap), dtype=num.float)
         self.chains_i = num.zeros(
-            (self.nchains, nlinks_cap), num.int)
+            (self.nchains, nlinks_cap), dtype=num.int)
         self.nlinks = 0
+
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
+        self.accept_log_len = 100
+        self.accept_log = num.ones(
+            (self.nchains, self.accept_log_len),
+            dtype=num.bool)
+
         self.nread = 0
         history.add_listener(self)
 
@@ -315,14 +321,18 @@ class Chains(object):
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
             if self.nlinks == self.nlinks_cap:
-                accept = (
-                    chains_i[:, self.nlinks_cap-1] != n-1).astype(num.int)
+                accept = (chains_i[:, self.nlinks_cap-1] != n-1) \
+                    .astype(num.bool)
                 self.nlinks -= 1
             else:
-                accept = num.ones(self.nchains, dtype=num.int)
-
+                accept = num.ones(self.nchains, dtype=num.bool)
+            self.accept_log[:, n % self.accept_log_len] = accept
             self.accept_sum += accept
             self.nread += 1
+
+    @property
+    def acceptance_rate(self):
+        return self.accept_log.sum(axis=1) / self.accept_log_len
 
     def append(self, iiter, model, misfits):
         self.goto(iiter)
@@ -611,14 +621,19 @@ class HighScoreOptimiser(Optimiser):
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_header=u'Optimiser phase: %s, exploring %d BS chains\n'
-                         u'Global chain misfit distribution: \u2080%s\xb9'
-                         % (phase.__class__.__name__,
-                            chains.nchains,
-                            spark_plot(
-                                glob_misfits,
-                                num.linspace(0., 1., 25))
-                            ))
+            extra_header=  # noqa
+                u'Optimiser phase: {phase}, exploring {nchains} BS chains\n'  # noqa
+                u'Global chain misfit distribution: \u2080{mf_dist}\xb9\n'
+                u'Acceptance rate distribution:     \u2080{acceptance}'
+                u'\u2081\u2080\u2080\ufe6a'
+                .format(
+                    phase=phase.__class__.__name__,
+                    nchains=chains.nchains,
+                    mf_dist=spark_plot(
+                        glob_misfits, num.linspace(0., 1., 25)),
+                    acceptance=spark_plot(
+                        chains.acceptance_rate, num.linspace(0., 1., 25))
+                    ))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):

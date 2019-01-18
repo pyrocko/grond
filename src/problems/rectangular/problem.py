@@ -4,7 +4,7 @@ import logging
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 
-from grond.meta import expand_template, Parameter
+from grond.meta import expand_template, Parameter, has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
 
@@ -42,6 +42,7 @@ class RectangularProblemConfig(ProblemConfig):
         return problem
 
 
+@has_get_plot_classes
 class RectangularProblem(Problem):
     # nucleation_x
     # nucleation_y

@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import logging
 import math
 import numpy as num
@@ -10,6 +12,7 @@ from pyrocko.guts_array import Array
 from grond.dataset import NotFound
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
+from grond.meta import has_get_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
@@ -30,7 +33,7 @@ class Trace(Object):
 
 
 class WaveformMisfitConfig(MisfitConfig):
-    fmin = Float.T(help='minimum frequency of bandpass filter')
+    fmin = Float.T(default=0.0, help='minimum frequency of bandpass filter')
     fmax = Float.T(help='maximum frequency of bandpass filter')
     ffactor = Float.T(default=1.5)
     tmin = gf.Timing.T(
@@ -106,7 +109,7 @@ class WaveformTargetGroup(TargetGroup):
     channels = List.T(
         String.T(),
         optional=True,
-        help='set channels to include, e.g. \[\'Z\',\'T\'\]')
+        help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
 
     def get_targets(self, ds, event, default_path):
@@ -222,7 +225,7 @@ class WaveformPiggybackSubtarget(Object):
     def evaluate(
             self, tr_proc_obs, trspec_proc_obs, tr_proc_syn, trspec_proc_syn):
 
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class WaveformPiggybackSubresult(Object):
@@ -250,6 +253,7 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
     piggyback_subresults = List.T(WaveformPiggybackSubresult.T())
 
 
+@has_get_plot_classes
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()
@@ -285,7 +289,11 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         config = self.misfit_config
         tmin_fit = source.time + store.t(config.tmin, source, self)
         tmax_fit = source.time + store.t(config.tmax, source, self)
-        tfade = 1.0/config.fmin
+        if config.fmin > 0.0:
+            tfade = 1.0/config.fmin
+        else:
+            tfade = 1.0/config.fmax
+
         if config.tfade is None:
             tfade_taper = tfade
         else:
@@ -326,7 +334,11 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         return tobs, tsyn
 
     def get_cutout_timespan(self, tmin, tmax, tfade):
-        tinc_obs = 1.0 / self.misfit_config.fmin
+
+        if self.misfit_config.fmin > 0:
+            tinc_obs = 1.0 / self.misfit_config.fmin
+        else:
+            tinc_obs = 10.0 / self.misfit_config.fmax
 
         tmin_obs = (math.floor(
             (tmin - tfade) / tinc_obs) - 1.0) * tinc_obs
@@ -372,7 +384,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         try:
             tr_obs = ds.get_waveform(
                 nslc,
-                tinc_cache=1.0/config.fmin,
+                tinc_cache=1.0/(config.fmin or 0.1*config.fmax),
                 tmin=tmin_fit+tobs_shift-tfade,
                 tmax=tmax_fit+tobs_shift+tfade,
                 tfade=tfade,

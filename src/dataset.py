@@ -75,7 +75,8 @@ class Dataset(object):
         self.clippings = {}
         self.blacklist = set()
         self.whitelist_nslc = None
-        self.whitelist_nsl = None
+        self.whitelist_nsl_xx = None
+        self.whitelist = None
         self.station_corrections = {}
         self.station_factors = {}
         self.pick_markers = []
@@ -218,18 +219,17 @@ class Dataset(object):
 
         if self.whitelist_nslc is None:
             self.whitelist_nslc = set()
-            self.whitelist_nsl = set()
+            self.whitelist = set()
             self.whitelist_nsl_xx = set()
 
         for x in whitelist:
             if isinstance(x, str):
                 x = tuple(x.split('.'))
-            assert len(x) in (3, 4)
             if len(x) == 4:
                 self.whitelist_nslc.add(x)
                 self.whitelist_nsl_xx.add(x[:3])
-            if len(x) == 3:
-                self.whitelist_nsl.add(x)
+            else:
+                self.whitelist.add(x)
 
     def add_station_corrections(self, filename):
         self.station_corrections.update(
@@ -314,15 +314,21 @@ class Dataset(object):
             return True
 
         nsl = self.get_nsl(obj)
+
+        if (
+                nsl in self.whitelist or
+                nsl[1:2] in self.whitelist or
+                nsl[:2] in self.whitelist):
+
+            return True
+
         try:
             nslc = self.get_nslc(obj)
             if nslc in self.whitelist_nslc:
                 return True
 
-            return nsl in self.whitelist_nsl
-
         except InvalidObject:
-            return nsl in self.whitelist_nsl_xx or nsl in self.whitelist_nsl
+            return nsl in self.whitelist_nsl_xx
 
     def has_clipping(self, nsl_or_nslc, tmin, tmax):
         if nsl_or_nslc not in self.clippings:
@@ -472,7 +478,22 @@ class Dataset(object):
         elif len(candidates) == 0:
             raise NotFound('no response found', (net, sta, loc, cha))
         else:
-            raise NotFound('multiple responses found', (net, sta, loc, cha))
+            # if multiple responses are found take the younger one
+            t1 = []
+            index = []
+            indexSX = -1
+            for sx in self.responses_stationxml:
+                indexSX += 1
+                for network in sx.network_list:
+                    if network.code == net:
+                        # step through all the stations per network
+                        for station in network.station_list:
+                            if station.code == sta:
+                                if t1 == [] or t1 < station.start_date:
+                                    t1 = station.start_date
+                                    index = indexSX                               
+            return candidates[index]
+
 
     def get_waveform_raw(
             self, obj,
@@ -518,7 +539,7 @@ class Dataset(object):
             trs[0].extend(
                 tmin + toffset_noise_extract - tpad,
                 tmax + toffset_noise_extract + tpad,
-                fillmethod='median')
+                fillmethod='repeat')
 
         if not want_incomplete and len(trs) != 1:
             if len(trs) == 0:
@@ -692,7 +713,6 @@ class Dataset(object):
             for matrix, in_channels, out_channels in projections:
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
-
                 try:
                     trs_restituted_group = []
                     trs_raw_group = []
@@ -723,7 +743,8 @@ class Dataset(object):
                         trs_raw.extend(trs_raw_group)
 
                 except NotFound as e:
-                    exceptions.append((in_channels, out_channels, e))
+                        print((in_channels, out_channels, e))
+                        exceptions.append((in_channels, out_channels, e))
 
             if not trs_projected:
                 err = []

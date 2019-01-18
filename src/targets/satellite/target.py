@@ -4,7 +4,7 @@ import numpy as num
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
 
-from grond.meta import Parameter
+from grond.meta import Parameter, has_get_plot_classes
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
 
 guts_prefix = 'grond'
@@ -111,6 +111,7 @@ class SatelliteMisfitResult(gf.Result, MisfitResult):
         help='Observed static displacement for a target.')
 
 
+@has_get_plot_classes
 class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     """Handles and carries out operations related to the objective functions.
 

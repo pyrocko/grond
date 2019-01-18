@@ -5,6 +5,7 @@ from pyrocko import gf
 from pyrocko.guts import String, Dict, List
 
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
+from grond.meta import has_get_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.target').getChild('gnss_campaign')
@@ -77,6 +78,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
         return targets
 
 
+@has_get_plot_classes
 class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     """Handles and carries out operations related to the objective functions.
 

@@ -251,6 +251,38 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     logger.info('done harvesting problem %s' % problem.name)
 
 
+def cluster(rundir, clustering, metric):
+    env = Environment([rundir])
+    history = env.get_history(subset='harvest')
+    problem = history.problem
+    models = history.models
+
+    events = [problem.get_source(model).pyrocko_event() for model in models]
+
+    from grond.clustering import metrics
+
+    if metric not in metrics.metrics:
+        raise GrondError('unknown metric: %s' % metric)
+
+    mat = metrics.compute_similarity_matrix(events, metric)
+
+    clusters = clustering.perform(mat)
+
+    labels = num.sort(num.unique(clusters))
+    bins = num.concatenate((labels, [labels[-1]+1]))
+    ns = num.histogram(clusters, bins)[0]
+
+    history.set_attribute('cluster', clusters)
+
+    for i in range(labels.size):
+        if labels[i] == -1:
+            logging.info(
+                'Number of unclustered events: %5i' % ns[i])
+        else:
+            logging.info(
+                'Number of events in cluster %i: %5i' % (labels[i], ns[i]))
+
+
 def get_event_names(config):
     return config.get_event_names()
 
@@ -293,6 +325,7 @@ def check(
 
             results_list = []
             sources = []
+            nsources = 2 # for testing
             if n_random_synthetics == 0:
                 x = problem.get_reference_model()
                 sources.append(problem.base_source)
@@ -302,7 +335,8 @@ def check(
             else:
                 for i in range(n_random_synthetics):
                     x = problem.get_random_model()
-                    sources.append(problem.get_source(x))
+                    for j in range(nsources): #test
+                        sources.append(problem.get_source(x,j))
                     results = problem.evaluate(x)
                     results_list.append(results)
 
@@ -656,21 +690,26 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         print('#', ' '.join(['%16s' % x for x in pnames]), file=out)
 
     def dump(x, gm, indices):
+        nsources = 2 # fix for testing
+        sources = []
+        events = []
         if type == 'vector':
             print(' ', ' '.join(
                 '%16.7g' % problem.extract(x, i) for i in indices),
                 '%16.7g' % gm, file=out)
 
         elif type == 'source':
-            source = problem.get_source(x)
+            for i in range(nsources):
+                source = problem.get_source(x,i)
             guts.dump(source, stream=out)
 
         elif type == 'event':
-            ev = problem.get_source(x).pyrocko_event()
+            for i in range(nsources):
+                ev = problem.get_source(x,i).pyrocko_event()
             model.dump_events([ev], stream=out)
 
         elif type == 'event-yaml':
-            ev = problem.get_source(x).pyrocko_event()
+            ev = problem.get_source(x,0).pyrocko_event()
             guts.dump_all([ev], stream=out)
 
         else:
@@ -734,6 +773,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 __all__ = '''
     forward
     harvest
+    cluster
     go
     get_event_names
     check

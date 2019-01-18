@@ -1,0 +1,61 @@
+
+<div ng-if="group_matches_keyword(group)">
+    <div class="row m-3">
+        <div class="col">
+            <h3 class="plot-title">Problem Info</h3>
+        </div>
+    </div>
+
+    <div class="row m-3">
+        <div class="col" ng-repeat="doc in unfold_docs(group) track by $index">
+
+            <h5>General Properties</h5>
+
+            <table class="table problem-info">
+                <tbody>
+                    <tr>
+                        <th>Run name</th>
+                        <td>{{ doc.problem.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Event name</th>
+                        <td>{{ doc.problem.base_source.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Target groups</th>
+                        <td>{{ doc.problem.target_groups.length }}</td>
+                    </tr>
+                    <tr>
+                        <th>Targets</th>
+                        <td>{{ doc.problem.targets.length }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <hr />
+
+            <h5>Reference Event / Origin</h5>
+
+            <table class="table problem-info">
+                <tbody>
+                    <tr>
+                        <th>Time</th>
+                        <td>{{ doc.problem.base_source.time.toISOString().replace('T', ' ').replace('Z', '') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Latitude [deg]</th>
+                        <td>{{ doc.problem.base_source.lat }}</td>
+                    </tr>
+                    <tr>
+                        <th>Longitude [deg]</th>
+                        <td>{{ doc.problem.base_source.lon }}</td>
+                    </tr>
+                    <tr>
+                        <th>Depth [km]</th>
+                        <td>{{ doc.problem.base_source.depth* 0.001 | eround:(doc.problem.base_source.depth*0.001*0.1) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -12,13 +12,15 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 from pyrocko import guts, util
 from pyrocko.model import Event
-from pyrocko.guts import Object, String
+from pyrocko.guts import Object, String, Unicode
 
 from grond.meta import HasPaths, Path, expand_template, GrondError
 
 from grond import core, environment
 from grond.problems import ProblemInfoNotAvailable, ProblemDataNotAvailable
 from grond.version import __version__
+from grond import info
+from grond.plot import PlotConfigCollection, get_all_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -36,9 +38,25 @@ class ReportConfig(HasPaths):
     reports_base_path = Path.T(default='reports')
     report_sub_path = String.T(
         default='${event_name}/${problem_name}')
+    title = Unicode.T(
+        default=u'Grond Reports',
+        help='Title shown on report overview page.')
+    description = Unicode.T(
+        default=u'This interactive document aggregates earthquake source '
+                u'inversion results from optimisations performed with Grond.',
+        help='Description shown on report overview page.')
+    plot_config_collection = PlotConfigCollection.T(
+        help='Configurations for plots to be included in the report.')
+
+
+class ReportInfo(Object):
+    title = Unicode.T(optional=True)
+    description = Unicode.T(optional=True)
+    version_info = info.VersionInfo.T()
 
 
 def read_config(path):
+    get_all_plot_classes()  # make sure all plot modules are imported
     try:
         config = guts.load(filename=path)
     except OSError:
@@ -157,7 +175,11 @@ def report(env, report_config=None, update_without_plotting=False):
 
         if not update_without_plotting:
             from grond import plot
-            plot.make_plots(env, plots_path=op.join(report_path, 'plots'))
+            pcc = report_config.plot_config_collection.get_weeded(env)
+            plot.make_plots(
+                env,
+                plots_path=op.join(report_path, 'plots'),
+                plot_config_collection=pcc)
 
         rie = ReportIndexEntry(
             path='.',
@@ -214,10 +236,12 @@ def report_index(report_config=None):
         reports,
         filename=op.join(reports_base_path, 'report_list.yaml'))
 
-    from grond import info
     guts.dump(
-        info.version_info(),
-        filename=op.join(reports_base_path, 'version_info.yaml'))
+        ReportInfo(
+            title=report_config.title,
+            description=report_config.description,
+            version_info=info.version_info()),
+        filename=op.join(reports_base_path, 'info.yaml'))
 
     app_dir = op.join(op.split(__file__)[0], 'app')
     copytree(app_dir, reports_base_path)
@@ -342,6 +366,7 @@ __all__ = '''
     report_index
     ReportConfig
     ReportIndexEntry
+    ReportInfo
     serve_ip
     serve_report
     read_config

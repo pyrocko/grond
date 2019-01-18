@@ -6,4 +6,5 @@ from .targets import *  # noqa
 from .meta import *  # noqa
 from .synthetic_tests import *  # noqa
 from .optimisers import *  # noqa
+from .clustering import *  # noqa
 from .version import __version__  # noqa

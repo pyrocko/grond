@@ -16,10 +16,12 @@ import time
 from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, List, Dict, Int
 
-from ..meta import ADict, Parameter, GrondError, xjoin, Forbidden
+from grond.meta import ADict, Parameter, GrondError, xjoin, Forbidden, \
+    StringID, has_get_plot_classes
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
+from grond.version import __version__
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.base')
@@ -80,7 +82,8 @@ class CombiSource(gf.Source):
             ds = sf.discretize_basesource(store, target)
             ds.m6s *= sf.get_factor()
             dsources.append(ds)
-        dsources[1].times = dsources[1].times-tdiff
+        dsources[1].times = dsources[1].times - tdiff
+
         return gf.DiscretizedMTSource.combine(dsources)
 
 class ProblemConfig(Object):
@@ -103,6 +106,7 @@ class ProblemConfig(Object):
         raise NotImplementedError
 
 
+@has_get_plot_classes
 class Problem(Object):
     '''
     Base class for objective function setup.
@@ -117,6 +121,7 @@ class Problem(Object):
     nsources = Int.T(default=1)
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
+    grond_version = String.T(optional=True)
 
 
     def __init__(self, **kwargs):
@@ -130,12 +135,24 @@ class Problem(Object):
             self.problem_parameters =\
                 self.problem_parameters + self.problem_waveform_parameters
 
+        self.check()
         logger.name = self.__class__.__name__
 
     @classmethod
     def get_plot_classes(cls):
         from . import plot
         return plot.get_plot_classes()
+
+    def check(self):
+        paths = set()
+        for grp in self.target_groups:
+            if grp.path == 'all':
+                continue
+            if grp.path in paths:
+                raise ValueError('Path %s defined more than once! In %s'
+                                 % (grp.path, grp.__class__.__name__))
+            paths.add(grp.path)
+        logger.debug('TargetGroup check OK')
 
     def get_engine(self):
         return self._engine
@@ -514,9 +531,10 @@ class Problem(Object):
     def evaluate(self, x, mask=None, result_mode='full',
                  targets=None, nsources=None):
         patches = []
+        nsources = 2 # for testing
         outlines = []
-        if self.nsources:
-            for i in range(self.nsources):
+        if nsources == 2: #if self.nsources:
+            for i in range(nsources):
                 source = self.get_source(x, i)
                 patches.append(source)
                 outlines.append(source.outline())
@@ -636,6 +654,14 @@ class ProblemDataNotAvailable(GrondError):
     pass
 
 
+class NoSuchAttribute(GrondError):
+    pass
+
+
+class InvalidAttributeName(GrondError):
+    pass
+
+
 class ModelHistory(object):
     '''
     Write, read and follow sequences of models produced in an optimisation run.
@@ -666,6 +692,8 @@ class ModelHistory(object):
 
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
+
+        self._attributes = {}
 
         if mode == 'r':
             self.verify_rundir(self.path)
@@ -828,7 +856,7 @@ class ModelHistory(object):
             new_models, new_misfits, new_bootstraps = load_problem_data(
                 self.path, self.problem,
                 nmodels_skip=self.nmodels, nchains=self.nchains)
-        except ValueError as e:
+        except ValueError:
             return
 
         self.extend(new_models, new_misfits, new_bootstraps)
@@ -841,6 +869,58 @@ class ModelHistory(object):
             slot = getattr(listener, event_name, None)
             if callable(slot):
                 slot(*args, **kwargs)
+
+    @property
+    def attribute_names(self):
+        apath = op.join(self.path, 'attributes')
+        if not os.path.exists(apath):
+            return []
+
+        return [fn for fn in os.listdir(apath)
+                if StringID.regex.match(fn)]
+
+    def get_attribute(self, name):
+        if name not in self._attributes:
+            if name not in self.attribute_names:
+                raise NoSuchAttribute(name)
+
+            path = op.join(self.path, 'attributes', name)
+
+            with open(path, 'rb') as f:
+                self._attributes[name] = num.fromfile(
+                    f, dtype='<i4',
+                    count=self.nmodels).astype(num.int)
+
+            assert self._attributes[name].shape == (self.nmodels,)
+
+        return self._attributes[name]
+
+    def set_attribute(self, name, attribute):
+        if not StringID.regex.match(name):
+            raise InvalidAttributeName(name)
+
+        attribute = attribute.astype(num.int)
+        assert attribute.shape == (self.nmodels,)
+
+        apath = op.join(self.path, 'attributes')
+
+        if not os.path.exists(apath):
+            os.mkdir(apath)
+
+        path = op.join(apath, name)
+
+        with open(path, 'wb') as f:
+            attribute.astype('<i4').tofile(f)
+
+        self._attributes[name] = attribute
+
+    def ensure_bootstrap_misfits(self, optimiser):
+        if self.bootstrap_misfits is None:
+            problem = self.problem
+            self.bootstrap_misfits = problem.combine_misfits(
+                self.misfits,
+                extra_weights=optimiser.get_bootstrap_weights(problem),
+                extra_residuals=optimiser.get_bootstrap_residuals(problem))
 
 
 def get_nmodels(dirname, problem):
@@ -929,4 +1009,6 @@ __all__ = '''
     ProblemDataNotAvailable
     load_problem_info
     load_problem_info_and_data
+    InvalidAttributeName
+    NoSuchAttribute
 '''.split()

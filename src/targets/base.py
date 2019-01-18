@@ -7,6 +7,7 @@ from pyrocko.guts_array import Array
 from pyrocko.guts import Object, Float, Dict
 
 from grond.analysers.base import AnalyserResult
+from grond.meta import has_get_plot_classes
 
 
 guts_prefix = 'grond'
@@ -44,6 +45,7 @@ class MisfitConfig(Object):
     pass
 
 
+@has_get_plot_classes
 class MisfitTarget(Object):
 
     manual_weight = Float.T(
@@ -143,7 +145,7 @@ class MisfitTarget(Object):
         return self.bootstrap_weights.reshape(nbootstraps, self.nmisfits)
 
     def init_bootstrap_residuals(self, nbootstrap, rstate=None):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def set_bootstrap_residuals(self, residuals):
         self.bootstrap_residuals = residuals
@@ -160,7 +162,7 @@ class MisfitTarget(Object):
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
 
-        raise NotImplemented('must be overloaded in subclass')
+        raise NotImplementedError('must be overloaded in subclass')
 
 
 __all__ = '''

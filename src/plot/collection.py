@@ -3,19 +3,15 @@ import os.path as op
 import logging
 
 from pyrocko import guts, util
-from pyrocko.guts import Dict, List, Tuple, Float, Unicode, Object, String, \
-    StringPattern
+from pyrocko.guts import Dict, List, Tuple, Float, Unicode, Object, String
 
+from grond.meta import StringID
 from grond.plot.config import PlotFormat
 
 
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.plot.collection')
-
-
-class StringID(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9._-]{0,64}$'
 
 
 class PlotItem(Object):
@@ -210,7 +206,6 @@ class PlotCollectionManager(object):
 
 
 __all__ = [
-    'StringID',
     'PlotItem',
     'PlotGroup',
     'PlotCollection',

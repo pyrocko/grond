@@ -3,15 +3,16 @@ import logging
 import random
 
 import numpy as num
-from matplotlib import cm, patches
+from matplotlib import cm, patches, colors as mcolors
 
 from pyrocko.guts import Tuple, Float, Int, String, List, Bool, StringChoice
 
-from pyrocko.plot import mpl_margins, mpl_color, mpl_init
+from pyrocko.plot import mpl_margins, mpl_color, mpl_init, mpl_graph_color
 from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
+from grond.problems import NoSuchAttribute
 from grond import meta, core
 from matplotlib import pyplot as plt
 
@@ -69,19 +70,17 @@ class JointparPlot(PlotConfig):
             title=u'Jointpar Plot',
             section='solution',
             feather_icon='crosshair',
-            description=u'Source problem parameter\'s tradeoff plots.\n'
-                        u' The JointparPlot reveals relationships between' 
-                        u' model parameters, like strong correlations or'
-                        u' non-linear trade-offs. A subset of model solutions'
-                        u' (from harvest) is shown in two dimensions for all'
-                        u' possible parameter pairs as points. The point color'
-                        u' indicates the misfit for the model solution with'
-                        u' cold colors (blue) for high misfit models and warm'
-                        u' colors (red) for low misfit models. The plot extend'
-                        u' is defined by the given parameter bounds and'
-                        u' shows the model space of the optimsation. Dark '
-                        u' gray boxes show the reference parameters as given'
-                        u' in the event.txt.')
+            description=u'''
+Source problem parameter's tradeoff plots.
+
+The JointparPlot reveals relationships between model parameters, like strong
+correlations or non-linear trade-offs. A subset of model solutions (from
+harvest) is shown in two dimensions for all possible parameter pairs as points.
+The point color indicates the misfit for the model solution with cold colors
+(blue) for high misfit models and warm colors (red) for low misfit models. The
+plot extend is defined by the given parameter bounds and shows the model space
+of the optimsation. Dark gray boxes show the reference parameters as given in
+the event.txt.''')
 
     def draw_figures(self, history, optimiser):
 
@@ -94,6 +93,7 @@ class JointparPlot(PlotConfig):
         misfit_cutoff = self.misfit_cutoff
         draw_ellipses = self.draw_ellipses
         msize = 1.5
+        cmap = 'coolwarm'
 
         problem = history.problem
         if not problem:
@@ -127,6 +127,7 @@ class JointparPlot(PlotConfig):
             models = models[ibest]
 
         nmodels = models.shape[0]
+        kwargs = {}
 
         if color_parameter == 'dist':
             mx = num.mean(models, axis=0)
@@ -141,6 +142,21 @@ class JointparPlot(PlotConfig):
         elif color_parameter in problem.parameter_names:
             ind = problem.name_to_index(color_parameter)
             icolor = problem.extract(models, ind)
+
+        elif color_parameter in history.attribute_names:
+            icolor = history.get_attribute(color_parameter)[isort]
+            icolor_need = num.unique(icolor)
+
+            colors = []
+            for i in range(icolor_need[-1]+1):
+                colors.append(mpl_graph_color(i))
+
+            cmap = mcolors.ListedColormap(colors)
+            cmap.set_under(mpl_color('aluminium3'))
+            kwargs.update(dict(vmin=0, vmax=icolor_need[-1]))
+        else:
+            raise meta.GrondError(
+                'invalid color_parameter: %s' % color_parameter)
 
         smap = {}
         iselected = 0
@@ -273,7 +289,7 @@ class JointparPlot(PlotConfig):
                     xpar.scaled(fx),
                     ypar.scaled(fy),
                     c=icolor,
-                    s=msize, alpha=0.5, cmap='coolwarm', edgecolors='none')
+                    s=msize, alpha=0.5, cmap=cmap, edgecolors='none', **kwargs)
 
                 if draw_ellipses:
                     cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
@@ -310,17 +326,17 @@ class JointparPlot(PlotConfig):
 
 class HistogramPlot(PlotConfig):
     '''
-    Histograms or Gaussian kernel densities (default) of all parameters
+    Histograms or Gaussian kernel densities (default) of all parameters.
 
     The histograms (by default shown as Gaussian kernel densities) show (red
     curved solid line) the distributions of the parameters (marginals) along
-    with some characteristics:  The red solid vertical line gives the median of
+    with some characteristics: The red solid vertical line gives the median of
     the distribution and the dashed red vertical line the mean value. Dark gray
-    vertical lines show grond reference values (given in the event.txt file). The
-    overlapping red-shaded areas show the 68% confidence intervals (innermost
-    area), the 90% confidence intervals (middle area) and the minimum and
-    maximum values (widest area). The plot ranges are defined by the given
-    parameter bounds and show the model space.
+    vertical lines show grond reference values (given in the event.txt file).
+    The overlapping red-shaded areas show the 68% confidence intervals
+    (innermost area), the 90% confidence intervals (middle area) and the
+    minimum and maximum values (widest area). The plot ranges are defined by
+    the given parameter bounds and show the model space.
     '''
 
     name = 'histogram'
@@ -329,7 +345,7 @@ class HistogramPlot(PlotConfig):
     include = List.T(String.T())
     method = StringChoice.T(
         choices=['gaussian_kde', 'histogram'],
-        default='gaussian_kde')
+        default='histogram')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -342,22 +358,21 @@ class HistogramPlot(PlotConfig):
             title=u'Solution Histrogram',
             section='solution',
             feather_icon='bar-chart-2',
-            description=u'Distribution of the problem\'s parameters.\n'
-			u' The histograms are shown either as Gaussian'
-                        u' kernel densities (red curved solid line) or'
-                        u' as bar plots '
-                        u' the distributions of the parameters (marginals)'
-                        u' along with some characteristics: \n The red solid'
-                        u' vertical line gives the median of the distribution'
-			u' and the dashed red vertical line the mean value. '
-			u' Dark gray vertical lines show reference parameter'
-                        u' values if' 
-			u' given in the event.txt file. The overlapping '
-			u' red-shaded areas show the 68% confidence intervals'
-			u' (innermost area), the 90% confidence intervals'
-			u' (middle area) and the minimum and maximum values'
-			u' (widest area). The plot ranges are defined by the'
-			u' given parameter bounds and show the model space.')
+            description=u'''
+Distribution of the problem's parameters.
+
+The histograms are shown either as Gaussian kernel densities (red curved solid
+line) or as bar plots the distributions of the parameters (marginals) along
+with some characteristics:
+
+The red solid vertical line gives the median of the distribution and the dashed
+red vertical line the mean value. Dark gray vertical lines show reference
+parameter values if given in the event.txt file. The overlapping red-shaded
+areas show the 68% confidence intervals (innermost area), the 90% confidence
+intervals (middle area) and the minimum and maximum values (widest area). The
+plot ranges are defined by the given parameter bounds and show the model
+space.
+''')
 
     def draw_figures(self, history):
 
@@ -429,16 +444,16 @@ class HistogramPlot(PlotConfig):
                 kde = scipy.stats.gaussian_kde(vs)
                 vps = num.linspace(vmin, vmax, 600)
                 pps = kde(vps)
-            
+
                 axes.plot(
                     par.scaled(vps), par.inv_scaled(pps), color=stats_color)
-            
-            elif method == 'histogram':
-                pps, edges = num.histogram(vs,
-                                           bins=num.linspace(vmin, vmax, num=40),
-                                           density=True)
-                vps = 0.5 * (edges[:-1] + edges[1:])
 
+            elif method == 'histogram':
+                pps, edges = num.histogram(
+                    vs,
+                    bins=num.linspace(vmin, vmax, num=40),
+                    density=True)
+                vps = 0.5 * (edges[:-1] + edges[1:])
 
                 axes.bar(par.scaled(vps), par.inv_scaled(pps),
                          par.scaled(2.*(vps - edges[:-1])),
@@ -484,6 +499,9 @@ class MTDecompositionPlot(PlotConfig):
 
     name = 'mt_decomposition'
     size_cm = Tuple.T(2, Float.T(), default=(15., 5.))
+    cluster_attribute = meta.StringID.T(
+        optional=True,
+        help='name of attribute to use as cluster IDs')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -495,8 +513,9 @@ class MTDecompositionPlot(PlotConfig):
             title=u'Moment Tensor Decomopostion',
             section='solution',
             feather_icon='sun',
-            description=u'Moment tensor decomposition of the best-fitting'
-                        u' solution.')
+            description=u'''
+Moment tensor decomposition of the best-fitting and ensemble mean solutions.
+''')
 
     def draw_figures(self, history):
 
@@ -513,10 +532,10 @@ class MTDecompositionPlot(PlotConfig):
             logger.warn('empty models vector')
             return []
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)
-        iorder = num.empty_like(isort)
-        iorder[isort] = num.arange(iorder.size)[::-1]
+        # gms = problem.combine_misfits(history.misfits)
+        # isort = num.argsort(gms)
+        # iorder = num.empty_like(isort)
+        # iorder[isort] = num.arange(iorder.size)[::-1]
 
         mean_source = core.get_mean_source(
             problem, history.models)
@@ -525,6 +544,71 @@ class MTDecompositionPlot(PlotConfig):
             problem, history.models, history.misfits)
 
         ref_source = problem.base_source
+
+        nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
+
+        cluster_sources = []
+        if self.cluster_attribute:
+            try:
+                iclusters = history.get_attribute(self.cluster_attribute)
+                iclusters_avail = num.unique(iclusters)
+
+                for icluster in iclusters_avail:
+                    models = history.models[iclusters == icluster]
+                    cluster_source = core.get_mean_source(problem, models)
+
+                    cluster_sources.append(
+                        (icluster, cluster_source,
+                         (100.0 * models.size) / history.models.size))
+
+                if cluster_sources and cluster_sources[0][0] == -1:
+                    cluster_sources.append(cluster_sources.pop(0))
+
+            except NoSuchAttribute:
+                logger.warn(
+                    'Attribute %s not set in run %s.\n'
+                    '  Skipping plotting of clusters.' % (
+                        self.cluster_attribute, history.problem.name))
+
+        def get_deco(source):
+            mt = source.pyrocko_moment_tensor()
+            return mt.standard_decomposition()
+
+        def cluster_label(icluster, perc):
+            if icluster == -1:
+                return 'Unclust. (%.0f%%)' % perc
+            else:
+                return 'Cluster %i (%.0f%%)' % (icluster, perc)
+
+        def cluster_color(i):
+            if i == -1:
+                return mpl_color('aluminium3')
+            else:
+                return mpl_graph_color(i)
+
+        lines = []
+        lines.append(
+            ('Ensemble best', get_deco(best_source), mpl_color('aluminium5')))
+
+        lines.append(
+            ('Ensemble mean', get_deco(mean_source), mpl_color('aluminium5')))
+
+        for (icluster, source, perc) in cluster_sources:
+            if len(lines) < nlines_max - 1:
+                lines.append(
+                    (cluster_label(icluster, perc),
+                     get_deco(source),
+                     cluster_color(icluster)))
+            else:
+                logger.warn(
+                    'Skipping display of cluster %i because figure height is '
+                    'too small. Figure height should be at least %g cm.' % (
+                        icluster, (3 + len(cluster_sources) + 1) * 5/4.))
+
+        lines.append(
+            ('Reference', get_deco(ref_source), mpl_color('aluminium3')))
+
+        moment_full_max = max(deco[-1][0] for (_, deco, _) in lines)
 
         for xpos, label in [
                 (0., 'Full'),
@@ -535,7 +619,7 @@ class MTDecompositionPlot(PlotConfig):
 
             axes.annotate(
                 label,
-                xy=(1 + xpos, 3),
+                xy=(1 + xpos, nlines_max),
                 xycoords='data',
                 xytext=(0., 0.),
                 textcoords='offset points',
@@ -544,18 +628,8 @@ class MTDecompositionPlot(PlotConfig):
                 color='black',
                 fontsize=fontsize)
 
-        decos = []
-        for source in [best_source, mean_source, ref_source]:
-            mt = source.pyrocko_moment_tensor()
-            deco = mt.standard_decomposition()
-            decos.append(deco)
-
-        moment_full_max = max(deco[-1][0] for deco in decos)
-
-        for ypos, label, deco, color_t in [
-                (2., 'Ensemble best', decos[0], mpl_color('aluminium5')),
-                (1., 'Ensemble mean', decos[1], mpl_color('scarletred1')),
-                (0., 'Reference', decos[2], mpl_color('aluminium3'))]:
+        for i, (label, deco, color_t) in enumerate(lines):
+            ypos = nlines_max - i - 1.0
 
             [(moment_iso, ratio_iso, m_iso),
              (moment_dc, ratio_dc, m_dc),
@@ -625,7 +699,7 @@ class MTDecompositionPlot(PlotConfig):
 
         axes.axison = False
         axes.set_xlim(-2.25, 9.75)
-        axes.set_ylim(-0.5, 3.5)
+        axes.set_ylim(-0.5, nlines_max+0.5)
 
         item = PlotItem(name='main')
         return [[item, fig]]
@@ -760,8 +834,9 @@ class MTFuzzyPlot(PlotConfig):
             title='Fuzzy Moment Tensor',
             section='solution',
             feather_icon='wind',
-            description='A fuzzy moment tensor, illustrating the solution\'s'
-                        ' uncertainty.')
+            description=u'''
+A fuzzy moment tensor, illustrating the solution's uncertainty.
+''')
 
     def draw_figures(self, history):
         problem = history.problem
@@ -800,14 +875,19 @@ class MTFuzzyPlot(PlotConfig):
         item = PlotItem(
             name='main',
             title='Fuzzy Moment Tensor',
-            description='The opaqueness illustrates the propability'
-                        ' of all combined moment tensor solution.'
-                        'The red lines indicate the global best solution.')
+            description=u'''
+The opaqueness illustrates the propability of all combined moment tensor
+solution. The red lines indicate the global best solution.
+''')
         return [[item, fig]]
 
 
 class HudsonPlot(PlotConfig):
-    ''' Illustration of the solution distribution of decomposed moment tensor '''  # noqa
+
+    '''
+    Illustration of the solution distribution of decomposed moment tensor.
+    '''
+
     name = 'hudson'
     size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
@@ -824,7 +904,8 @@ class HudsonPlot(PlotConfig):
             title=u'Hudson Plot',
             section='solution',
             feather_icon='box',
-            description=u'Hudson plot of the best fitting moment tensor.')
+            description=u'''
+Hudson's source type plot with the ensemble of bootstrap solutions.''')
 
     def draw_figures(self, history):
 
