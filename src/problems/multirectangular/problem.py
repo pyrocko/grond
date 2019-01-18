@@ -80,7 +80,7 @@ class MultiRectangularProblem(Problem):
                                             label='Dip %s' %i))
         problem_parameters.append(Parameter('strike%s' % i,
                                             'deg',
-                                            label='Strike_%s' %i))
+                                            label='Strike %s' %i))
         problem_parameters.append(Parameter('rake%s' % i, 'deg',
                                             label='Rake %s' %i))
         problem_parameters.append(Parameter('slip%s' % i, 'm',
