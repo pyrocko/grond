@@ -443,9 +443,8 @@ traces.''')
 
         target_index = {}
         i = 0
-        for target in problem.targets:
-            target_index[target] = i, i+target.nmisfits
-            i += target.nmisfits
+        target_index = dict(
+            (target, i) for (i, target) in enumerate(problem.targets))
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)[::-1]
@@ -496,8 +495,7 @@ traces.''')
                     dtraces[-1].append(None)
                     continue
 
-                itarget, itarget_end = target_index[target]
-                assert itarget_end == itarget + 1
+                itarget = target_index[target]
 
                 w = target.get_combined_weight()
 
@@ -654,123 +652,121 @@ traces.''')
                     else:
                         axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
 
-                    itarget, itarget_end = target_index[target]
-                    assert itarget_end == itarget + 1
+                    itarget = target_index[target]
 
                     for imodel, result in enumerate(target_to_results[target]):
-                        try:
-                            syn_color = imodel_to_color[imodel]
 
-                            dtrace = dtraces[imodel][itarget]
+                        syn_color = imodel_to_color[imodel]
 
-                            tap_color_annot = (0.35, 0.35, 0.25)
-                            tap_color_edge = (0.85, 0.85, 0.80)
-                            tap_color_fill = (0.95, 0.95, 0.90)
+                        dtrace = dtraces[imodel][itarget]
 
-                            plot_taper(
-                                axes2,
-                                result.processed_obs.get_xdata(),
-                                result.taper,
-                                fc=tap_color_fill, ec=tap_color_edge, alpha=0.2)
+                        tap_color_annot = (0.35, 0.35, 0.25)
+                        tap_color_edge = (0.85, 0.85, 0.80)
+                        tap_color_fill = (0.95, 0.95, 0.90)
 
-                            obs_color = mpl_color('aluminium5')
-                            obs_color_light = light(obs_color, 0.5)
+                        plot_taper(
+                            axes2,
+                            result.processed_obs.get_xdata(),
+                            result.taper,
+                            fc=tap_color_fill, ec=tap_color_edge, alpha=0.2)
 
-                            plot_dtrace(
-                                axes2, dtrace, space, 0., 1.,
-                                fc='none',
-                                ec=syn_color)
+                        obs_color = mpl_color('aluminium5')
+                        obs_color_light = light(obs_color, 0.5)
 
-                            # plot_trace(
-                            #     axes, result.filtered_syn,
-                            #     color=syn_color_light, lw=1.0)
+                        plot_dtrace(
+                            axes2, dtrace, space, 0., 1.,
+                            fc='none',
+                            ec=syn_color)
 
-                            if imodel == 0:
-                                plot_trace(
-                                    axes, result.filtered_obs,
-                                    color=obs_color_light, lw=0.75)
+                        # plot_trace(
+                        #     axes, result.filtered_syn,
+                        #     color=syn_color_light, lw=1.0)
 
+                        if imodel == 0:
                             plot_trace(
-                                axes, result.processed_syn,
-                                color=syn_color, lw=1.0, alpha=0.3)
+                                axes, result.filtered_obs,
+                                color=obs_color_light, lw=0.75)
 
-                            plot_trace(
-                                axes, result.processed_obs,
-                                color=obs_color, lw=0.75, alpha=0.3)
+                        plot_trace(
+                            axes, result.processed_syn,
+                            color=syn_color, lw=1.0, alpha=0.3)
 
-                            if imodel != 0:
-                                continue
-                            xdata = result.filtered_obs.get_xdata()
-                            axes.set_xlim(xdata[0], xdata[-1])
+                        plot_trace(
+                            axes, result.processed_obs,
+                            color=obs_color, lw=0.75, alpha=0.3)
 
-                            tmarks = [
-                                result.processed_obs.tmin,
-                                result.processed_obs.tmax]
+                        if imodel != 0:
+                            continue
+                        xdata = result.filtered_obs.get_xdata()
+                        axes.set_xlim(xdata[0], xdata[-1])
 
-                            for tmark in tmarks:
-                                axes2.plot(
-                                    [tmark, tmark], [-0.9, 0.1],
-                                    color=tap_color_annot)
+                        tmarks = [
+                            result.processed_obs.tmin,
+                            result.processed_obs.tmax]
 
-                            dur = tmarks[1] - tmarks[0]
-                            for tmark, text, ha in [
-                                    (tmarks[0],
-                                     '$\\,$ ' + meta.str_duration(
-                                        tmarks[0] - source.time),
-                                     'left'),
-                                    (tmarks[1],
-                                     '$\\Delta$ ' + meta.str_duration(
-                                        dur),
-                                     'right')]:
+                        for tmark in tmarks:
+                            axes2.plot(
+                                [tmark, tmark], [-0.9, 0.1],
+                                color=tap_color_annot)
 
-                                axes2.annotate(
-                                    text,
-                                    xy=(tmark, -0.9),
-                                    xycoords='data',
-                                    xytext=(
-                                        fontsize*0.4 * [-1, 1][ha == 'left'],
-                                        fontsize*0.2),
-                                    textcoords='offset points',
-                                    ha=ha,
-                                    va='bottom',
-                                    color=tap_color_annot,
-                                    fontsize=fontsize)
+                        dur = tmarks[1] - tmarks[0]
+                        for tmark, text, ha in [
+                                (tmarks[0],
+                                 '$\\,$ ' + meta.str_duration(
+                                    tmarks[0] - source.time),
+                                 'left'),
+                                (tmarks[1],
+                                 '$\\Delta$ ' + meta.str_duration(
+                                    dur),
+                                 'right')]:
 
-                            axes2.set_xlim(
-                                tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
-                        except:
-                            pass
-                        scale_string = None
+                            axes2.annotate(
+                                text,
+                                xy=(tmark, -0.9),
+                                xycoords='data',
+                                xytext=(
+                                    fontsize*0.4 * [-1, 1][ha == 'left'],
+                                    fontsize*0.2),
+                                textcoords='offset points',
+                                ha=ha,
+                                va='bottom',
+                                color=tap_color_annot,
+                                fontsize=fontsize)
 
-                        if target.misfit_config.domain == 'cc_max_norm':
-                            scale_string = 'Syn/obs scales differ!'
+                        axes2.set_xlim(
+                            tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
 
-                        infos = []
-                        if scale_string:
-                            infos.append(scale_string)
+                    scale_string = None
 
-                        if self.nx == 1 and self.ny == 1:
-                            infos.append(target.string_id())
-                        else:
-                            infos.append('.'.join(x for x in target.codes if x))
-                        dist = source.distance_to(target)
-                        azi = source.azibazi_to(target)[0]
-                        infos.append(meta.str_dist(dist))
-                        infos.append(u'%.0f\u00B0' % azi)
-                        axes2.annotate(
-                            '\n'.join(infos),
-                            xy=(0., 1.),
-                            xycoords='axes fraction',
-                            xytext=(2., 2.),
-                            textcoords='offset points',
-                            ha='left',
-                            va='top',
-                            fontsize=fontsize,
-                            fontstyle='normal')
+                    if target.misfit_config.domain == 'cc_max_norm':
+                        scale_string = 'Syn/obs scales differ!'
 
-                        if (self.nx == 1 and self.ny == 1):
-                            yield item, fig
-                            del figures[iyy, ixx]
+                    infos = []
+                    if scale_string:
+                        infos.append(scale_string)
+
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
+                    dist = source.distance_to(target)
+                    azi = source.azibazi_to(target)[0]
+                    infos.append(meta.str_dist(dist))
+                    infos.append(u'%.0f\u00B0' % azi)
+                    axes2.annotate(
+                        '\n'.join(infos),
+                        xy=(0., 1.),
+                        xycoords='axes fraction',
+                        xytext=(2., 2.),
+                        textcoords='offset points',
+                        ha='left',
+                        va='top',
+                        fontsize=fontsize,
+                        fontstyle='normal')
+
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
 
             if not (self.nx == 1 and self.ny == 1):
                 for (iyy, ixx), (_, fig) in figures.items():
@@ -866,9 +862,8 @@ box, red).
 
         target_index = {}
         i = 0
-        for target in problem.targets:
-            target_index[target] = i, i+target.nmisfits
-            i += target.nmisfits
+        target_index = dict(
+            (target, i) for (i, target) in enumerate(problem.targets))
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)
@@ -886,7 +881,7 @@ box, red).
         w_max = num.nanmax(ws)
         gcm_max = num.nanmax(gcms)
 
-        source = problem.get_source(xbest, 0)
+        source = problem.get_source(xbest,0)
 
         target_to_result = {}
         all_syn_trs = []
@@ -899,8 +894,7 @@ box, red).
                 dtraces.append(None)
                 continue
 
-            itarget, itarget_end = target_index[target]
-            assert itarget_end == itarget + 1
+            itarget= target_index[target]
 
             w = target.get_combined_weight()
 
@@ -1007,228 +1001,227 @@ box, red).
                 for ix in range(nx):
                     if (iy, ix) not in frame_to_target:
                         continue
-                    try:
-                        ixx = ix // nxmax
-                        iyy = iy // nymax
-                        if (iyy, ixx) not in figures:
-                            title = '_'.join(x for x in cg if x)
-                            item = PlotItem(
-                                name='fig_%s_%i_%i' % (title, ixx, iyy))
-                            item.attributes['targets'] = []
-                            figures[iyy, ixx] = (
-                                item, plt.figure(figsize=self.size_inch))
 
-                            figures[iyy, ixx][1].subplots_adjust(
-                                left=0.03,
-                                right=1.0 - 0.03,
-                                bottom=0.03,
-                                top=1.0 - 0.06,
-                                wspace=0.2,
-                                hspace=0.2)
+                    ixx = ix // nxmax
+                    iyy = iy // nymax
+                    if (iyy, ixx) not in figures:
+                        title = '_'.join(x for x in cg if x)
+                        item = PlotItem(
+                            name='fig_%s_%i_%i' % (title, ixx, iyy))
+                        item.attributes['targets'] = []
+                        figures[iyy, ixx] = (
+                            item, plt.figure(figsize=self.size_inch))
 
-                        item, fig = figures[iyy, ixx]
+                        figures[iyy, ixx][1].subplots_adjust(
+                            left=0.03,
+                            right=1.0 - 0.03,
+                            bottom=0.03,
+                            top=1.0 - 0.06,
+                            wspace=0.2,
+                            hspace=0.2)
 
-                        target = frame_to_target[iy, ix]
+                    item, fig = figures[iyy, ixx]
 
-                        item.attributes['targets'].append(target.string_id())
+                    target = frame_to_target[iy, ix]
 
-                        amin, amax = trace_minmaxs[
+                    item.attributes['targets'].append(target.string_id())
+
+                    amin, amax = trace_minmaxs[
+                        target.normalisation_family, target.path]
+                    absmax = max(abs(amin), abs(amax))
+
+                    ny_this = nymax  # min(ny, nymax)
+                    nx_this = nxmax  # min(nx, nxmax)
+                    i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
+
+                    axes2 = fig.add_subplot(ny_this, nx_this, i_this)
+
+                    space = 0.5
+                    space_factor = 1.0 + space
+                    axes2.set_axis_off()
+                    axes2.set_ylim(-1.05 * space_factor, 1.05)
+
+                    axes = axes2.twinx()
+                    axes.set_axis_off()
+
+                    if target.misfit_config.domain == 'cc_max_norm':
+                        axes.set_ylim(-10. * space_factor, 10.)
+                    else:
+                        axes.set_ylim(
+                            -absmax * 1.33 * space_factor, absmax * 1.33)
+
+                    itarget = target_index[target]
+
+                    result = target_to_result[target]
+
+                    dtrace = dtraces[itarget]
+
+                    tap_color_annot = (0.35, 0.35, 0.25)
+                    tap_color_edge = (0.85, 0.85, 0.80)
+                    tap_color_fill = (0.95, 0.95, 0.90)
+
+                    plot_taper(
+                        axes2, result.processed_obs.get_xdata(), result.taper,
+                        fc=tap_color_fill, ec=tap_color_edge)
+
+                    obs_color = mpl_color('aluminium5')
+                    obs_color_light = light(obs_color, 0.5)
+
+                    syn_color = mpl_color('scarletred2')
+                    syn_color_light = light(syn_color, 0.5)
+
+                    misfit_color = mpl_color('scarletred2')
+                    weight_color = mpl_color('chocolate2')
+
+                    cc_color = mpl_color('aluminium5')
+
+                    if target.misfit_config.domain == 'cc_max_norm':
+                        tref = (result.filtered_obs.tmin +
+                                result.filtered_obs.tmax) * 0.5
+
+                        plot_dtrace(
+                            axes2, dtrace, space, -1., 1.,
+                            fc=light(cc_color, 0.5),
+                            ec=cc_color)
+
+                        plot_dtrace_vline(
+                            axes2, tref, space, color=tap_color_annot)
+
+                    elif target.misfit_config.domain == 'frequency_domain':
+
+                        asmax = amp_spec_maxs[
                             target.normalisation_family, target.path]
-                        absmax = max(abs(amin), abs(amax))
+                        fmin, fmax = \
+                            target.misfit_config.get_full_frequency_range()
 
-                        ny_this = nymax  # min(ny, nymax)
-                        nx_this = nxmax  # min(nx, nxmax)
-                        i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
+                        plot_spectrum(
+                            axes2,
+                            result.spectrum_syn,
+                            result.spectrum_obs,
+                            fmin, fmax,
+                            space, 0., asmax,
+                            syn_color=syn_color,
+                            obs_color=obs_color,
+                            syn_lw=1.0,
+                            obs_lw=0.75,
+                            color_vline=tap_color_annot,
+                            fontsize=fontsize)
 
-                        axes2 = fig.add_subplot(ny_this, nx_this, i_this)
+                    else:
+                        plot_dtrace(
+                            axes2, dtrace, space, 0., 1.,
+                            fc=light(misfit_color, 0.3),
+                            ec=misfit_color)
 
-                        space = 0.5
-                        space_factor = 1.0 + space
-                        axes2.set_axis_off()
-                        axes2.set_ylim(-1.05 * space_factor, 1.05)
+                    plot_trace(
+                        axes, result.filtered_syn,
+                        color=syn_color_light, lw=1.0)
 
-                        axes = axes2.twinx()
-                        axes.set_axis_off()
+                    plot_trace(
+                        axes, result.filtered_obs,
+                        color=obs_color_light, lw=0.75)
 
-                        if target.misfit_config.domain == 'cc_max_norm':
-                            axes.set_ylim(-10. * space_factor, 10.)
-                        else:
-                            axes.set_ylim(
-                                -absmax * 1.33 * space_factor, absmax * 1.33)
+                    plot_trace(
+                        axes, result.processed_syn,
+                        color=syn_color, lw=1.0)
 
-                        itarget, itarget_end = target_index[target]
-                        assert itarget_end == itarget + 1
+                    plot_trace(
+                        axes, result.processed_obs,
+                        color=obs_color, lw=0.75)
 
-                        result = target_to_result[target]
-                        dtrace = dtraces[itarget]
+                    # xdata = result.filtered_obs.get_xdata()
 
-                        tap_color_annot = (0.35, 0.35, 0.25)
-                        tap_color_edge = (0.85, 0.85, 0.80)
-                        tap_color_fill = (0.95, 0.95, 0.90)
+                    tmarks = [
+                        result.processed_obs.tmin,
+                        result.processed_obs.tmax]
 
-                        plot_taper(
-                            axes2, result.processed_obs.get_xdata(), result.taper,
-                            fc=tap_color_fill, ec=tap_color_edge)
+                    for tmark in tmarks:
+                        axes2.plot(
+                            [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
 
-                        obs_color = mpl_color('aluminium5')
-                        obs_color_light = light(obs_color, 0.5)
+                    dur = tmarks[1] - tmarks[0]
+                    for tmark, text, ha in [
+                            (tmarks[0],
+                             '$\\,$ ' + meta.str_duration(
+                                 tmarks[0] - source.time),
+                             'left'),
+                            (tmarks[1],
+                             '$\\Delta$ ' + meta.str_duration(dur),
+                             'right')]:
 
-                        syn_color = mpl_color('scarletred2')
-                        syn_color_light = light(syn_color, 0.5)
-
-                        misfit_color = mpl_color('scarletred2')
-                        weight_color = mpl_color('chocolate2')
-
-                        cc_color = mpl_color('aluminium5')
-
-                        if target.misfit_config.domain == 'cc_max_norm':
-                            tref = (result.filtered_obs.tmin +
-                                    result.filtered_obs.tmax) * 0.5
-
-                            plot_dtrace(
-                                axes2, dtrace, space, -1., 1.,
-                                fc=light(cc_color, 0.5),
-                                ec=cc_color)
-
-                            plot_dtrace_vline(
-                                axes2, tref, space, color=tap_color_annot)
-
-                        elif target.misfit_config.domain == 'frequency_domain':
-
-                            asmax = amp_spec_maxs[
-                                target.normalisation_family, target.path]
-                            fmin, fmax = \
-                                target.misfit_config.get_full_frequency_range()
-
-                            plot_spectrum(
-                                axes2,
-                                result.spectrum_syn,
-                                result.spectrum_obs,
-                                fmin, fmax,
-                                space, 0., asmax,
-                                syn_color=syn_color,
-                                obs_color=obs_color,
-                                syn_lw=1.0,
-                                obs_lw=0.75,
-                                color_vline=tap_color_annot,
-                                fontsize=fontsize)
-
-                        else:
-                            plot_dtrace(
-                                axes2, dtrace, space, 0., 1.,
-                                fc=light(misfit_color, 0.3),
-                                ec=misfit_color)
-
-                        plot_trace(
-                            axes, result.filtered_syn,
-                            color=syn_color_light, lw=1.0)
-
-                        plot_trace(
-                            axes, result.filtered_obs,
-                            color=obs_color_light, lw=0.75)
-
-                        plot_trace(
-                            axes, result.processed_syn,
-                            color=syn_color, lw=1.0)
-
-                        plot_trace(
-                            axes, result.processed_obs,
-                            color=obs_color, lw=0.75)
-
-                        # xdata = result.filtered_obs.get_xdata()
-
-                        tmarks = [
-                            result.processed_obs.tmin,
-                            result.processed_obs.tmax]
-
-                        for tmark in tmarks:
-                            axes2.plot(
-                                [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
-
-                        dur = tmarks[1] - tmarks[0]
-                        for tmark, text, ha in [
-                                (tmarks[0],
-                                 '$\\,$ ' + meta.str_duration(
-                                     tmarks[0] - source.time),
-                                 'left'),
-                                (tmarks[1],
-                                 '$\\Delta$ ' + meta.str_duration(dur),
-                                 'right')]:
-
-                            axes2.annotate(
-                                text,
-                                xy=(tmark, -0.9),
-                                xycoords='data',
-                                xytext=(
-                                    fontsize * 0.4 * [-1, 1][ha == 'left'],
-                                    fontsize * 0.2),
-                                textcoords='offset points',
-                                ha=ha,
-                                va='bottom',
-                                color=tap_color_annot,
-                                fontsize=fontsize)
-
-                        axes2.set_xlim(tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
-
-                        rel_w = ws[itarget] / w_max
-                        rel_c = gcms[itarget] / gcm_max
-
-                        sw = 0.25
-                        sh = 0.1
-                        ph = 0.01
-
-                        for (ih, rw, facecolor, edgecolor) in [
-                                (0, rel_w, light(weight_color, 0.5),
-                                 weight_color),
-                                (1, rel_c, light(misfit_color, 0.5),
-                                 misfit_color)]:
-
-                            bar = patches.Rectangle(
-                                (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph),
-                                rw * sw,
-                                sh - 2 * ph,
-                                facecolor=facecolor, edgecolor=edgecolor,
-                                zorder=10,
-                                transform=axes.transAxes, clip_on=False)
-
-                            axes.add_patch(bar)
-
-                        scale_string = None
-
-                        if target.misfit_config.domain == 'cc_max_norm':
-                            scale_string = 'Syn/obs scales differ!'
-
-                        infos = []
-                        if scale_string:
-                            infos.append(scale_string)
-
-                        if self.nx == 1 and self.ny == 1:
-                            infos.append(target.string_id())
-                        else:
-                            infos.append('.'.join(x for x in target.codes if x))
-
-                        dist = source.distance_to(target)
-                        azi = source.azibazi_to(target)[0]
-                        infos.append(meta.str_dist(dist))
-                        infos.append('%.0f\u00B0' % azi)
-                        infos.append('%.3g' % ws[itarget])
-                        infos.append('%.3g' % gcms[itarget])
                         axes2.annotate(
-                            '\n'.join(infos),
-                            xy=(0., 1.),
-                            xycoords='axes fraction',
-                            xytext=(2., 2.),
+                            text,
+                            xy=(tmark, -0.9),
+                            xycoords='data',
+                            xytext=(
+                                fontsize * 0.4 * [-1, 1][ha == 'left'],
+                                fontsize * 0.2),
                             textcoords='offset points',
-                            ha='left',
-                            va='top',
-                            fontsize=fontsize,
-                            fontstyle='normal')
+                            ha=ha,
+                            va='bottom',
+                            color=tap_color_annot,
+                            fontsize=fontsize)
 
-                        if (self.nx == 1 and self.ny == 1):
-                            yield item, fig
-                            del figures[iyy, ixx]
-                    except:
-                        pass
+                    axes2.set_xlim(tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
+
+                    rel_w = ws[itarget] / w_max
+                    rel_c = gcms[itarget] / gcm_max
+
+                    sw = 0.25
+                    sh = 0.1
+                    ph = 0.01
+
+                    for (ih, rw, facecolor, edgecolor) in [
+                            (0, rel_w, light(weight_color, 0.5),
+                             weight_color),
+                            (1, rel_c, light(misfit_color, 0.5),
+                             misfit_color)]:
+
+                        bar = patches.Rectangle(
+                            (1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph),
+                            rw * sw,
+                            sh - 2 * ph,
+                            facecolor=facecolor, edgecolor=edgecolor,
+                            zorder=10,
+                            transform=axes.transAxes, clip_on=False)
+
+                        axes.add_patch(bar)
+
+                    scale_string = None
+
+                    if target.misfit_config.domain == 'cc_max_norm':
+                        scale_string = 'Syn/obs scales differ!'
+
+                    infos = []
+                    if scale_string:
+                        infos.append(scale_string)
+
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
+
+                    dist = source.distance_to(target)
+                    azi = source.azibazi_to(target)[0]
+                    infos.append(meta.str_dist(dist))
+                    infos.append('%.0f\u00B0' % azi)
+                    infos.append('%.3g' % ws[itarget])
+                    infos.append('%.3g' % gcms[itarget])
+                    axes2.annotate(
+                        '\n'.join(infos),
+                        xy=(0., 1.),
+                        xycoords='axes fraction',
+                        xytext=(2., 2.),
+                        textcoords='offset points',
+                        ha='left',
+                        va='top',
+                        fontsize=fontsize,
+                        fontstyle='normal')
+
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
+
             if not (self.nx == 1 and self.ny == 1):
                 for (iyy, ixx), (_, fig) in figures.items():
                     title = '.'.join(x for x in cg if x)
@@ -1279,9 +1272,8 @@ location of the source.
 
         target_index = {}
         i = 0
-        for target in problem.targets:
-            target_index[target] = i, i+target.nmisfits
-            i += target.nmisfits
+        target_index = dict(
+            (target, i) for (i, target) in enumerate(problem.targets))
 
         ws = problem.get_target_weights()
 
@@ -1305,11 +1297,9 @@ location of the source.
             cg_str = '.'.join(cg)
 
             targets = cg_to_targets[cg]
-            assert all(target_index[target][0] == target_index[target][1] - 1
-                       for target in targets)
 
             itargets = num.array(
-                [target_index[target][0] for target in targets])
+                [target_index[target] for target in targets])
 
             labels = ['.'.join(x for x in t.codes[:3] if x) for t in targets]
 
