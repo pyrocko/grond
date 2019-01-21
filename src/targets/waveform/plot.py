@@ -212,7 +212,7 @@ class CheckWaveformsPlot(PlotConfig):
     n_random_synthetics = Int.T(
         default=10,
         help='Number of Synthetics to generate')
-    
+
     nsources = 2
 
     def make(self, environ):
@@ -885,7 +885,7 @@ box, red).
         w_max = num.nanmax(ws)
         gcm_max = num.nanmax(gcms)
 
-        source = problem.get_source(xbest,0)
+        source = problem.get_source(xbest, 0)
 
         target_to_result = {}
         all_syn_trs = []
@@ -1059,7 +1059,10 @@ box, red).
                     assert itarget_end == itarget + 1
 
                     result = target_to_result[target]
-
+                    print(dtraces)
+                    print(num.shape(dtraces))
+                    print('here')
+                    print(itarget)
                     dtrace = dtraces[itarget]
 
                     tap_color_annot = (0.35, 0.35, 0.25)

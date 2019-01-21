@@ -3,8 +3,6 @@ import logging
 import sys
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
-from optparse import OptionParser
-
 from grond.meta import expand_template, Parameter
 
 from ..base import Problem, ProblemConfig
@@ -13,9 +11,6 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.multirectangular.problem')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
-
-
-#(options, args) = parser.parse_args(sys.argv[1:])
 
 class MultiRectangularProblemConfig(ProblemConfig):
 
