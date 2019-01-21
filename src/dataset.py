@@ -13,6 +13,8 @@ from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import (Object, Tuple, String, Float, List, Bool, dump_all,
                           load_all)
 
+from pyrocko import gf
+
 from .meta import Path, HasPaths, expand_template, GrondError
 
 from .synthetic_tests import SyntheticTest
@@ -358,6 +360,8 @@ class Dataset(object):
             net, sta, loc, _ = obj.nslc_id
         elif isinstance(obj, model.Station):
             net, sta, loc = obj.nsl()
+        elif isinstance(obj, gf.Target):
+            net, sta, loc, _ = obj.codes
         elif isinstance(obj, tuple) and len(obj) in (3, 4):
             net, sta, loc = obj[:3]
         else:
@@ -370,6 +374,8 @@ class Dataset(object):
     def get_nslc(self, obj):
         if isinstance(obj, trace.Trace):
             return obj.nslc_id
+        elif isinstance(obj, gf.Target):
+            return obj.codes
         elif isinstance(obj, tuple) and len(obj) == 4:
             return obj
         else:
