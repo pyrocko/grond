@@ -14,7 +14,7 @@ from pyrocko.guts import Object, String, Float, List
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import NotFound
+from .dataset import NotFound, InvalidObject
 from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data, load_optimiser_info
 
@@ -247,10 +247,12 @@ def check(
         event_names=None,
         target_string_ids=None,
         show_waveforms=False,
-        n_random_synthetics=10):
+        n_random_synthetics=10,
+        stations_used_path=None):
 
     fns = defaultdict(list)
     markers = []
+    stations_used = {}
     for ievent, event_name in enumerate(event_names):
         ds = config.get_dataset(event_name)
         event = ds.get_event()
@@ -403,6 +405,11 @@ def check(
                         sok = 'not used'
                     elif nok == len(results_list):
                         sok = 'ok'
+                        try:
+                            s = ds.get_station(target)
+                            stations_used[s.nsl()] = s
+                        except (NotFound, InvalidObject):
+                            pass
                     else:
                         sok = 'not used (%i/%i ok)' % (nok, len(results_list))
 
@@ -417,6 +424,11 @@ def check(
 
         if show_waveforms:
             trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
+
+        if stations_used_path:
+            stations = list(stations_used.values())
+            stations.sort(key=lambda s: s.nsl())
+            model.dump_stations(stations, stations_used_path)
 
     return fns
 

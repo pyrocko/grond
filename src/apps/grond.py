@@ -668,6 +668,11 @@ def command_check(args):
                  '10). If set to zero, create synthetics for the reference '
                  'solution.')
 
+        parser.add_option(
+            '--save-stations-used', dest='stations_used_path',
+            metavar='FILENAME',
+            help='aggregate all stations used by the setup into a file')
+
     parser, options, args = cl_parse('check', args, setup)
     if len(args) < 1:
         help_and_die(parser, 'missing arguments')
@@ -685,7 +690,9 @@ def command_check(args):
             event_names=env.get_selected_event_names(),
             target_string_ids=target_string_ids,
             show_waveforms=options.show_waveforms,
-            n_random_synthetics=options.n_random_synthetics)
+            n_random_synthetics=options.n_random_synthetics,
+            stations_used_path=options.stations_used_path)
+
         logger.info(CLIHints('check', config=env.get_config_path()))
 
     except grond.GrondError as e:
