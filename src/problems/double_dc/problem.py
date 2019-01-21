@@ -2,7 +2,7 @@ import numpy as num
 import logging
 
 from pyrocko import gf, util
-from pyrocko.guts import String, Float, Dict
+from pyrocko.guts import String, Float, Dict, Int
 
 from grond.meta import Forbidden, expand_template, Parameter, \
     has_get_plot_classes
@@ -20,6 +20,7 @@ class DoubleDCProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
+    nthreads = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
         if event.depth is None:
@@ -39,7 +40,8 @@ class DoubleDCProblemConfig(ProblemConfig):
             targets=targets,
             ranges=self.ranges,
             distance_min=self.distance_min,
-            norm_exponent=self.norm_exponent)
+            norm_exponent=self.norm_exponent,
+            nthreads=self.nthreads)
 
         return problem
 
@@ -101,10 +103,10 @@ class DoubleDCProblem(Problem):
                 arr[ip] = source.stf2.duration if source.stf2 else 0.0
         return arr
 
-    def random_uniform(self, xbounds):
+    def random_uniform(self, xbounds, rstate):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
         return x.tolist()
 

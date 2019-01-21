@@ -11,14 +11,28 @@ from pyrocko.plot import mpl_margins, mpl_color, mpl_init, mpl_graph_color
 from pyrocko.plot import beachball, hudson
 
 from grond.plot.config import PlotConfig
+from grond.plot.section import SectionPlotConfig, SectionPlot
 from grond.plot.collection import PlotItem
-from grond.problems import NoSuchAttribute
-from grond import meta, core
+from grond import meta, core, stats
 from matplotlib import pyplot as plt
 
 logger = logging.getLogger('grond.problem.plot')
 
 guts_prefix = 'grond'
+
+
+def cluster_label(icluster, perc):
+    if icluster == -1:
+        return 'Unclust. (%.0f%%)' % perc
+    else:
+        return 'Cluster %i (%.0f%%)' % (icluster, perc)
+
+
+def cluster_color(icluster):
+    if icluster == -1:
+        return mpl_color('aluminium3')
+    else:
+        return mpl_graph_color(icluster)
 
 
 def fixlim(lo, hi):
@@ -36,16 +50,7 @@ def eigh_sorted(mat):
 
 class JointparPlot(PlotConfig):
     '''
-    Plots of all two-dimensional model parameter distributions
-
-    The JointparPlot reveals relationships between model parameters, like
-    strong correlations or non-linear trade-offs. A subset of model solutions
-    (from harvest) is shown in two dimensions for all possible parameter pairs
-    as points. The point color indicates the misfit for the model solution with
-    cold colors (blue) for high misfit models and warm colors (red) for low
-    misfit models. The plot extend is defined by the given parameter bounds and
-    shows the model space of the optimsation. Dark gray boxes show the
-    reference solution if given in the event.txt.
+    Source problem parameter's tradeoff plots.
     '''
 
     name = 'jointpar'
@@ -55,13 +60,16 @@ class JointparPlot(PlotConfig):
     color_parameter = String.T(default='misfit')
     exclude = List.T(String.T())
     include = List.T(String.T())
-    draw_ellipses = Bool.T(default=False)
+    show_ellipses = Bool.T(default=False)
     nsubplots = Int.T(default=6)
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         optimiser = environ.get_optimiser()
+        sref = 'Dark gray boxes mark reference solution.' \
+            if self.show_reference else ''
 
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
@@ -71,16 +79,14 @@ class JointparPlot(PlotConfig):
             section='solution',
             feather_icon='crosshair',
             description=u'''
-Source problem parameter's tradeoff plots.
+Source problem parameter's scatter plots, to evaluate the resolution of source
+parameters and possible trade-offs between pairs of model parameters.
 
-The JointparPlot reveals relationships between model parameters, like strong
-correlations or non-linear trade-offs. A subset of model solutions (from
-harvest) is shown in two dimensions for all possible parameter pairs as points.
-The point color indicates the misfit for the model solution with cold colors
-(blue) for high misfit models and warm colors (red) for low misfit models. The
-plot extend is defined by the given parameter bounds and shows the model space
-of the optimsation. Dark gray boxes show the reference parameters as given in
-the event.txt.''')
+A subset of model solutions (from harvest) is shown in two dimensions for all
+possible parameter pairs as points. The point color indicates the misfit for
+the model solution with cold colors (blue) for high misfit models and warm
+colors (red) for low misfit models. The plot ranges are defined by the given
+parameter bounds and shows the model space of the optimsation. %s''' % sref)
 
     def draw_figures(self, history, optimiser):
 
@@ -91,7 +97,7 @@ the event.txt.''')
         figsize = self.size_inch
         ibootstrap = self.ibootstrap
         misfit_cutoff = self.misfit_cutoff
-        draw_ellipses = self.draw_ellipses
+        show_ellipses = self.show_ellipses
         msize = 1.5
         cmap = 'coolwarm'
 
@@ -156,7 +162,7 @@ the event.txt.''')
             kwargs.update(dict(vmin=0, vmax=icolor_need[-1]))
         else:
             raise meta.GrondError(
-                'invalid color_parameter: %s' % color_parameter)
+                'Invalid color_parameter: %s' % color_parameter)
 
         smap = {}
         iselected = 0
@@ -172,8 +178,8 @@ the event.txt.''')
         nselected = iselected
 
         if nselected < 2:
-            logger.warn('cannot draw joinpar figures with less than two '
-                        'parameters selected')
+            logger.warn('Cannot draw joinpar figures with less than two '
+                        'parameters selected.')
             return []
 
         nfig = (nselected - 2) // nsubplots + 1
@@ -291,7 +297,7 @@ the event.txt.''')
                     c=icolor,
                     s=msize, alpha=0.5, cmap=cmap, edgecolors='none', **kwargs)
 
-                if draw_ellipses:
+                if show_ellipses:
                     cov = num.cov((xpar.scaled(fx), ypar.scaled(fy)))
                     evals, evecs = eigh_sorted(cov)
                     evals = num.sqrt(evals)
@@ -307,14 +313,15 @@ the event.txt.''')
                     ell.set_facecolor('none')
                     axes.add_artist(ell)
 
-                fx = problem.extract(xref, jpar)
-                fy = problem.extract(xref, ipar)
+                if self.show_reference:
+                    fx = problem.extract(xref, jpar)
+                    fy = problem.extract(xref, ipar)
 
-                ref_color = mpl_color('aluminium6')
-                ref_color_light = 'none'
-                axes.plot(
-                    xpar.scaled(fx), ypar.scaled(fy), 's',
-                    mew=1.5, ms=5, mfc=ref_color_light, mec=ref_color)
+                    ref_color = mpl_color('aluminium6')
+                    ref_color_light = 'none'
+                    axes.plot(
+                        xpar.scaled(fx), ypar.scaled(fy), 's',
+                        mew=1.5, ms=5, mfc=ref_color_light, mec=ref_color)
 
         figs_flat = []
         for figs_row in figs:
@@ -326,17 +333,19 @@ the event.txt.''')
 
 class HistogramPlot(PlotConfig):
     '''
-    Histograms or Gaussian kernel densities (default) of all parameters.
+    Histograms or Gaussian kernel densities (default) of all parameters
+    (marginal distributions of model parameters).
 
     The histograms (by default shown as Gaussian kernel densities) show (red
     curved solid line) the distributions of the parameters (marginals) along
     with some characteristics: The red solid vertical line gives the median of
     the distribution and the dashed red vertical line the mean value. Dark gray
-    vertical lines show grond reference values (given in the event.txt file).
-    The overlapping red-shaded areas show the 68% confidence intervals
-    (innermost area), the 90% confidence intervals (middle area) and the
-    minimum and maximum values (widest area). The plot ranges are defined by
-    the given parameter bounds and show the model space.
+    vertical lines show reference values (given in the event.txt file). The
+    overlapping red-shaded areas show the 68% confidence intervals (innermost
+    area), the 90% confidence intervals (middle area) and the minimum and
+    maximum values (widest area). The plot ranges are defined by the given
+    parameter bounds and show the model space. Well resolved model parameters
+    show peaked distributions.
     '''
 
     name = 'histogram'
@@ -345,7 +354,8 @@ class HistogramPlot(PlotConfig):
     include = List.T(String.T())
     method = StringChoice.T(
         choices=['gaussian_kde', 'histogram'],
-        default='histogram')
+        default='gaussian_kde')
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -355,7 +365,7 @@ class HistogramPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Solution Histrogram',
+            title=u'Histogram',
             section='solution',
             feather_icon='bar-chart-2',
             description=u'''
@@ -441,7 +451,14 @@ space.
             axes.set_xlim(*fixlim(*par.scaled((vmin, vmax))))
 
             if method == 'gaussian_kde':
-                kde = scipy.stats.gaussian_kde(vs)
+                try:
+                    kde = scipy.stats.gaussian_kde(vs)
+                except Exception:
+                    logger.warn(
+                        'Cannot create plot histogram with gaussian_kde: '
+                        'possibly all samples have the same value.')
+                    continue
+
                 vps = num.linspace(vmin, vmax, 600)
                 pps = kde(vps)
 
@@ -481,13 +498,12 @@ space.
                 par.scaled(pstats.mean),
                 color=stats_color3, ls=':', alpha=0.5)
 
-            axes.axvline(
-                par.scaled(problem.extract(xref, ipar)),
-                color=ref_color)
+            if self.show_reference:
+                axes.axvline(
+                    par.scaled(problem.extract(xref, ipar)),
+                    color=ref_color)
 
-            item = PlotItem(
-                name=par.name,
-                title='Parameter Histograms')
+            item = PlotItem(name=par.name)
             item.attributes['parameters'] = [par.name]
             yield item, fig
 
@@ -502,6 +518,7 @@ class MTDecompositionPlot(PlotConfig):
     cluster_attribute = meta.StringID.T(
         optional=True,
         help='name of attribute to use as cluster IDs')
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -510,12 +527,18 @@ class MTDecompositionPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Moment Tensor Decomopostion',
+            title=u'MT Decomposition',
             section='solution',
             feather_icon='sun',
             description=u'''
-Moment tensor decomposition of the best-fitting and ensemble mean solutions.
-''')
+Moment tensor decomposition of the best-fitting solution into isotropic,
+deviatoric and best double couple components.
+
+Shown are the ensemble best, the ensemble mean%s and, if available, a reference
+mechanism. The symbol size indicates the relative strength of the components.
+The inversion result is consistent and stable if ensemble mean and ensemble
+best have similar symbol size and patterns.
+''' % (', cluster results' if self.cluster_attribute else ''))
 
     def draw_figures(self, history):
 
@@ -529,7 +552,7 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
         models = history.models
 
         if models.size == 0:
-            logger.warn('empty models vector')
+            logger.warn('Empty models vector.')
             return []
 
         # gms = problem.combine_misfits(history.misfits)
@@ -537,54 +560,25 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
         # iorder = num.empty_like(isort)
         # iorder[isort] = num.arange(iorder.size)[::-1]
 
-        mean_source = core.get_mean_source(
+        mean_source = stats.get_mean_source(
             problem, history.models)
 
-        best_source = core.get_best_source(
+        best_source = stats.get_best_source(
             problem, history.models, history.misfits)
 
         ref_source = problem.base_source
 
         nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
 
-        cluster_sources = []
         if self.cluster_attribute:
-            try:
-                iclusters = history.get_attribute(self.cluster_attribute)
-                iclusters_avail = num.unique(iclusters)
-
-                for icluster in iclusters_avail:
-                    models = history.models[iclusters == icluster]
-                    cluster_source = core.get_mean_source(problem, models)
-
-                    cluster_sources.append(
-                        (icluster, cluster_source,
-                         (100.0 * models.size) / history.models.size))
-
-                if cluster_sources and cluster_sources[0][0] == -1:
-                    cluster_sources.append(cluster_sources.pop(0))
-
-            except NoSuchAttribute:
-                logger.warn(
-                    'Attribute %s not set in run %s.\n'
-                    '  Skipping plotting of clusters.' % (
-                        self.cluster_attribute, history.problem.name))
+            cluster_sources = history.mean_sources_by_cluster(
+                self.cluster_attribute)
+        else:
+            cluster_sources = []
 
         def get_deco(source):
             mt = source.pyrocko_moment_tensor()
             return mt.standard_decomposition()
-
-        def cluster_label(icluster, perc):
-            if icluster == -1:
-                return 'Unclust. (%.0f%%)' % perc
-            else:
-                return 'Cluster %i (%.0f%%)' % (icluster, perc)
-
-        def cluster_color(i):
-            if i == -1:
-                return mpl_color('aluminium3')
-            else:
-                return mpl_graph_color(i)
 
         lines = []
         lines.append(
@@ -593,8 +587,8 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
         lines.append(
             ('Ensemble mean', get_deco(mean_source), mpl_color('aluminium5')))
 
-        for (icluster, source, perc) in cluster_sources:
-            if len(lines) < nlines_max - 1:
+        for (icluster, perc, source) in cluster_sources:
+            if len(lines) < nlines_max - int(self.show_reference):
                 lines.append(
                     (cluster_label(icluster, perc),
                      get_deco(source),
@@ -603,10 +597,12 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
                 logger.warn(
                     'Skipping display of cluster %i because figure height is '
                     'too small. Figure height should be at least %g cm.' % (
-                        icluster, (3 + len(cluster_sources) + 1) * 5/4.))
+                        icluster, (3 + len(cluster_sources)
+                                   + int(self.show_reference)) * 5/4.))
 
-        lines.append(
-            ('Reference', get_deco(ref_source), mpl_color('aluminium3')))
+        if self.show_reference:
+            lines.append(
+                ('Reference', get_deco(ref_source), mpl_color('aluminium3')))
 
         moment_full_max = max(deco[-1][0] for (_, deco, _) in lines)
 
@@ -705,10 +701,9 @@ Moment tensor decomposition of the best-fitting and ensemble mean solutions.
         return [[item, fig]]
 
 
-class MTLocationPlot(PlotConfig):
-    ''' Map of moment tensor location results '''
+class MTLocationPlot(SectionPlotConfig):
+    ''' MT location plot of the best solutions in three cross-sections. '''
     name = 'location_mt'
-    size_cm = Tuple.T(2, Float.T(), default=(17.5, 17.5*(3./4.)))
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
@@ -717,13 +712,22 @@ class MTLocationPlot(PlotConfig):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history(subset='harvest')
         mpl_init(fontsize=self.font_size)
+        self._to_be_closed = []
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title=u'Moment Tensor Location',
+            title=u'MT Location',
             section='solution',
             feather_icon='target',
-            description=u'Location plots of the best ensemble of solutions.')
+            description=u'''
+Location plot of the ensemble of best solutions in three cross-sections.
+
+The coordinate range is defined by the search space given in the config file.
+Symbols show best double-couple mechanisms, and colors indicate low (red) and
+high (blue) misfit.
+''')
+        for obj in self._to_be_closed:
+            obj.close()
 
     def draw_figures(self, history):
         from matplotlib import colors
@@ -735,11 +739,13 @@ class MTLocationPlot(PlotConfig):
         beachball_type = self.beachball_type
 
         problem = history.problem
+        sp = SectionPlot(config=self)
+        self._to_be_closed.append(sp)
 
-        fig = plt.figure(figsize=self.size_inch)
-        axes_en = fig.add_subplot(2, 2, 1)
-        axes_dn = fig.add_subplot(2, 2, 2)
-        axes_ed = fig.add_subplot(2, 2, 3)
+        fig = sp.fig
+        axes_en = sp.axes_xy
+        axes_dn = sp.axes_zy
+        axes_ed = sp.axes_xz
 
         bounds = problem.get_combined_bounds()
 
@@ -752,6 +758,17 @@ class MTLocationPlot(PlotConfig):
 
         iorder = num.arange(history.nmodels)
 
+        for parname, set_label, set_lim in [
+                ['east_shift', sp.set_xlabel, sp.set_xlim],
+                ['north_shift', sp.set_ylabel, sp.set_ylim],
+                ['depth', sp.set_zlabel, sp.set_zlim]]:
+
+            ipar = problem.name_to_index(parname)
+            par = problem.combined[ipar]
+            set_label(par.get_label())
+            xmin, xmax = fixlim(*par.scaled(bounds[ipar]))
+            set_lim(xmin, xmax)
+
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
                 (axes_dn, 'depth', 'north_shift'),
@@ -763,15 +780,20 @@ class MTLocationPlot(PlotConfig):
             xpar = problem.combined[ixpar]
             ypar = problem.combined[iypar]
 
-            axes.set_xlabel(xpar.get_label())
-            axes.set_ylabel(ypar.get_label())
-
             xmin, xmax = fixlim(*xpar.scaled(bounds[ixpar]))
             ymin, ymax = fixlim(*ypar.scaled(bounds[iypar]))
 
-            axes.set_aspect(1.0)
-            axes.set_xlim(xmin, xmax)
-            axes.set_ylim(ymin, ymax)
+            try:
+                axes.set_facecolor(mpl_color('aluminium1'))
+            except AttributeError:
+                axes.patch.set_facecolor(mpl_color('aluminium1'))
+
+            rect = patches.Rectangle(
+                (xmin, ymin), xmax-xmin, ymax-ymin,
+                facecolor=mpl_color('white'),
+                edgecolor=mpl_color('aluminium2'))
+
+            axes.add_patch(rect)
 
             # fxs = xpar.scaled(problem.extract(models, ixpar))
             # fys = ypar.scaled(problem.extract(models, iypar))
@@ -787,6 +809,7 @@ class MTLocationPlot(PlotConfig):
                 cmap=plt.get_cmap('coolwarm'))
 
             for ix, x in enumerate(models):
+
                 source = problem.get_source(x)
                 mt = source.pyrocko_moment_tensor()
                 fx = problem.extract(x, ixpar)
@@ -812,9 +835,7 @@ class MTLocationPlot(PlotConfig):
                 except beachball.BeachballError as e:
                     logger.warn(str(e))
 
-        item = PlotItem(
-            name='main',
-            title='Moment Tensor Location')
+        item = PlotItem(name='main')
         return [[item, fig]]
 
 
@@ -823,6 +844,9 @@ class MTFuzzyPlot(PlotConfig):
 
     name = 'mt_fuzzy'
     size_cm = Tuple.T(2, Float.T(), default=(10., 10.))
+    cluster_attribute = meta.StringID.T(
+        optional=True,
+        help='name of attribute to use as cluster IDs')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -831,55 +855,78 @@ class MTFuzzyPlot(PlotConfig):
         cm.create_group_mpl(
             self,
             self.draw_figures(history),
-            title='Fuzzy Moment Tensor',
+            title=u'Fuzzy MT',
             section='solution',
             feather_icon='wind',
             description=u'''
 A fuzzy moment tensor, illustrating the solution's uncertainty.
-''')
+
+The P wave radiation pattern strength of every ensemble solution is stacked for
+all ray spokes. The projection shows the stacked radiation pattern. If the
+variability of the ensemble solutions is small, the fuzzy plot has clearly
+separated black and white fields, consistent with the nodal lines of the %s
+best solution (indicated in red).
+''' % ('cluster' if self.cluster_attribute is not None else 'global'))
 
     def draw_figures(self, history):
         problem = history.problem
 
-        fig = plt.figure(figsize=self.size_inch)
-        axes = fig.gca()
+        by_cluster = history.imodels_by_cluster(
+            self.cluster_attribute)
 
-        gms = problem.combine_misfits(history.misfits)
+        for icluster, percentage, imodels in by_cluster:
+            misfits = history.misfits[imodels]
+            models = history.models[imodels]
 
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-        models = history.models[isort, :]
-
-        kwargs = {
-            'beachball_type': 'full',
-            'size': 8,
-            'position': (5, 5),
-            'color_t': 'black',
-            'edgecolor': 'black'}
-
-        mts = []
-        for ix, x in enumerate(models):
-            if random.random() < 0.1:
+            mts = []
+            for ix, x in enumerate(models):
                 source = problem.get_source(x)
                 mts.append(source.pyrocko_moment_tensor())
 
-        best_mt = mts[-1]
+            best_mt = stats.get_best_source(
+                problem, models, misfits).pyrocko_moment_tensor()
 
-        beachball.plot_fuzzy_beachball_mpl_pixmap(mts, axes, best_mt, **kwargs)
+            fig = plt.figure(figsize=self.size_inch)
+            fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+            axes = fig.add_subplot(1, 1, 1, aspect=1.0)
 
-        axes.set_xlim(0., 10.)
-        axes.set_ylim(0., 10.)
-        axes.set_axis_off()
+            if self.cluster_attribute is not None:
+                color = cluster_color(icluster)
+            else:
+                color = 'black'
 
-        item = PlotItem(
-            name='main',
-            title='Fuzzy Moment Tensor',
-            description=u'''
-The opaqueness illustrates the propability of all combined moment tensor
-solution. The red lines indicate the global best solution.
-''')
-        return [[item, fig]]
+            beachball.plot_fuzzy_beachball_mpl_pixmap(
+                mts, axes, best_mt,
+                beachball_type='full',
+                size=8.*math.sqrt(percentage/100.),
+                position=(5., 5.),
+                color_t=color,
+                edgecolor='black',
+                best_color=mpl_color('scarletred2'))
+
+            if self.cluster_attribute is not None:
+                axes.annotate(
+                    cluster_label(icluster, percentage),
+                    xy=(5., 0.),
+                    xycoords='data',
+                    xytext=(0., self.font_size/2.),
+                    textcoords='offset points',
+                    ha='center',
+                    va='bottom',
+                    color='black',
+                    fontsize=self.font_size)
+
+            axes.set_xlim(0., 10.)
+            axes.set_ylim(0., 10.)
+            axes.set_axis_off()
+
+            item = PlotItem(
+                name=(
+                    'cluster_%i' % icluster
+                    if icluster >= 0
+                    else 'unclustered'))
+
+            yield [item, fig]
 
 
 class HudsonPlot(PlotConfig):
@@ -893,6 +940,7 @@ class HudsonPlot(PlotConfig):
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -905,7 +953,12 @@ class HudsonPlot(PlotConfig):
             section='solution',
             feather_icon='box',
             description=u'''
-Hudson's source type plot with the ensemble of bootstrap solutions.''')
+Hudson's source type plot with the ensemble of bootstrap solutions.
+
+For about 10% of the solutions (randomly chosen), the focal mechanism is
+depicted, others are represented as dots. The square marks the global best
+fitting solution.
+''')
 
     def draw_figures(self, history):
 
@@ -918,8 +971,8 @@ Hudson's source type plot with the ensemble of bootstrap solutions.''')
         beachball_type = self.beachball_type
 
         problem = history.problem
-        mean_source = core.get_mean_source(problem, history.models)
-        best_source = core.get_best_source(
+        mean_source = stats.get_mean_source(problem, history.models)
+        best_source = stats.get_best_source(
             problem, history.models, history.misfits)
 
         fig = plt.figure(figsize=self.size_inch)
@@ -987,24 +1040,24 @@ Hudson's source type plot with the ensemble of bootstrap solutions.''')
             mfc='none',
             zorder=-2)
 
-        mt = problem.base_source.pyrocko_moment_tensor()
-        u, v = hudson.project(mt)
+        if self.show_reference:
+            mt = problem.base_source.pyrocko_moment_tensor()
+            u, v = hudson.project(mt)
 
-        try:
-            beachball.plot_beachball_mpl(
-                mt, axes,
-                beachball_type=beachball_type,
-                position=(u, v),
-                size=beachballsize,
-                color_t='red',
-                zorder=2,
-                linewidth=0.5)
-        except beachball.BeachballError as e:
-            logger.warn(str(e))
+            try:
+                beachball.plot_beachball_mpl(
+                    mt, axes,
+                    beachball_type=beachball_type,
+                    position=(u, v),
+                    size=beachballsize,
+                    color_t='red',
+                    zorder=2,
+                    linewidth=0.5)
+            except beachball.BeachballError as e:
+                logger.warn(str(e))
 
         item = PlotItem(
-            name='main',
-            title='Hudson Plot')
+            name='main')
         return [[item, fig]]
 
 

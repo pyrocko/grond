@@ -40,7 +40,7 @@ class TargetBalancingAnalyser(Analyser):
                 or iiter == niter - 1:
 
             logger.info(
-                '%s at %i/%i' % (
+                'Target balancing for "%s" at %i/%i.' % (
                     problem.name,
                     iiter, niter))
 

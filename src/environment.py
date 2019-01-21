@@ -2,7 +2,7 @@ import time
 import os.path as op
 
 from grond.config import read_config
-from grond import meta
+from grond import meta, run_info
 from grond.problems.base import load_optimiser_info, load_problem_info, \
     ModelHistory
 
@@ -43,8 +43,11 @@ class Environment(object):
         self._selected_event_names = None
         self._config = None
         self._plot_collection_manager = None
+        if isinstance(args, str):
+            args = [args]
+
         if not args:
-            args.append(op.curdir)
+            raise GrondEnvironmentError('missing arguments')
 
         if op.isdir(args[0]):
             self._rundir_path = args[0]
@@ -169,6 +172,21 @@ class Environment(object):
 
         return self._rundir_path
 
+    def get_run_info_path(self):
+        return op.join(self.get_rundir_path(), 'run_info.yaml')
+
+    def get_run_info(self):
+        run_info_path = self.get_run_info_path()
+        if not op.exists(run_info_path):
+            info = run_info.RunInfo()
+            return info
+        else:
+            return run_info.read_info(run_info_path)
+
+    def set_run_info(self, info):
+        run_info_path = self.get_run_info_path()
+        run_info.write_info(info, run_info_path)
+
     def get_optimiser(self):
         if self._optimiser is None:
             try:
@@ -250,3 +268,13 @@ class Environment(object):
 
     def get_config_path(self):
         return self._config_path
+
+
+__all__ = [
+    'GrondEnvironmentError',
+    'EventSelectionFailed',
+    'NoCurrentEventAvailable',
+    'NoRundirAvailable',
+    'NoPlotCollectionManagerAvailable',
+    'Environment',
+]

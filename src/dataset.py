@@ -8,15 +8,21 @@ import numpy as num
 from collections import defaultdict
 from pyrocko import util, pile, model, config, trace, \
     marker as pmarker
+from pyrocko.io.io_common import FileLoadError
 from pyrocko.fdsn import enhanced_sacpz, station as fs
 from pyrocko.guts import (Object, Tuple, String, Float, List, Bool, dump_all,
                           load_all)
 
-from .meta import Path, HasPaths, expand_template
+from .meta import Path, HasPaths, expand_template, GrondError
+
 from .synthetic_tests import SyntheticTest
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.dataset')
+
+
+def quote_paths(paths):
+    return ', '.join('"%s"' % path for path in paths)
 
 
 class InvalidObject(Exception):
@@ -42,7 +48,7 @@ class NotFound(Exception):
         return s
 
 
-class DatasetError(Exception):
+class DatasetError(GrondError):
     pass
 
 
@@ -109,7 +115,7 @@ class Dataset(object):
 
         if pyrocko_stations_filename is not None:
             logger.debug(
-                'loading stations from file %s' %
+                'Loading stations from file "%s"...' %
                 pyrocko_stations_filename)
 
             for station in model.load_stations(pyrocko_stations_filename):
@@ -119,7 +125,7 @@ class Dataset(object):
 
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'loading stations from StationXML file %s' %
+                    'Loading stations from StationXML file "%s"...' %
                     stationxml_filename)
 
                 sx = fs.load_xml(filename=stationxml_filename)
@@ -127,7 +133,7 @@ class Dataset(object):
                     channels = station.get_channels()
                     if len(channels) == 1 and channels[0].name.endswith('Z'):
                         logger.warning(
-                            'Station %s has vertical component'
+                            'Station "%s" has vertical component'
                             ' information only, adding mocked channels.'
                             % station.nsl_string())
                         station.add_channel(model.Channel('N'))
@@ -140,31 +146,33 @@ class Dataset(object):
             self.events.extend(events)
 
         if filename is not None:
-            logger.debug('Loading events from file %s' % filename)
+            logger.debug('Loading events from file "%s"...' % filename)
             self.events.extend(model.load_events(filename))
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
                       show_progress=False):
         cachedirname = config.config().cache_dir
-        logger.debug('Selecting waveform files %s' % paths)
+
+        logger.debug('Selecting waveform files %s...' % quote_paths(paths))
         fns = util.select_files(paths, regex=regex,
                                 show_progress=show_progress)
         cache = pile.get_cache(cachedirname)
-        logger.debug('Scanning waveform files %s' % paths)
+        logger.debug('Scanning waveform files %s...' % quote_paths(paths))
         self.pile.load_files(sorted(fns), cache=cache,
                              fileformat=fileformat,
                              show_progress=show_progress)
 
     def add_responses(self, sacpz_dirname=None, stationxml_filenames=None):
         if sacpz_dirname:
-            logger.debug('Loading SAC PZ responses from %s' % sacpz_dirname)
+            logger.debug(
+                'Loading SAC PZ responses from "%s"...' % sacpz_dirname)
             for x in enhanced_sacpz.iload_dirname(sacpz_dirname):
                 self.responses[x.codes].append(x)
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
                 logger.debug(
-                    'Loading StationXML responses from %s' %
+                    'Loading StationXML responses from "%s"...' %
                     stationxml_filename)
 
                 self.responses_stationxml.append(
@@ -193,7 +201,7 @@ class Dataset(object):
                 self.clippings[k] = num.concatenate(self.clippings, atimes)
 
     def add_blacklist(self, blacklist=[], filenames=None):
-        logger.debug('Loading blacklisted stations')
+        logger.debug('Loading blacklisted stations...')
         if filenames:
             blacklist = list(blacklist)
             for filename in filenames:
@@ -202,7 +210,7 @@ class Dataset(object):
                         blacklist.extend(
                             s.strip() for s in f.read().splitlines())
                 else:
-                    logger.warning('no such blacklist file: %s' % filename)
+                    logger.warning('No such blacklist file: %s' % filename)
 
         for x in blacklist:
             if isinstance(x, str):
@@ -210,7 +218,7 @@ class Dataset(object):
             self.blacklist.add(x)
 
     def add_whitelist(self, whitelist=[], filenames=None):
-        logger.debug('Loading whitelisted stations')
+        logger.debug('Loading whitelisted stations...')
         if filenames:
             whitelist = list(whitelist)
             for filename in filenames:
@@ -254,15 +262,15 @@ class Dataset(object):
         try:
             from pyrocko.model import gnss  # noqa
         except ImportError:
-            raise ImportError('module pyrocko.model.gnss not found,'
+            raise ImportError('Module pyrocko.model.gnss not found,'
                               ' please upgrade pyrocko!')
-        logger.debug('loading GNSS campaign from %s' % filename)
+        logger.debug('Loading GNSS campaign from "%s"...' % filename)
 
         campaign = load_all(filename=filename)
         self.gnss_campaigns.append(campaign[0])
 
     def add_kite_scenes(self, paths):
-        logger.info('loading kite InSAR scenes...')
+        logger.info('Loading kite InSAR scenes...')
         paths = util.select_files(
             paths,
             regex=r'\.npz',
@@ -272,16 +280,16 @@ class Dataset(object):
             self.add_kite_scene(filename=path)
 
         if not self.kite_scenes:
-            logger.warning('could not find any kite scenes at %s' %
-                           self.kite_scene_paths)
+            logger.warning('Could not find any kite scenes at %s.' %
+                           quote_paths(self.kite_scene_paths))
 
     def add_kite_scene(self, filename):
         try:
             from kite import Scene
         except ImportError:
-            raise ImportError('module kite could not be imported,'
-                              ' please install from https://pyrocko.org')
-        logger.debug('loading kite scene from %s' % filename)
+            raise ImportError('Module kite could not be imported,'
+                              ' please install from https://pyrocko.org.')
+        logger.debug('Loading kite scene from "%s"...' % filename)
 
         scene = Scene()
         scene._log.setLevel(logger.level)
@@ -292,7 +300,8 @@ class Dataset(object):
         except NotFound:
             self.kite_scenes.append(scene)
         else:
-            raise AttributeError('kite scene_id not unique for %s' % filename)
+            raise AttributeError('Kite scene_id not unique for "%s".'
+                                 % filename)
 
     def is_blacklisted(self, obj):
         try:
@@ -346,7 +355,8 @@ class Dataset(object):
             net, sta, loc = obj[:3]
         else:
             raise InvalidObject(
-                'cannot get nsl code from given object of type %s' % type(obj))
+                'Cannot get nsl code from given object of type "%s".'
+                % type(obj))
 
         return net, sta, loc
 
@@ -357,22 +367,22 @@ class Dataset(object):
             return obj
         else:
             raise InvalidObject(
-                'cannot get nslc code from given object %s' % type(obj))
+                'Cannot get nslc code from given object "%s"' % type(obj))
 
     def get_tmin_tmax(self, obj):
         if isinstance(obj, trace.Trace):
             return obj.tmin, obj.tmax
         else:
             raise InvalidObject(
-                'cannot get tmin and tmax from given object of type %s' %
+                'Cannot get tmin and tmax from given object of type "%s"' %
                 type(obj))
 
     def get_station(self, obj):
         if self.is_blacklisted(obj):
-            raise NotFound('station is blacklisted', self.get_nsl(obj))
+            raise NotFound('Station is blacklisted:', self.get_nsl(obj))
 
         if not self.is_whitelisted(obj):
-            raise NotFound('station is not on whitelist', self.get_nsl(obj))
+            raise NotFound('Station is not on whitelist:', self.get_nsl(obj))
 
         if isinstance(obj, model.Station):
             return obj
@@ -384,7 +394,7 @@ class Dataset(object):
             if k in self.stations:
                 return self.stations[k]
 
-        raise NotFound('no station information', keys)
+        raise NotFound('No station information:', keys)
 
     def get_stations(self):
         return [self.stations[k] for k in sorted(self.stations)
@@ -397,13 +407,13 @@ class Dataset(object):
     def get_kite_scene(self, scene_id=None):
         if scene_id is None:
             if len(self.kite_scenes) == 0:
-                raise AttributeError('no kite displacements defined')
+                raise AttributeError('No kite displacements defined.')
             return self.kite_scenes[0]
         else:
             for scene in self.kite_scenes:
                 if scene.meta.scene_id == scene_id:
                     return scene
-        raise NotFound('no kite scene with id %s defined' % scene_id)
+        raise NotFound('No kite scene with id "%s" defined.' % scene_id)
 
     def get_gnss_campaigns(self):
         return self.gnss_campaigns
@@ -419,7 +429,7 @@ class Dataset(object):
                 and (self.responses_stationxml is None
                      or len(self.responses_stationxml) == 0):
 
-            raise NotFound('no response information available')
+            raise NotFound('No response information available.')
 
         quantity_to_unit = {
             'displacement': 'M',
@@ -427,10 +437,10 @@ class Dataset(object):
             'acceleration': 'M/S**2'}
 
         if self.is_blacklisted(obj):
-            raise NotFound('response is blacklisted', self.get_nslc(obj))
+            raise NotFound('Response is blacklisted:', self.get_nslc(obj))
 
         if not self.is_whitelisted(obj):
-            raise NotFound('response is not on whitelist', self.get_nslc(obj))
+            raise NotFound('Response is not on whitelist:', self.get_nslc(obj))
 
         net, sta, loc, cha = self.get_nslc(obj)
         tmin, tmax = self.get_tmin_tmax(obj)
@@ -476,7 +486,7 @@ class Dataset(object):
             return candidates[0]
 
         elif len(candidates) == 0:
-            raise NotFound('no response found', (net, sta, loc, cha))
+            raise NotFound('No response found:', (net, sta, loc, cha))
         else:
             # if multiple responses are found take the younger one
             t1 = []
@@ -491,7 +501,7 @@ class Dataset(object):
                             if station.code == sta:
                                 if t1 == [] or t1 < station.start_date:
                                     t1 = station.start_date
-                                    index = indexSX                               
+                                    index = indexSX
             return candidates[index]
 
 
@@ -508,21 +518,21 @@ class Dataset(object):
 
         if self.is_blacklisted((net, sta, loc, cha)):
             raise NotFound(
-                'waveform is blacklisted', (net, sta, loc, cha))
+                'Waveform is blacklisted:', (net, sta, loc, cha))
 
         if not self.is_whitelisted((net, sta, loc, cha)):
             raise NotFound(
-                'waveform is not on whitelist', (net, sta, loc, cha))
+                'Waveform is not on whitelist:', (net, sta, loc, cha))
 
         if self.clip_handling == 'by_nsl':
             if self.has_clipping((net, sta, loc), tmin, tmax):
                 raise NotFound(
-                    'waveform clipped', (net, sta, loc))
+                    'Waveform clipped:', (net, sta, loc))
 
         elif self.clip_handling == 'by_nslc':
             if self.has_clipping((net, sta, loc, cha), tmin, tmax):
                 raise NotFound(
-                    'waveform clipped', (net, sta, loc, cha))
+                    'Waveform clipped:', (net, sta, loc, cha))
 
         trs = self.pile.all(
             tmin=tmin+toffset_noise_extract,
@@ -543,9 +553,9 @@ class Dataset(object):
 
         if not want_incomplete and len(trs) != 1:
             if len(trs) == 0:
-                message = 'waveform missing or incomplete'
+                message = 'Waveform missing or incomplete.'
             else:
-                message = 'waveform has gaps'
+                message = 'Waveform has gaps.'
 
             raise NotFound(
                 message,
@@ -616,7 +626,7 @@ class Dataset(object):
 
         if not projections:
             raise NotFound(
-                'cannot determine projection of data components',
+                'Cannot determine projection of data components:',
                 station.nsl())
 
         return projections
@@ -643,11 +653,11 @@ class Dataset(object):
 
         if self.is_blacklisted(nslc):
             raise NotFound(
-                'waveform is blacklisted', nslc)
+                'Waveform is blacklisted:', nslc)
 
         if not self.is_whitelisted(nslc):
             raise NotFound(
-                'waveform is not on whitelist', nslc)
+                'Waveform is not on whitelist:', nslc)
 
         assert tmin is not None
         assert tmax is not None
@@ -663,6 +673,8 @@ class Dataset(object):
             obj = cache[nslc + cache_k]
             if isinstance(obj, Exception):
                 raise obj
+            elif obj is None:
+                raise NotFound('Waveform not found!', nslc)
             else:
                 return obj
 
@@ -808,9 +820,9 @@ class Dataset(object):
                 raise NotFound(
                     'waveform not available', station.nsl() + (channel,))
 
-        except NotFound as e:
+        except NotFound:
             if cache is not None:
-                cache[nslc + cache_k] = e
+                cache[nslc + cache_k] = None
             raise
 
     def get_waveform(self, obj, tinc_cache=None, **kwargs):
@@ -850,20 +862,20 @@ class Dataset(object):
 
         if not ev_x:
             raise NotFound(
-                'no event information matching criteria (t=%s, magmin=%s)' %
+                'No event information matching criteria (t=%s, magmin=%s).' %
                 (t, magmin))
 
         return ev_x
 
     def get_event(self):
         if self._event_name is None:
-            raise NotFound('no main event selected in dataset')
+            raise NotFound('No main event selected in dataset!')
 
         for ev in self.events:
             if ev.name == self._event_name:
                 return ev
 
-        raise NotFound('no such event: %s' % self._event_name)
+        raise NotFound('No such event: %s' % self._event_name)
 
     def get_picks(self):
         if self._picks is None:
@@ -874,7 +886,7 @@ class Dataset(object):
                     name = marker.get_event().name
                     if name in names:
                         raise DatasetError(
-                            'duplicate event name "%s" in picks' % name)
+                            'Duplicate event name "%s" in picks.' % name)
 
                     names.add(name)
                     hash_to_name[marker.get_event_hash()] = name
@@ -889,14 +901,14 @@ class Dataset(object):
 
                     if ehash is None or ehash not in hash_to_name:
                         raise DatasetError(
-                            'unassociated pick %s.%s.%s, %s' %
+                            'Unassociated pick: %s.%s.%s, %s' %
                             (nsl + (phasename, )))
 
                     eventname = hash_to_name[ehash]
 
                     if (nsl, phasename, eventname) in picks:
                         raise DatasetError(
-                            'duplicate pick %s.%s.%s, %s' %
+                            'Duplicate pick: %s.%s.%s, %s' %
                             (nsl + (phasename, )))
 
                     picks[nsl, phasename, eventname] = marker
@@ -960,7 +972,7 @@ class DatasetConfig(HasPaths):
         help='List of text files with blacklisted stations.')
     blacklist = List.T(
         String.T(),
-        help='stations/components to be excluded according to their STA, '
+        help='Stations/components to be excluded according to their STA, '
              'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
     whitelist_paths = List.T(
         Path.T(),
@@ -968,7 +980,7 @@ class DatasetConfig(HasPaths):
     whitelist = List.T(
         String.T(),
         optional=True,
-        help='if not None, list of stations/components to include according '
+        help='If not None, list of stations/components to include according '
              'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes. '
              'Note: ''when whitelisting on channel level, both, the raw and '
              'the processed channel codes have to be listed.')
@@ -996,7 +1008,12 @@ class DatasetConfig(HasPaths):
             return self.expand_path(path, extra=extra)
 
         events = []
-        for fn in glob.glob(fp(self.events_path)):
+        events_path = fp(self.events_path)
+        fns = glob.glob(events_path)
+        if not fns:
+            raise DatasetError('No event files matching "%s".' % events_path)
+
+        for fn in fns:
             events.extend(model.load_events(filename=fn))
 
         event_names = [ev.name for ev in events]
@@ -1016,61 +1033,65 @@ class DatasetConfig(HasPaths):
                 if isinstance(p, list):
                     for path in p:
                         if not op.exists(path):
-                            logger.warn('Given path %s does not exist!' % path)
+                            logger.warn('Path %s does not exist.' % path)
                 else:
                     if not op.exists(p):
-                        logger.warn('Given path %s does not exist!' % p)
+                        logger.warn('Path %s does not exist.' % p)
 
                 return p
 
             ds = Dataset(event_name)
-            ds.add_stations(
-                pyrocko_stations_filename=fp(self.stations_path),
-                stationxml_filenames=fp(self.stations_stationxml_paths))
+            try:
+                ds.add_stations(
+                    pyrocko_stations_filename=fp(self.stations_path),
+                    stationxml_filenames=fp(self.stations_stationxml_paths))
 
-            ds.add_events(filename=fp(self.events_path))
+                ds.add_events(filename=fp(self.events_path))
 
-            if self.waveform_paths:
-                ds.add_waveforms(paths=fp(self.waveform_paths))
+                if self.waveform_paths:
+                    ds.add_waveforms(paths=fp(self.waveform_paths))
 
-            if self.kite_scene_paths:
-                ds.add_kite_scenes(paths=fp(self.kite_scene_paths))
+                if self.kite_scene_paths:
+                    ds.add_kite_scenes(paths=fp(self.kite_scene_paths))
 
-            if self.gnss_campaign_paths:
-                ds.add_gnss_campaigns(paths=fp(self.gnss_campaign_paths))
+                if self.gnss_campaign_paths:
+                    ds.add_gnss_campaigns(paths=fp(self.gnss_campaign_paths))
 
-            if self.clippings_path:
-                ds.add_clippings(markers_filename=fp(self.clippings_path))
+                if self.clippings_path:
+                    ds.add_clippings(markers_filename=fp(self.clippings_path))
 
-            if self.responses_sacpz_path:
-                ds.add_responses(
-                    sacpz_dirname=fp(self.responses_sacpz_path))
+                if self.responses_sacpz_path:
+                    ds.add_responses(
+                        sacpz_dirname=fp(self.responses_sacpz_path))
 
-            if self.responses_stationxml_paths:
-                ds.add_responses(
-                    stationxml_filenames=fp(self.responses_stationxml_paths))
+                if self.responses_stationxml_paths:
+                    ds.add_responses(
+                        stationxml_filenames=fp(
+                            self.responses_stationxml_paths))
 
-            if self.station_corrections_path:
-                ds.add_station_corrections(
-                    filename=fp(self.station_corrections_path))
+                if self.station_corrections_path:
+                    ds.add_station_corrections(
+                        filename=fp(self.station_corrections_path))
 
-            ds.apply_correction_factors = self.apply_correction_factors
-            ds.apply_correction_delays = self.apply_correction_delays
-            ds.extend_incomplete = self.extend_incomplete
+                ds.apply_correction_factors = self.apply_correction_factors
+                ds.apply_correction_delays = self.apply_correction_delays
+                ds.extend_incomplete = self.extend_incomplete
 
-            for picks_path in self.picks_paths:
-                ds.add_picks(
-                    filename=fp(picks_path))
+                for picks_path in self.picks_paths:
+                    ds.add_picks(
+                        filename=fp(picks_path))
 
-            ds.add_blacklist(self.blacklist)
-            ds.add_blacklist(filenames=fp(self.blacklist_paths))
-            if self.whitelist:
-                ds.add_whitelist(self.whitelist)
-            if self.whitelist_paths:
-                ds.add_whitelist(filenames=fp(self.whitelist_paths))
+                ds.add_blacklist(self.blacklist)
+                ds.add_blacklist(filenames=fp(self.blacklist_paths))
+                if self.whitelist:
+                    ds.add_whitelist(self.whitelist)
+                if self.whitelist_paths:
+                    ds.add_whitelist(filenames=fp(self.whitelist_paths))
 
-            ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
-            self._ds[event_name] = ds
+                ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
+                self._ds[event_name] = ds
+            except (FileLoadError, OSError) as e:
+                raise DatasetError(str(e))
 
         return self._ds[event_name]
 

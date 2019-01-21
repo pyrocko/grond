@@ -210,7 +210,13 @@ There are direct data weight vectors :math:`\bf{w}` or weight matrices :math:`\b
 
       {\bf w} = \frac{1}{{\bf \sigma}}, \quad  \bf{W} = \sqrt{{\bf \Sigma}^{-1}}.
 
-For a :class:`~grond.targets.waveform.WaveformTargetGroup` the data error statistics stem from real data noise before the first phase arrival as described e.g. in `Duputel et al.`_ (2012). From the noise traces the inverse of their standard deviation is used. In Grond they are named `station_noise_weights` and are received from the :class:`~grond.analyser.noise_analyser.NoiseAnalyser` before the optimisation.
+For a :class:`~grond.targets.waveform.WaveformTargetGroup` the data error statistics stem from real data noise before the first phase arrival as described e.g. in `Duputel et al.`_ (2012). From the noise traces the inverse of their standard deviation is used. In Grond they are named `station_noise_weights` and are received from the :class:`~grond.analyser.noise_analyser.NoiseAnalyser` before the optimisation. 
+In the current grond version, the noise variance and expected target signal (see
+``target balancing`` above) are multiplied, and not added, which would be more correct.
+We propose to use the :class:`~grond.analyser.noise_analyser.NoiseAnalyser` to
+take out very noisy stations using the options ``mode='weeding'`` and a corresponding 
+``cutoff`` factor.
+
 
 For a :class:`~grond.targets.satellite.SatelliteTargetGroup` the data error statistics are pre-calculated by `Kite`_ and loaded with the scenes. The estimation of the noise statistics has to be done before Grond by using `Kite`_. In `Kite`_ the noise estimation can be done in areas of the displacement map that are not affected by coseismic deformation by using spatial sampling methods and semi-variogram and covariogram formation, described e.g. in `Sudhaus and Jonsson`_ (2009).
 

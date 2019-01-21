@@ -19,8 +19,14 @@ class RectangularProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     decimation_factor = Int.T(default=1)
     distance_min = Float.T(default=0.)
+    nthreads = Int.T(default=4)
 
     def get_problem(self, event, target_groups, targets):
+        if self.decimation_factor != 1:
+            logger.warn(
+                'Decimation factor for rectangular source set to %i. Results '
+                'may be inaccurate.' % self.decimation_factor)
+
         base_source = gf.RectangularSource.from_pyrocko_event(
             event,
             anchor='top',
@@ -37,7 +43,8 @@ class RectangularProblemConfig(ProblemConfig):
             target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
-            norm_exponent=self.norm_exponent)
+            norm_exponent=self.norm_exponent,
+            nthreads=self.nthreads)
 
         return problem
 
@@ -90,10 +97,10 @@ class RectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds):
+    def random_uniform(self, xbounds, rstate):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
         return x
 

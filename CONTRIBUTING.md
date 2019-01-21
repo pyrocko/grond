@@ -14,17 +14,29 @@ Grond uses Setuptools for its installation script. See `setup.py` and
 Git is used for version control. Use development branches for new features.
 Master branch should always point to a stable version.
 
-**Commit message conventions:**
+The Grond project  adheres to [Semantic Versioning](https://semver.org).
+
+Notable changes must be documented in the file `CHANGELOG.md`. The format of
+the change log is based on [Keep a
+Changelog](https://keepachangelog.com/en/1.0.0/).
+
+### Commit message conventions
 
 * start with lower case
-* colon-prepend affected component 
+* colon-prepend affected component
 * try to use imperative form
 * examples:
   - `docs: add section about weighting`
   - `waveform targets: correct typo in component names`
   - `waveform targets: fix issues with misaligned traces`
 
-**Rebase small changes before pushing:**
+### Branching policy
+
+* The `master` branch should point to a stable, tagged version of Grond.
+* The `dev` branch is used to aggregate new features before releasing.
+* Use topic branches to develop new features.
+
+### Rebase small changes before pushing
 
 Try to rebase little changes on top of master (or any other development branch)
 before pushing, it makes the history much better readable. Here is a safe way
@@ -32,16 +44,22 @@ to do so.
 
 *If we have already commited and merged changes to local master:*
 
-```bash
+```sh
 git checkout master
 git fetch origin    # important, otherwise we rebase to outdated
 git rebase origin/master
 git push origin master
 ```
 
+with `git config --global pull.rebase true` this can be shortcutted to
+
+```sh
+git pull
+```
+
 *Or after we have commited to a feature branch:*
 
-```bash
+```sh
 git checkout feature
 git fetch origin
 git rebase origin/master
@@ -55,10 +73,6 @@ If during push it refuses to upload ('not fast forward...') then repeat the
 procedure, because someone else has pushed between your fetch and push.
 
 **Tip:** use `rebase -i ...` to simplify/fixup/beautify your changeset.
-
-## Testing
-
-* TODO
 
 ## Code style
 
@@ -74,7 +88,12 @@ Additionally,
   - 'modelling' rather than 'modeling'
   - 'analyser' rather than 'analyzer'
   - 'optimiser' rather than 'optimizer'
-* log messages: TODO
+* log and exception messages:
+  - capital beginning
+  - final period
+  - Progress actions should end with `...`, e.g. `Generating report's archive...`
+  - e.g. `raise ProblemDataNotAvailable('No problem data available (%s).' % dirname)`
+  - in-text names must be quoted; not needed after colons
 * docstrings: TODO
 
 ## Documentation

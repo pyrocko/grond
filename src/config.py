@@ -137,10 +137,10 @@ def read_config(path):
         config = guts.load(filename=path)
     except OSError:
         raise GrondError(
-            'cannot read Grond configuration file: %s' % path)
+            'Cannot read Grond configuration file: %s' % path)
 
     if not isinstance(config, Config):
-        raise GrondError('invalid Grond configuration in file "%s"' % path)
+        raise GrondError('Invalid Grond configuration in file "%s".' % path)
 
     config.set_basepath(op.dirname(path) or '.')
     return config
@@ -160,7 +160,7 @@ def write_config(config, path):
 
     except OSError:
         raise GrondError(
-            'cannot write Grond configuration file: %s' % path)
+            'Cannot write Grond configuration file: %s' % path)
 
 
 def diff_configs(path1, path2):

@@ -80,7 +80,7 @@ class WaveformMisfitConfig(MisfitConfig):
 
 
 def log_exclude(target, reason):
-    logger.debug('excluding potential target %s: %s' % (
+    logger.debug('Excluding potential target %s: %s' % (
         target.string_id(), reason))
 
 
@@ -112,7 +112,7 @@ class WaveformTargetGroup(TargetGroup):
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')
         origin = event
         targets = []
@@ -281,7 +281,6 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             for analyser in self.analyser_results.values():
                 w *= analyser.weight
             self._combined_weight = num.array([w], dtype=num.float)
-
         return self._combined_weight
 
     def get_taper_params(self, engine, source):
@@ -303,6 +302,10 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     def get_backazimuth_for_waveform(self):
         return backazimuth_for_waveform(self.azimuth, self.codes)
+
+    @property
+    def backazimuth(self):
+        return self.azimuth - 180.
 
     def get_freqlimits(self):
         config = self.misfit_config
@@ -421,7 +424,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
         except NotFound as e:
             logger.debug(str(e))
-            raise gf.SeismosizerError('no waveform data, %s' % str(e))
+            raise gf.SeismosizerError('No waveform data: %s' % str(e))
 
     def prepare_modelling(self, engine, source, targets):
         return [self]

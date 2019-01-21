@@ -46,7 +46,7 @@ problem configurations:
 .. glossary::
 
   ``name_template``
-    can be any string and provides a stem for the result folders `runs` and `reports` to identify different optimisations. Meaningful is to use short event and problem identifications in this string.
+    can be any string and provides a stem for the result folders `runs` and `report` to identify different optimisations. Meaningful is to use short event and problem identifications in this string.
 
   ``norm_exponent``
     defines the norm of combining several `normalization_family` in the global misfit. This integer value is 1 or larger. Please find here more information on the global `misfit calculation in Grond`_.

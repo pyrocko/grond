@@ -40,7 +40,7 @@ class WaveformOverallAmplitudeConstraint(TargetGroup):
     associated_path = gf.StringID.T()
     norm_exponent = Int.T(default=2)
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform piggyback targets...')
 
         target = WOACTarget(
@@ -98,8 +98,8 @@ class WOACTarget(MisfitTarget):
                         mresult.piggyback_subresults.remove(sr)
                     except KeyError:
                         logger.error(
-                            'found inconsistency while gathering piggyback '
-                            'results')
+                            'Found inconsistency while gathering piggyback '
+                            'results.')
                         pass
 
         amps = num.array(amps, dtype=num.float)

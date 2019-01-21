@@ -34,7 +34,11 @@ Project folder layout
 
 To use Grond with your own dataset, we suggest the following folder structure.
 
-Single files and data formats listed here are explained below. The folders ``runs`` and ``reports`` are generated during and after the optimisation, respectively.
+Single files and data formats listed here are explained below. The folders ``runs`` and ``report`` are generated during and after the optimisation, respectively.
+
+.. tip ::
+    
+    Use ``grond init <example> <project_folder>`` to create an example project following this layout! See :ref:`project-init` for more information.
 
 .. code-block :: none
 
@@ -45,34 +49,34 @@ Single files and data formats listed here are explained below. The folders ``run
     │
     ├── data
     │   └── events  # several events could be set up here
-    │       ├── laquila2009   
+    │       ├── laquila2009
     │       │   ├── event.txt
-    │       │   ├── insar   
+    │       │   ├── insar
     │       │   │   ├── dsc_insar.npz
     │       │   │   ├── dsc_insar.yml
     │       │   │   :
     │       │   │
-    │       │   ├── waveforms   
+    │       │   ├── waveforms
     │       │   │   ├── raw    # contains Mini-SEED files
-    │       │   │   │   ├── trace_BK-CMB--BHE_2009-04-06_00-38-31.mseed 
-    │       │   │   │   ├── trace_BK-CMB--BHN_2009-04-06_00-38-31.mseed     
-    │       │   │   │   :  
+    │       │   │   │   ├── trace_BK-CMB--BHE_2009-04-06_00-38-31.mseed
+    │       │   │   │   ├── trace_BK-CMB--BHN_2009-04-06_00-38-31.mseed
+    │       │   │   │   :
     │       │   │   └── stations.xml
     │       │   │
     │       │   └── gnss
     │       │       └── gnss.yml
     │       :
     │
-    ├── gf_stores  # contains Green's functions 
+    ├── gf_stores  # contains Green's functions
     │   ├── Abruzzo_Ameri_nearfield # static near-field GF store
     │   │   └── ...
     │   ├── global_2s_25km  # dynamic far-field GF store
     │   │   └── ...
     │   :	
-    │   
+    │
     ├── runs  # created at runtime, contains individual optimisation results
     │   └── ...
-    └── reports 
+    └── report
         └── ...
 
 Input data (observations)
@@ -141,7 +145,7 @@ Initializing a Grond project
 
 Grond ships with two options to quickstart a new project folder structure (see
 :ref:`project-layout`), including Grond's YAML configuration files. For real
-data, you may use ``grond init <project-folder>`` (section
+data, you may use ``grond init <example> <project-folder>`` (section
 :ref:`project-init`). For synthetic testing, with ``grond scenario
 <project-folder>`` a fully synthetic dataset can be customised and forward
 modelled (section :ref:`project-scenario`).
@@ -151,41 +155,42 @@ modelled (section :ref:`project-scenario`).
 Initializing an empty project
 .............................
 
-An empty project structure can be created with the subcommand :option:`grond init`. Different configurations can be added by flags (see :option:`grond init` ``--help``).
+Grond can handle many different kinds of optimisation problems so
+there can be no generic Grond configuration. However, to quickly create an empty project 
+we offer initial configurations for a few standard problems. 
+
+Check your options with
 
 .. code-block :: sh
 
-    grond init <project-folder>
-    cd <project-folder>
+   grond init list
+   
+and then create your configuration with one of the :doc:`/examples/index`.
 
+.. code-block :: sh 
+
+   grond init <example>
+
+The configuration can be automatically embedded in a new project folder with 
+
+.. code-block :: sh
+
+   grond init <example> <project-folder>
+   cd <project-folder>
+   
 .. tip::
 
-    Existing project folders can be overwritten using ``grond init --force <project-folder>``
- 
-You can create an initial Grond configuration file for a centroid moment tensor optimisation based on global seismic waveforms with
+    Existing project folders are overwritten using ``grond init <example> <project-folder> --force``
+
+Also only certain parts of a configuration file can be initialised, e. g. for 
+certain targets: 
 
 .. code-block :: sh
 
-    grond init > config/<filename>.gronf
+    grond init target_waveform
 
-This is the default and corresponds to
 
-.. code-block :: sh
-
-    grond init --target=waveforms > config/<filename>.gronf
-
-Identically, for static near-field displacement (InSAR, GNSS data sets) and finite source optimisation setups, initial Grond configuration file can be created with
-
-.. code-block :: sh
-
-    grond init --target=insar > config/<filename>.gronf
-    grond init --target=gnss  > config/<filename>.gronf
-
-The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged. A Grond configuration file showing all possible options with their default values is given using:
-
-.. code-block :: sh
-
-    grond init --full > config/<filename>.gronf
+Consult :option:`grond init` ``--help`` for your options. The different ``targets`` (data and misfit setups for seismic waveforms, InSAR and or GNSS data) can be combined and source model types can be exchanged.
 
 .. _project-scenario:
 
@@ -201,7 +206,7 @@ The scenario can contain the following synthetic observations:
 * GNSS surface displacements
 
 .. code-block :: sh
-    
+
     grond scenario --targets=waveforms,insar <project-folder>
 
 A map of the random scenario is plotted in :file:`scenario_map.pdf`.
@@ -209,13 +214,13 @@ A map of the random scenario is plotted in :file:`scenario_map.pdf`.
 Configuration
 -------------
 
-Grond is configured in in ``.gronf`` files using YAML markup language, see section :doc:`/config/index`.
+Grond is configured in ``.gronf`` files using YAML markup language, see section :doc:`/config/index`.
 
 The :doc:`/examples/index` section provides commented configuration files for different earthquake source problems explaining many of the options:
 
-* Regional point-source optimizations based on waveforms: :download:`regional_cmt.gronf <../../../examples/grond-playground-regional/config/regional_cmt.gronf>`
-* Teleseismic point-source optimizations based on W phase waveforms: :download:`wphase_cmt.gronf <../../../examples/grond-playground-wphase/config/wphase_cmt.gronf>`
-* Finite source optimizations based on unwrapped InSAR observations: :download:`insar_rectangular.gronf <../../../examples/grond-playground-insar/config/insar_rectangular.gronf>`
+* Regional point-source optimizations based on waveforms: :download:`regional_cmt.gronf <../../../examples/example_regional_cmt/config/regional_cmt.gronf>`
+* Teleseismic point-source optimizations based on W phase waveforms: :download:`wphase_cmt.gronf <../../../examples/example_wphase/config/wphase_cmt.gronf>`
+* Finite source optimizations based on unwrapped InSAR observations: :download:`insar_rectangular.gronf <../../../examples/example_insar/config/insar_rectangular.gronf>`
 
 See the :doc:`/examples/index` for a detailed walk-through.
 
@@ -243,8 +248,8 @@ During the optimisation, results are aggregated in an output directory, referred
     │   └── ...
     ├── data
     │   └── ...
-    ├── gf_stores      
-    │   └── ...  
+    ├── gf_stores
+    │   └── ...
     ├── runs  # contains individual optimisation results
     │   ├── laquila2009_joint.grun
     │   │   ├── ... # some bookkeeping yaml-files
@@ -256,7 +261,7 @@ During the optimisation, results are aggregated in an output directory, referred
     │   │       └── models
     │   :
     │
-    └── reports 
+    └── report
         └── ...
 
 
@@ -272,7 +277,7 @@ Finally, you may run
 
 	grond report <rundir>
 
-to aggregate and visualize results to a browsable summary, (by default) under the directory `reports`.
+to aggregate and visualize results to a browsable summary, (by default) under the directory `report`.
 
 .. code-block :: sh
 
@@ -282,9 +287,9 @@ to aggregate and visualize results to a browsable summary, (by default) under th
     │   └── ...
     ├── gf_stores
     │   └── ...
-    ├── runs  
-    │   └── ... 
-    └── reports  # contains all graphical presentations of the results in 'runs'
+    ├── runs
+    │   └── ...
+    └── report  # contains all graphical presentations of the results in 'runs'
         ├── index.html # open in browser to surf through all 'runs'
         ├── ... # more bookeeping yaml-files
         │
@@ -301,10 +306,10 @@ to aggregate and visualize results to a browsable summary, (by default) under th
         │   │       ├── fits_satellite # visual comparison of data and synthetics
         │   │       │   └── ...
         │   │       :
-                                     
 
 
-Please find detailed information on the reports and automatic plots in the section :doc:`/report/index`.
+
+Please find detailed information on the report and automatic plots in the section :doc:`/report/index`.
 
 The results can be exported in various ways by running the subcommand
 
@@ -340,7 +345,7 @@ strategies.
         In a typical Grond setup, many modelling targets may contribute to the global misfit. For example, an individual modelling target could be a single component seismogram at a given station, an InSAR scene, or an amplitude ratio at one station. The target knows how to filter, taper, and weight the data. It also contains configuration about how to compare synthetics with the observations to obtain a misfit contribution value (e.g. time-domain traces/amplitude spectra/cross correlations, L1-norm/L2-norm, etc.).
 
     Config file
-        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init`. See :doc:`/config/structure`.
+        A `YAML`_ file, by convention ending with the suffix ``.gronf``, containing a Grond configuration. The config file can be made to work with multiple events. It can be generated using :option:`grond init` ``<example>`` after consulting  :option:`grond init` ``list``. See :doc:`/config/structure`.
 
     Rundir
         The directory, by convention ending with the suffix ``.grun``, where Grond stores intermediate and final results during an optimisation run. The rundir is created by Grond when running the :option:`grond go` subcommand.

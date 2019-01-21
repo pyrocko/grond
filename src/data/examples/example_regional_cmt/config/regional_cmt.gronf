@@ -1,4 +1,5 @@
 %YAML 1.1
+# Example: Inversion of centroid moment tensor from regional waveform observations.
 --- !grond.Config
 
 # All file paths referenced below are treated relative to the location of this
@@ -15,7 +16,7 @@ rundir_template: 'runs/${problem_name}.grun'
 
 # If given, restrict to processing of listed events
 #event_names:
-#- 'gfz2015sfdd'
+#- 'gfz2018pmjk'
 
 
 # -----------------------------------------------------------------------------
@@ -33,7 +34,6 @@ dataset_config: !grond.DatasetConfig
   stations_stationxml_paths: 
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
   - 'data/events/${event_name}/waveforms/stations.iris.xml'
-  - 'data/events/${event_name}/waveforms/stations.orfeus.xml'
 
   # File with hypocenter information and possibly reference solution
   events_path: 'data/events/${event_name}/event.txt'
@@ -43,7 +43,7 @@ dataset_config: !grond.DatasetConfig
 
   # List of stations/components to be excluded according to their STA, NET.STA,
   # NET.STA.LOC, or NET.STA.LOC.CHA codes
-  blacklist: []
+  blacklist: ['GE.UGM', 'GE.PLAI']
 
   # List of files with additional exclusion lists (one entry per line, same 
   # format as above)
@@ -55,7 +55,6 @@ dataset_config: !grond.DatasetConfig
   responses_stationxml_paths:
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
   - 'data/events/${event_name}/waveforms/stations.iris.xml'
-  - 'data/events/${event_name}/waveforms/stations.orfeus.xml'
 
 
 # -----------------------------------------------------------------------------
@@ -67,7 +66,6 @@ dataset_config: !grond.DatasetConfig
 # -----------------------------------------------------------------------------
 
 target_groups:
-
 - !grond.WaveformTargetGroup
 
   # Normalisation family (see the Grond documentation for how it works).
@@ -76,17 +74,17 @@ target_groups:
   # time-domain Lx norm.
   normalisation_family: 'td'
 
-  # Just a name used to identfy targets from this group. Use dot-separated path
+  # Just a name used to identify targets from this group. Use dot-separated path
   # notation to group related contributors
-  path: 'td.wphase'
+  path: 'td.love'
 
-  # Epicentral distance range of stations to be considered
-  distance_min: 3000e3
-  distance_max: 10000e3
+  # Epicentral distance range of stations to be considered in meter
+  distance_min: 1e3
+  distance_max: 900e3
 
   # Names of components to be included. Available: N=north, E=east, Z=vertical
   # (up), R=radial (away), T=transverse (right)
-  channels: ['Z','R']
+  channels: ['T']
 
   # How to weight contributions from this group in the global misfit
   weight: 1.0
@@ -95,8 +93,8 @@ target_groups:
   misfit_config: !grond.WaveformMisfitConfig
 
     # Frequency band [Hz] of acausal filter (flat part of frequency taper)
-    fmin: 0.001
-    fmax: 0.005
+    fmin: 0.01
+    fmax: 0.05
 
     # Factor defining fall-off of frequency taper (zero at fmin/ffactor and
     # fmax*ffactor)
@@ -106,13 +104,15 @@ target_groups:
     # to given phase arrivals. E.g. '{stored:P}-600' would mean 600 s
     # before arrival of the phase named 'P'. The phase must be defined in the
     # travel time tables in the GF store.
-    tmin: '{stored:P}-600'
-    tmax: '{stored:S}-60'
+    tmin: '{stored:any_P}'
+    tmax: '{vel_surface:2.5}'
     # tfade: 120.0
 
     # How to fit the data (available: 'time_domain', 'frequency_domain',
     # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
     domain: 'time_domain'
+    tautoshift_max: 4.0
+    autoshift_penalty_max: 0.05
     
     # For L1 norm: 1, L2 norm: 2, etc.
     norm_exponent: 1
@@ -124,7 +124,68 @@ target_groups:
   interpolation: 'nearest_neighbor'
 
   # Name of the GF Store to use
-  store_id: 'global_20s_shallow'
+  store_id: 'crust2_j3'
+
+
+- !grond.WaveformTargetGroup
+
+  # Normalisation family (see the Grond documentation for how it works).
+  # Use distinct normalisation families when mixing misfit contributors with
+  # different magnitude scaling, like e.g. cross-correlation based misfit and 
+  # time-domain Lx norm.
+  normalisation_family: 'td'
+
+  # Just a name used to identfy targets from this group. Use dot-separated path
+  # notation to group related contributors
+  path: 'td.rayleigh'
+
+  # Epicentral distance range of stations to be considered in meter
+  distance_min: 1e3
+  distance_max: 900e3
+
+  # Names of components to be included. Available: N=north, E=east, Z=vertical
+  # (up), R=radial (away), T=transverse (right)
+  channels: ['R', 'Z']
+
+  # How to weight contributions from this group in the global misfit
+  weight: 1.0
+
+  # subsection on how to fit the traces
+  misfit_config: !grond.WaveformMisfitConfig
+
+    # Frequency band [Hz] of acausal filter (flat part of frequency taper)
+    fmin: 0.01
+    fmax: 0.05
+
+    # Factor defining fall-off of frequency taper (zero at fmin/ffactor and
+    # fmax*ffactor)
+    ffactor: 1.5
+
+    # Time window to include in the data fitting. Times can be defined offset
+    # to given phase arrivals. E.g. '{stored:P}-600' would mean 600 s
+    # before arrival of the phase named 'P'. The phase must be defined in the
+    # travel time tables in the GF store.
+    tmin: '{stored:any_P}'
+    tmax: '{vel_surface:2.5}'
+    # tfade: 120.0
+
+    # How to fit the data (available: 'time_domain', 'frequency_domain',
+    # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
+    domain: 'time_domain'
+    tautoshift_max: 4.0
+    autoshift_penalty_max: 0.05
+    
+    # For L1 norm: 1, L2 norm: 2, etc.
+    norm_exponent: 1
+
+  # How to interpolate the Green's functions (available choices:
+  # 'nearest_neighbor', 'multilinear'). Choices other than 'nearest_neighbor'
+  # may require dense GF stores to avoid aliasing artifacts in the forward 
+  # modelling.
+  interpolation: 'nearest_neighbor'
+
+  # Name of the GF Store to use
+  store_id: 'crust2_j3'
 
 
 # -----------------------------------------------------------------------------
@@ -137,24 +198,23 @@ target_groups:
 # The marker !grond.CMTProblemConfig selects a centroid moment tensor source
 # model. 
 # -----------------------------------------------------------------------------
-
 problem_config: !grond.CMTProblemConfig
 
   # Name used to identify the output
-  name_template: 'wphase_cmt_${event_name}'
+  name_template: 'cmt_${event_name}'
 
   # Definition of model parameter space to be searched in the optimisation
   ranges:
     # Time relative to hypocenter origin time [s]
-    time: '-100 .. 100 | add'
+    time: '-10 .. 10 | add'
 
     # Centroid location with respect to hypocenter origin [m]
-    north_shift: '-200e3 .. 200e3'
-    east_shift: '-200e3 .. 200e3'
-    depth: '5e3 .. 40e3'
+    north_shift: '-15e3 .. 15e3'
+    east_shift: '-15e3 .. 15e3'
+    depth: '5e3 .. 30e3'
 
     # Range of magnitudes to allow
-    magnitude: '7.5 .. 8.5'
+    magnitude: '5.7 .. 6.2'
 
     # Relative moment tensor component ranges (don't touch)
     rmnn: '-1.41421 .. 1.41421'
@@ -165,11 +225,11 @@ problem_config: !grond.CMTProblemConfig
     rmed: '-1 .. 1'
 
     # Source duration range [s]
-    duration: '50. .. 200.'
+    duration: '1. .. 5.'
 
   # Clearance distance around stations (no models with origin closer than this
   # distance to any station are produced by the sampler)
-  distance_min: 0.
+  distance_min: 1e3
 
   # Type of moment tensor to restrict to (choices: 'full', 'deviatoric', 'dc')
   mt_type: 'deviatoric'
@@ -195,7 +255,6 @@ analyser_configs:
 # -----------------------------------------------------------------------------
 # Configuration of the optimisation procedure
 # -----------------------------------------------------------------------------
-
 optimiser_config: !grond.HighScoreOptimiserConfig
 
   # Number of bootstrap realisations to be tracked simultaneously in the
@@ -208,12 +267,10 @@ optimiser_config: !grond.HighScoreOptimiserConfig
   sampler_phases:
 
   - !grond.UniformSamplerPhase
-
       # Number of iterations
       niterations: 1000
 
   - !grond.DirectedSamplerPhase
-
       # Number of iterations
       niterations: 20000
 

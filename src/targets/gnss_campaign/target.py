@@ -14,13 +14,12 @@ logger = logging.getLogger('grond.target').getChild('gnss_campaign')
 class GNSSCampaignMisfitResult(MisfitResult):
     """Carries the observations for a target and corresponding synthetics. """
     statics_syn = Dict.T(optional=True,
-                         help='synthetic gnss surface displacements')
+                         help='Synthetic gnss surface displacements')
     statics_obs = Dict.T(optional=True,
-                         help='observed gnss surface displacements')
+                         help='Observed gnss surface displacements')
 
 
 class GNSSCampaignMisfitConfig(MisfitConfig):
-
     pass
 
 
@@ -38,7 +37,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
              ' (`name` in `gnss.yaml` files).')
     misfit_config = GNSSCampaignMisfitConfig.T()
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting GNSS targets...')
         targets = []
 
@@ -50,7 +49,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
             if not isinstance(self.misfit_config,
                               GNSSCampaignMisfitConfig):
                 raise AttributeError('misfit_config must be of type'
-                                     ' GNSSCampaignMisfitConfig')
+                                     ' GNSSCampaignMisfitConfig.')
 
             lats = num.array([s.lat for s in camp.stations])
             lons = num.array([s.lon for s in camp.stations])
@@ -91,6 +90,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     can_bootstrap_weights = True
     can_bootstrap_residuals = True
 
+    plot_misfits_cumulative = False
+
     def __init__(self, **kwargs):
         gf.GNSSCampaignTarget.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
@@ -105,9 +106,22 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def string_id(self):
         return self.campaign_name
 
+    def misfits_string_ids(self):
+        return ['%s.%s' % (self.path, station.code)
+                for station in self.campaign.stations]
+
+    @property
+    def station_names(self):
+        return ['%s' % (station.code)
+                for station in self.campaign.stations]
+
     @property
     def nmisfits(self):
         return self.lats.size
+
+    @property
+    def nstations(self):
+        return self.nmisfits
 
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
@@ -154,6 +168,12 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                 num.fill_diagonal(covar, 1.)
             self._weights = num.asmatrix(covar).I
         return self._weights
+
+    @property
+    def station_weights(self):
+        weights = num.diag(self.weights)
+
+        return num.mean([weights[0::3], weights[1::3], weights[2::3]], axis=0)
 
     def post_process(self, engine, source, statics):
         """Applies the objective function.
@@ -218,7 +238,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         if not num.all(sigmas):
             logger.warning('Bootstrapping GNSS stations is meaningless,'
-                           ' all station\'s sigma is 0.0!')
+                           ' all station\'s sigma are 0.0!')
 
         for ibs in range(nbootstraps):
             syn_noise = rstate.normal(scale=sigmas.ravel()) \

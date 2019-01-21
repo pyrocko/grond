@@ -48,7 +48,7 @@ class SatelliteTargetGroup(TargetGroup):
     misfit_config = SatelliteMisfitConfig.T(
         help='Settings for the objective function of these targets')
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting satellite targets...')
         targets = []
 
@@ -65,14 +65,14 @@ class SatelliteTargetGroup(TargetGroup):
             lons.fill(qt.frame.llLon)
 
             if qt.frame.isDegree():
-                logger.debug('Target %s is referenced in degree'
+                logger.debug('Target "%s" is referenced in degree.'
                              % scene.meta.scene_id)
                 lons += qt.leaf_focal_points[:, 0]
                 lats += qt.leaf_focal_points[:, 1]
                 east_shifts = num.zeros_like(lats)
                 north_shifts = num.zeros_like(lats)
             elif qt.frame.isMeter():
-                logger.debug('Target %s is referenced in meter'
+                logger.debug('Target "%s" is referenced in meter.'
                              % scene.meta.scene_id)
                 east_shifts = qt.leaf_focal_points[:, 0]
                 north_shifts = qt.leaf_focal_points[:, 1]
@@ -210,8 +210,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         return modelling_results[0]
 
     def init_bootstrap_residuals(self, nbootstraps, rstate=None):
-        logger.info('Scene %s, bootstrapping residuals from noise pertubations'
-                    ' ...' % self.scene_id)
+        logger.info(
+            'Scene "%s", initializing bootstrapping residuals from noise '
+            'pertubations...' % self.scene_id)
+
         if rstate is None:
             rstate = num.random.RandomState()
 
@@ -221,8 +223,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         bootstraps = num.empty((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
-            if not ibs % 5:
-                logger.info('Calculating noise realisation %d/%d'
+            if not (ibs+1) % 5:
+                logger.info('Calculating noise realisation %d/%d.'
                             % (ibs, nbootstraps))
             bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
 

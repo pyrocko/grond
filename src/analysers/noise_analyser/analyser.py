@@ -7,6 +7,7 @@ from pyrocko.guts import Int, Bool, Float, String, StringChoice
 from pyrocko.gf.meta import OutOfBounds
 from ..base import Analyser, AnalyserConfig, AnalyserResult
 from grond.dataset import NotFound
+from grond import meta
 
 logger = logging.getLogger('grond.analysers.NoiseAnalyser')
 
@@ -110,8 +111,8 @@ def seismic_noise_variance(traces, engine, event, targets,
 
                             stat_w = 0.
                             logger.info(
-                                'Noise analyser found event %s phase onset of '
-                                '%s for %s' % (
+                                'Noise analyser found event "%s" phase onset '
+                                'of "%s" for target "%s".' % (
                                     ev.name, phase_def, target.name))
 
                         if arrival_time_pre > arrival_time-30.*60.\
@@ -119,8 +120,8 @@ def seismic_noise_variance(traces, engine, event, targets,
                                 pre_event_noise_duration:
                             stat_w *= 1.
                             logger.info(
-                                'Noise analyser found event %s possibly '
-                                'contaminating the noise' % ev.name)
+                                'Noise analyser found event "%s" possibly '
+                                'contaminating the noise.' % ev.name)
 
                             # this should be magnitude dependent
                     except Exception:
@@ -160,10 +161,11 @@ class NoiseAnalyser(Analyser):
     within a 30 min time window before the start of the set pre-event noise
     window, only a warning is thrown.
 
-    It is also possible to remove data where the noise level exceeds the median
-    by a given factor (by setting there weight to 0). This can be done
-    exclusively (``mode='weeding'``) or in combination with weighting
-    (``mode='weighting'``).
+    It is further possible to disregard data with a noise level exceeding the
+    median by a given ``cutoff`` factor. These weights are set to 0. This can
+    be done exclusively (``mode='weeding'``) such that noise weights are either
+    1 or 0, or in combination with weighting below the median-times-cutoff
+    noise level (``mode='weighting'``).
     '''
 
     def __init__(self, nwindows, pre_event_noise_duration,
@@ -179,7 +181,9 @@ class NoiseAnalyser(Analyser):
 
     def analyse(self, problem, ds):
 
-        if self.pre_event_noise_duration == 0:
+        tdur = self.pre_event_noise_duration
+
+        if tdur == 0:
             return
 
         if not problem.has_waveforms:
@@ -202,8 +206,8 @@ class NoiseAnalyser(Analyser):
                     traces.append(
                         ds.get_waveform(
                             target.codes,
-                            tmin=arrival_time-self.pre_event_noise_duration,
-                            tmax=arrival_time-1./freqlimits[0],
+                            tmin=arrival_time-tdur-tfade,
+                            tmax=arrival_time-tfade,
                             tfade=tfade,
                             freqlimits=freqlimits,
                             deltat=deltat,
@@ -218,7 +222,7 @@ class NoiseAnalyser(Analyser):
 
         var_ds, ev_ws = seismic_noise_variance(
             traces, engine, event, problem.waveform_targets,
-            self.nwindows, self.pre_event_noise_duration,
+            self.nwindows, tdur,
             self.check_events, self.phase_def)
 
         if self.statistic == 'var':
@@ -228,10 +232,10 @@ class NoiseAnalyser(Analyser):
         else:
             assert False, 'invalid statistic argument'
 
-        norm_noise = num.nanmedian(noise)
+        norm_noise = meta.nanmedian(noise)
         if norm_noise == 0:
             logger.info(
-                'Noise Analyser returned a weight of 0 for all stations')
+                'Noise Analyser returned a weight of 0 for all stations.')
 
         ok = num.isfinite(noise)
         assert num.all(noise[ok] >= 0.0)
@@ -254,7 +258,7 @@ class NoiseAnalyser(Analyser):
 
         for itarget, target in enumerate(problem.waveform_targets):
             logger.info((
-                'noise analysis for %s:\n'
+                'Noise analysis for target "%s":\n'
                 '  var: %g\n'
                 '  std: %g\n'
                 '  contamination_weight: %g\n'
@@ -292,7 +296,7 @@ class NoiseAnalyserConfig(AnalyserConfig):
 
     check_events = Bool.T(
         default=False,
-        help='check the gCMT global catalogue for M>5 earthquakes'
+        help='check the GlobalCMT for M>5 earthquakes'
              ' that produce phase arrivals'
              ' contaminating and affecting the noise analysis')
 
@@ -311,8 +315,8 @@ class NoiseAnalyserConfig(AnalyserConfig):
 
     cutoff = Float.T(
         optional=True,
-        help='Set weight to zero, when noise level exceeds median by given '
-             'factor.')
+        help='Set weight to zero, when noise level exceeds median by the '
+             'given cutoff factor.')
 
     def get_analyser(self):
         return NoiseAnalyser(

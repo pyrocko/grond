@@ -108,6 +108,26 @@ def str_duration(t):
         return s + '%.1f d' % (t / (24. * 3600.))
 
 
+try:
+    nanmedian = num.nanmedian
+except AttributeError:
+    def nanmedian(a, axis=None):
+        if axis is None:
+            return num.median(a[num.isfinite(a)])
+        else:
+            shape_out = list(a.shape)
+            shape_out.pop(axis)
+            out = num.empty(shape_out, dtype=a.dtype)
+            out[...] = num.nan
+            for iout in num.ndindex(tuple(shape_out)):
+                iin = list(iout)
+                iin[axis:axis] = [slice(0, a.shape[axis])]
+                b = a[tuple(iin)]
+                out[iout] = num.median(b[num.isfinite(b)])
+
+            return out
+
+
 class Forbidden(Exception):
     pass
 

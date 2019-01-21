@@ -2,10 +2,14 @@ import logging
 import numpy as num
 from pyrocko.model import gnss
 
-from pyrocko.plot import automap
+from pyrocko.plot import automap, mpl_init
+from pyrocko import orthodrome as od
+
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem
+
+from ..plot import StationDistributionPlot
 
 import copy
 from pyrocko.guts import Tuple, Float, Bool
@@ -20,7 +24,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
     ''' Maps showing horizontal surface displacements
         of a GNSS campaign and model '''
 
-    name = 'GNSS'
+    name = 'gnss'
 
     size_cm = Tuple.T(
         2, Float.T(),
@@ -50,7 +54,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
         cm.create_group_automap(
             self,
             self.draw_gnss_fits(ds, history, optimiser),
-            title=u'Static GNSS Surface Displacements',
+            title=u'GNSS Displacements',
             section='fits',
             feather_icon='map',
             description=u'''
@@ -212,5 +216,59 @@ displacements derived from best rupture model (red).
                 ifig += 1
 
 
+class GNSSStationDistribution(StationDistributionPlot):
+    ''' Polar plot showing GNSS station distribution and weight '''
+    name = 'gnss_station_distribution'
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+
+        history = environ.get_history(subset='harvest')
+        problem = environ.get_problem()
+        dataset = environ.get_dataset()
+
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(problem, dataset, history),
+            title=u'GNSS Station Distribution',
+            section='checks',
+            feather_icon='target',
+            description=u'''
+Plots showing the GNSS station distribution and their weight.
+
+This polar plot visualises the station distribution in distance and azimuth,
+the marker's size is scaled to the stations weight (mean of spatial
+components).
+''')
+
+    def draw_figures(self, problem, dataset, history):
+
+        event = problem.base_source
+        targets = problem.gnss_targets
+
+        for target in targets:
+            target.set_dataset(dataset)
+            ws = target.station_weights / target.station_weights.max()
+
+            distances = target.distance_to(event)
+            azimuths = od.azibazi_numpy(
+                num.array(event.effective_lat)[num.newaxis],
+                num.array(event.effective_lon)[num.newaxis],
+                target.get_latlon()[:, 0],
+                target.get_latlon()[:, 1])[0]
+            labels = target.station_names
+
+            item = PlotItem(name='station_distribution-%s' % target.path)
+            fig, ax, legend = self.plot_station_distribution(
+                azimuths, distances, ws, labels)
+            legend.set_title('Weight')
+
+            yield (item, fig)
+
+
 def get_plot_classes():
-    return [GNSSTargetMisfitPlot]
+    return [
+        GNSSTargetMisfitPlot,
+        GNSSStationDistribution
+    ]

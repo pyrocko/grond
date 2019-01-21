@@ -62,7 +62,7 @@ class GrondScenario(object):
                 os.symlink(store.store_dir, dtarget)
 
     def add_observation(self, observation):
-        logger.info('Adding %s' % observation.__class__.__name__)
+        logger.info('Adding %s.' % observation.__class__.__name__)
         self.observations.append(observation)
 
     def set_problem(self, problem):
@@ -85,7 +85,7 @@ class GrondScenario(object):
                                  ' to add one!')
         if not self.problem:
             raise AttributeError('No Source Problem set'
-                                 ' use .set_problem(Problem) to set one')
+                                 ' use .set_problem(Problem) to set one.')
 
         return scenario.ScenarioGenerator(
             center_lat=self.center_lat,
@@ -152,7 +152,7 @@ class GrondScenario(object):
         return op.join('config', 'scenario.gronf')
 
     def create_grond_files(self):
-        logger.info('Creating Grond configuration for %s'
+        logger.info('Creating Grond configuration for %s.'
                     % ' and '.join([obs.name for obs in self.observations]))
 
         config_path = op.join(self.project_dir, self.get_grond_config_path())
@@ -350,7 +350,7 @@ class RectangularSourceProblem(SourceProblem):
     def get_grond_problem_config(self):
         return grond.RectangularProblemConfig(
             name_template='rect_source_${event_name}',
-            decimation_factor=8,
+            decimation_factor=1,
             ranges=dict(
                 north_shift=gf.Range(-15*km, 15*km),
                 east_shift=gf.Range(-15*km, 15*km),

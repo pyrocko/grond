@@ -16,7 +16,7 @@ logger = logging.getLogger('grond.targets.waveform_phase_ratio.target')
 
 
 def log_exclude(target, reason):
-    logger.debug('excluding potential target %s: %s' % (
+    logger.debug('Excluding potential target %s: %s' % (
         target.string_id(), reason))
 
 
@@ -46,14 +46,14 @@ class PhaseRatioTargetGroup(TargetGroup):
 
     fit_log_ratio = Bool.T(
         default=True,
-        help='if true, compare synthetic and observed log ratios')
+        help='If true, compare synthetic and observed log ratios')
 
     fit_log_ratio_waterlevel = Float.T(
         default=0.01,
-        help='waterlevel added to both ratios when comparing on logarithmic '
+        help='Waterlevel added to both ratios when comparing on logarithmic '
              'scale, to avoid log(0)')
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting phase ratio targets...')
         origin = event
         targets = []
@@ -160,7 +160,7 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
 
     fit_log_ratio_waterlevel = Float.T(
         default=0.01,
-        help='waterlevel added to both ratios when comparing on logarithmic '
+        help='Waterlevel added to both ratios when comparing on logarithmic '
              'scale, to avoid log(0)')
 
     can_bootstrap_weights = True
@@ -240,7 +240,7 @@ class PhaseRatioTarget(gf.Location, MisfitTarget):
 
         except dataset.NotFound as e:
             logger.debug(str(e))
-            return gf.SeismosizerError('no waveform data, %s' % str(e))
+            return gf.SeismosizerError('No waveform data: %s' % str(e))
 
 
 __all__ = '''

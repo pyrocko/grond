@@ -4,16 +4,15 @@ from scipy import signal
 
 from matplotlib import cm, pyplot as plt
 
-from pyrocko.guts import Tuple, Float, Int, StringChoice
-from pyrocko.plot import mpl_papersize, mpl_margins, mpl_graph_color, mpl_init
+from pyrocko.guts import Tuple, Float, Int, StringChoice, Bool
+from pyrocko.plot import mpl_margins, mpl_graph_color, mpl_init
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
-from .highscore.plot import *  # noqa
-
-
 logger = logging.getLogger('grond.problem.plot')
+
+guts_prefix = 'grond'
 
 
 def fixlim(lo, hi):
@@ -36,14 +35,15 @@ class SequencePlot(PlotConfig):
     '''
 
     name = 'sequence'
-    size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+    size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)
     sort_by = StringChoice.T(
         choices=['iteration', 'misfit'],
         default='iteration')
-    subplot_layout = Tuple.T(2, Int.T(), default=(2, 3))
+    subplot_layout = Tuple.T(2, Int.T(), default=(1, 1))
     marker_size = Float.T(default=1.5)
+    show_reference = Bool.T(default=True)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -138,7 +138,10 @@ corresponding misfit values.
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    w=7., h=5.,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
                     wspace=7., hspace=2., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
@@ -162,19 +165,24 @@ corresponding misfit values.
 
             axes.scatter(
                 imodels[ibest], par.scaled(models[ibest, ipar]), s=msize,
-                c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha)
+                c=iorder[ibest], edgecolors='none', cmap=cmap, alpha=alpha,
+                rasterized=True)
 
-            axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
+            if self.show_reference:
+                axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 
         for idep in range(ndep):
             # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
             impl = (npar + idep) % (nfx * nfy) + 1
 
             if impl == 1:
-                fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
+                fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
-                    w=7., h=5.,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
                     wspace=7., hspace=2., units=fontsize)
 
                 item = PlotItem(name='fig_%i' % (len(figs)+1))
@@ -199,16 +207,22 @@ corresponding misfit values.
             ys = problem.make_dependant(models[ibest, :], par.name)
             axes.scatter(
                 imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
-                edgecolors='none', cmap=cmap, alpha=alpha)
+                edgecolors='none', cmap=cmap, alpha=alpha, rasterized=True)
 
-            y = problem.make_dependant(xref, par.name)
-            axes.axhline(par.scaled(y), color='black', alpha=0.3)
+            if self.show_reference:
+                y = problem.make_dependant(xref, par.name)
+                axes.axhline(par.scaled(y), color='black', alpha=0.3)
 
         impl = (npar + ndep) % (nfx * nfy) + 1
         if impl == 1:
-            fig = plt.figure(figsize=mpl_papersize('a5', 'landscape'))
-            labelpos = mpl_margins(fig, nw=nfx, nh=nfy, w=7., h=5., wspace=7.,
-                                   hspace=2., units=fontsize)
+            fig = plt.figure(figsize=self.size_inch)
+            labelpos = mpl_margins(
+                fig, nw=nfx, nh=nfy,
+                left=7.,
+                right=2.,
+                top=1.,
+                bottom=5.,
+                wspace=7., hspace=2., units=fontsize)
 
             item = PlotItem(name='fig_%i' % (len(figs)+1))
             item.attributes['parameters'] = []
@@ -241,15 +255,7 @@ corresponding misfit values.
 
 
 class ContributionsPlot(PlotConfig):
-    '''
-    Relative contribution of single targets to the global misfit
-
-    The relative contribution that each single target has in the global misfit
-    result is plotted relative and unscales as a function of global misfit
-    (descending). The target contribution is shown in color-filled curves with
-    the bottom curve on the bottom and the best-fit target on top. This plot
-    can be used to analyse the balance of targets in the optimisations and it
-    indicates poorly fitting targets easily.
+    ''' Relative contribution of single targets to the global misfit
     '''
 
     name = 'contributions'
@@ -258,10 +264,11 @@ class ContributionsPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
+        dataset = environ.get_dataset()
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
-            self.draw_figures(history),
+            self.draw_figures(dataset, history),
             title=u'Target Contributions',
             section='solution',
             feather_icon='thermometer',
@@ -274,11 +281,13 @@ result is plotted relative and unscales as a function of global misfit
 
 The target contribution is shown in color-filled curves with the bottom curve
 on the bottom and the best-fit target on top. This plot can be used to analyse
-the balance of targets in the optimisations and it indicates poorly fitting
-targets easily.
+the balance of targets in the optimisations. For ideal configurations, the
+target contributions are of similar size. If the contribution of a single
+target is much larger than those of all others, the weighting should be
+modified.
 ''')
 
-    def draw_figures(self, history):
+    def draw_figures(self, dataset, history):
 
         fontsize = self.font_size
 
@@ -288,14 +297,17 @@ targets easily.
 
         problem = history.problem
         if not problem:
-            logger.warn('problem not set')
+            logger.warn('Problem not set.')
             return []
 
         models = history.models
 
         if models.size == 0:
-            logger.warn('empty models vector')
+            logger.warn('Empty models vector.')
             return []
+
+        for target in problem.targets:
+            target.set_dataset(dataset)
 
         imodels = num.arange(history.nmodels)
 
@@ -311,8 +323,29 @@ targets easily.
             history.misfits, get_contributions=True)
 
         gcms = gcms[isort, :]
+        nmisfits = gcms.shape[1]  # noqa
 
-        jsort = num.argsort(gcms[-1, :])[::-1]
+        ncontributions = sum([1 if t.plot_misfits_cumulative else t.nmisfits
+                              for t in problem.targets])
+        cum_gcms = num.zeros((history.nmodels, ncontributions))
+
+        # Squash matrix and sum large targets.nmisifts, eg SatelliteTarget
+        plot_target_labels = []
+        idx = 0
+        for itarget, target in enumerate(problem.targets):
+            target_gcms = gcms[:, idx:idx+target.nmisfits]
+            if target.plot_misfits_cumulative:
+                cum_gcms[:, itarget] = target_gcms.sum(axis=1)
+                plot_target_labels.append(target.string_id())
+            else:
+                cum_gcms[:, itarget:itarget+target.nmisfits] = target_gcms
+                plot_target_labels.extend(target.misfits_string_ids())
+
+            idx += target.nmisfits
+
+        # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
+
+        jsort = num.argsort(cum_gcms[-1, :])[::-1]
 
         # ncols = 4
         # nrows = ((problem.ntargets + 1) - 1) / ncols + 1
@@ -344,19 +377,14 @@ targets easily.
         rel_ms_sum = num.zeros(history.nmodels)
         rel_ms_smooth_sum = num.zeros(history.nmodels)
         ms_smooth_sum = num.zeros(history.nmodels)
-        b = num.hanning(min(100, history.nmodels//3))
+        b = num.hanning(min(100, history.nmodels//5))
         b /= num.sum(b)
         a = [1]
         ii = 0
 
-        target_idx = [str(it)*t.nmisfits
-                      for it, t in enumerate(problem.targets)]
-        target_idx = num.fromiter(map(float, ''.join(target_idx)),
-                                  dtype=int)
-
         for idx in jsort:
-            target = problem.targets[target_idx[idx]]
-            ms = gcms[:, idx]
+            target_label = plot_target_labels[idx]
+            ms = cum_gcms[:, idx]
 
             ms = num.where(num.isfinite(ms), ms, 0.0)
             if num.all(ms == 0.0):
@@ -364,7 +392,10 @@ targets easily.
 
             rel_ms = ms / gms
 
-            rel_ms_smooth = signal.filtfilt(b, a, rel_ms)
+            if b.shape[0] > 5:
+                rel_ms_smooth = signal.filtfilt(b, a, rel_ms)
+            else:
+                rel_ms_smooth = rel_ms
 
             ms_smooth = rel_ms_smooth * gms_softclip
 
@@ -375,7 +406,7 @@ targets easily.
             add_args = {}
             if ii < 20:
                 add_args['label'] = '%s (%.2g)' % (
-                    target.string_id(), num.mean(rel_ms[-1]))
+                    target_label, num.mean(rel_ms[-1]))
 
             axes.fill(
                 poly_x, rel_poly_y,
@@ -510,7 +541,7 @@ functions of the bootstrap start to disagree.
         axes.set_xlabel(
             'Tested model, sorted descending by global misfit value')
 
-        return [[PlotItem(name='main'), fig]]
+        return [(PlotItem(name='main'), fig)]
 
 
 def get_plot_classes():

@@ -12,9 +12,11 @@ Grond come with two analysers, which work on waveform targets:
     
     
 ``NoiseAnalyser``:
-    This analyser evaluates the pre-event noise for the waveform targets to define empirical target weights.
-
-    High pre-event noise variance leads to a small :term:`target` weight for the corresponding target in the misfit calculation. It is assumed that the pre-event noise is random background noise and stationary in the time. However, a check for significant earthquakes in the critical time frame can be enabled.
+    This analyser evaluates the pre-event noise for the waveform targets to define empirical target weights. 
+    
+    This analyser assumes that the pre-event noise is random background noise and stationary in the time. However, a check for significant earthquakes in the critical time frame can be enabled.
+    If this analyser is enabled, high pre-event noise variance optionally leads to either a small :term:`target` weight for the corresponding target in the misfit calculation 
+    (``mode='weighting'``) or to zero weight (``mode='weeding'``). The latter case is realized if the noise of a trace exceeds a noise level that is above the median noise by a configurable amount (``cutoff``).
     
     
 ``TargetBalancingAnalyser`` configuration
@@ -53,6 +55,16 @@ This analyser is independent from the problem. Only the reference time given in 
 
     ``phase_def``
         is a string that defines the reference phase for the pre-event time window. See `Pyrocko's definition of phases <https://pyrocko.org/docs/current/apps/cake/manual.html>`_.
+        
+    ``statistics``
+        Set weight to inverse of noise variance (var) or standard deviation (std).
+        
+    ``mode``
+        Generate weights based on inverse of noise measure (weighting), or discrete on/off 
+        style in combination with cutoff value (weeding).
+        
+    ``cutoff``
+        Set weight to zero, when noise level exceeds median by the given cutoff factor.
       
 .. code-block :: yaml
       
@@ -62,3 +74,6 @@ This analyser is independent from the problem. Only the reference time given in 
       pre_event_noise_duration: 500.
       check_events: False
       phase_def: P
+      statistics: 'var'
+      mode: 'weeding'
+      cutoff: 2.

@@ -10,7 +10,7 @@ from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
 from shapely.geometry import Polygon
 
-from grond.meta import GrondError, Forbidden
+from grond.meta import GrondError, Forbidden, has_get_plot_classes
 from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
@@ -19,6 +19,10 @@ guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
 d2r = math.pi / 180.
+
+def nextpow2(i):
+    return 2**int(math.ceil(math.log(i)/math.log(2.)))
+
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
     inonflat = num.where(sbx != 0.0)[0]
@@ -33,10 +37,10 @@ def excentricity_compensated_probabilities(xs, sbx, factor):
     return probabilities
 
 
-def excentricity_compensated_choice(xs, sbx, factor):
+def excentricity_compensated_choice(xs, sbx, factor, rstate):
     probabilities = excentricity_compensated_probabilities(
         xs, sbx, factor)
-    r = num.random.random()
+    r = rstate.random_sample()
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
     ichoice = min(ichoice, xs.shape[0]-1)
     return ichoice
@@ -68,9 +72,53 @@ class BootstrapTypeChoice(StringChoice):
     choices = ['bayesian', 'classic']
 
 
+def fnone(i):
+    return i if i is not None else -1
+
+
+class Sample(Object):
+
+    '''Sample model with context about how it was generated.'''
+
+    model = Array.T(shape=(None,), dtype=num.float, serialize_as='list')
+    iphase = Int.T(optional=True)
+    ichain_base = Int.T(optional=True)
+    ilink_base = Int.T(optional=True)
+    imodel_base = Int.T(optional=True)
+
+    def preconstrain(self, problem):
+        self.model = problem.preconstrain(self.model)
+
+    def pack_context(self):
+        i = num.zeros(4, dtype=num.int)
+        i[:] = (
+            fnone(self.iphase),
+            fnone(self.ichain_base),
+            fnone(self.ilink_base),
+            fnone(self.imodel_base))
+
+        return i
+
+
 class SamplerPhase(Object):
-    niterations = Int.T()
-    ntries_preconstrain_limit = Int.T(default=1000)
+    niterations = Int.T(
+        help='Number of iteration for this phase.')
+    ntries_preconstrain_limit = Int.T(
+        default=1000,
+        help='Tries to find a valid preconstrained sample.')
+    seed = Int.T(
+        optional=True,
+        help='Random state seed.')
+
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
+        self._rstate = None
+
+    def get_rstate(self):
+        if self._rstate is None:
+            self._rstate = num.random.RandomState(self.seed)
+
+        return self._rstate
 
     def get_raw_sample(self, problem, iiter, chains):
         raise NotImplementedError
@@ -81,8 +129,9 @@ class SamplerPhase(Object):
         ntries_preconstrain = 0
         for ntries_preconstrain in range(self.ntries_preconstrain_limit):
             try:
-                return problem.preconstrain(
-                    self.get_raw_sample(problem, iiter, chains))
+                sample = self.get_raw_sample(problem, iiter, chains)
+                sample.preconstrain(problem)
+                return sample
 
             except Forbidden:
                 pass
@@ -96,7 +145,7 @@ class InjectionSamplerPhase(SamplerPhase):
     xs_inject = Array.T(dtype=num.float, shape=(None, None))
 
     def get_raw_sample(self, problem, iiter, chains):
-        return self.xs_inject[iiter, :]
+        return Sample(model=self.xs_inject[iiter, :])
 
 
 class UniformSamplerPhase(SamplerPhase):
@@ -122,7 +171,7 @@ class UniformSamplerPhase(SamplerPhase):
                 intersect = True
                 print('intersection, uniform phase redraw')
 
-        return problem.random_uniform(xbounds)
+        return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
 
 
 class DirectedSamplerPhase(SamplerPhase):
@@ -158,24 +207,28 @@ class DirectedSamplerPhase(SamplerPhase):
             return s or 1.0
 
     def get_raw_sample(self, problem, iiter, chains):
-
+        rstate = self.get_rstate()
         factor = self.get_scatter_scale_factor(iiter)
         npar = problem.nparameters
         pnames = problem.parameter_names
         xbounds = problem.get_parameter_bounds()
-        intersect = True
+
+        ilink_choice = None
         ichain_choice = num.argmin(chains.accept_sum)
 
-        while intersect is True:
-            if self.starting_point == 'excentricity_compensated':
-                models = chains.models(ichain_choice)
-                ilink_choice = excentricity_compensated_choice(
-                    models,
-                    chains.standard_deviation_models(
-                        ichain_choice, self.standard_deviation_estimator),
-                    2.)
+        if self.starting_point == 'excentricity_compensated':
+            models = chains.models(ichain_choice)
+            ilink_choice = excentricity_compensated_choice(
+                models,
+                chains.standard_deviation_models(
+                    ichain_choice, self.standard_deviation_estimator),
+                2., rstate)
 
-                xchoice = chains.model(ichain_choice, ilink_choice)
+            xchoice = chains.model(ichain_choice, ilink_choice)
+
+        elif self.starting_point == 'random':
+            ilink_choice = rstate.randint(0, chains.nlinks)
+            xchoice = chains.model(ichain_choice, ilink_choice)
 
             elif self.starting_point == 'random':
                 ilink_choice = num.random.randint(0, chains.nlinks)
@@ -222,45 +275,67 @@ class DirectedSamplerPhase(SamplerPhase):
             elif self.sampler_distribution == 'multivariate_normal':
                 ok_mask_sum = num.zeros(npar, dtype=num.int)
                 while True:
-                    ntries_sample += 1
-                    xcandi = num.random.multivariate_normal(
-                        xchoice, factor**2 * chains.cov(ichain_choice))
+                    if sx[ipar] > 0.:
+                        v = rstate.normal(
+                            xchoice[ipar],
+                            factor*sx[ipar])
+                    else:
+                        v = xchoice[ipar]
+
+                    if xbounds[ipar, 0] <= v and \
+                            v <= xbounds[ipar, 1]:
 
                     ok_mask = num.logical_and(
                         xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
 
-                    if num.all(ok_mask):
+                    if ntries > self.ntries_sample_limit:
+                        logger.warning(
+                            'failed to produce a suitable '
+                            'candidate sample from normal '
+                            'distribution for parameter \'%s\''
+                            '- drawing from uniform instead.' %
+                            pnames[ipar])
+                        v = rstate.uniform(xbounds[ipar, 0],
+                                           xbounds[ipar, 1])
                         break
 
-                    ok_mask_sum += ok_mask
+                    ntries += 1
 
-                    if ntries_sample > self.ntries_sample_limit:
-                        raise GrondError(
-                            'failed to produce a suitable candidate '
-                            'sample from multivariate normal '
-                            'distribution, (%s)' %
-                            ', '.join('%s:%i' % xx for xx in
-                                      zip(pnames, ok_mask_sum)))
+                x[ipar] = v
 
-                x = xcandi
-            pars = x
-            nsources = 2
-            sources = []
-            if nsources == 2:
-                for i in range(nsources):
-                    source = problem.get_source(pars, i)
-                    sources.append(source)
-            src1 = sources[0].outline('xy')
-            src2 = sources[1].outline('xy')
-            p1 = Polygon(src1)
-            p2 = Polygon(src2)
-            if not p1.intersects(p2):
-                intersect = False
-            else:
-                intersect = True
-                print('intersection, directed phase redraw')
+        elif self.sampler_distribution == 'multivariate_normal':
+            ok_mask_sum = num.zeros(npar, dtype=num.int)
+            while True:
+                ntries_sample += 1
+                xcandi = rstate.multivariate_normal(
+                    xchoice, factor**2 * chains.cov(ichain_choice))
 
-            return x
+                ok_mask = num.logical_and(
+                    xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
+
+                if num.all(ok_mask):
+                    break
+
+                ok_mask_sum += ok_mask
+
+                if ntries_sample > self.ntries_sample_limit:
+                    logger.warning(
+                        'failed to produce a suitable candidate '
+                        'sample from multivariate normal '
+                        'distribution, (%s) - drawing from uniform instead' %
+                        ', '.join('%s:%i' % xx for xx in
+                                  zip(pnames, ok_mask_sum)))
+                    xbounds = problem.get_parameter_bounds()
+                    xcandi = problem.random_uniform(xbounds, rstate)
+                    break
+
+            x = xcandi
+
+        return Sample(
+            model=x,
+            ichain_base=ichain_choice,
+            ilink_base=ilink_choice,
+            imodel_base=chains.imodel(ichain_choice, ilink_choice))
 
 
 def make_bayesian_weights(nbootstrap, nmisfits,
@@ -299,8 +374,12 @@ class Chains(object):
         self.chains_i = num.zeros(
             (self.nchains, nlinks_cap), num.int)
         self.nlinks = 0
-        self.accept_sum = num.zeros(self.nchains, dtype=num.int)
         self.nread = 0
+
+        self.accept_sum = num.zeros(self.nchains, dtype=num.int)
+        self._acceptance_history = num.zeros(
+            (self.nchains, 1024), dtype=num.bool)
+
         history.add_listener(self)
 
     def goto(self, n=None):
@@ -312,10 +391,11 @@ class Chains(object):
         assert self.nread <= n
 
         while self.nread < n:
-            gbms = self.history.bootstrap_misfits[self.nread, :]
+            nread = self.nread
+            gbms = self.history.bootstrap_misfits[nread, :]
 
             self.chains_m[:, self.nlinks] = gbms
-            self.chains_i[:, self.nlinks] = n-1
+            self.chains_i[:, self.nlinks] = nread
             nbootstrap = self.chains_m.shape[0]
 
             self.nlinks += 1
@@ -328,19 +408,20 @@ class Chains(object):
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
             if self.nlinks == self.nlinks_cap:
-                accept = (
-                    chains_i[:, self.nlinks_cap-1] != n-1).astype(num.int)
+                accept = (chains_i[:, self.nlinks_cap-1] != nread) \
+                    .astype(num.bool)
                 self.nlinks -= 1
             else:
-                accept = num.ones(self.nchains, dtype=num.int)
+                accept = num.ones(self.nchains, dtype=num.bool)
 
+            self._append_acceptance(accept)
             self.accept_sum += accept
             self.nread += 1
 
-    def append(self, iiter, model, misfits):
-        self.goto(iiter)
+    def load(self):
+        return self.goto()
 
-    def extend(self, ioffset, n, models, misfits):
+    def extend(self, ioffset, n, models, misfits, sampler_contexts):
         self.goto(ioffset + n)
 
     def indices(self, ichain):
@@ -354,6 +435,9 @@ class Chains(object):
 
     def model(self, ichain, ilink):
         return self.history.models[self.chains_i[ichain, ilink], :]
+
+    def imodel(self, ichain, ilink):
+        return self.chains_i[ichain, ilink]
 
     def misfits(self, ichain=0):
         return self.chains_m[ichain, :self.nlinks]
@@ -390,7 +474,21 @@ class Chains(object):
         xs = self.models(ichain)
         return num.cov(xs.T)
 
+    @property
+    def acceptance_history(self):
+        return self._acceptance_history[:, :self.nread]
 
+    def _append_acceptance(self, acceptance):
+        if self.nread >= self._acceptance_history.shape[1]:
+            new_buf = num.zeros(
+                (self.nchains, nextpow2(self.nread+1)), dtype=num.bool)
+            new_buf[:, :self._acceptance_history.shape[1]] = \
+                self._acceptance_history
+            self._acceptance_history = new_buf
+        self._acceptance_history[:, self.nread] = acceptance
+
+
+@has_get_plot_classes
 class HighScoreOptimiser(Optimiser):
     '''Monte-Carlo-based directed search optimisation with bootstrap.'''
 
@@ -400,46 +498,57 @@ class HighScoreOptimiser(Optimiser):
     bootstrap_type = BootstrapTypeChoice.T(default='bayesian')
     bootstrap_seed = Int.T(default=23)
 
+    SPARKS = u'\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'
+    ACCEPTANCE_AVG_LEN = 100
+
     def __init__(self, **kwargs):
         Optimiser.__init__(self, **kwargs)
         self._bootstrap_weights = None
         self._bootstrap_residuals = None
         self._status_chains = None
-        self.rstate = num.random.RandomState(self.bootstrap_seed)
+        self._rstate_bootstrap = None
+
+    def get_rstate_bootstrap(self):
+        if self._rstate_bootstrap is None:
+            self._rstate_bootstrap = num.random.RandomState(
+                self.bootstrap_seed)
+
+        return self._rstate_bootstrap
 
     def init_bootstraps(self, problem):
         self.init_bootstrap_weights(problem)
         self.init_bootstrap_residuals(problem)
 
     def init_bootstrap_weights(self, problem):
-        logger.info('Initializing Bayesian bootstrap weights')
-        bootstrap_targets = set([t for t in problem.targets
-                                 if t.can_bootstrap_weights])
+        logger.info('Initializing Bayesian bootstrap weights.')
+
+        nmisfits_w = sum(
+            t.nmisfits for t in problem.targets if t.can_bootstrap_weights)
 
         ws = make_bayesian_weights(
             self.nbootstrap,
-            nmisfits=problem.nmisfits,
-            rstate=self.rstate)
+            nmisfits=nmisfits_w,
+            rstate=self.get_rstate_bootstrap())
 
         imf = 0
-        for it, t in enumerate(bootstrap_targets):
-            t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
-            imf += t.nmisfits
-
-        for t in set(problem.targets) - bootstrap_targets:
-            t.set_bootstrap_weights(
-                num.ones((self.nbootstrap, t.nmisfits)))
+        for t in problem.targets:
+            if t.can_bootstrap_weights:
+                t.set_bootstrap_weights(ws[:, imf:imf+t.nmisfits])
+                imf += t.nmisfits
+            else:
+                t.set_bootstrap_weights(
+                    num.ones((self.nbootstrap, t.nmisfits)))
 
     def init_bootstrap_residuals(self, problem):
-        logger.info('Initializing Bayesian bootstrap residuals')
-        residual_targets = set([t for t in problem.targets
-                                if t.can_bootstrap_residuals])
+        logger.info('Initializing Bayesian bootstrap residuals.')
 
-        for t in residual_targets:
-            t.init_bootstrap_residuals(self.nbootstrap, rstate=self.rstate)
-
-        for t in set(problem.targets) - residual_targets:
-            t.set_bootstrap_residuals(num.zeros((self.nbootstrap, t.nmisfits)))
+        for t in problem.targets:
+            if t.can_bootstrap_residuals:
+                t.init_bootstrap_residuals(
+                    self.nbootstrap, rstate=self.get_rstate_bootstrap())
+            else:
+                t.set_bootstrap_residuals(
+                    num.zeros((self.nbootstrap, t.nmisfits)))
 
     def get_bootstrap_weights(self, problem):
         if self._bootstrap_weights is None:
@@ -489,9 +598,9 @@ class HighScoreOptimiser(Optimiser):
 
     def get_sampler_phase(self, iiter):
         niter = 0
-        for phase in self.sampler_phases:
+        for iphase, phase in enumerate(self.sampler_phases):
             if iiter < niter + phase.niterations:
-                return phase, iiter - niter
+                return iphase, phase, iiter - niter
 
             niter += phase.niterations
 
@@ -512,7 +621,6 @@ class HighScoreOptimiser(Optimiser):
             self._tlog_last = t
 
     def optimise(self, problem, rundir=None):
-
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
@@ -525,17 +633,19 @@ class HighScoreOptimiser(Optimiser):
         isbad_mask = None
         self._tlog_last = 0
         for iiter in range(niter):
-            phase, iiter_phase = self.get_sampler_phase(iiter)
+            iphase, phase, iiter_phase = self.get_sampler_phase(iiter)
             self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
-            x = phase.get_sample(problem, iiter_phase, chains)
+            sample = phase.get_sample(problem, iiter_phase, chains)
+            sample.iphase = iphase
 
             if isbad_mask is not None and num.any(isbad_mask):
                 isok_mask = num.logical_not(isbad_mask)
             else:
                 isok_mask = None
 
-            misfits = problem.misfits(x, mask=isok_mask)
+            misfits = problem.misfits(sample.model, mask=isok_mask)
+
             bootstrap_misfits = problem.combine_misfits(
                 misfits,
                 extra_weights=self.get_bootstrap_weights(problem),
@@ -563,18 +673,19 @@ class HighScoreOptimiser(Optimiser):
 
             if num.all(isbad_mask):
                 raise BadProblem(
-                    'problem %s: all target misfit values are NaN'
+                    'Problem %s: all target misfit values are NaN.'
                     % problem.name)
 
-            history.append(x, misfits, bootstrap_misfits)
+            history.append(
+                sample.model, misfits,
+                bootstrap_misfits,
+                sample.pack_context())
 
     @property
     def niterations(self):
         return sum([ph.niterations for ph in self.sampler_phases])
 
     def get_status(self, history):
-        sparks = u'\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'
-
         if self._status_chains is None:
             self._status_chains = self.chains(history.problem, history)
 
@@ -591,7 +702,7 @@ class HighScoreOptimiser(Optimiser):
             arr[:data.size] = data
             return arr
 
-        phase = self.get_sampler_phase(history.nmodels-1)[0]
+        phase = self.get_sampler_phase(history.nmodels-1)[1]
 
         bs_mean = colum_array(chains.mean_model(ichain=None))
         bs_std = colum_array(chains.standard_deviation_models(
@@ -609,14 +720,18 @@ class HighScoreOptimiser(Optimiser):
 
         glob_misfits = chains.misfits(ichain=0)
 
+        acceptance_latest = chains.acceptance_history[
+            :, -min(chains.acceptance_history.shape[1], self.ACCEPTANCE_AVG_LEN):]  # noqa
+        acceptance_avg = acceptance_latest.mean(axis=1)
+
         def spark_plot(data, bins):
             hist, _ = num.histogram(data, bins)
             hist_max = num.max(hist)
             if hist_max == 0.0:
                 hist_max = 1.0
             hist = hist / hist_max
-            vec = num.digitize(hist, num.linspace(0., 1., len(sparks)))
-            return ''.join([sparks[b-1] for b in vec])
+            vec = num.digitize(hist, num.linspace(0., 1., len(self.SPARKS)))
+            return ''.join([self.SPARKS[b-1] for b in vec])
 
         return OptimiserStatus(
             row_names=row_names,
@@ -624,14 +739,21 @@ class HighScoreOptimiser(Optimiser):
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_header=u'Optimiser phase: %s, exploring %d BS chains\n'
-                         u'Global chain misfit distribution: \u2080%s\xb9'
-                         % (phase.__class__.__name__,
-                            chains.nchains,
-                            spark_plot(
-                                glob_misfits,
-                                num.linspace(0., 1., 25))
-                            ))
+            extra_header=  # noqa
+                u'Optimiser phase: {phase}, exploring {nchains} BS chains\n'  # noqa
+                u'Global chain misfit distribution: \u2080{mf_dist}\xb9\n'
+                u'Acceptance rate distribution:     \u2080{acceptance}'
+                u'\u2081\u2080\u2080\ufe6a (Median {acceptance_med:.1f}%)'
+                .format(
+                    phase=phase.__class__.__name__,
+                    nchains=chains.nchains,
+                    mf_dist=spark_plot(
+                        glob_misfits, num.linspace(0., 1., 25)),
+                    acceptance=spark_plot(
+                        acceptance_avg,
+                        num.linspace(0., 1., 25)),
+                    acceptance_med=num.median(acceptance_avg) * 100.
+                    ))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
@@ -639,6 +761,13 @@ class HighScoreOptimiser(Optimiser):
         from . import plot
         return plot.HighScoreOptimiserPlot(
             self, problem, history, xpar_name, ypar_name, movie_filename)
+
+    @classmethod
+    def get_plot_classes(cls):
+        from .plot import HighScoreAcceptancePlot
+        plots = Optimiser.get_plot_classes()
+        plots.append(HighScoreAcceptancePlot)
+        return plots
 
 
 class HighScoreOptimiserConfig(OptimiserConfig):
