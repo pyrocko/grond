@@ -333,6 +333,10 @@ data and (right) the model residual.
 
                 fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
                                         + max(abs(fe-off_e))**2)
+                if fault_size < 5*km:
+                  logger.warning('InSAR close-up: defaulting to 5 km map.')
+                  fault_size = 5*km
+
                 fault_size *= self.map_scale
 
                 for ax in axes:

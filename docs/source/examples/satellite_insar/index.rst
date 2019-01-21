@@ -170,7 +170,7 @@ Once the optimisation is finished we can generate and open the final report with
 
 .. code-block :: sh
 
-    grond report -so rundir/rect_source.grun
+    grond report -so runs/rect_2009LaAquila.grun
 
 
 Example report

@@ -10,7 +10,7 @@ To repeat this exercise on your machine, you should first `install Pyrocko <http
 
 .. code-block :: sh
 
-    grond init example_regional-cmt grond-playground-regional/
+    grond init example_regional_cmt grond-playground-regional/
 
 
 The project folder
@@ -180,7 +180,7 @@ Once the optimisation is finished we can generate and open the final report with
 
 .. code-block :: sh
 
-    grond report -so config/regional_cmt.gronf
+    grond report -so runs/cmt_gfz2018pmjk.grun
 
 
 Example report

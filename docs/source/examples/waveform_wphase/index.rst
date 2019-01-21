@@ -178,7 +178,7 @@ Once the optimisation is finished we can generate and open the final report with
 
 .. code-block :: sh
 
-    grond report -so config/wphase_cmt.gronf
+    grond report -so runs/wphase_cmt_gfz2015sfdd.grun
 
 Example report
 ~~~~~~~~~~~~~~

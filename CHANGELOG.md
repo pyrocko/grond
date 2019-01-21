@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Plotting in GNSS plotting functions.
 - Highscore optimiser logging output
 
+
+## [1.0.2]
+
+### Fixed
+- Satellite plot: Setting geographical aspect ratio for LatLon data
+
 ## [1.0.1]
 
 ### Fixed
