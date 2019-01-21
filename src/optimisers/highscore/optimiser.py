@@ -6,9 +6,9 @@ import logging
 import time
 import numpy as num
 from collections import OrderedDict
-
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
+from shapely.geometry import Polygon
 
 from grond.meta import GrondError, Forbidden
 from grond.problems.base import ModelHistory
@@ -18,7 +18,7 @@ from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
-
+d2r = math.pi / 180.
 
 def excentricity_compensated_probabilities(xs, sbx, factor):
     inonflat = num.where(sbx != 0.0)[0]
@@ -69,11 +69,8 @@ class BootstrapTypeChoice(StringChoice):
 
 
 class SamplerPhase(Object):
-    niterations = Int.T(
-        help='Number of iteration for this phase.')
-    ntries_preconstrain_limit = Int.T(
-        default=1000,
-        help='Tries to find a valid preconstrained sample.')
+    niterations = Int.T()
+    ntries_preconstrain_limit = Int.T(default=1000)
 
     def get_raw_sample(self, problem, iiter, chains):
         raise NotImplementedError
@@ -96,9 +93,7 @@ class SamplerPhase(Object):
 
 
 class InjectionSamplerPhase(SamplerPhase):
-    xs_inject = Array.T(
-        dtype=num.float, shape=(None, None),
-        help='Array with the reference model.')
+    xs_inject = Array.T(dtype=num.float, shape=(None, None))
 
     def get_raw_sample(self, problem, iiter, chains):
         return self.xs_inject[iiter, :]
@@ -108,28 +103,37 @@ class UniformSamplerPhase(SamplerPhase):
 
     def get_raw_sample(self, problem, iiter, chains):
         xbounds = problem.get_parameter_bounds()
+        intersect = True
+        while intersect is True:
+            pars = problem.random_uniform(xbounds)
+            nsources = 2
+            sources = []
+            if nsources == 2:
+                for i in range(nsources):
+                    source = problem.get_source(pars, i)
+                    sources.append(source)
+            src1 = sources[0].outline('xy')
+            src2 = sources[1].outline('xy')
+            p1 = Polygon(src1)
+            p2 = Polygon(src2)
+            if not p1.intersects(p2):
+                intersect = False
+            else:
+                intersect = True
+                print('intersection, uniform phase redraw')
+
         return problem.random_uniform(xbounds)
 
 
 class DirectedSamplerPhase(SamplerPhase):
-    scatter_scale = Float.T(
-        optional=True,
-        help='Scales search radius around the current `highscore` models')
-    scatter_scale_begin = Float.T(
-        optional=True,
-        help='Scaling factor at beginning of the phase.')
-    scatter_scale_end = Float.T(
-        optional=True,
-        help='Scaling factor at the end of the directed phase.')
+    scatter_scale = Float.T(optional=True)
+    scatter_scale_begin = Float.T(optional=True)
+    scatter_scale_end = Float.T(optional=True)
     starting_point = SamplerStartingPointChoice.T(
-        default='excentricity_compensated',
-        help='Tunes to the center value of the sampler distribution.'
-             'May increase the likelihood to draw a highscore member model'
-             ' off-center to the mean value')
+        default='excentricity_compensated')
 
     sampler_distribution = SamplerDistributionChoice.T(
-        default='normal',
-        help='Distribution new models are drawn from.')
+        default='normal')
 
     standard_deviation_estimator = StandardDeviationEstimatorChoice.T(
         default='median_density_single_chain')
@@ -159,95 +163,104 @@ class DirectedSamplerPhase(SamplerPhase):
         npar = problem.nparameters
         pnames = problem.parameter_names
         xbounds = problem.get_parameter_bounds()
-
+        intersect = True
         ichain_choice = num.argmin(chains.accept_sum)
 
-        if self.starting_point == 'excentricity_compensated':
-            models = chains.models(ichain_choice)
-            ilink_choice = excentricity_compensated_choice(
-                models,
-                chains.standard_deviation_models(
-                    ichain_choice, self.standard_deviation_estimator),
-                2.)
+        while intersect is True:
+            if self.starting_point == 'excentricity_compensated':
+                models = chains.models(ichain_choice)
+                ilink_choice = excentricity_compensated_choice(
+                    models,
+                    chains.standard_deviation_models(
+                        ichain_choice, self.standard_deviation_estimator),
+                    2.)
 
-            xchoice = chains.model(ichain_choice, ilink_choice)
+                xchoice = chains.model(ichain_choice, ilink_choice)
 
-        elif self.starting_point == 'random':
-            ilink_choice = num.random.randint(0, chains.nlinks)
-            xchoice = chains.model(ichain_choice, ilink_choice)
+            elif self.starting_point == 'random':
+                ilink_choice = num.random.randint(0, chains.nlinks)
+                xchoice = chains.model(ichain_choice, ilink_choice)
 
-        elif self.starting_point == 'mean':
-            xchoice = chains.mean_model(ichain_choice)
+            elif self.starting_point == 'mean':
+                xchoice = chains.mean_model(ichain_choice)
 
-        else:
-            assert False, 'invalid starting_point choice: %s' % (
-                self.starting_point)
+            else:
+                assert False, 'invalid starting_point choice: %s' % (
+                    self.starting_point)
 
-        ntries_sample = 0
-        if self.sampler_distribution == 'normal':
-            x = num.zeros(npar, dtype=num.float)
-            sx = chains.standard_deviation_models(
-                ichain_choice, self.standard_deviation_estimator)
+            ntries_sample = 0
+            if self.sampler_distribution == 'normal':
+                x = num.zeros(npar, dtype=num.float)
+                sx = chains.standard_deviation_models(
+                    ichain_choice, self.standard_deviation_estimator)
 
-            for ipar in range(npar):
-                ntries = 0
+                for ipar in range(npar):
+                    ntries = 0
+                    while True:
+                        if sx[ipar] > 0.:
+                            v = num.random.normal(
+                                xchoice[ipar],
+                                factor*sx[ipar])
+                        else:
+                            v = xchoice[ipar]
+
+                        if xbounds[ipar, 0] <= v and \
+                                v <= xbounds[ipar, 1]:
+
+                            break
+
+                        if ntries > self.ntries_sample_limit:
+                            raise GrondError(
+                                'failed to produce a suitable '
+                                'candidate sample from normal '
+                                'distribution')
+
+                        ntries += 1
+
+                    x[ipar] = v
+
+            elif self.sampler_distribution == 'multivariate_normal':
+                ok_mask_sum = num.zeros(npar, dtype=num.int)
                 while True:
-                    if sx[ipar] > 0.:
-                        v = num.random.normal(
-                            xchoice[ipar],
-                            factor*sx[ipar])
-                    else:
-                        v = xchoice[ipar]
+                    ntries_sample += 1
+                    xcandi = num.random.multivariate_normal(
+                        xchoice, factor**2 * chains.cov(ichain_choice))
 
-                    if xbounds[ipar, 0] <= v and \
-                            v <= xbounds[ipar, 1]:
+                    ok_mask = num.logical_and(
+                        xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
 
+                    if num.all(ok_mask):
                         break
 
-                    if ntries > self.ntries_sample_limit:
-                        logger.warning(
-                            'failed to produce a suitable '
-                            'candidate sample from normal '
-                            'distribution for parameter \'%s\''
-                            '- drawing from uniform instead.' %
-                            pnames[ipar])
-                        v = num.random.uniform(xbounds[ipar, 0],
-                                               xbounds[ipar, 1])
-                        break
+                    ok_mask_sum += ok_mask
 
-                    ntries += 1
+                    if ntries_sample > self.ntries_sample_limit:
+                        raise GrondError(
+                            'failed to produce a suitable candidate '
+                            'sample from multivariate normal '
+                            'distribution, (%s)' %
+                            ', '.join('%s:%i' % xx for xx in
+                                      zip(pnames, ok_mask_sum)))
 
-                x[ipar] = v
+                x = xcandi
+            pars = x
+            nsources = 2
+            sources = []
+            if nsources == 2:
+                for i in range(nsources):
+                    source = problem.get_source(pars, i)
+                    sources.append(source)
+            src1 = sources[0].outline('xy')
+            src2 = sources[1].outline('xy')
+            p1 = Polygon(src1)
+            p2 = Polygon(src2)
+            if not p1.intersects(p2):
+                intersect = False
+            else:
+                intersect = True
+                print('intersection, directed phase redraw')
 
-        elif self.sampler_distribution == 'multivariate_normal':
-            ok_mask_sum = num.zeros(npar, dtype=num.int)
-            while True:
-                ntries_sample += 1
-                xcandi = num.random.multivariate_normal(
-                    xchoice, factor**2 * chains.cov(ichain_choice))
-
-                ok_mask = num.logical_and(
-                    xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
-
-                if num.all(ok_mask):
-                    break
-
-                ok_mask_sum += ok_mask
-
-                if ntries_sample > self.ntries_sample_limit:
-                    logger.warning(
-                        'failed to produce a suitable candidate '
-                        'sample from multivariate normal '
-                        'distribution, (%s) - drawing from uniform instead' %
-                        ', '.join('%s:%i' % xx for xx in
-                                  zip(pnames, ok_mask_sum)))
-                    xbounds = problem.get_parameter_bounds()
-                    xcandi = problem.random_uniform(xbounds)
-                    break
-
-            x = xcandi
-
-        return x
+            return x
 
 
 def make_bayesian_weights(nbootstrap, nmisfits,
@@ -282,17 +295,11 @@ class Chains(object):
         self.nchains = nchains
         self.nlinks_cap = nlinks_cap
         self.chains_m = num.zeros(
-            (self.nchains, nlinks_cap), dtype=num.float)
+            (self.nchains, nlinks_cap), num.float)
         self.chains_i = num.zeros(
-            (self.nchains, nlinks_cap), dtype=num.int)
+            (self.nchains, nlinks_cap), num.int)
         self.nlinks = 0
-
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
-        self.accept_log_len = 100
-        self.accept_log = num.ones(
-            (self.nchains, self.accept_log_len),
-            dtype=num.bool)
-
         self.nread = 0
         history.add_listener(self)
 
@@ -321,18 +328,14 @@ class Chains(object):
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
             if self.nlinks == self.nlinks_cap:
-                accept = (chains_i[:, self.nlinks_cap-1] != n-1) \
-                    .astype(num.bool)
+                accept = (
+                    chains_i[:, self.nlinks_cap-1] != n-1).astype(num.int)
                 self.nlinks -= 1
             else:
-                accept = num.ones(self.nchains, dtype=num.bool)
-            self.accept_log[:, n % self.accept_log_len] = accept
+                accept = num.ones(self.nchains, dtype=num.int)
+
             self.accept_sum += accept
             self.nread += 1
-
-    @property
-    def acceptance_rate(self):
-        return self.accept_log.sum(axis=1) / self.accept_log_len
 
     def append(self, iiter, model, misfits):
         self.goto(iiter)
@@ -621,19 +624,14 @@ class HighScoreOptimiser(Optimiser):
                 zip(['BS mean', 'BS std',
                      'Glob mean', 'Glob std', 'Glob best'],
                     [bs_mean, bs_std, glob_mean, glob_std, glob_best])),
-            extra_header=  # noqa
-                u'Optimiser phase: {phase}, exploring {nchains} BS chains\n'  # noqa
-                u'Global chain misfit distribution: \u2080{mf_dist}\xb9\n'
-                u'Acceptance rate distribution:     \u2080{acceptance}'
-                u'\u2081\u2080\u2080\ufe6a'
-                .format(
-                    phase=phase.__class__.__name__,
-                    nchains=chains.nchains,
-                    mf_dist=spark_plot(
-                        glob_misfits, num.linspace(0., 1., 25)),
-                    acceptance=spark_plot(
-                        chains.acceptance_rate, num.linspace(0., 1., 25))
-                    ))
+            extra_header=u'Optimiser phase: %s, exploring %d BS chains\n'
+                         u'Global chain misfit distribution: \u2080%s\xb9'
+                         % (phase.__class__.__name__,
+                            chains.nchains,
+                            spark_plot(
+                                glob_misfits,
+                                num.linspace(0., 1., 25))
+                            ))
 
     def get_movie_maker(
             self, problem, history, xpar_name, ypar_name, movie_filename):
@@ -648,17 +646,9 @@ class HighScoreOptimiserConfig(OptimiserConfig):
     sampler_phases = List.T(
         SamplerPhase.T(),
         default=[UniformSamplerPhase(niterations=1000),
-                 DirectedSamplerPhase(niterations=5000)],
-        help='Stages of the sampler: Start with uniform sampling of the model'
-             ' model space and narrow down through directed sampling.')
-    chain_length_factor = Float.T(
-        default=8.,
-        help='Controls the length of each chain: '
-             'chain_length_factor * nparameters + 1')
-    nbootstrap = Int.T(
-        default=100,
-        help='Number of bootstrap realisations to be tracked simultaneously in'
-             ' the optimisation.')
+                 DirectedSamplerPhase(niterations=5000)])
+    chain_length_factor = Float.T(default=8.)
+    nbootstrap = Int.T(default=100)
 
     def get_optimiser(self):
         return HighScoreOptimiser(
