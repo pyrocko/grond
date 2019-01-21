@@ -1,6 +1,6 @@
 import numpy as num
 import logging
-#import sys
+import sys
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 from optparse import OptionParser
@@ -37,7 +37,7 @@ class MultiRectangularProblemConfig(ProblemConfig):
         problem = MultiRectangularProblem(
             name=expand_template(self.name_template, subs),
             base_source=base_source,
-            distance_min=self.distance_min, 
+            distance_min=self.distance_min,
             target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
@@ -57,7 +57,7 @@ class MultiRectangularProblem(Problem):
     problem_parameters = []
     problem_waveform_parameters = []
 
-    for i in range(1,nsources+1):
+    for i in range(0, nsources):
         problem_parameters.append(Parameter('north_shift%s' % i,
                                             'm',
                                             label='Northing %s' %i,
@@ -106,8 +106,7 @@ class MultiRectangularProblem(Problem):
         return arr
 
     def get_source(self, x, i):
-        d = self.get_parameter_dict(x[0+12*i:12+i*12], nsources=2)#x, nsources=self.nsources) # not looking nice but needed for correct usage of params #from branch multisource_new
-        i = i+1 # for realistic numbers
+        d = self.get_parameter_dict(x[0+12*i:12+i*12], nsources=True)
         p = {}
         for k in self.base_source.keys():
             if k in d:
@@ -118,10 +117,10 @@ class MultiRectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds):
+    def random_uniform(self, xbounds, rstate):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
         return x
 

@@ -504,7 +504,6 @@ class Dataset(object):
                                     index = indexSX
             return candidates[index]
 
-
     def get_waveform_raw(
             self, obj,
             tmin,

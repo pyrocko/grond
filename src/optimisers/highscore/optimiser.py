@@ -154,10 +154,10 @@ class UniformSamplerPhase(SamplerPhase):
         xbounds = problem.get_parameter_bounds()
         intersect = True
         while intersect is True:
-            pars = problem.random_uniform(xbounds)
+            pars = problem.random_uniform(xbounds, self.get_rstate())
             nsources = 2
             sources = []
-            if nsources == 2:
+            if nsources is not None:
                 for i in range(nsources):
                     source = problem.get_source(pars, i)
                     sources.append(source)
@@ -215,24 +215,22 @@ class DirectedSamplerPhase(SamplerPhase):
 
         ilink_choice = None
         ichain_choice = num.argmin(chains.accept_sum)
+        intersect = True
+        while intersect is True:
+            if self.starting_point == 'excentricity_compensated':
+                models = chains.models(ichain_choice)
+                ilink_choice = excentricity_compensated_choice(
+                    models,
+                    chains.standard_deviation_models(
+                        ichain_choice, self.standard_deviation_estimator),
+                    2., rstate)
 
-        if self.starting_point == 'excentricity_compensated':
-            models = chains.models(ichain_choice)
-            ilink_choice = excentricity_compensated_choice(
-                models,
-                chains.standard_deviation_models(
-                    ichain_choice, self.standard_deviation_estimator),
-                2., rstate)
-
-            xchoice = chains.model(ichain_choice, ilink_choice)
-
-        elif self.starting_point == 'random':
-            ilink_choice = rstate.randint(0, chains.nlinks)
-            xchoice = chains.model(ichain_choice, ilink_choice)
+                xchoice = chains.model(ichain_choice, ilink_choice)
 
             elif self.starting_point == 'random':
-                ilink_choice = num.random.randint(0, chains.nlinks)
+                ilink_choice = rstate.randint(0, chains.nlinks)
                 xchoice = chains.model(ichain_choice, ilink_choice)
+
 
             elif self.starting_point == 'mean':
                 xchoice = chains.mean_model(ichain_choice)
@@ -285,52 +283,66 @@ class DirectedSamplerPhase(SamplerPhase):
                     if xbounds[ipar, 0] <= v and \
                             v <= xbounds[ipar, 1]:
 
+                        ok_mask = num.logical_and(
+                            xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
+
+                        if ntries > self.ntries_sample_limit:
+                            logger.warning(
+                                'failed to produce a suitable '
+                                'candidate sample from normal '
+                                'distribution for parameter \'%s\''
+                                '- drawing from uniform instead.' %
+                                pnames[ipar])
+                            v = rstate.uniform(xbounds[ipar, 0],
+                                               xbounds[ipar, 1])
+                            break
+
+                        ntries += 1
+
+                    x[ipar] = v
+
+            elif self.sampler_distribution == 'multivariate_normal':
+                ok_mask_sum = num.zeros(npar, dtype=num.int)
+                while True:
+                    ntries_sample += 1
+                    xcandi = rstate.multivariate_normal(
+                        xchoice, factor**2 * chains.cov(ichain_choice))
+
                     ok_mask = num.logical_and(
                         xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
 
-                    if ntries > self.ntries_sample_limit:
-                        logger.warning(
-                            'failed to produce a suitable '
-                            'candidate sample from normal '
-                            'distribution for parameter \'%s\''
-                            '- drawing from uniform instead.' %
-                            pnames[ipar])
-                        v = rstate.uniform(xbounds[ipar, 0],
-                                           xbounds[ipar, 1])
+                    if num.all(ok_mask):
                         break
 
-                    ntries += 1
+                    ok_mask_sum += ok_mask
 
-                x[ipar] = v
+                    if ntries_sample > self.ntries_sample_limit:
+                        logger.warning(
+                            'failed to produce a suitable candidate '
+                            'sample from multivariate normal '
+                            'distribution, (%s) - drawing from uniform instead' %
+                            ', '.join('%s:%i' % xx for xx in
+                                      zip(pnames, ok_mask_sum)))
+                        xbounds = problem.get_parameter_bounds()
+                        xcandi = problem.random_uniform(xbounds, rstate)
+                        break
 
-        elif self.sampler_distribution == 'multivariate_normal':
-            ok_mask_sum = num.zeros(npar, dtype=num.int)
-            while True:
-                ntries_sample += 1
-                xcandi = rstate.multivariate_normal(
-                    xchoice, factor**2 * chains.cov(ichain_choice))
-
-                ok_mask = num.logical_and(
-                    xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
-
-                if num.all(ok_mask):
-                    break
-
-                ok_mask_sum += ok_mask
-
-                if ntries_sample > self.ntries_sample_limit:
-                    logger.warning(
-                        'failed to produce a suitable candidate '
-                        'sample from multivariate normal '
-                        'distribution, (%s) - drawing from uniform instead' %
-                        ', '.join('%s:%i' % xx for xx in
-                                  zip(pnames, ok_mask_sum)))
-                    xbounds = problem.get_parameter_bounds()
-                    xcandi = problem.random_uniform(xbounds, rstate)
-                    break
-
-            x = xcandi
-
+                x = xcandi
+            pars = x
+            nsources = 2
+            sources = []
+            if nsources is not None:
+                for i in range(nsources):
+                    source = problem.get_source(pars, i)
+                    sources.append(source)
+            src1 = sources[0].outline('xy')
+            src2 = sources[1].outline('xy')
+            p1 = Polygon(src1)
+            p2 = Polygon(src2)
+            if not p1.intersects(p2):
+                intersect = False
+            else:
+                intersect = True
         return Sample(
             model=x,
             ichain_base=ichain_choice,
