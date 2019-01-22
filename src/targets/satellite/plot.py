@@ -129,6 +129,8 @@ edge marking the upper fault edge. Complete data extent is shown.
         def drawSource(ax, scene):
             if scene.frame.isMeter():
                 fn, fe = source.outline(cs='xy').T
+                fn -= fn.mean()
+                fe -= fe.mean()
             elif scene.frame.isDegree():
                 fn, fe = source.outline(cs='latlon').T
                 fn -= source.effective_lat
@@ -151,7 +153,7 @@ edge marking the upper fault edge. Complete data extent is shown.
             arr[scene.displacement_mask] = num.nan
             return arr
 
-        def drawLeaves(ax, scene, offset_e=0, offset_n=0):
+        def drawLeaves(ax, scene, offset_e=0., offset_n=0.):
             rects = scene.quadtree.getMPLRectangles()
             for r in rects:
                 r.set_edgecolor((.4, .4, .4))
