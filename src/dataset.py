@@ -147,7 +147,14 @@ class Dataset(object):
 
         if filename is not None:
             logger.debug('Loading events from file "%s"...' % filename)
-            self.events.extend(model.load_events(filename))
+            try:
+                events = model.load_events(filename)
+                self.events.extend(events)
+                logger.info('Loading events from %s: %s', filename,
+                            ', '.join([e.name for e in events]))
+            except Exception as e:
+                logger.warning('Could not load events from %s!', filename)
+                raise e
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
                       show_progress=False):
@@ -985,12 +992,27 @@ class DatasetConfig(HasPaths):
         self._ds = {}
 
     def get_event_names(self):
+        logger.info('Loading events ...')
+
         def extra(path):
             return expand_template(path, dict(
                 event_name='*'))
 
         def fp(path):
             return self.expand_path(path, extra=extra)
+
+        def check_events(events, fn):
+            for ev in events:
+                if not ev.name:
+                    logger.warning('Event in %s has no name!', fn)
+                    return
+                if not ev.lat or not ev.lon:
+                    logger.warning('Event %s has inconsistent coordinates!',
+                                   ev.name)
+                if not ev.depth:
+                    logger.warning('Event %s has no depth!', ev.name)
+                if not ev.time:
+                    logger.warning('Event %s has no time!', ev.name)
 
         events = []
         events_path = fp(self.events_path)
@@ -999,7 +1021,11 @@ class DatasetConfig(HasPaths):
             raise DatasetError('No event files matching "%s".' % events_path)
 
         for fn in fns:
-            events.extend(model.load_events(filename=fn))
+            logger.debug('Loading from file %s' % fn)
+            ev = model.load_events(filename=fn)
+            check_events(ev, fn)
+
+            events.extend(ev)
 
         event_names = [ev.name for ev in events]
         event_names.sort()
