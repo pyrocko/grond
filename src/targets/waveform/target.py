@@ -34,6 +34,7 @@ class Trace(Object):
 
 
 class WaveformMisfitConfig(MisfitConfig):
+    quantity = gf.QuantityType.T(default='displacement')
     fmin = Float.T(default=0.0, help='minimum frequency of bandpass filter')
     fmax = Float.T(help='maximum frequency of bandpass filter')
     ffactor = Float.T(default=1.5)
@@ -395,9 +396,19 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
         freqlimits = self.get_freqlimits()
 
+        if config.quantity == 'displacement':
+            syn_resp = None
+        elif config.quantity == 'velocity':
+            syn_resp = trace.DifferentiationResponse(1)
+        elif config.quantity == 'acceleration':
+            syn_resp = trace.DifferentiationResponse(2)
+        else:
+            GrondError('Unsupported quantity: %s' % config.quantity)
+
         tr_syn = tr_syn.transfer(
             freqlimits=freqlimits,
-            tfade=tfade)
+            tfade=tfade,
+            transfer_function=syn_resp)
 
         tr_syn.chop(tmin_fit - 2*tfade, tmax_fit + 2*tfade)
 
@@ -407,6 +418,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         try:
             tr_obs = ds.get_waveform(
                 nslc,
+                quantity=config.quantity,
                 tinc_cache=1.0/(config.fmin or 0.1*config.fmax),
                 tmin=tmin_fit+tobs_shift-tfade,
                 tmax=tmax_fit+tobs_shift+tfade,
