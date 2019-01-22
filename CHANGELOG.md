@@ -4,34 +4,25 @@ All notable changes to Grond will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [1.1.0], 10. January 2019
+## [1.1.0] 2019-01-22
 
 ### Added
 - New VolumePointProblem to optimise magmatic and volcanic processes.
 - New problem config sections in `grond init`.
 
 ### Changed
-- Documentation of problems configurations are now centralised
-  at `src/data/snippets`.
+- Documentation of problems configurations are now centralised at 
+  `src/data/snippets`.
 - Output of `grond init list`.
 
 ### Fixed
 - Bug in GNSSMisfitTarget.
 - Plotting in GNSS plotting functions.
 - Highscore optimiser logging output
-
-## [1.0.2]
-
-### Fixed
 - Satellite plot: Setting geographical aspect ratio for LatLon data
-
-## [1.0.1]
-
-### Fixed
-
 - GNSS Plotting function
 
-## [1.0.0]
+## [1.0.0] 2019-01-07
 
 ### Added
 - Cluster analysis on result ensemble with `grond cluster`.
