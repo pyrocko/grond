@@ -302,6 +302,24 @@ class HasPaths(Object):
         return xrelpath(path, self.get_basepath())
 
 
+def nslc_to_pattern(s):
+    toks = s.split('.')
+    if len(toks) == 1:
+        return '*.%s.*.*' % s
+    elif len(toks) == 2:
+        return '%s.*.*' % s
+    elif len(toks) == 3:
+        return '%s.*' % s
+    elif len(toks) == 4:
+        return s
+    else:
+        raise GrondError('Invalid net.sta.loc.cha pattern: %s' % s)
+
+
+def nslcs_to_patterns(l):
+    return [nslc_to_pattern(s) for s in l]
+
+
 __all__ = '''
     Forbidden
     GrondError
