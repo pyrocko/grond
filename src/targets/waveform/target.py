@@ -4,12 +4,13 @@ import logging
 import math
 import numpy as num
 
-from pyrocko import gf, trace, weeding
+from pyrocko import gf, trace, weeding, util
 from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
                           Timestamp, List)
 from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
+from grond.meta import GrondError, nslcs_to_patterns
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
 from grond.meta import has_get_plot_classes
@@ -105,6 +106,15 @@ class WaveformTargetGroup(TargetGroup):
     depth_max = Float.T(
         optional=True,
         help='excludes targets with larger depths')
+    include = List.T(
+        String.T(),
+        optional=True,
+        help='If not None, list of stations/components to include according '
+             'to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
+    exclude = List.T(
+        String.T(),
+        help='Stations/components to be excluded according to their STA, '
+             'NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.')
     limit = Int.T(optional=True)
     channels = List.T(
         String.T(),
@@ -135,8 +145,18 @@ class WaveformTargetGroup(TargetGroup):
                     normalisation_family=self.normalisation_family,
                     path=self.path or default_path)
 
-                if ds.is_blacklisted((st.nsl() + (cha,))):
-                    log_exclude(target, 'blacklisted')
+                if ds.is_blacklisted(nslc):
+                    log_exclude(target, 'excluded by dataset')
+                    continue
+
+                if util.match_nslc(
+                        nslcs_to_patterns(self.exclude), nslc):
+                    log_exclude(target, 'excluded by target group')
+                    continue
+
+                if self.include is not None and not util.match_nslc(
+                        nslcs_to_patterns(self.include), nslc):
+                    log_exclude(target, 'excluded by target group')
                     continue
 
                 if self.distance_min is not None and \
