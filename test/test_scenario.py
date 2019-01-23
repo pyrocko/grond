@@ -1,41 +1,45 @@
-from grond import scenario as grond_scenario
-import tempfile
+from __future__ import absolute_import
+import os
+import shutil
 
-km = 1e3
+from grond import config
+from grond import Environment
 
-STORE_STATIC = 'crust2_ib_static'
-STORE_WAVEFORMS = 'crust2_ib'
+from . import common
+from .common import grond, chdir
+
+_multiprocess_can_split = True
 
 
 def test_scenario():
+    playground_dir = common.get_playground_dir()
+    with chdir(playground_dir):
+        scenario_dir = 'scenario'
+        if os.path.exists(scenario_dir):
+            shutil.rmtree(scenario_dir)
 
-    observations = [
-        grond_scenario.WaveformObservation(
-            nstations=20,
-            store_id=STORE_WAVEFORMS),
-        grond_scenario.InSARObservation(
-            store_id=STORE_STATIC),
-        grond_scenario.GNSSCampaignObservation(
-            nstations=20,
-            store_id=STORE_STATIC)
-        ]
+        grond('scenario', '--targets=waveforms,insar', '--nevents=2',
+              '--nstations=3', scenario_dir)
 
-    problems = [
-        grond_scenario.DCSourceProblem(
-            nevents=1),
-        grond_scenario.RectangularSourceProblem()
-    ]
+        with chdir(scenario_dir):
+            config_path = 'config/scenario.gronf'
+            quick_config_path = 'config/scenario_quick.gronf'
+            event_names = grond('events', config_path).strip().split('\n')
 
-    for prob in problems:
-        with tempfile.TemporaryDirectory(prefix='grond') as project_dir:
+            env = Environment([config_path] + event_names)
+            conf = env.get_config()
 
-            scenario = grond_scenario.GrondScenario(
-                project_dir,
-                center_lat=41., center_lon=33.3,
-                radius=200.*km)
-            for obs in observations:
-                scenario.add_observation(obs)
-
-            scenario.set_problem(prob)
-
-            scenario.build(force=True, interactive=False)
+            mod_conf = conf.clone()
+            mod_conf.set_elements(
+                'analyser_configs[:].niterations', 100)
+            mod_conf.set_elements(
+                'optimiser_config.sampler_phases[:].niterations', 100)
+            mod_conf.set_elements(
+                'optimiser_config.nbootstrap', 5)
+            mod_conf.set_basepath(conf.get_basepath())
+            config.write_config(mod_conf, quick_config_path)
+            grond('diff', config_path, quick_config_path)
+            grond('check', quick_config_path, *event_names)
+            grond('go', quick_config_path, '--parallel=2', *event_names)
+            rundir_paths = common.get_rundir_paths(config_path, event_names)
+            grond('report', '--parallel=2', *rundir_paths)

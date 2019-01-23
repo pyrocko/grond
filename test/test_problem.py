@@ -32,7 +32,7 @@ def test_combine_misfits():
     xg[:, 1] = num.tile(num.repeat(cy, ngx), ngz)
     xg[:, 2] = num.repeat(cz, ngx*ngy)
 
-    misfitss = p.evaluate_many(xg)
+    misfitss = p.misfits_many(xg)
     # misfitss[imodel, itarget, 0], misfitss[imodel, itarget, 1]
     gms = p.combine_misfits(misfitss)
     gms_contrib = p.combine_misfits(misfitss, get_contributions=True)
@@ -51,7 +51,7 @@ def test_combine_misfits():
     # gms_2_contrib[imodel, ibootstrap, itarget]
 
     for ix, x in enumerate(xg):
-        misfits = p.evaluate(x)
+        misfits = p.misfits(x)
         # misfits[itarget, 0], misfits[itarget, 1]
         gm = p.combine_misfits(misfits)
         # gm is scalar
