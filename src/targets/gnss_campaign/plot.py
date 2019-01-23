@@ -217,7 +217,7 @@ displacements derived from best rupture model (red).
                     in_rows=[volcanic_circle],
                     W='1p,black',
                     G='orange3',
-                    *m.jxyr,)
+                    *m.jxyr)
 
             return (item, m)
 
