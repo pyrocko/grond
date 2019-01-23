@@ -126,6 +126,9 @@ class Dataset(object):
         if stationxml_filenames is not None and len(stationxml_filenames) > 0:
 
             for stationxml_filename in stationxml_filenames:
+                if not op.exists(stationxml_filename):
+                    continue
+
                 logger.debug(
                     'Loading stations from StationXML file "%s"...' %
                     stationxml_filename)
@@ -181,6 +184,9 @@ class Dataset(object):
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
+                if not op.exists(stationxml_filename):
+                    continue
+
                 logger.debug(
                     'Loading StationXML responses from "%s"...' %
                     stationxml_filename)
