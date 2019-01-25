@@ -485,12 +485,10 @@ traces.''')
             dtraces.append([])
 
             for target, result in zip(problem.targets, results):
-                if isinstance(result, gf.SeismosizerError):
-                    dtraces[-1].append(None)
-                    continue
+                if isinstance(result, gf.SeismosizerError) or \
+                        not isinstance(target, WaveformMisfitTarget):
 
-                if not isinstance(target, WaveformMisfitTarget):
-                    dtraces[-1].append(None)
+                    dtraces[-1].extend([None] * target.nmisfits)
                     continue
 
                 itarget, itarget_end = target_index[target]
@@ -892,7 +890,7 @@ box, red).
         dtraces = []
         for target, result in zip(problem.targets, results):
             if not isinstance(result, WaveformMisfitResult):
-                dtraces.append(None)
+                dtraces.extend([None] * target.nmisfits)
                 continue
 
             itarget, itarget_end = target_index[target]
