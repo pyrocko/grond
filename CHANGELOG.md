@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Waveform targets: switch to change to acceleration / velocity fitting.
 - Waveform targets: include / exclude stations by pattern on target-group
   level.
+<<<<<<< HEAD
 - Option to export list of stations used in one or more setups (`grond check
   --save-stations-used=<filename>`).
 - Can now handle GNSS stations lacking complete set of component orientations.
@@ -21,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - CMT problem: can now switch between different source time functions.
 - Added workaround switch for `"cannot project traces with displaced sampling"`
   issues.
+=======
+- Option to export list of stations used in one or more setups
+  (`grond check --save-stations-used=<filename>`)
+>>>>>>> update changelog
 
 ### Changed
 - Transparent event loading and checking.
@@ -51,6 +56,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - Transparent event loading and checking.
 
+
+### Fixed
+- Waveform fit plots: fix crashes while plotting results from joint inversions.
 
 ## [1.1.0] 2019-01-22
 
