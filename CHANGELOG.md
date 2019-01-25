@@ -7,13 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Waveform targets: switch to change to acceleration / velocity fitting
-- Waveform targets: include / exclude stations by pattern on target-group level
+- Waveform targets: switch to change to acceleration / velocity fitting.
+- Waveform targets: include / exclude stations by pattern on target-group
+  level.
 - Option to export list of stations used in one or more setups
   (`grond check --save-stations-used=<filename>`)
 
 ### Changed
 - Transparent event loading and checking.
+
+### Fixed
+- Waveform fit plots: fix crashes while plotting results from joint inversions.
 
 ## [1.1.1] 2019-02-05
 
