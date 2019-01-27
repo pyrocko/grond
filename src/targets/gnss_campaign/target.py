@@ -133,11 +133,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     @property
     def obs_data(self):
         if self._obs_data is None:
-            self._obs_data = num.array([
-                [s.north.shift for s in self.campaign.stations],
-                [s.east.shift for s in self.campaign.stations],
-                [s.up.shift for s in self.campaign.stations]])\
-              .ravel(order='F')
+            self._obs_data = num.concatenate(
+                [s.get_displacement_data() for s in self.campaign.stations])
         return self._obs_data
 
     @property
@@ -170,6 +167,12 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         return self._weights
 
     @property
+    def station_component_mask(self):
+        if self._station_component_mask is None:
+            self._station_component_mask = self.campaign.get_component_mask()
+        return self._station_component_mask
+
+    @property
     def station_weights(self):
         weights = num.diag(self.weights)
 
@@ -192,6 +195,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
               statics['displacement.e'],
               -statics['displacement.d']])\
             .ravel(order='F')
+
+        syn = syn[self.station_component_mask]
 
         res = num.abs(obs - syn)
 
