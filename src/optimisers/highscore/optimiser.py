@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
-
+from pyrocko import orthodrome
 from grond.meta import GrondError, Forbidden, has_get_plot_classes
 from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
@@ -155,6 +155,51 @@ class UniformSamplerPhase(SamplerPhase):
     def get_raw_sample(self, problem, iiter, chains):
         xbounds = problem.get_parameter_bounds()
         return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
+
+class GuidedSamplerPhase(SamplerPhase):
+    from scipy import stats
+
+    bp_input_grid = num.loadtxt('semb.ASC', unpack=True)
+    grad_input_grid = Float.T(
+        optional=True,
+        help='Scales search radius around the current `highscore` models')
+    if bp_input_grid is not None:
+        semb = bp_input_grid[2]
+        semb_index_shape = num.shape(bp_input_grid[0])
+        normed_semb_index = semb/num.linalg.norm(semb, ord=1)
+        xk = num.arange(semb_index_shape[0])
+        prior_dist = stats.rv_discrete(name='prior_dist',
+                                       values=(xk, normed_semb_index),
+                                       shapes='m,n')
+
+    def get_distance(self, source):
+        es_list = []
+        ns_list = []
+        for e, n in zip(self.bp_input_grid[0], self.bp_input_grid[1]):
+            ns, es = orthodrome.latlon_to_ne(source.lat, source.lon, e, n)
+            es_list.append(es)
+            ns_list.append(ns)
+        return es_list, ns_list
+
+    def get_raw_sample(self, problem, iiter, chains):
+        check_bounds = True
+        xbounds = problem.get_parameter_bounds()
+        while check_bounds is True:
+            sampled_index = self.prior_dist.rvs()
+            model = problem.random_uniform(xbounds, self.get_rstate())
+            source = problem.get_source(model)
+            es_list, ns_list = self.get_distance(source)
+            east_shift = es_list[sampled_index]
+            north_shift = ns_list[sampled_index]
+            if east_shift >= xbounds[0, 0] and east_shift <= xbounds[0, 1] and\
+               north_shift >= xbounds[1, 0] and north_shift <= xbounds[1, 1]:
+                check_bounds = False
+                model[1] = north_shift
+                model[0] = east_shift
+            else:
+                continue
+
+        return Sample(model=model)
 
 
 class DirectedSamplerPhase(SamplerPhase):
@@ -785,6 +830,7 @@ __all__ = '''
     SamplerPhase
     InjectionSamplerPhase
     UniformSamplerPhase
+    GuidedSamplerPhase
     DirectedSamplerPhase
     Chains
     HighScoreOptimiserConfig
