@@ -488,7 +488,22 @@ class Dataset(object):
         elif len(candidates) == 0:
             raise NotFound('No response found:', (net, sta, loc, cha))
         else:
-            raise NotFound('Multiple responses found:', (net, sta, loc, cha))
+            # if multiple responses are found take the younger one
+            t1 = []
+            index = []
+            indexSX = -1
+            for sx in self.responses_stationxml:
+                indexSX += 1
+                for network in sx.network_list:
+                    if network.code == net:
+                        # step through all the stations per network
+                        for station in network.station_list:
+                            if station.code == sta:
+                                if t1 == [] or t1 < station.start_date:
+                                    t1 = station.start_date
+                                    index = indexSX                               
+            return candidates[index]
+
 
     def get_waveform_raw(
             self, obj,
@@ -710,7 +725,6 @@ class Dataset(object):
             for matrix, in_channels, out_channels in projections:
                 deps = trace.project_dependencies(
                     matrix, in_channels, out_channels)
-
                 try:
                     trs_restituted_group = []
                     trs_raw_group = []
@@ -741,7 +755,8 @@ class Dataset(object):
                         trs_raw.extend(trs_raw_group)
 
                 except NotFound as e:
-                    exceptions.append((in_channels, out_channels, e))
+                        print((in_channels, out_channels, e))
+                        exceptions.append((in_channels, out_channels, e))
 
             if not trs_projected:
                 err = []
