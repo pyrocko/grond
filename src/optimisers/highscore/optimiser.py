@@ -16,6 +16,10 @@ from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
 from pyrocko import moment_tensor as mt
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+from scipy import stats, signal
+
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
@@ -159,10 +163,11 @@ class UniformSamplerPhase(SamplerPhase):
         return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
 
 class GuidedSamplerPhase(SamplerPhase):
-    from scipy import stats
-
     try:
         bp_input_grid_lf = num.loadtxt('semb_lf.ASC', unpack=True)
+    except:
+        pass
+    try:
         bp_input_grid_hf = num.loadtxt('semb_hf.ASC', unpack=True)
     except:
         pass
@@ -170,15 +175,23 @@ class GuidedSamplerPhase(SamplerPhase):
         grad_input_grid = num.loadtxt('grad.ASC', unpack=True)
     except:
         pass
+
+    if grad_input_grid is not None:
+        grad = grad_input_grid [2]
+        grad_index_shape_lf = num.shape(grad_input_grid[0])
+        normed_grad_index_lf = grad/num.linalg.norm(grad, ord=1)
+        xk = num.arange(grad_index_shape_lf[0])
+        print(num.sum(normed_grad_index_lf))
+        prior_grad_loc = stats.rv_discrete(name='prior_grad_loc',
+                                         values=(xk, normed_grad_index_lf),
+                                         shapes='m,n')
+
     if bp_input_grid_lf is not None:
         semb_lf = bp_input_grid_lf[2]
         semb_index_shape_lf = num.shape(bp_input_grid_lf[0])
         normed_semb_index_lf = semb_lf/num.linalg.norm(semb_lf, ord=1)
         xk = num.arange(semb_index_shape_lf[0])
-        sampling_lf_x = (num.max(bp_input_grid_lf[0]) - num.min
-                         (bp_input_grid_lf[0])) / semb_index_shape_lf
-        sampling_lf_y = (num.max(bp_input_grid_lf[1]) - num.min
-                         (bp_input_grid_lf[1])) / semb_index_shape_lf
+        print(num.sum(normed_semb_index_lf))
         prior_bp_loc = stats.rv_discrete(name='prior_bp_loc',
                                          values=(xk, normed_semb_index_lf),
                                          shapes='m,n')
@@ -188,10 +201,7 @@ class GuidedSamplerPhase(SamplerPhase):
         semb_index_shape_hf = num.shape(bp_input_grid_hf[0])
         normed_semb_index_hf = semb_hf/num.linalg.norm(semb_hf, ord=1)
         xk = num.arange(semb_index_shape_hf[0])
-        sampling_hf_x = (num.max(bp_input_grid_hf[0]) - num.min
-                         (bp_input_grid_hf[0])) / semb_index_shape_hf
-        sampling_hf_y = (num.max(bp_input_grid_hf[1]) - num.min
-                         (bp_input_grid_hf[1])) / semb_index_shape_hf
+        print(num.sum(normed_semb_index_hf))
         prior_bp_nuc = stats.rv_discrete(name='prior_bp_nuc',
                                          values=(xk, normed_semb_index_hf),
                                          shapes='m,n')
@@ -232,8 +242,14 @@ class GuidedSamplerPhase(SamplerPhase):
         check_bounds = True
         check_bounds_lf = True
         xbounds = problem.get_parameter_bounds()
+
         while check_bounds is True:
-            sampled_index_xy = self.prior_bp_loc.rvs()
+            sampled_index_xy = []
+            if self.bp_input_grid_lf is not None:
+                    sampled_index_xy.append(self.prior_bp_loc.rvs())
+            if self.grad_input_grid is not None:
+                    sampled_index_xy.append(self.prior_grad_loc.rvs(), size=5)
+            model = num.random.choice(sampled_index_xy, 1)[0]
             model = problem.random_uniform(xbounds, self.get_rstate())
             source = problem.get_source(model)
             es_list, ns_list = self.get_distance(source, self.bp_input_grid_lf)
@@ -258,8 +274,6 @@ class GuidedSamplerPhase(SamplerPhase):
                 dist = num.sqrt((source.east_shift-east_shift_nuc)**2 +
                                 (source.north_shift-north_shift_nuc)**2)
 
-                from shapely.geometry import Point
-                from shapely.geometry.polygon import Polygon
                 outline = source.outline()
                 point = Point(north_shift_nuc, east_shift_nuc)
                 polygon = Polygon([(outline[0, 0], outline[0, 1]),
