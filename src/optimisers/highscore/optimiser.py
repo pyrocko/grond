@@ -7,6 +7,7 @@ import time
 import numpy as num
 from collections import OrderedDict
 
+from pyrocko.gf.seismosizer import map_anchor
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
 from pyrocko import orthodrome
@@ -14,11 +15,12 @@ from grond.meta import GrondError, Forbidden, has_get_plot_classes
 from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
-
+from pyrocko import moment_tensor as mt
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
 
+d2r = math.pi / 180.
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
@@ -159,46 +161,123 @@ class UniformSamplerPhase(SamplerPhase):
 class GuidedSamplerPhase(SamplerPhase):
     from scipy import stats
 
-    bp_input_grid = num.loadtxt('semb.ASC', unpack=True)
-    grad_input_grid = Float.T(
-        optional=True,
-        help='Scales search radius around the current `highscore` models')
-    if bp_input_grid is not None:
-        semb = bp_input_grid[2]
-        semb_index_shape = num.shape(bp_input_grid[0])
-        normed_semb_index = semb/num.linalg.norm(semb, ord=1)
-        xk = num.arange(semb_index_shape[0])
-        prior_dist = stats.rv_discrete(name='prior_dist',
-                                       values=(xk, normed_semb_index),
-                                       shapes='m,n')
+    try:
+        bp_input_grid_lf = num.loadtxt('semb_lf.ASC', unpack=True)
+        bp_input_grid_hf = num.loadtxt('semb_hf.ASC', unpack=True)
+    except:
+        pass
+    try:
+        grad_input_grid = num.loadtxt('grad.ASC', unpack=True)
+    except:
+        pass
+    if bp_input_grid_lf is not None:
+        semb_lf = bp_input_grid_lf[2]
+        semb_index_shape_lf = num.shape(bp_input_grid_lf[0])
+        normed_semb_index_lf = semb_lf/num.linalg.norm(semb_lf, ord=1)
+        xk = num.arange(semb_index_shape_lf[0])
+        sampling_lf_x = (num.max(bp_input_grid_lf[0]) - num.min
+                         (bp_input_grid_lf[0])) / semb_index_shape_lf
+        sampling_lf_y = (num.max(bp_input_grid_lf[1]) - num.min
+                         (bp_input_grid_lf[1])) / semb_index_shape_lf
+        prior_bp_loc = stats.rv_discrete(name='prior_bp_loc',
+                                         values=(xk, normed_semb_index_lf),
+                                         shapes='m,n')
 
-    def get_distance(self, source):
+    if bp_input_grid_hf is not None:
+        semb_hf = bp_input_grid_hf[2]
+        semb_index_shape_hf = num.shape(bp_input_grid_hf[0])
+        normed_semb_index_hf = semb_hf/num.linalg.norm(semb_hf, ord=1)
+        xk = num.arange(semb_index_shape_hf[0])
+        sampling_hf_x = (num.max(bp_input_grid_hf[0]) - num.min
+                         (bp_input_grid_hf[0])) / semb_index_shape_hf
+        sampling_hf_y = (num.max(bp_input_grid_hf[1]) - num.min
+                         (bp_input_grid_hf[1])) / semb_index_shape_hf
+        prior_bp_nuc = stats.rv_discrete(name='prior_bp_nuc',
+                                         values=(xk, normed_semb_index_hf),
+                                         shapes='m,n')
+
+    def get_distance(self, source, grid):
         es_list = []
         ns_list = []
-        for e, n in zip(self.bp_input_grid[0], self.bp_input_grid[1]):
+        for e, n in zip(grid[0], grid[1]):
             ns, es = orthodrome.latlon_to_ne(source.lat, source.lon, e, n)
             es_list.append(es)
             ns_list.append(ns)
         return es_list, ns_list
 
+    def nuc_coord(self, nuc_x, nuc_y, source):
+        ln = source.length
+        wd = source.width
+        points = num.array(
+            [[-0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.],
+             [0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.],
+             [0.5 * ln*nuc_x, 0.5 * wd*nuc_y, 0.],
+             [-0.5 * ln*nuc_x, 0.5 * wd*nuc_y, 0.],
+             [-0.5 * ln*nuc_x, -0.5 * wd*nuc_y, 0.]])
+
+        anch_x, anch_y = map_anchor[source.anchor]
+        points[:, 0] -= anch_x * 0.5 * source.length
+        points[:, 1] -= anch_y * 0.5 * source.width
+
+        rotmat = num.asarray(
+            mt.euler_to_matrix(source.dip * d2r, source.strike * d2r, 0.0))
+
+        points = num.dot(rotmat.T, points.T).T
+        points[:, 0] += source.north_shift
+        points[:, 1] += source.east_shift
+        points[:, 2] += source.depth
+        return points[1:2, 1], points[2:3, 0]
+
     def get_raw_sample(self, problem, iiter, chains):
         check_bounds = True
+        check_bounds_lf = True
         xbounds = problem.get_parameter_bounds()
         while check_bounds is True:
-            sampled_index = self.prior_dist.rvs()
+            sampled_index_xy = self.prior_bp_loc.rvs()
             model = problem.random_uniform(xbounds, self.get_rstate())
             source = problem.get_source(model)
-            es_list, ns_list = self.get_distance(source)
-            east_shift = es_list[sampled_index]
-            north_shift = ns_list[sampled_index]
+            es_list, ns_list = self.get_distance(source, self.bp_input_grid_lf)
+            east_shift = es_list[sampled_index_xy]
+            north_shift = ns_list[sampled_index_xy]
             if east_shift >= xbounds[0, 0] and east_shift <= xbounds[0, 1] and\
                north_shift >= xbounds[1, 0] and north_shift <= xbounds[1, 1]:
-                check_bounds = False
+                check_bounds_lf = False
                 model[1] = north_shift
                 model[0] = east_shift
             else:
                 continue
 
+            if source.nucleation_x is not None:
+                check_bounds_hf = True
+                source = problem.get_source(model)
+                sampled_index_nuc = self.prior_bp_nuc.rvs()
+                es_list, ns_list = self.get_distance(source,
+                                                     self.bp_input_grid_hf)
+                east_shift_nuc = es_list[sampled_index_nuc]
+                north_shift_nuc = ns_list[sampled_index_nuc]
+                dist = num.sqrt((source.east_shift-east_shift_nuc)**2 +
+                                (source.north_shift-north_shift_nuc)**2)
+
+                from shapely.geometry import Point
+                from shapely.geometry.polygon import Polygon
+                outline = source.outline()
+                point = Point(north_shift_nuc, east_shift_nuc)
+                polygon = Polygon([(outline[0, 0], outline[0, 1]),
+                                   (outline[1, 0], outline[1, 1]),
+                                   (outline[2, 0], outline[2, 1]),
+                                   (outline[3, 0], outline[3, 1])])
+                if polygon.contains(point) is True or \
+                   abs(polygon.exterior.distance(point)) < 20.:
+                    distx = source.east_shift+dist*num.cos(d2r*source.strike)
+                    disty = source.north_shift+dist*num.sin(d2r*source.strike)
+                    nuc_x = distx/source.length
+                    nuc_y = disty/source.width
+                    model[9] = nuc_x
+                    model[10] = nuc_y
+                    check_bounds_hf = False
+
+            if check_bounds_hf is False and check_bounds_lf is False:
+                check_bounds = False
         return Sample(model=model)
 
 
