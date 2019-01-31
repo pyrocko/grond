@@ -181,7 +181,6 @@ class GuidedSamplerPhase(SamplerPhase):
         grad_index_shape_lf = num.shape(grad_input_grid[0])
         normed_grad_index_lf = grad/num.linalg.norm(grad, ord=1)
         xk = num.arange(grad_index_shape_lf[0])
-        print(num.sum(normed_grad_index_lf))
         prior_grad_loc = stats.rv_discrete(name='prior_grad_loc',
                                          values=(xk, normed_grad_index_lf),
                                          shapes='m,n')
@@ -191,7 +190,6 @@ class GuidedSamplerPhase(SamplerPhase):
         semb_index_shape_lf = num.shape(bp_input_grid_lf[0])
         normed_semb_index_lf = semb_lf/num.linalg.norm(semb_lf, ord=1)
         xk = num.arange(semb_index_shape_lf[0])
-        print(num.sum(normed_semb_index_lf))
         prior_bp_loc = stats.rv_discrete(name='prior_bp_loc',
                                          values=(xk, normed_semb_index_lf),
                                          shapes='m,n')
