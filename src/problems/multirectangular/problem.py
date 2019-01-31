@@ -48,11 +48,11 @@ class MultiRectangularProblemConfig(ProblemConfig):
 
 class MultiRectangularProblem(Problem):
     nsources = 2
-    for i in range(0, 100):
-        if "--nsources="+str(i) in sys.argv:
-            nsources = int(i)
-    if nsources is None:
-        print('input --nsources= to go command missing')
+    #for i in range(0, 100):
+        #if "--nsources="+str(i) in sys.argv:
+            #nsources = int(i)
+    #if nsources is None:
+        #print('input --nsources= to go command missing')
 
     problem_parameters = []
     problem_waveform_parameters = []
