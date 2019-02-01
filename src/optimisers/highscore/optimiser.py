@@ -162,28 +162,30 @@ class UniformSamplerPhase(SamplerPhase):
         xbounds = problem.get_parameter_bounds()
         return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
 
+
 class GuidedSamplerPhase(SamplerPhase):
+
     try:
         bp_input_grid_lf = num.loadtxt('semb_lf.ASC', unpack=True)
-    except:
+    except OSError:
         pass
     try:
         bp_input_grid_hf = num.loadtxt('semb_hf.ASC', unpack=True)
-    except:
+    except OSError:
         pass
     try:
         grad_input_grid = num.loadtxt('grad.ASC', unpack=True)
-    except:
+    except OSError:
         pass
 
     if grad_input_grid is not None:
-        grad = grad_input_grid [2]
+        grad = grad_input_grid[2]
         grad_index_shape_lf = num.shape(grad_input_grid[0])
         normed_grad_index_lf = grad/num.linalg.norm(grad, ord=1)
         xk = num.arange(grad_index_shape_lf[0])
         prior_grad_loc = stats.rv_discrete(name='prior_grad_loc',
-                                         values=(xk, normed_grad_index_lf),
-                                         shapes='m,n')
+                                           values=(xk, normed_grad_index_lf),
+                                           shapes='m,n')
 
     if bp_input_grid_lf is not None:
         semb_lf = bp_input_grid_lf[2]
@@ -240,7 +242,6 @@ class GuidedSamplerPhase(SamplerPhase):
         check_bounds = True
         check_bounds_lf = True
         xbounds = problem.get_parameter_bounds()
-
         while check_bounds is True:
             sampled_index_xy = []
             if self.bp_input_grid_lf is not None:
@@ -291,7 +292,6 @@ class GuidedSamplerPhase(SamplerPhase):
             if check_bounds_hf is False and check_bounds_lf is False:
                 check_bounds = False
         return Sample(model=model)
-
 
 class DirectedSamplerPhase(SamplerPhase):
     scatter_scale = Float.T(
