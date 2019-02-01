@@ -262,6 +262,8 @@ components).
         for target in targets:
             target.set_dataset(dataset)
             ws = target.station_weights / target.station_weights.max()
+            if ws.size == 0:
+                continue
 
             distances = target.distance_to(event)
             azimuths = od.azibazi_numpy(

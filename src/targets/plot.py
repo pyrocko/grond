@@ -66,16 +66,24 @@ class StationDistributionPlot(PlotConfig):
 
         ax = fig.add_subplot(111, projection='polar')
 
-        valid = ~num.isnan(weights)
+        valid = num.isfinite(weights)
+        valid[valid] = num.logical_and(valid[valid], weights[valid] > 0.0)
 
         weights = weights.copy()
-        weights[~valid] = weights[valid].min()
+        if num.sum(valid) == 0:
+            weights[:] = 1.0
+            weights_ref = 1.0
+        else:
+            weights[~valid] = weights[valid].min()
+            weights_ref = plot.nice_value(weights[valid].max())
+
+        if weights_ref == 0.:
+            weights_ref = 1.0
+
         colors = [scatter_default['c'] if s else invalid_color
                   for s in valid]
 
         scatter_default.pop('c')
-
-        weights_ref = plot.nice_value(weights[valid].max())
 
         weights_scaled = (weights / weights_ref) * maxsize
 
@@ -102,12 +110,16 @@ class StationDistributionPlot(PlotConfig):
         # Legend
         entries = 4
         valid_marker = num.argmax(valid)
-        fc = stations.get_facecolor()[valid_marker]
-        ec = stations.get_edgecolor()[valid_marker]
+        fc = tuple(stations.get_facecolor()[valid_marker])
+        ec = tuple(stations.get_edgecolor()[valid_marker])
 
         def get_min_precision(values):
             sig_prec = num.floor(
-                num.isfinite(num.log10(weights)))
+                num.isfinite(num.log10(values[values > 0])))
+
+            if sig_prec.size == 0:
+                return 1
+
             return int(abs(sig_prec.min())) + 1
 
         legend_artists = [
