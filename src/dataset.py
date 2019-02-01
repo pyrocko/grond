@@ -131,7 +131,8 @@ class Dataset(object):
                     stationxml_filename)
 
                 sx = fs.load_xml(filename=stationxml_filename)
-                for station in sx.get_pyrocko_stations():
+                ev = self.get_event()
+                for station in sx.get_pyrocko_stations(time=ev.time):
                     channels = station.get_channels()
                     if len(channels) == 1 and channels[0].name.endswith('Z'):
                         logger.warning(
@@ -1060,11 +1061,11 @@ class DatasetConfig(HasPaths):
 
             ds = Dataset(event_name)
             try:
+                ds.add_events(filename=fp(self.events_path))
+
                 ds.add_stations(
                     pyrocko_stations_filename=fp(self.stations_path),
                     stationxml_filenames=fp(self.stations_stationxml_paths))
-
-                ds.add_events(filename=fp(self.events_path))
 
                 if self.waveform_paths:
                     ds.add_waveforms(paths=fp(self.waveform_paths))
