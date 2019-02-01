@@ -165,6 +165,9 @@ class UniformSamplerPhase(SamplerPhase):
 
 class GuidedSamplerPhase(SamplerPhase):
 
+    bp_input_grid_lf = None
+    bp_input_grid_hf = None
+    grad_input_grid = None
     try:
         bp_input_grid_lf = num.loadtxt('semb_lf.ASC', unpack=True)
     except OSError:
@@ -248,7 +251,7 @@ class GuidedSamplerPhase(SamplerPhase):
                     sampled_index_xy.append(self.prior_bp_loc.rvs())
             if self.grad_input_grid is not None:
                     sampled_index_xy.append(self.prior_grad_loc.rvs(), size=5)
-            model = num.random.choice(sampled_index_xy, 1)[0]
+            sampled_index_xy = num.random.choice(sampled_index_xy, 1)[0]
             model = problem.random_uniform(xbounds, self.get_rstate())
             source = problem.get_source(model)
             es_list, ns_list = self.get_distance(source, self.bp_input_grid_lf)
@@ -259,8 +262,6 @@ class GuidedSamplerPhase(SamplerPhase):
                 check_bounds_lf = False
                 model[1] = north_shift
                 model[0] = east_shift
-            else:
-                continue
 
             if source.nucleation_x is not None:
                 check_bounds_hf = True
@@ -292,6 +293,7 @@ class GuidedSamplerPhase(SamplerPhase):
             if check_bounds_hf is False and check_bounds_lf is False:
                 check_bounds = False
         return Sample(model=model)
+
 
 class DirectedSamplerPhase(SamplerPhase):
     scatter_scale = Float.T(
