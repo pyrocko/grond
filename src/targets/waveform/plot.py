@@ -1299,6 +1299,9 @@ location of the source.
             cg_str = '.'.join(cg)
 
             targets = cg_to_targets[cg]
+            if len(targets) == 0:
+                continue
+
             assert all(target_index[target][0] == target_index[target][1] - 1
                        for target in targets)
 
