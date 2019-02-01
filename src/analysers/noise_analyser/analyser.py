@@ -41,7 +41,7 @@ def get_phase_arrival_time(engine, source, target, wavename):
     return store.t(wavename, (depth, dist)) + source.time
 
 
-def seismic_noise_variance(traces, engine, event, targets,
+def seismic_noise_variance(traces, engine, source, targets,
                            nwindows, pre_event_noise_duration,
                            check_events, phase_def):
     """
@@ -55,8 +55,8 @@ def seismic_noise_variance(traces, engine, event, targets,
         of :class:`pyrocko.trace.Trace` containing observed data
     engine : :class:`pyrocko.gf.seismosizer.LocalEngine`
         processing object for synthetics calculation
-    event : :class:`pyrocko.meta.Event`
-        reference event from catalog
+    source : :class:`pyrocko.gf.Source`
+        reference source
     targets : list
         of :class:`pyrocko.gf.seismosizer.Targets`
     nwindows : integer
@@ -89,7 +89,7 @@ def seismic_noise_variance(traces, engine, event, targets,
         else:
 
             arrival_time = get_phase_arrival_time(
-                engine=engine, source=event,
+                engine=engine, source=source,
                 target=target, wavename=phase_def)
             if check_events:
                 events = global_cmt_catalog.get_events(
@@ -169,7 +169,9 @@ class NoiseAnalyser(Analyser):
     '''
 
     def __init__(self, nwindows, pre_event_noise_duration,
-                 check_events, phase_def, statistic, mode, cutoff):
+                 check_events, phase_def, statistic, mode, cutoff,
+                 cutoff_exception_on_high_snr):
+
         Analyser.__init__(self)
         self.nwindows = nwindows
         self.pre_event_noise_duration = pre_event_noise_duration
@@ -178,6 +180,7 @@ class NoiseAnalyser(Analyser):
         self.statistic = statistic
         self.mode = mode
         self.cutoff = cutoff
+        self.cutoff_exception_on_high_snr = cutoff_exception_on_high_snr
 
     def analyse(self, problem, ds):
 
@@ -189,87 +192,141 @@ class NoiseAnalyser(Analyser):
         if not problem.has_waveforms:
             return
 
-        traces = []
         engine = problem.get_engine()
-        event = ds.get_event()
-        for target in problem.waveform_targets:  # deltat diff check?
+        source = problem.base_source
+
+        paths = sorted(set(t.path for t in problem.waveform_targets))
+
+        for path in paths:
+            targets = [t for t in problem.waveform_targets if t.path == path]
+
+            deltats = set()
+            for target in targets:  # deltat diff check?
                 store = engine.get_store(target.store_id)
-                deltat = store.config.deltat
-        for target in problem.waveform_targets:
+                deltats.add(float(store.config.deltat))
+
+            if len(deltats) > 1:
+                logger.warn(
+                    'Differing sampling rates in stores used. Using highest.')
+
+            deltat = min(deltats)
+
+            data = []
+            for target in targets:
                 try:
                     freqlimits = list(target.get_freqlimits())
                     freqlimits = tuple(freqlimits)
-                    tfade = 1./freqlimits[0]
+
+                    source = problem.base_source
+
                     arrival_time = get_phase_arrival_time(
-                        engine=engine, source=event,
-                        target=target, wavename=self.phase_def)
-                    traces.append(
+                        engine=engine,
+                        source=source,
+                        target=target,
+                        wavename=self.phase_def)
+
+                    tmin_fit, tmax_fit, tfade, tfade_taper = \
+                        target.get_taper_params(engine, source)
+
+                    data.append([
+                        tmin_fit,
+                        tmax_fit,
                         ds.get_waveform(
                             target.codes,
                             tmin=arrival_time-tdur-tfade,
-                            tmax=arrival_time-tfade,
+                            tmax=tmax_fit+tfade,
                             tfade=tfade,
                             freqlimits=freqlimits,
                             deltat=deltat,
-                            backazimuth=target.
-                            get_backazimuth_for_waveform(),
+                            backazimuth=target.get_backazimuth_for_waveform(),
                             tinc_cache=1./freqlimits[0],
-                            debug=False))
+                            debug=False)])
 
                 except (NotFound, OutOfBounds) as e:
                     logger.debug(str(e))
-                    traces.append(None)
+                    data.append([None, None, None])
 
-        var_ds, ev_ws = seismic_noise_variance(
-            traces, engine, event, problem.waveform_targets,
-            self.nwindows, tdur,
-            self.check_events, self.phase_def)
+            traces_noise = []
+            traces_signal = []
+            for tmin_fit, tmax_fit, tr in data:
+                if tr:
+                    traces_noise.append(
+                        tr.chop(tr.tmin, tr.tmin + tdur, inplace=False))
+                    traces_signal.append(
+                        tr.chop(tmin_fit, tmax_fit, inplace=False))
+                else:
+                    traces_noise.append(None)
+                    traces_signal.append(None)
 
-        if self.statistic == 'var':
-            noise = var_ds
-        elif self.statistic == 'std':
-            noise = num.sqrt(var_ds)
-        else:
-            assert False, 'invalid statistic argument'
+            var_ds, ev_ws = seismic_noise_variance(
+                traces_noise, engine, source, targets,
+                self.nwindows, tdur,
+                self.check_events, self.phase_def)
 
-        norm_noise = meta.nanmedian(noise)
-        if norm_noise == 0:
-            logger.info(
-                'Noise Analyser returned a weight of 0 for all stations.')
+            amp_maxs = num.array([
+                (tr.absmax()[1] if tr else num.nan) for tr in traces_signal])
 
-        ok = num.isfinite(noise)
-        assert num.all(noise[ok] >= 0.0)
+            if self.statistic == 'var':
+                noise = var_ds
+            elif self.statistic == 'std':
+                noise = num.sqrt(var_ds)
+            else:
+                assert False, 'invalid statistic argument'
 
-        weights = num.zeros(noise.size)
-        if self.mode == 'weighting':
-            weights[ok] = norm_noise / noise[ok]
-        elif self.mode == 'weeding':
-            weights[ok] = 1.0
-        else:
-            assert False, 'invalid mode argument'
+            ok = num.isfinite(noise)
 
-        if self.cutoff is not None:
-            weights[ok] = num.where(
-                noise[ok] <= norm_noise * self.cutoff,
-                weights[ok], 0.0)
+            if num.sum(ok) == 0:
+                norm_noise = 0.0
+            else:
+                norm_noise = num.median(noise[ok])
 
-        if self.check_events:
-            weights = weights*ev_ws
+            if norm_noise == 0.0:
+                logger.info(
+                    'Noise Analyser returned a weight of 0 for all stations.')
 
-        for itarget, target in enumerate(problem.waveform_targets):
-            logger.info((
-                'Noise analysis for target "%s":\n'
-                '  var: %g\n'
-                '  std: %g\n'
-                '  contamination_weight: %g\n'
-                '  weight: %g') % (
-                    target.string_id(), var_ds[itarget],
-                    num.sqrt(var_ds[itarget]), ev_ws[itarget],
-                    weights[itarget]))
+            assert num.all(noise[ok] >= 0.0)
 
-        for weight, target in zip(weights, problem.waveform_targets):
-            target.analyser_results['noise'] = \
-                NoiseAnalyserResult(weight=float(weight))
+            factor = self.cutoff_exception_on_high_snr
+            if factor is not None:
+                high_snr = num.zeros(ok.size, dtype=num.bool)
+                high_snr[ok] = amp_maxs[ok] > factor * num.sqrt(var_ds)[ok]
+
+                ok = num.logical_or(ok, high_snr)
+
+            weights = num.zeros(noise.size)
+            if self.mode == 'weighting':
+                weights[ok] = norm_noise / noise[ok]
+            elif self.mode == 'weeding':
+                weights[ok] = 1.0
+            else:
+                assert False, 'invalid mode argument'
+
+            if self.cutoff is not None:
+                weights[ok] = num.where(
+                    noise[ok] <= norm_noise * self.cutoff,
+                    weights[ok], 0.0)
+
+            if self.check_events:
+                weights = weights*ev_ws
+
+            for itarget, target in enumerate(targets):
+                logger.info((
+                    'Noise analysis for target "%s":\n'
+                    '  var: %g\n'
+                    '  std: %g\n'
+                    '  max/std: %g\n'
+                    '  contamination_weight: %g\n'
+                    '  weight: %g') % (
+                        target.string_id(),
+                        var_ds[itarget],
+                        num.sqrt(var_ds[itarget]),
+                        amp_maxs[itarget] / num.sqrt(var_ds[itarget]),
+                        ev_ws[itarget],
+                        weights[itarget]))
+
+            for weight, target in zip(weights, targets):
+                target.analyser_results['noise'] = \
+                    NoiseAnalyserResult(weight=float(weight))
 
 
 class NoiseAnalyserResult(AnalyserResult):
@@ -318,12 +375,18 @@ class NoiseAnalyserConfig(AnalyserConfig):
         help='Set weight to zero, when noise level exceeds median by the '
              'given cutoff factor.')
 
+    cutoff_exception_on_high_snr = Float.T(
+        optional=True,
+        help='Exclude from cutoff when max amplitude exceeds standard '
+             'deviation times this factor.')
+
     def get_analyser(self):
         return NoiseAnalyser(
             nwindows=self.nwindows,
             pre_event_noise_duration=self.pre_event_noise_duration,
             check_events=self.check_events, phase_def=self.phase_def,
-            statistic=self.statistic, mode=self.mode, cutoff=self.cutoff)
+            statistic=self.statistic, mode=self.mode, cutoff=self.cutoff,
+            cutoff_exception_on_high_snr=self.cutoff_exception_on_high_snr)
 
 
 __all__ = '''
