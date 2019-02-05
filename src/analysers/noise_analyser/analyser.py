@@ -7,7 +7,6 @@ from pyrocko.guts import Int, Bool, Float, String, StringChoice
 from pyrocko.gf.meta import OutOfBounds
 from ..base import Analyser, AnalyserConfig, AnalyserResult
 from grond.dataset import NotFound
-from grond import meta
 
 logger = logging.getLogger('grond.analysers.NoiseAnalyser')
 
