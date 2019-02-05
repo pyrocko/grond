@@ -18,6 +18,16 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
 
 
+class StoreIDSelector(Object):
+    pass
+
+
+class Crust2StoreIDSelector(StoreIDSelector):
+    template = String.T()  # 'crust2_${id}_hf'
+
+    pass
+
+
 class DomainChoice(StringChoice):
     choices = [
         'time_domain',
@@ -111,6 +121,9 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
+    store_id_selector = StoreIDSelector.T(
+        optional=True,
+        help='select GF store based on event-station geometry.')
 
     def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')
@@ -122,6 +135,12 @@ class WaveformTargetGroup(TargetGroup):
 
                 nslc = st.nsl() + (cha,)
 
+                if self.store_id_selector:
+                    store_id = self.store_id_selector.get_store_id(
+                        event, st, cha)
+                else:
+                    store_id = self.store_id
+
                 target = WaveformMisfitTarget(
                     quantity='displacement',
                     codes=nslc,
@@ -129,7 +148,7 @@ class WaveformTargetGroup(TargetGroup):
                     lon=st.lon,
                     depth=st.depth,
                     interpolation=self.interpolation,
-                    store_id=self.store_id,
+                    store_id=store_id,
                     misfit_config=self.misfit_config,
                     manual_weight=self.weight,
                     normalisation_family=self.normalisation_family,
@@ -179,6 +198,8 @@ class WaveformTargetGroup(TargetGroup):
                 elif cha == 'Z':
                     target.azimuth = 0.
                     target.dip = -90.
+
+
 
                 target.set_dataset(ds)
                 targets.append(target)
@@ -673,6 +694,8 @@ def weed(origin, targets, limit, neighborhood=3):
 
 
 __all__ = '''
+    StoreIDSelector
+    Crust2StoreIDSelector
     WaveformTargetGroup
     WaveformMisfitConfig
     WaveformMisfitTarget
