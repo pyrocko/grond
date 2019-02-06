@@ -27,7 +27,7 @@ class StoreIDSelector(Object):
 
 
 class Crust2StoreIDSelector(StoreIDSelector):
-    template = String.T(help='template for gf store ID')
+    template = String.T(help='template for gf store ID, for example crust2_${id}')
 
     def get_store_id(self, event, st, cha):
         s = Template(self.template)
