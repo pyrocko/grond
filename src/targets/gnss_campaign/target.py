@@ -98,6 +98,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         self._obs_data = None
         self._sigma = None
         self._weights = None
+        self._station_component_mask = None
 
     @property
     def id(self):
@@ -187,6 +188,8 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         obs = self.obs_data
         weights = self.weights
         nstations = self.campaign.nstations
+        misfit_value = num.zeros(num.shape(self.station_component_mask))
+        misfit_norm = num.zeros(num.shape(self.station_component_mask))
 
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
@@ -200,14 +203,19 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         res = num.abs(obs - syn)
 
-        misfit_value = res * weights
-        misfit_norm = obs * weights
-
+        misfit_value0 = res * weights
+        misfit_norm0 = obs * weights
+        
+        i_truecomponents = num.where(self.station_component_mask)
+        misfit_value[i_truecomponents] = misfit_value0
+        misfit_norm[i_truecomponents] = misfit_norm0
         misfit_value = num.sum(
             misfit_value.reshape((nstations, 3)), axis=1)
         misfit_norm = num.sum(
             misfit_norm.reshape((nstations, 3)), axis=1)
-
+        misfit_value = misfit_value.reshape(nstations, 1)
+        misfit_norm = misfit_norm.reshape(nstations, 1)
+        
         mf = num.hstack((misfit_value, misfit_norm))
         result = GNSSCampaignMisfitResult(
             misfits=mf)
@@ -234,12 +242,19 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                     % self.campaign.name)
         if rstate is None:
             rstate = num.random.RandomState()
-
         campaign = self.campaign
         bootstraps = num.empty((nbootstraps, campaign.nstations))
+        sigmas = num.array([])
+        for s in campaign.stations:
+            if s.north:
+                sigmas = num.hstack((sigmas, s.north.sigma))
+            if s.east:
+                sigmas = num.hstack((sigmas, s.east.sigma))
+            if s.up:
+                sigmas = num.hstack((sigmas, s.east.up))
 
-        sigmas = num.array([(s.north.sigma, s.east.sigma, s.up.sigma)
-                            for s in campaign.stations])
+        #sigmas = num.array([(s.north.sigma, s.east.sigma, s.up.sigma)
+        #                    for s in campaign.stations])
         sigmas = num.abs(sigmas)
 
         if not num.all(sigmas):
@@ -247,8 +262,11 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                            ' all station\'s sigma are 0.0!')
 
         for ibs in range(nbootstraps):
-            syn_noise = rstate.normal(scale=sigmas.ravel()) \
-                .reshape(campaign.nstations, 3) \
+            syn_noise = num.zeros(num.shape(self.station_component_mask))
+            i_truecomponents = num.where(self.station_component_mask)
+            syn_noise0 = rstate.normal(scale=sigmas.ravel())
+            syn_noise[i_truecomponents] = syn_noise0
+            syn_noise = syn_noise.reshape(campaign.nstations, 3) \
                 .sum(axis=1)
 
             bootstraps[ibs, :] = syn_noise
