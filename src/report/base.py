@@ -12,7 +12,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 from pyrocko import guts, util
 from pyrocko.model import Event
-from pyrocko.guts import Object, String, Unicode
+from pyrocko.guts import Object, String, Unicode, Bool
 
 from grond.meta import HasPaths, Path, expand_template, GrondError
 
@@ -49,12 +49,16 @@ class ReportConfig(HasPaths):
         help='Description shown on report overview page.')
     plot_config_collection = PlotConfigCollection.T(
         help='Configurations for plots to be included in the report.')
+    make_archive = Bool.T(
+        default=True,
+        help='Set to `false` to prevent creation of compressed archive.')
 
 
 class ReportInfo(Object):
     title = Unicode.T(optional=True)
     description = Unicode.T(optional=True)
     version_info = info.VersionInfo.T()
+    have_archive = Bool.T(optional=True)
 
 
 def read_config(path):
@@ -255,7 +259,8 @@ def report_index(report_config=None):
         ReportInfo(
             title=report_config.title,
             description=report_config.description,
-            version_info=info.version_info()),
+            version_info=info.version_info(),
+            have_archive=report_config.make_archive),
         filename=op.join(report_base_path, 'info.yaml'))
 
     app_dir = op.join(op.split(__file__)[0], 'app')
@@ -266,6 +271,9 @@ def report_index(report_config=None):
 def report_archive(report_config):
     if report_config is None:
         report_config = ReportConfig()
+
+    if not report_config.make_archive:
+        return
 
     report_base_path = report_config.report_base_path
 

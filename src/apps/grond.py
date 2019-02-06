@@ -1157,6 +1157,11 @@ def command_report(args):
             '--parallel', dest='nparallel', type=int, default=1,
             help='set number of runs to process in parallel, '
                  'If set to more than one, --status=quiet is implied.')
+        parser.add_option(
+            '--no-archive',
+            dest='no_archive',
+            action='store_true',
+            help='don\'t create archive file.')
 
     parser, options, args = cl_parse('report', args, setup)
 
@@ -1181,6 +1186,10 @@ def command_report(args):
 
         except grond.GrondError as e:
             die(str(e))
+
+    # commandline options that can override config values
+    if options.no_archive:
+        conf.make_archive = False
 
     if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
         conf.report_base_path = conf.rel_path(args[0])
