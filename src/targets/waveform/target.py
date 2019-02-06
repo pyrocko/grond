@@ -15,6 +15,7 @@ from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
 from grond.meta import has_get_plot_classes
 
 from pyrocko import crust2x2
+from string import Template
 
 
 guts_prefix = 'grond'
@@ -26,10 +27,11 @@ class StoreIDSelector(Object):
 
 
 class Crust2StoreIDSelector(StoreIDSelector):
-    template = String.T()
+    template = String.T(help='template for gf store ID')
 
     def get_store_id(self, event, st, cha):
-        return self.template % str.lower(crust2x2.get_profile(event.lat, event.lon)._ident)
+        s = Template(self.template)
+        return s.substitute(id=(crust2x2.get_profile(event.lat, event.lon)._ident).lower())
 
 
 class DomainChoice(StringChoice):
