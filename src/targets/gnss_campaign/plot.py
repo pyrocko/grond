@@ -127,8 +127,9 @@ displacements derived from best rupture model (red).
                 sta.east.shift = result.statics_syn['displacement.e'][ista]
                 sta.east.sigma = 0.
 
-                sta.up.shift = -result.statics_syn['displacement.d'][ista]
-                sta.up.sigma = 0.
+                if sta.up:
+                    sta.up.shift = -result.statics_syn['displacement.d'][ista]
+                    sta.up.sigma = 0.
 
             m = automap.Map(
                 width=self.size_cm[0],
@@ -142,9 +143,14 @@ displacements derived from best rupture model (red).
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
-            offset_scale = num.array(
-                [num.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
-                 for s in campaign.stations + model_camp.stations]).max()
+            if sta.up:
+                offset_scale = num.array(
+                    [num.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
+                    for s in campaign.stations + model_camp.stations]).max()
+            else:
+                offset_scale = num.array(
+                    [num.sqrt(s.east.shift**2 + s.north.shift**2)
+                    for s in campaign.stations + model_camp.stations]).max()
 
             if vertical:
                 m.add_gnss_campaign(campaign, psxy_style={
