@@ -27,11 +27,13 @@ class StoreIDSelector(Object):
 
 
 class Crust2StoreIDSelector(StoreIDSelector):
-    template = String.T(help='template for gf store ID, for example crust2_${id}')
+    template = String.T(help='template for gf store ID,\
+                              for example crust2_${id}')
 
     def get_store_id(self, event, st, cha):
         s = Template(self.template)
-        return s.substitute(id=(crust2x2.get_profile(event.lat, event.lon)._ident).lower())
+        return s.substitute(id=(
+            crust2x2.get_profile(event.lat, event.lon)._ident).lower())
 
 
 class DomainChoice(StringChoice):
@@ -204,8 +206,6 @@ class WaveformTargetGroup(TargetGroup):
                 elif cha == 'Z':
                     target.azimuth = 0.
                     target.dip = -90.
-
-
 
                 target.set_dataset(ds)
                 targets.append(target)
