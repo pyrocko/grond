@@ -926,6 +926,18 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             }
         };
 
+        funcs.have_archive = function() {
+            if (info) {
+                if (info.have_archive === undefined) {
+                    return true;
+                } else {
+                    return info.have_archive;
+                }
+            } else {
+                return true;
+            }
+        };
+
         return funcs;
     })
 
@@ -934,4 +946,5 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 		$scope.get_report_grond_versions = ReportList.get_grond_versions;
 
         $scope.get_info = Info.get_info;
+        $scope.have_archive = Info.have_archive;
     });
