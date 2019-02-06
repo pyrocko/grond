@@ -194,7 +194,7 @@ class CMTProblem(Problem):
         x = self.get_parameter_array(d)
 
         source = self.get_source(x)
-        for t in self.targets:
+        for t in self.waveform_targets:
             if (self.distance_min > num.asarray(t.distance_to(source))).any():
                 raise Forbidden()
 
