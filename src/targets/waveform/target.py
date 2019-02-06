@@ -14,6 +14,9 @@ from grond.dataset import NotFound
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
 from grond.meta import has_get_plot_classes
 
+from pyrocko import crust2x2
+
+
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
 
@@ -23,9 +26,10 @@ class StoreIDSelector(Object):
 
 
 class Crust2StoreIDSelector(StoreIDSelector):
-    template = String.T()  # 'crust2_${id}_hf'
+    template = String.T()
 
-    pass
+    def get_store_id(self, event, st, cha):
+        return self.template % str.lower(crust2x2.get_profile(event.lat, event.lon)._ident)
 
 
 class DomainChoice(StringChoice):
