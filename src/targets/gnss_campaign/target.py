@@ -251,7 +251,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
             if s.east:
                 sigmas = num.hstack((sigmas, s.east.sigma))
             if s.up:
-                sigmas = num.hstack((sigmas, s.east.up))
+                sigmas = num.hstack((sigmas, s.up.sigma))
 
         #sigmas = num.array([(s.north.sigma, s.east.sigma, s.up.sigma)
         #                    for s in campaign.stations])
