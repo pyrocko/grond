@@ -285,12 +285,10 @@ class NoiseAnalyser(Analyser):
 
             assert num.all(noise[ok] >= 0.0)
 
-            factor = self.cutoff_exception_on_high_snr
-            if factor is not None:
-                high_snr = num.zeros(ok.size, dtype=num.bool)
-                high_snr[ok] = amp_maxs[ok] > factor * num.sqrt(var_ds)[ok]
-
-                ok = num.logical_or(ok, high_snr)
+            ce_factor = self.cutoff_exception_on_high_snr
+            high_snr = num.zeros(ok.size, dtype=num.bool)
+            if ce_factor is not None:
+                high_snr[ok] = amp_maxs[ok] > ce_factor * num.sqrt(var_ds)[ok]
 
             weights = num.zeros(noise.size)
             if self.mode == 'weighting':
@@ -302,7 +300,9 @@ class NoiseAnalyser(Analyser):
 
             if self.cutoff is not None:
                 weights[ok] = num.where(
-                    noise[ok] <= norm_noise * self.cutoff,
+                    num.logical_or(
+                        noise[ok] <= norm_noise * self.cutoff,
+                        high_snr[ok]),
                     weights[ok], 0.0)
 
             if self.check_events:
@@ -314,12 +314,15 @@ class NoiseAnalyser(Analyser):
                     '  var: %g\n'
                     '  std: %g\n'
                     '  max/std: %g\n'
+                    '  %s/median(%s): %g\n'
                     '  contamination_weight: %g\n'
                     '  weight: %g') % (
                         target.string_id(),
                         var_ds[itarget],
                         num.sqrt(var_ds[itarget]),
                         amp_maxs[itarget] / num.sqrt(var_ds[itarget]),
+                        self.statistic, self.statistic,
+                        noise[itarget] / norm_noise,
                         ev_ws[itarget],
                         weights[itarget]))
 
