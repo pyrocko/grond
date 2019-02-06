@@ -565,16 +565,20 @@ class Problem(Object):
 
         return results
 
-    def get_random_model(self):
+    def get_random_model(self, ntries_limit=100):
         xbounds = self.get_parameter_bounds()
 
-        while True:
+        for _ in range(ntries_limit):
             x = self.random_uniform(xbounds, rstate=g_rstate)
             try:
                 return self.preconstrain(x)
 
             except Forbidden:
                 pass
+
+        raise GrondError(
+            'Could not find any suitable candidate sample within %i tries' % (
+                ntries_limit))
 
 
 class ProblemInfoNotAvailable(GrondError):
