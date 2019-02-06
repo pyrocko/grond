@@ -587,10 +587,16 @@ class Dataset(object):
                 tr.deltat = deltat
 
             resp = self.get_response(tr, quantity=quantity)
-            trs_restituted.append(
-                tr.transfer(
-                    tfade=tfade, freqlimits=freqlimits,
-                    transfer_function=resp, invert=True))
+            try:
+                trs_restituted.append(
+                    tr.transfer(
+                        tfade=tfade, freqlimits=freqlimits,
+                        transfer_function=resp, invert=True))
+
+            except trace.InfiniteResponse:
+                raise NotFound(
+                    'Instrument response deconvolution failed '
+                    '(divide by zero)', tr.nslc_id)
 
         return trs_restituted, trs_raw
 
