@@ -100,7 +100,6 @@ class GrondInit(object):
 
     def get_content_example(self, abbrv):
         try:
-            print(abbrv, self.abbrv_to_example_dir(abbrv))
             fn = self._get_example_config(
                 self.abbrv_to_example_dir(abbrv))
         except OSError:

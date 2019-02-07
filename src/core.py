@@ -7,7 +7,6 @@ import copy
 import shutil
 import glob
 import os.path as op
-from collections import defaultdict
 import numpy as num
 
 from pyrocko.guts import Object, String, Float, List
@@ -250,9 +249,9 @@ def check(
         n_random_synthetics=10,
         stations_used_path=None):
 
-    fns = defaultdict(list)
     markers = []
     stations_used = {}
+    erroneous = []
     for ievent, event_name in enumerate(event_names):
         ds = config.get_dataset(event_name)
         event = ds.get_event()
@@ -422,6 +421,8 @@ def check(
                 event.name or util.time_to_str(event.time),
                 str(e)))
 
+            erroneous.append(event)
+
         if show_waveforms:
             trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
 
@@ -430,7 +431,10 @@ def check(
             stations.sort(key=lambda s: s.nsl())
             model.dump_stations(stations, stations_used_path)
 
-    return fns
+    if erroneous:
+        raise GrondError(
+            'Check failed for events: %s'
+            % ', '.join(ev.name for ev in erroneous))
 
 
 g_state = {}

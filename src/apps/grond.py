@@ -7,6 +7,7 @@ import os.path as op
 import logging
 from optparse import OptionParser, OptionValueError
 import grond
+from io import StringIO
 
 try:
     from pyrocko import util, marker
@@ -181,7 +182,7 @@ def main(args=None):
     if not args:
         args = sys.argv
 
-    args = list(sys.argv)
+    args = list(args)
     if len(args) < 2:
         sys.exit('Usage: %s' % usage)
 
@@ -200,7 +201,7 @@ def main(args=None):
         sys.exit('Usage: %s' % usage)
 
     else:
-        die('no such subcommand: %s' % command)
+        die('No such subcommand: %s' % command)
 
 
 def add_common_options(parser):
@@ -314,17 +315,20 @@ def cl_parse(command, args, setup=None, details=None):
     return parser, options, args
 
 
-def die(message, err=''):
+def die(message, err='', prelude=''):
+    if prelude:
+        prelude = prelude + '\n'
+
     if err:
-        sys.exit('%s failed: %s \n %s' % (program_name, message, err))
-    else:
-        sys.exit('%s failed: %s' % (program_name, message))
+        err = '\n' + err
+
+    sys.exit('%s%s failed: %s%s' % (prelude, program_name, message, err))
 
 
 def help_and_die(parser, message):
-    parser.print_help(sys.stderr)
-    sys.stderr.write('\n')
-    die(message)
+    sio = StringIO()
+    parser.print_help(sio)
+    die(message, prelude=sio.getvalue())
 
 
 def multiple_choice(option, opt_str, value, parser, choices):
@@ -486,7 +490,7 @@ def command_init(args):
                         name=name, desc=desc, padding=padding, c=Color))
         return '\n'.join(rstr)
 
-    help_text = '''Available configuration examples for grond.
+    help_text = '''Available configuration examples for Grond.
 
 {c.BOLD}Example Projects{c.END}
 
@@ -524,7 +528,7 @@ def command_init(args):
 
     if args[0] == 'list':
         print(help_text)
-        sys.exit(0)
+        return
 
     if args[0].startswith('example_'):
         if len(args) == 1:
@@ -532,11 +536,10 @@ def command_init(args):
             if not config:
                 help_and_die(parser, 'Unknown example: %s' % args[0])
 
-            sys.stdout.write(config)
+            sys.stdout.write(config+'\n\n')
 
-            print('\n{c.BOLD}Hint{c.END}\n\n'
-                  'To create a project, use: grond init <example> <projectdir>'
-                  .format(c=Color, example=args[0]))
+            logger.info('Hint: To create a project, use: grond init <example> '
+                        '<projectdir>'.format(c=Color, example=args[0]))
 
         elif op.exists(op.abspath(args[1])) and not options.force:
             help_and_die(
@@ -1154,6 +1157,11 @@ def command_report(args):
             '--parallel', dest='nparallel', type=int, default=1,
             help='set number of runs to process in parallel, '
                  'If set to more than one, --status=quiet is implied.')
+        parser.add_option(
+            '--no-archive',
+            dest='no_archive',
+            action='store_true',
+            help='don\'t create archive file.')
 
     parser, options, args = cl_parse('report', args, setup)
 
@@ -1178,6 +1186,10 @@ def command_report(args):
 
         except grond.GrondError as e:
             die(str(e))
+
+    # commandline options that can override config values
+    if options.no_archive:
+        conf.make_archive = False
 
     if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
         conf.report_base_path = conf.rel_path(args[0])

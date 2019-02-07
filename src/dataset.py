@@ -126,6 +126,9 @@ class Dataset(object):
         if stationxml_filenames is not None and len(stationxml_filenames) > 0:
 
             for stationxml_filename in stationxml_filenames:
+                if not op.exists(stationxml_filename):
+                    continue
+
                 logger.debug(
                     'Loading stations from StationXML file "%s"...' %
                     stationxml_filename)
@@ -181,6 +184,9 @@ class Dataset(object):
 
         if stationxml_filenames:
             for stationxml_filename in stationxml_filenames:
+                if not op.exists(stationxml_filename):
+                    continue
+
                 logger.debug(
                     'Loading StationXML responses from "%s"...' %
                     stationxml_filename)
@@ -602,10 +608,16 @@ class Dataset(object):
                 tr.deltat = deltat
 
             resp = self.get_response(tr, quantity=quantity)
-            trs_restituted.append(
-                tr.transfer(
-                    tfade=tfade, freqlimits=freqlimits,
-                    transfer_function=resp, invert=True))
+            try:
+                trs_restituted.append(
+                    tr.transfer(
+                        tfade=tfade, freqlimits=freqlimits,
+                        transfer_function=resp, invert=True))
+
+            except trace.InfiniteResponse:
+                raise NotFound(
+                    'Instrument response deconvolution failed '
+                    '(divide by zero)', tr.nslc_id)
 
         return trs_restituted, trs_raw
 

@@ -128,13 +128,18 @@ corresponding misfit values.
         cmap = cm.jet
         msize = self.marker_size
         axes = None
-        figs = []
         fig = None
+        item_fig = None
+        nfigs = 0
         alpha = 0.5
         for ipar in range(npar):
             impl = ipar % (nfx * nfy) + 1
 
             if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
@@ -144,13 +149,13 @@ corresponding misfit values.
                     bottom=5.,
                     wspace=7., hspace=2., units=fontsize)
 
-                item = PlotItem(name='fig_%i' % (len(figs)+1))
+                item = PlotItem(name='fig_%i' % (nfigs+1))
                 item.attributes['parameters'] = []
-                figs.append((item, fig))
+                item_fig = (item, fig)
 
             par = problem.parameters[ipar]
 
-            figs[-1][0].attributes['parameters'].append(par.name)
+            item_fig[0].attributes['parameters'].append(par.name)
 
             axes = fig.add_subplot(nfy, nfx, impl)
             labelpos(axes, 2.5, 2.0)
@@ -176,6 +181,10 @@ corresponding misfit values.
             impl = (npar + idep) % (nfx * nfy) + 1
 
             if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
                 fig = plt.figure(figsize=self.size_inch)
                 labelpos = mpl_margins(
                     fig, nw=nfx, nh=nfy,
@@ -185,13 +194,13 @@ corresponding misfit values.
                     bottom=5.,
                     wspace=7., hspace=2., units=fontsize)
 
-                item = PlotItem(name='fig_%i' % (len(figs)+1))
+                item = PlotItem(name='fig_%i' % (nfigs+1))
                 item.attributes['parameters'] = []
 
-                figs.append((item, fig))
+                item_fig = (item, fig)
 
             par = problem.dependants[idep]
-            figs[-1][0].attributes['parameters'].append(par.name)
+            item_fig[0].attributes['parameters'].append(par.name)
 
             axes = fig.add_subplot(nfy, nfx, impl)
             labelpos(axes, 2.5, 2.0)
@@ -215,6 +224,10 @@ corresponding misfit values.
 
         impl = (npar + ndep) % (nfx * nfy) + 1
         if impl == 1:
+            if item_fig:
+                yield item_fig
+                nfigs += 1
+
             fig = plt.figure(figsize=self.size_inch)
             labelpos = mpl_margins(
                 fig, nw=nfx, nh=nfy,
@@ -224,10 +237,10 @@ corresponding misfit values.
                 bottom=5.,
                 wspace=7., hspace=2., units=fontsize)
 
-            item = PlotItem(name='fig_%i' % (len(figs)+1))
+            item = PlotItem(name='fig_%i' % (nfigs+1))
             item.attributes['parameters'] = []
 
-            figs.append((item, fig))
+            item_fig = (item, fig)
 
         axes = fig.add_subplot(nfy, nfx, impl)
         labelpos(axes, 2.5, 2.0)
@@ -251,7 +264,8 @@ corresponding misfit values.
 
         axes.set_ylabel('Misfit')
 
-        return figs
+        yield item_fig
+        nfigs += 1
 
 
 class ContributionsPlot(PlotConfig):

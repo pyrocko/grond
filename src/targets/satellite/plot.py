@@ -336,6 +336,11 @@ data and (right) the model residual.
                 fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
                                         + max(abs(fe-off_e))**2)
                 fault_size *= self.map_scale
+                if fault_size == 0.0:
+                    if scene.frame.isMeter():
+                        fault_size = 1000.0
+                    elif scene.frame.isDegree():
+                        fault_size = 1.0
 
                 for ax in axes:
                     ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)

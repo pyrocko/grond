@@ -1,3 +1,4 @@
+import re
 import os.path as op
 from pyrocko import guts, gf
 from pyrocko.guts import Bool, List
@@ -131,6 +132,15 @@ class Config(HasPaths):
         self.setup_modelling_environment(problem)
         return problem
 
+    def get_elements(self, ypath):
+        return list(guts.iter_elements(self, ypath))
+
+    def set_elements(self, ypath, value):
+        guts.set_elements(self, ypath, value, regularize=True)
+
+    def clone(self):
+        return guts.clone(self)
+
 
 def read_config(path):
     try:
@@ -182,6 +192,69 @@ def diff_configs(path1, path2):
         sys.stdout.writelines(color_diff(result))
     else:
         sys.stdout.writelines(result)
+
+
+class YPathError(GrondError):
+    pass
+
+
+def parse_yname(yname):
+    ident = r'[a-zA-Z][a-zA-Z0-9_]*'
+    rint = r'-?[0-9]+'
+    m = re.match(
+        r'^(%s)(\[((%s)?(:)(%s)?|(%s))\])?$'
+        % (ident, rint, rint, rint), yname)
+
+    if not m:
+        raise YPathError('Syntax error in component: "%s"' % yname)
+
+    d = dict(
+        name=m.group(1))
+
+    if m.group(2):
+        if m.group(5):
+            istart = iend = None
+            if m.group(4):
+                istart = int(m.group(4))
+            if m.group(6):
+                iend = int(m.group(6))
+
+            d['slice'] = (istart, iend)
+        else:
+            d['index'] = int(m.group(7))
+
+    return d
+
+
+def _decend(obj, ynames):
+    if ynames:
+        for sobj in iter_get_obj(obj, ynames):
+            yield sobj
+    else:
+        yield obj
+
+
+def iter_get_obj(obj, ynames):
+    yname = ynames.pop(0)
+    d = parse_yname(yname)
+    if d['name'] not in obj.T.propnames:
+        raise AttributeError(d['name'])
+
+    obj = getattr(obj, d['name'])
+
+    if 'index' in d:
+        sobj = obj[d['index']]
+        for ssobj in _decend(sobj, ynames):
+            yield ssobj
+
+    elif 'slice' in d:
+        for i in range(*slice(*d['slice']).indices(len(obj))):
+            sobj = obj[i]
+            for ssobj in _decend(sobj, ynames):
+                yield ssobj
+    else:
+        for sobj in _decend(obj, ynames):
+            yield sobj
 
 
 __all__ = '''
