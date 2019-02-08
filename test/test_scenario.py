@@ -13,13 +13,18 @@ _multiprocess_can_split = True
 
 def test_scenario():
     playground_dir = common.get_playground_dir()
+    common.get_test_data('gf_stores/crust2_ib/')
+    common.get_test_data('gf_stores/crust2_ib_static/')
+    gf_stores_path = common.test_data_path('gf_stores')
+
     with chdir(playground_dir):
         scenario_dir = 'scenario'
         if os.path.exists(scenario_dir):
             shutil.rmtree(scenario_dir)
 
         grond('scenario', '--targets=waveforms,insar', '--nevents=2',
-              '--nstations=3', scenario_dir)
+              '--nstations=3', '--gf-store-superdirs=%s' % gf_stores_path,
+              scenario_dir)
 
         with chdir(scenario_dir):
             config_path = 'config/scenario.gronf'
