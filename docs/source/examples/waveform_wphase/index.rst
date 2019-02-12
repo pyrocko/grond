@@ -6,14 +6,11 @@ This step-by-step guide explains how to obtain a probabilistic W-phase centroid 
 Setup
 -----
 
-To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the exercise project directory from Grond's git repositories to a place of your choice:
+To repeat this exercise on your machine, you should first `install Pyrocko <https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then create the example project with:
 
 .. code-block :: sh
 
-    # git clone https://gitext.gfz-potsdam.de/heimann/grond.git  # <- done during installation
-    cd grond
-    cp -r examples/grond-playground-wphase ~/grond-playground-wphase
-    cd ~/grond-playground-wphase
+    grond init example_wphase grond-playground-wphase/
 
 
 The project folder
@@ -128,7 +125,7 @@ optimisation with Grond, so let's have a look at it. It is a `YAML`_ file. If
 you have never heard about this file format, read section
 :doc:`/config/structure` for an overview.
 
-.. literalinclude :: ../../../../examples/grond-playground-wphase/config/wphase_cmt.gronf
+.. literalinclude :: ../../../../examples/example_wphase/config/wphase_cmt.gronf
     :language: yaml
     :caption: config/wphase_cmt.gronf (in project folder)
 
@@ -151,7 +148,7 @@ To get some more insight into the setup, we can now run
 
     grond report -so config/wphase_cmt.gronf gfz2015sfdd
 
-This will plot some diagnostic figures, create web pages in a new directory :file:`reports`, and finally open these in a web browser.
+This will plot some diagnostic figures, create web pages in a new directory :file:`report`, and finally open these in a web browser.
 
 
 Starting the optimisation
@@ -181,7 +178,7 @@ Once the optimisation is finished we can generate and open the final report with
 
 .. code-block :: sh
 
-    grond report -so config/wphase_cmt.gronf
+    grond report -so runs/wphase_cmt_gfz2015sfdd.grun
 
 Example report
 ~~~~~~~~~~~~~~

@@ -6,13 +6,31 @@ import sys
 import os.path as op
 import logging
 from optparse import OptionParser, OptionValueError
-
-from pyrocko import util, marker
-
 import grond
+from io import StringIO
+
+try:
+    from pyrocko import util, marker
+except ImportError:
+    print('Pyrocko is required for Grond!'
+          'Go to https://pyrocko.org/ for installation instructions.')
+
 
 logger = logging.getLogger('grond.main')
 km = 1e3
+
+
+class Color:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
 
 
 def d2u(d):
@@ -34,6 +52,7 @@ subcommand_descriptions = {
     'plot': 'plot optimisation result',
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
+    'tag': 'add user-defined label to run directories',
     'report': 'create result report',
     'diff': 'compare two configs or other normalized Grond YAML files',
     'qc-polarization': 'check sensor orientations with polarization analysis',
@@ -42,8 +61,11 @@ subcommand_descriptions = {
 }
 
 subcommand_usages = {
-    'init': 'init [options] <project_dir>',
-    'scenario': 'scenario [options] <project_dir>',
+    'init': (
+        'init list [options]',
+        'init <example> [options]',
+        'init <example> <projectdir> [options]'),
+    'scenario': 'scenario [options] <projectdir>',
     'events': 'events <configfile>',
     'check': 'check <configfile> <eventnames> ... [options]',
     'go': 'go <configfile> <eventnames> ... [options]',
@@ -62,6 +84,10 @@ subcommand_usages = {
         'plot config ( <rundir> | <configfile> <eventname> ) [options]'),
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
+    'tag': (
+        'tag add <tag> <rundir>',
+        'tag remove <tag> <rundir>',
+        'tag list <rundir>'),
     'report': (
         'report <rundir> ... [options]',
         'report <configfile> <eventnames> ...'),
@@ -100,6 +126,7 @@ Subcommands:
     plot            %(plot)s
     movie           %(movie)s
     export          %(export)s
+    tag             %(tag)s
     report          %(report)s
     diff            %(diff)s
     qc-polarization %(qc_polarization)s
@@ -131,7 +158,7 @@ Check out the YAML configuration in {config} and start the optimisation by:
     grond go {config}
 '''
     report = '''
-To open the reports in your web browser, run
+To open the report in your web browser, run
 
     grond report -s --open {config}
 '''
@@ -147,7 +174,7 @@ To look at the results, run
 '''
 
     def __new__(cls, command, **kwargs):
-        return 'Hint:\n' +\
+        return '{c.BOLD}Hint{c.END}\n'.format(c=Color) +\
             getattr(cls, command).format(**kwargs)
 
 
@@ -155,7 +182,7 @@ def main(args=None):
     if not args:
         args = sys.argv
 
-    args = list(sys.argv)
+    args = list(args)
     if len(args) < 2:
         sys.exit('Usage: %s' % usage)
 
@@ -174,7 +201,7 @@ def main(args=None):
         sys.exit('Usage: %s' % usage)
 
     else:
-        die('no such subcommand: %s' % command)
+        die('No such subcommand: %s' % command)
 
 
 def add_common_options(parser):
@@ -288,24 +315,27 @@ def cl_parse(command, args, setup=None, details=None):
     return parser, options, args
 
 
-def die(message, err=''):
+def die(message, err='', prelude=''):
+    if prelude:
+        prelude = prelude + '\n'
+
     if err:
-        sys.exit('%s failed: %s \n %s' % (program_name, message, err))
-    else:
-        sys.exit('%s failed: %s' % (program_name, message))
+        err = '\n' + err
+
+    sys.exit('%s%s failed: %s%s' % (prelude, program_name, message, err))
 
 
 def help_and_die(parser, message):
-    parser.print_help(sys.stderr)
-    sys.stderr.write('\n')
-    die(message)
+    sio = StringIO()
+    parser.print_help(sio)
+    die(message, prelude=sio.getvalue())
 
 
 def multiple_choice(option, opt_str, value, parser, choices):
     options = value.split(',')
     for opt in options:
         if opt not in choices:
-            raise OptionValueError('invalid option %s - valid options are: %s'
+            raise OptionValueError('Invalid option %s - valid options are: %s'
                                    % (opt, ', '.join(choices)))
     setattr(parser.values, option.dest, options)
 
@@ -314,14 +344,14 @@ def magnitude_range(option, opt_str, value, parser):
     mag_range = value.split('-')
     if len(mag_range) != 2:
         raise OptionValueError(
-            'invalid magnitude %s - valid range is e.g. 6-7' % value)
+            'Invalid magnitude %s - valid range is e.g. 6-7.' % value)
     try:
         mag_range = tuple(map(float, mag_range))
     except ValueError:
-        raise OptionValueError('magnitudes must be numbers.')
+        raise OptionValueError('Magnitudes must be numbers.')
 
     if mag_range[0] > mag_range[1]:
-        raise OptionValueError('minimum magnitude must be larger than'
+        raise OptionValueError('Minimum magnitude must be larger than'
                                ' maximum magnitude.')
     setattr(parser.values, option.dest, mag_range)
 
@@ -438,28 +468,119 @@ def command_scenario(args):
 
 def command_init(args):
 
+    from .cmd_init import GrondInit
+
+    grond_init = GrondInit()
+
+    def print_section(entries):
+        if len(entries) == 0:
+            return '\tNone available.'
+
+        padding = max([len(n) for n in entries.keys()])
+        rstr = []
+        lcat = None
+        for name, desc in entries.items():
+
+            cat = name.split('_')[0]
+            if lcat is not None and lcat != cat:
+                rstr.append('')
+            lcat = cat
+
+            rstr.append('    {c.BOLD}{name:<{padding}}{c.END} : {desc}'.format(
+                        name=name, desc=desc, padding=padding, c=Color))
+        return '\n'.join(rstr)
+
+    help_text = '''Available configuration examples for Grond.
+
+{c.BOLD}Example Projects{c.END}
+
+    Deploy a full project structure into a directory.
+
+    usage: grond init <example> <projectdir>
+
+    where <example> is any of the following:
+
+{examples_list}
+
+{c.BOLD}Config Sections{c.END}
+
+    Print out configuration snippets for various components.
+
+    usage: grond init <section>
+
+    where <section> is any of the following:
+
+{sections_list}
+'''.format(c=Color,
+           examples_list=print_section(grond_init.get_examples()),
+           sections_list=print_section(grond_init.get_sections()))
+
+    def setup(parser):
+        parser.add_option(
+            '--force', dest='force', action='store_true')
+
+    parser, options, args = cl_parse(
+        'init', args, setup,
+        'Use grond init list to show available examples.')
+
+    if len(args) not in (1, 2):
+        help_and_die(parser, '1 or 2 arguments required')
+
+    if args[0] == 'list':
+        print(help_text)
+        return
+
+    if args[0].startswith('example_'):
+        if len(args) == 1:
+            config = grond_init.get_content_example(args[0])
+            if not config:
+                help_and_die(parser, 'Unknown example: %s' % args[0])
+
+            sys.stdout.write(config+'\n\n')
+
+            logger.info('Hint: To create a project, use: grond init <example> '
+                        '<projectdir>'.format(c=Color, example=args[0]))
+
+        elif op.exists(op.abspath(args[1])) and not options.force:
+            help_and_die(
+                parser,
+                'Directory "%s" already exists! Use --force to overwrite.'
+                % args[1])
+        else:
+            try:
+                grond_init.init_example(args[0], args[1], force=options.force)
+            except OSError as e:
+                print(str(e))
+
+    else:
+        sec = grond_init.get_content_snippet(args[0])
+        if not sec:
+            help_and_die(parser, 'Unknown snippet: %s' % args[0])
+
+        sys.stdout.write(sec)
+
+
+def command_init_old(args):
+
     from . import cmd_init as init
 
     def setup(parser):
         parser.add_option(
             '--targets', action='callback', dest='targets', type=str,
             callback=multiple_choice, callback_kwargs={
-                'choices': ('waveforms', 'gnss', 'insar')
+                'choices': ('waveforms', 'gnss', 'insar', 'all')
             },
             default='waveforms',
             help='select from:'
                  ' waveforms, gnss and insar. '
                  '(default: --targets=%default,'
-                 ' multiple selection by --targets=waveform,gnss,insar)')
+                 ' multiple selection by --targets=waveforms,gnss,insar)')
         parser.add_option(
-            '--problem', dest='problem', default='cmt',
+            '--problem', dest='problem',
             type='choice', choices=['cmt', 'rectangular'],
             help='problem to generate: \'dc\' (double couple)'
                  ' or\'rectangular\' (rectangular finite fault)'
                  ' (default: \'%default\')')
-        parser.add_option(
-            '--full', dest='full', action='store_true',
-            help='create a full configuration, from targets above')
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing project folder')
@@ -469,28 +590,32 @@ def command_init(args):
     try:
         project = init.GrondProject()
 
-        if 'waveforms' in options.targets:
-            project.add_waveforms()
+        if 'all' in options.targets:
+            targets = ['waveforms', 'gnss', 'insar']
+        else:
+            targets = options.targets
+
+        if not options.problem:
+            if 'insar' in targets or 'gnss' in targets:
+                problem = 'rectangular'
+            else:
+                problem = 'cmt'
+        else:
+            problem = options.problem
+
+        if problem == 'rectangular':
+            project.set_rectangular_source()
+        elif problem == 'cmt':
             project.set_cmt_source()
-        if 'insar' in options.targets:
-            project.add_insar()
-            project.set_rectangular_source()
-        if 'gnss' in options.targets:
-            project.add_gnss()
-            project.set_rectangular_source()
 
-        if options.full:
-            project = init.GrondProject()
-
+        if 'waveforms' in targets:
             project.add_waveforms()
-            project.add_insar()
-            project.add_gnss()
-            project.set_rectangular_source()
 
-        if options.problem == 'cmt':
-            project.set_cmt_source()
-        elif options.problem == 'rectangular':
-            project.set_rectangular_source()
+        if 'insar' in targets:
+            project.add_insar()
+
+        if 'gnss' in targets:
+            project.add_gnss()
 
         if len(args) == 1:
             project_dir = args[0]
@@ -546,7 +671,14 @@ def command_check(args):
                  '10). If set to zero, create synthetics for the reference '
                  'solution.')
 
+        parser.add_option(
+            '--save-stations-used', dest='stations_used_path',
+            metavar='FILENAME',
+            help='aggregate all stations used by the setup into a file')
+
     parser, options, args = cl_parse('check', args, setup)
+    if len(args) < 1:
+        help_and_die(parser, 'missing arguments')
 
     try:
         env = Environment(args)
@@ -561,7 +693,9 @@ def command_check(args):
             event_names=env.get_selected_event_names(),
             target_string_ids=target_string_ids,
             show_waveforms=options.show_waveforms,
-            n_random_synthetics=options.n_random_synthetics)
+            n_random_synthetics=options.n_random_synthetics,
+            stations_used_path=options.stations_used_path)
+
         logger.info(CLIHints('check', config=env.get_config_path()))
 
     except grond.GrondError as e:
@@ -717,17 +851,20 @@ def command_cluster(args):
 
 def command_plot(args):
 
-    import matplotlib
-    matplotlib.use('Agg')
-
-    from grond.environment import Environment
-
     def setup(parser):
-        pass
+        parser.add_option(
+            '--show', dest='show', action='store_true',
+            help='show plot for interactive inspection')
 
     details = ''
 
     parser, options, args = cl_parse('plot', args, setup, details)
+
+    if not options.show:
+        import matplotlib
+        matplotlib.use('Agg')
+
+    from grond.environment import Environment
 
     if len(args) not in (1, 2, 3):
         help_and_die(parser, '1, 2 or 3 arguments required')
@@ -739,6 +876,15 @@ def command_plot(args):
 
     from grond import plot
     if args[0] == 'list':
+
+        def get_doc_title(doc):
+            for ln in doc.split('\n'):
+                ln = ln.strip()
+                if ln != '':
+                    ln = ln.strip('.')
+                    return ln
+            return 'Undocumented.'
+
         if env:
             plot_classes = env.get_plot_classes()
         else:
@@ -746,7 +892,8 @@ def command_plot(args):
 
         plot_names, plot_doc = zip(*[(pc.name, pc.__doc__)
                                      for pc in plot_classes])
-        plot_descs = [doc.split('\n')[0].strip() for doc in plot_doc]
+
+        plot_descs = [get_doc_title(doc) for doc in plot_doc]
         left_spaces = max([len(pn) for pn in plot_names])
 
         for name, desc in zip(plot_names, plot_descs):
@@ -761,19 +908,19 @@ def command_plot(args):
         if env is None:
             help_and_die(parser, 'two or three arguments required')
         plot_names = plot.get_plot_names(env)
-        plot.make_plots(env, plot_names=plot_names)
+        plot.make_plots(env, plot_names=plot_names, show=options.show)
 
     elif op.exists(args[0]):
         if env is None:
             help_and_die(parser, 'two or three arguments required')
         plots = plot.PlotConfigCollection.load(args[0])
-        plot.make_plots(env, plots)
+        plot.make_plots(env, plots, show=options.show)
 
     else:
         if env is None:
             help_and_die(parser, 'two or three arguments required')
         plot_names = [name.strip() for name in args[0].split(',')]
-        plot.make_plots(env, plot_names=plot_names)
+        plot.make_plots(env, plot_names=plot_names, show=options.show)
 
 
 def command_movie(args):
@@ -858,14 +1005,97 @@ def command_export(args):
         die(str(e))
 
 
+def command_tag(args):
+
+    def setup(parser):
+        parser.add_option(
+            '-d', '--dir-names',
+            dest='show_dirnames',
+            action='store_true',
+            help='show directory names instead of run names')
+
+    parser, options, args = cl_parse('tag', args, setup)
+    if len(args) < 2:
+        help_and_die(parser, 'two or more arguments required')
+
+    action = args.pop(0)
+
+    if action not in ('add', 'remove', 'list'):
+        help_and_die(parser, 'invalid action: %s' % action)
+
+    if action in ('add', 'remove'):
+        if len(args) < 2:
+            help_and_die(parser, 'three or more arguments required')
+
+        tag = args.pop(0)
+
+        rundirs = args
+
+    if action == 'list':
+        rundirs = args
+
+    from grond.environment import Environment
+
+    errors = False
+    for rundir in rundirs:
+        try:
+            env = Environment([rundir])
+            if options.show_dirnames:
+                name = rundir
+            else:
+                name = env.get_problem().name
+
+            info = env.get_run_info()
+            if action == 'add':
+                info.add_tag(tag)
+                env.set_run_info(info)
+            elif action == 'remove':
+                info.remove_tag(tag)
+                env.set_run_info(info)
+            elif action == 'list':
+                print('%-60s : %s' % (
+                    name,
+                    ', '.join(info.tags)))
+
+        except grond.GrondError as e:
+            errors = True
+            logger.error(e)
+
+    if errors:
+        die('Errors occurred, see log messages above.')
+
+
+def make_report(env_args, event_name, conf, update_without_plotting):
+    from grond.environment import Environment
+    from grond.report import report
+    try:
+        env = Environment(env_args)
+        if event_name:
+            env.set_current_event_name(event_name)
+
+        report(
+            env, conf,
+            update_without_plotting=update_without_plotting,
+            make_index=False,
+            make_archive=False)
+
+        return True
+
+    except grond.GrondError as e:
+        logger.error(str(e))
+        return False
+
+
 def command_report(args):
 
     import matplotlib
     matplotlib.use('Agg')
 
+    from pyrocko import parimap
+
     from grond.environment import Environment
     from grond.report import \
-        report, report_index, serve_ip, serve_report, read_config, \
+        report_index, report_archive, serve_ip, serve_report, read_config, \
         write_config, ReportConfig
 
     def setup(parser):
@@ -923,6 +1153,15 @@ def command_report(args):
             dest='update_without_plotting',
             action='store_true',
             help='quick-and-dirty update parameter files without plotting')
+        parser.add_option(
+            '--parallel', dest='nparallel', type=int, default=1,
+            help='set number of runs to process in parallel, '
+                 'If set to more than one, --status=quiet is implied.')
+        parser.add_option(
+            '--no-archive',
+            dest='no_archive',
+            action='store_true',
+            help='don\'t create archive file.')
 
     parser, options, args = cl_parse('report', args, setup)
 
@@ -948,51 +1187,57 @@ def command_report(args):
         except grond.GrondError as e:
             die(str(e))
 
+    # commandline options that can override config values
+    if options.no_archive:
+        conf.make_archive = False
+
     if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
-        conf.reports_base_path = conf.rel_path(args[0])
+        conf.report_base_path = conf.rel_path(args[0])
         s_conf = ' %s' % args[0]
         args = []
 
-    reports_base_path = conf.expand_path(conf.reports_base_path)
+    report_base_path = conf.expand_path(conf.report_base_path)
 
     if options.index_only:
         report_index(conf)
+        report_archive(conf)
         args = []
 
-    reports_generated = False
+    entries_generated = False
 
+    payload = []
     if args and all(op.isdir(rundir) for rundir in args):
         rundirs = args
         all_failed = True
         for rundir in rundirs:
-            try:
-                env = Environment([rundir])
-                report(
-                    env, conf,
-                    update_without_plotting=options.update_without_plotting)
-
-                all_failed = False
-                reports_generated = True
-
-            except grond.GrondError as e:
-                logger.error(str(e))
-
-        if all_failed:
-            die('no reports generated')
+            payload.append(([rundir], None,
+                           conf, options.update_without_plotting))
 
     elif args:
         try:
             env = Environment(args)
             for event_name in env.get_selected_event_names():
-                env.set_current_event_name(event_name)
-                report(
-                    env, conf,
-                    update_without_plotting=options.update_without_plotting)
-
-                reports_generated = True
+                payload.append((args, event_name,
+                                conf, options.update_without_plotting))
 
         except grond.GrondError as e:
             die(str(e))
+
+    if payload:
+        entries_generated = []
+        for result in parimap.parimap(
+                make_report, *zip(*payload), nprocs=options.nparallel):
+
+            entries_generated.append(result)
+
+        all_failed = not any(entries_generated)
+        entries_generated = any(entries_generated)
+
+        if all_failed:
+            die('no report entries generated')
+
+        report_index(conf)
+        report_archive(conf)
 
     if options.serve or options.serve_external:
         if options.serve_external:
@@ -1010,14 +1255,14 @@ def command_report(args):
 
     elif options.open:
         import webbrowser
-        url = 'file://%s/index.html' % op.abspath(reports_base_path)
+        url = 'file://%s/index.html' % op.abspath(report_base_path)
         webbrowser.open(url)
 
     else:
-        if not reports_generated and not options.index_only:
-            logger.info('nothing to do, see: grond report --help')
+        if not entries_generated and not options.index_only:
+            logger.info('Nothing to do, see: grond report --help')
 
-    if reports_generated and not (options.serve or options.serve_external):
+    if entries_generated and not (options.serve or options.serve_external):
         logger.info(CLIHints('report', config=s_conf))
 
 
@@ -1169,11 +1414,19 @@ def command_version(args):
         parser.add_option(
             '--short', dest='short', action='store_true',
             help='only print Grond\'s version number')
+        parser.add_option(
+            '--failsafe', dest='failsafe', action='store_true',
+            help='do not get irritated when some dependencies are missing')
 
     parser, options, args = cl_parse('version', args, setup)
 
     if options.short:
         print(grond.__version__)
+        return
+
+    elif not options.failsafe:
+        from grond import info
+        print(info.version_info())
         return
 
     print("grond: %s" % grond.__version__)
@@ -1212,6 +1465,9 @@ def command_version(args):
 
     import sys
     print('python: %s.%s.%s' % sys.version_info[:3])
+
+    if not options.failsafe:
+        die('fell back to failsafe version printing')
 
 
 if __name__ == '__main__':

@@ -21,12 +21,16 @@ from grond.meta import ADict, Parameter, GrondError, xjoin, Forbidden, \
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
     WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
 
+from grond import stats
+
 from grond.version import __version__
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.base')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
+
+g_rstate = num.random.RandomState()
 
 def range_overlap(a_min, a_max, b_min, b_max):
     '''Neither range is completely greater than the other
@@ -95,6 +99,7 @@ class ProblemConfig(Object):
     name_template = String.T()
     nsources = Int.T(default=1)
     norm_exponent = Int.T(default=2)
+    nthreads = Int.T(default=1)
 
 
     def get_problem(self, event, target_groups, targets):
@@ -122,6 +127,7 @@ class Problem(Object):
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
     grond_version = String.T(optional=True)
+    nthreads = Int.T(default=1)
 
 
     def __init__(self, **kwargs):
@@ -152,10 +158,7 @@ class Problem(Object):
                 raise ValueError('Path %s defined more than once! In %s'
                                  % (grp.path, grp.__class__.__name__))
             paths.add(grp.path)
-        logger.debug('TargetGroup check OK')
-
-    def get_engine(self):
-        return self._engine
+        logger.debug('TargetGroup check OK.')
 
     def copy(self):
         o = copy.copy(self)
@@ -197,7 +200,7 @@ class Problem(Object):
 
     def dump_problem_data(
             self, dirname, x, misfits, bootstraps=None,
-            accept=None, ibootstrap_choice=None, ibase=None):
+            sampler_context=None):
 
         fn = op.join(dirname, 'models')
         if not isinstance(x, num.ndarray):
@@ -214,15 +217,10 @@ class Problem(Object):
             with open(fn, 'ab') as f:
                 bootstraps.astype('<f8').tofile(f)
 
-        if None not in (ibootstrap_choice, ibase):
+        if sampler_context is not None:
             fn = op.join(dirname, 'choices')
             with open(fn, 'ab') as f:
-                num.array((ibootstrap_choice, ibase), dtype='<i8').tofile(f)
-
-        if accept is not None:
-            fn = op.join(dirname, 'accepted')
-            with open(fn, 'ab') as f:
-                accept.astype('<i1').tofile(f)
+                num.array(sampler_context, dtype='<i8').tofile(f)
 
     def name_to_index(self, name):
         pnames = [p.name for p in self.combined]
@@ -312,8 +310,16 @@ class Problem(Object):
     def set_engine(self, engine):
         self._engine = engine
 
-    def random_uniform(self, xbounds):
-        x = num.random.uniform(0., 1., self.nparameters)
+    def get_engine(self):
+        return self._engine
+
+    def get_gf_store(self, target):
+        if self.get_engine() is None:
+            raise GrondError('Cannot get GF Store, modelling is not set up!')
+        return self.get_engine().get_store(target.store_id)
+
+    def random_uniform(self, xbounds, rstate):
+        x = rstate.uniform(0., 1., self.nparameters)
         x *= (xbounds[:, 1] - xbounds[:, 0])
         x += xbounds[:, 0]
         return x
@@ -401,7 +407,7 @@ class Problem(Object):
             self.get_dependant_bounds()))
 
     def raise_invalid_norm_exponent(self):
-        raise GrondError('invalid norm exponent' % self.norm_exponent)
+        raise GrondError('Invalid norm exponent: %f' % self.norm_exponent)
 
     def get_norm_functions(self):
         if self.norm_exponent == 2:
@@ -546,7 +552,7 @@ class Problem(Object):
         self.set_target_parameter_values(x)
 
         if mask is not None and targets is not None:
-            raise ValueError('mask cannot be defined with targets set')
+            raise ValueError('Mask cannot be defined with targets set.')
         targets = targets if targets is not None else self.targets
 
         for target in targets:
@@ -570,7 +576,7 @@ class Problem(Object):
 
         modelling_targets_unique = list(u2m_map.keys())
 
-        resp = engine.process(sources, modelling_targets_unique)
+        resp = engine.process(sources, modelling_targets_unique, nthreads=self.nthreads)
 
         modelling_results_unique = list(resp.results_list[0])
 
@@ -634,16 +640,20 @@ class Problem(Object):
 
         return results
 
-    def get_random_model(self):
+    def get_random_model(self, ntries_limit=100):
         xbounds = self.get_parameter_bounds()
 
-        while True:
-            x = self.random_uniform(xbounds)
+        for _ in range(ntries_limit):
+            x = self.random_uniform(xbounds, rstate=g_rstate)
             try:
                 return self.preconstrain(x)
 
             except Forbidden:
                 pass
+
+        raise GrondError(
+            'Could not find any suitable candidate sample within %i tries' % (
+                ntries_limit))
 
 
 class ProblemInfoNotAvailable(GrondError):
@@ -685,10 +695,12 @@ class ModelHistory(object):
         self._models_buffer = None
         self._misfits_buffer = None
         self._bootstraps_buffer = None
+        self._sample_contexts_buffer = None
 
         self.models = None
         self.misfits = None
         self.bootstrap_misfits = None
+        self.sampler_contexts = None
 
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
@@ -696,10 +708,7 @@ class ModelHistory(object):
         self._attributes = {}
 
         if mode == 'r':
-            self.verify_rundir(self.path)
-            models, misfits, bootstraps = load_problem_data(
-                path, problem, nchains=self.nchains)
-            self.extend(models, misfits, bootstraps)
+            self.load()
 
     @staticmethod
     def verify_rundir(rundir):
@@ -746,6 +755,8 @@ class ModelHistory(object):
         self.misfits = self._misfits_buffer[:nmodels_new, :, :]
         if self.nchains is not None:
             self.bootstrap_misfits = self._bootstraps_buffer[:nmodels_new, :, :]  # noqa
+        if self._sample_contexts_buffer is not None:
+            self.sampler_contexts = self._sample_contexts_buffer[:nmodels_new, :]  # noqa
 
     @property
     def nmodels_capacity(self):
@@ -764,6 +775,10 @@ class ModelHistory(object):
             misfits_buffer = num.zeros(
                 (nmodels_capacity_new, self.problem.nmisfits, 2),
                 dtype=num.float)
+            sample_contexts_buffer = num.zeros(
+                (nmodels_capacity_new, 4),
+                dtype=num.int)
+            sample_contexts_buffer.fill(-1)
 
             if self.nchains is not None:
                 bootstraps_buffer = num.zeros(
@@ -777,9 +792,12 @@ class ModelHistory(object):
                     self._models_buffer[:ncopy, :]
                 misfits_buffer[:ncopy, :, :] = \
                     self._misfits_buffer[:ncopy, :, :]
+                sample_contexts_buffer[:ncopy, :] = \
+                    self._sample_contexts_buffer[:ncopy, :]
 
             self._models_buffer = models_buffer
             self._misfits_buffer = misfits_buffer
+            self._sample_contexts_buffer = sample_contexts_buffer
 
             if self.nchains is not None:
                 if self._bootstraps_buffer is not None:
@@ -791,9 +809,12 @@ class ModelHistory(object):
         self.nmodels = 0
         self.nmodels_capacity = self.nmodels_capacity_min
 
-    def extend(self, models, misfits, bootstrap_misfits=None):
-        nmodels = self.nmodels
+    def extend(
+            self, models, misfits,
+            bootstrap_misfits=None,
+            sampler_contexts=None):
 
+        nmodels = self.nmodels
         n = models.shape[0]
 
         nmodels_capacity_want = max(
@@ -812,39 +833,43 @@ class ModelHistory(object):
             self._bootstraps_buffer[nmodels:nmodels+n, :] = bootstrap_misfits
             self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+n, :]
 
+        if sampler_contexts is not None:
+            self._sample_contexts_buffer[nmodels:nmodels+n, :] \
+                = sampler_contexts
+            self.sampler_contexts = self._sample_contexts_buffer[:nmodels+n, :]
+
         if self.path and self.mode == 'w':
             for i in range(n):
                 self.problem.dump_problem_data(
-                        self.path, models[i, :], misfits[i, :, :])
+                    self.path, models[i, :], misfits[i, :, :],
+                    bootstrap_misfits[i, :]
+                    if bootstrap_misfits is not None else None,
+                    sampler_contexts[i, :]
+                    if sampler_contexts is not None else None)
 
-        self.emit('extend', nmodels, n, models, misfits)
+        self.emit('extend', nmodels, n, models, misfits, sampler_contexts)
 
-    def append(self, model, misfits, bootstrap_misfits=None):
-        nmodels = self.nmodels
-
-        nmodels_capacity_want = max(
-            self.nmodels_capacity_min, nextpow2(nmodels + 1))
-
-        if nmodels_capacity_want != self.nmodels_capacity:
-            self.nmodels_capacity = nmodels_capacity_want
-
-        self._models_buffer[nmodels, :] = model
-        self._misfits_buffer[nmodels, :, :] = misfits
-
-        self.models = self._models_buffer[:nmodels+1, :]
-        self.misfits = self._misfits_buffer[:nmodels+1, :, :]
+    def append(
+            self, model, misfits,
+            bootstrap_misfits=None,
+            sampler_context=None):
 
         if bootstrap_misfits is not None:
-            self._bootstraps_buffer[nmodels, :] = bootstrap_misfits
-            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+1, :]
+            bootstrap_misfits = bootstrap_misfits[num.newaxis, :]
 
-        if self.path and self.mode == 'w':
-            self.problem.dump_problem_data(
-                self.path, model, misfits, bootstrap_misfits)
+        if sampler_context is not None:
+            sampler_context = sampler_context[num.newaxis, :]
 
-        self.emit(
-            'extend', nmodels, 1,
-            model[num.newaxis, :], misfits[num.newaxis, :, :])
+        return self.extend(
+            model[num.newaxis, :], misfits[num.newaxis, :, :],
+            bootstrap_misfits, sampler_context)
+
+    def load(self):
+        self.mode = 'r'
+        self.verify_rundir(self.path)
+        models, misfits, bootstraps, sampler_contexts = load_problem_data(
+            self.path, self.problem, nchains=self.nchains)
+        self.extend(models, misfits, bootstraps, sampler_contexts)
 
     def update(self):
         ''' Update history from path '''
@@ -853,13 +878,21 @@ class ModelHistory(object):
             return
 
         try:
-            new_models, new_misfits, new_bootstraps = load_problem_data(
-                self.path, self.problem,
-                nmodels_skip=self.nmodels, nchains=self.nchains)
+            new_models, new_misfits, new_bootstraps, new_sampler_contexts = \
+                load_problem_data(
+                    self.path,
+                    self.problem,
+                    nmodels_skip=self.nmodels,
+                    nchains=self.nchains)
+
         except ValueError:
             return
 
-        self.extend(new_models, new_misfits, new_bootstraps)
+        self.extend(
+            new_models,
+            new_misfits,
+            new_bootstraps,
+            new_sampler_contexts)
 
     def add_listener(self, listener):
         self.listeners.append(listener)
@@ -922,6 +955,48 @@ class ModelHistory(object):
                 extra_weights=optimiser.get_bootstrap_weights(problem),
                 extra_residuals=optimiser.get_bootstrap_residuals(problem))
 
+    def imodels_by_cluster(self, cluster_attribute):
+        if cluster_attribute is None:
+            return [(-1, 100.0, num.arange(self.nmodels))]
+
+        by_cluster = []
+        try:
+            iclusters = self.get_attribute(cluster_attribute)
+            iclusters_avail = num.unique(iclusters)
+
+            for icluster in iclusters_avail:
+                imodels = num.where(iclusters == icluster)[0]
+                by_cluster.append(
+                    (icluster,
+                     (100.0 * imodels.size) / self.nmodels,
+                     imodels))
+
+            if by_cluster and by_cluster[0][0] == -1:
+                by_cluster.append(by_cluster.pop(0))
+
+        except NoSuchAttribute:
+            logger.warn(
+                'Attribute %s not set in run %s.\n'
+                '  Skipping model retrieval by clusters.' % (
+                    cluster_attribute, self.problem.name))
+
+        return by_cluster
+
+    def models_by_cluster(self, cluster_attribute):
+        if cluster_attribute is None:
+            return [(-1, 100.0, self.models)]
+
+        return [
+            (icluster, percentage, self.models[imodels])
+            for (icluster, percentage, imodels)
+            in self.imodels_by_cluster(cluster_attribute)]
+
+    def mean_sources_by_cluster(self, cluster_attribute):
+        return [
+            (icluster, percentage, stats.get_mean_source(self.problem, models))
+            for (icluster, percentage, models)
+            in self.models_by_cluster(cluster_attribute)]
+
 
 def get_nmodels(dirname, problem):
     fn = op.join(dirname, 'models')
@@ -937,9 +1012,9 @@ def get_nmodels(dirname, problem):
 
 def load_problem_info_and_data(dirname, subset=None, nchains=None):
     problem = load_problem_info(dirname)
-    models, misfits, bootstraps = load_problem_data(
+    models, misfits, bootstraps, sampler_contexts = load_problem_data(
         xjoin(dirname, subset), problem, nchains=nchains)
-    return problem, models, misfits, bootstraps
+    return problem, models, misfits, bootstraps, sampler_contexts
 
 
 def load_optimiser_info(dirname):
@@ -954,7 +1029,7 @@ def load_problem_info(dirname):
     except OSError as e:
         logger.debug(e)
         raise ProblemInfoNotAvailable(
-            'no problem info available (%s)' % dirname)
+            'No problem info available (%s).' % dirname)
 
 
 def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
@@ -993,12 +1068,23 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
 
             bootstraps = bootstraps.reshape((nmodels, nchains))
 
+        sampler_contexts = None
+        fn = op.join(dirname, 'choices')
+        if op.exists(fn):
+            with open(fn, 'r') as f:
+                f.seek(nmodels_skip * 4 * 8)
+                sampler_contexts = num.fromfile(
+                        f, dtype='<i8',
+                        count=nmodels*4).astype(num.int)
+
+            sampler_contexts = sampler_contexts.reshape((nmodels, 4))
+
     except OSError as e:
         logger.debug(str(e))
         raise ProblemDataNotAvailable(
-            'no problem data available (%s)' % dirname)
+            'No problem data available (%s).' % dirname)
 
-    return models, misfits, bootstraps
+    return models, misfits, bootstraps, sampler_contexts
 
 
 __all__ = '''

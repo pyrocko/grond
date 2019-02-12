@@ -137,6 +137,8 @@ class PlotConfigCollection(Object):
 
     @classmethod
     def load(cls, path):
+        from grond.plot import get_all_plot_classes
+        get_all_plot_classes()  # make sure all plot classes are loaded
         collection = load(filename=path)
         if not isinstance(collection, PlotConfigCollection):
             raise GrondError(

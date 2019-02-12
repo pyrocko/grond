@@ -7,14 +7,13 @@ import copy
 import shutil
 import glob
 import os.path as op
-from collections import defaultdict
 import numpy as num
 
 from pyrocko.guts import Object, String, Float, List
-from pyrocko import orthodrome as od, gf, trace, guts, util, weeding
+from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import NotFound
+from .dataset import NotFound, InvalidObject
 from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data, load_optimiser_info
 
@@ -22,7 +21,7 @@ from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError
 from .config import read_config
-
+from . import stats
 from .environment import Environment
 from .monitor import GrondMonitor
 
@@ -80,56 +79,6 @@ def sarr(a):
     return ' '.join('%15g' % x for x in a)
 
 
-def get_mean_x(xs):
-    return num.mean(xs, axis=0)
-
-
-def get_mean_x_and_gm(problem, xs, misfits):
-    gms = problem.combine_misfits(misfits)
-    return num.mean(xs, axis=0), num.mean(gms)
-
-
-def get_best_x(problem, xs, misfits):
-    gms = problem.combine_misfits(misfits)
-    ibest = num.argmin(gms)
-    return xs[ibest, :]
-
-
-def get_best_x_and_gm(problem, xs, misfits):
-    gms = problem.combine_misfits(misfits)
-    ibest = num.argmin(gms)
-    return xs[ibest, :], gms[ibest]
-
-
-def get_mean_source(problem, xs):
-    x_mean = get_mean_x(xs)
-    source = problem.get_source(x_mean)
-    return source
-
-
-def get_best_source(problem, xs, misfits):
-    x_best = get_best_x(problem, xs, misfits)
-    source = problem.get_source(x_best)
-    return source
-
-
-def mean_latlondist(lats, lons):
-    if len(lats) == 0:
-        return 0., 0., 1000.
-    else:
-        ns, es = od.latlon_to_ne_numpy(lats[0], lons[0], lats, lons)
-        n, e = num.mean(ns), num.mean(es)
-        dists = num.sqrt((ns-n)**2 + (es-e)**2)
-        lat, lon = od.ne_to_latlon(lats[0], lons[0], n, e)
-        return float(lat), float(lon), float(num.max(dists))
-
-
-def stations_mean_latlondist(stations):
-    lats = num.array([s.lat for s in stations])
-    lons = num.array([s.lon for s in stations])
-    return mean_latlondist(lats, lons)
-
-
 def forward(rundir_or_config_path, event_names):
 
     if not event_names:
@@ -139,7 +88,7 @@ def forward(rundir_or_config_path, event_names):
         rundir = rundir_or_config_path
         config = read_config(op.join(rundir, 'config.yaml'))
 
-        problem, xs, misfits = load_problem_info_and_data(
+        problem, xs, misfits, _ = load_problem_info_and_data(
             rundir, subset='harvest')
 
         gms = problem.combine_misfits(misfits)
@@ -195,13 +144,13 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     nchains = env.get_optimiser().nchains
 
     if problem is None:
-        problem, xs, misfits, bootstrap_misfits = \
+        problem, xs, misfits, bootstrap_misfits, _ = \
             load_problem_info_and_data(rundir, nchains=nchains)
     else:
-        xs, misfits, bootstrap_misfits = \
+        xs, misfits, bootstrap_misfits, _ = \
             load_problem_data(rundir, problem, nchains=nchains)
 
-    logger.info('harvesting problem %s...' % problem.name)
+    logger.info('Harvesting problem "%s"...' % problem.name)
 
     optimiser = load_optimiser_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
@@ -248,7 +197,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
-    logger.info('done harvesting problem %s' % problem.name)
+    logger.info('Done harvesting problem "%s".' % problem.name)
 
 
 def cluster(rundir, clustering, metric):
@@ -262,7 +211,7 @@ def cluster(rundir, clustering, metric):
     from grond.clustering import metrics
 
     if metric not in metrics.metrics:
-        raise GrondError('unknown metric: %s' % metric)
+        raise GrondError('Unknown metric: %s' % metric)
 
     mat = metrics.compute_similarity_matrix(events, metric)
 
@@ -289,7 +238,7 @@ def get_event_names(config):
 
 def check_problem(problem):
     if len(problem.targets) == 0:
-        raise GrondError('no targets available')
+        raise GrondError('No targets available')
 
 
 def check(
@@ -297,10 +246,12 @@ def check(
         event_names=None,
         target_string_ids=None,
         show_waveforms=False,
-        n_random_synthetics=10):
+        n_random_synthetics=10,
+        stations_used_path=None):
 
-    fns = defaultdict(list)
     markers = []
+    stations_used = {}
+    erroneous = []
     for ievent, event_name in enumerate(event_names):
         ds = config.get_dataset(event_name)
         event = ds.get_event()
@@ -309,9 +260,9 @@ def check(
             problem = config.get_problem(event)
 
             _, nfamilies = problem.get_family_mask()
-            logger.info('problem: %s' % problem.name)
-            logger.info('number of target families: %i' % nfamilies)
-            logger.info('number of targets (total): %i' % len(problem.targets))
+            logger.info('Problem: %s' % problem.name)
+            logger.info('Number of target families: %i' % nfamilies)
+            logger.info('Number of targets (total): %i' % len(problem.targets))
 
             if target_string_ids:
                 problem.targets = [
@@ -319,7 +270,7 @@ def check(
                     if util.match_nslc(target_string_ids, target.string_id())]
 
             logger.info(
-                'number of targets (selected): %i' % len(problem.targets))
+                'Number of targets (selected): %i' % len(problem.targets))
 
             check_problem(problem)
 
@@ -455,6 +406,11 @@ def check(
                         sok = 'not used'
                     elif nok == len(results_list):
                         sok = 'ok'
+                        try:
+                            s = ds.get_station(target)
+                            stations_used[s.nsl()] = s
+                        except (NotFound, InvalidObject):
+                            pass
                     else:
                         sok = 'not used (%i/%i ok)' % (nok, len(results_list))
 
@@ -462,15 +418,25 @@ def check(
                         (target.string_id() + ':', sok)))
 
         except GrondError as e:
-            logger.error('event %i, %s: %s' % (
+            logger.error('Event %i, "%s": %s' % (
                 ievent,
                 event.name or util.time_to_str(event.time),
                 str(e)))
 
+            erroneous.append(event)
+
         if show_waveforms:
             trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
 
-    return fns
+        if stations_used_path:
+            stations = list(stations_used.values())
+            stations.sort(key=lambda s: s.nsl())
+            model.dump_stations(stations, stations_used_path)
+
+    if erroneous:
+        raise GrondError(
+            'Check failed for events: %s'
+            % ', '.join(ev.name for ev in erroneous))
 
 
 g_state = {}
@@ -526,18 +492,18 @@ def process_event(ievent, g_data_id):
         elif force:
             shutil.rmtree(rundir)
         else:
-            logger.warn('skipping problem %s: rundir already exists: %s' %
+            logger.warn('Skipping problem "%s": rundir already exists: %s' %
                         (problem.name, rundir))
             return
 
     util.ensuredir(rundir)
 
     logger.info(
-        'starting event %i / %i' % (ievent+1, nevents))
+        'Starting event %i / %i' % (ievent+1, nevents))
 
-    logger.info('rundir: %s' % rundir)
+    logger.info('Rundir: %s' % rundir)
 
-    logger.info('analysing problem %s' % problem.name)
+    logger.info('Analysing problem "%s".' % problem.name)
 
     for analyser_conf in config.analyser_configs:
         analyser = analyser_conf.get_analyser()
@@ -566,7 +532,7 @@ def process_event(ievent, g_data_id):
             from .optimisers import highscore
             if not isinstance(optimiser, highscore.HighScoreOptimiser):
                 raise GrondError(
-                    'optimiser does not support injections')
+                    'Optimiser does not support injections.')
 
             optimiser.sampler_phases[0:0] = [
                 highscore.InjectionSamplerPhase(xs_inject=xs_inject)]
@@ -589,10 +555,10 @@ def process_event(ievent, g_data_id):
 
     tstop = time.time()
     logger.info(
-        'stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
+        'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
 
     logger.info(
-        'done with problem %s, rundir is %s' % (problem.name, rundir))
+        'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
 
 
 class ParameterStats(Object):
@@ -666,16 +632,16 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         shortform = False
 
     if what == 'stats' and type is not None:
-        raise GrondError('invalid argument combination: what=%s, type=%s' % (
+        raise GrondError('Invalid argument combination: what=%s, type=%s' % (
             repr(what), repr(type)))
 
     if what != 'stats' and shortform:
-        raise GrondError('invalid argument combination: what=%s, pnames=%s' % (
+        raise GrondError('Invalid argument combination: what=%s, pnames=%s' % (
             repr(what), repr(pnames)))
 
     if what != 'stats' and type != 'vector' and pnames is not None:
         raise GrondError(
-            'invalid argument combination: what=%s, type=%s, pnames=%s' % (
+            'Invalid argument combination: what=%s, type=%s, pnames=%s' % (
                 repr(what), repr(type), repr(pnames)))
 
     if filename is None:
@@ -713,12 +679,13 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             guts.dump_all([ev], stream=out)
 
         else:
-            raise GrondError('invalid argument: type=%s' % repr(type))
+            raise GrondError('Invalid argument: type=%s' % repr(type))
 
     header = None
     for rundir in rundirs:
-        problem, xs, misfits, bootstrap_misfits = load_problem_info_and_data(
-            rundir, subset='harvest')
+        problem, xs, misfits, bootstrap_misfits, _ = \
+            load_problem_info_and_data(
+                rundir, subset='harvest')
 
         if type == 'vector':
             pnames_take = pnames_clean or \
@@ -743,11 +710,11 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             indices = None
 
         if what == 'best':
-            x_best, gm_best = get_best_x_and_gm(problem, xs, misfits)
+            x_best, gm_best = stats.get_best_x_and_gm(problem, xs, misfits)
             dump(x_best, gm_best, indices)
 
         elif what == 'mean':
-            x_mean, gm_mean = get_mean_x_and_gm(problem, xs, misfits)
+            x_mean, gm_mean = stats.get_mean_x_and_gm(problem, xs, misfits)
             dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
@@ -764,7 +731,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
                 print(rs, file=out)
 
         else:
-            raise GrondError('invalid argument: what=%s' % repr(what))
+            raise GrondError('Invalid argument: what=%s' % repr(what))
 
     if out is not sys.stdout:
         out.close()

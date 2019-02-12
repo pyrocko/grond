@@ -18,6 +18,7 @@
                         <th><a href ng-click="set_order('depth')">Depth [km]</a></th>
                         <th><a href ng-click="set_order('type')">Type</a></th>
                         <th><a href ng-click="set_order('run')">Run</a></th>
+                        <th>Tags</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,6 +40,9 @@
                         </td>
                         <td>
                             {{ line.report_entry.problem_name }}
+                        </td>
+                        <td>
+                            <span ng-repeat="tag in line.report_entry.run_info.tags">{{ tag }}</span>
                         </td>
                     </tr>
                 </tbody>

@@ -30,7 +30,7 @@ class TargetGroup(Object):
         optional=True,
         help='ID of the Green\'s function store for this TargetGroup.')
 
-    def get_targets(self, ds, event, default_path):
+    def get_targets(self, ds, event, default_path='none'):
         if not self._targets:
             raise NotImplementedError()
 
@@ -75,6 +75,8 @@ class MisfitTarget(Object):
     can_bootstrap_weights = False
     can_bootstrap_residuals = False
 
+    plot_misfits_cumulative = True
+
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
         self.parameters = []
@@ -97,6 +99,13 @@ class MisfitTarget(Object):
 
     def get_dataset(self):
         return self._ds
+
+    def string_id(self):
+        return str(self.path)
+
+    def misfits_string_ids(self):
+        raise NotImplementedError('%s does not implement misfits_string_id'
+                                  % self.__class__.__name__)
 
     @property
     def nmisfits(self):

@@ -13,12 +13,15 @@ from pyrocko.guts import Tuple, Float, Int, String
 
 from grond import core, meta
 from .target import WaveformMisfitResult, WaveformMisfitTarget
+from ..plot import StationDistributionPlot
 
 from grond.plot.config import PlotConfig
 from grond.plot.common import light
 from grond.plot.collection import PlotItem
 
 guts_prefix = 'grond'
+km = 1e3
+d2r = math.pi / 180.
 
 logger = logging.getLogger('targets.waveform.plot')
 
@@ -122,13 +125,89 @@ def plot_dtrace_vline(axes, t, space, **kwargs):
     axes.plot([t, t], [-1.0 - space, -1.0], **kwargs)
 
 
+def layout(source, targets, nxmax, nymax):
+    if nxmax == 1 and nymax == 1:
+        nx = len(targets)
+        ny = 1
+        nxx = 1
+        nyy = 1
+        frame_to_target = {}
+        for ix, target in enumerate(sorted(targets, key=lambda t: t.path)):
+            frame_to_target[0, ix] = target
+
+        return frame_to_target, nx, ny, nxx, nyy
+
+    nframes = len(targets)
+
+    nx = int(math.ceil(math.sqrt(nframes)))
+    ny = (nframes - 1) // nx + 1
+
+    nxx = (nx - 1) // nxmax + 1
+    nyy = (ny - 1) // nymax + 1
+
+    # nz = nxx * nyy
+
+    xs = num.arange(nx) // ((max(2, nx) - 1.0) / 2.)
+    ys = num.arange(ny) // ((max(2, ny) - 1.0) / 2.)
+
+    xs -= num.mean(xs)
+    ys -= num.mean(ys)
+
+    fxs = num.tile(xs, ny)
+    fys = num.repeat(ys, nx)
+
+    data = []
+
+    for target in targets:
+        azi = source.azibazi_to(target)[0]
+        dist = source.distance_to(target)
+        x = dist * num.sin(num.deg2rad(azi))
+        y = dist * num.cos(num.deg2rad(azi))
+        data.append((x, y, dist))
+
+    gxs, gys, dists = num.array(data, dtype=num.float).T
+
+    iorder = num.argsort(dists)
+
+    gxs = gxs[iorder]
+    gys = gys[iorder]
+    targets_sorted = [targets[ii] for ii in iorder]
+
+    gxs -= num.mean(gxs)
+    gys -= num.mean(gys)
+
+    gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
+    if gmax == 0.:
+        gmax = 1.
+
+    gxs /= gmax
+    gys /= gmax
+
+    dists = num.sqrt(
+        (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
+        (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
+
+    distmax = num.max(dists)
+
+    availmask = num.ones(dists.shape[1], dtype=num.bool)
+    frame_to_target = {}
+    for itarget, target in enumerate(targets_sorted):
+        iframe = num.argmin(
+            num.where(availmask, dists[itarget], distmax + 1.))
+        availmask[iframe] = False
+        iy, ix = num.unravel_index(iframe, (ny, nx))
+        frame_to_target[iy, ix] = target
+
+    return frame_to_target, nx, ny, nxx, nyy
+
+
 class CheckWaveformsPlot(PlotConfig):
     ''' Plot for checking the waveforms fit with a number of synthetics '''
     name = 'check_waveform'
 
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(10., 7.5),
+        default=(9., 7.5),
         help='width and length of the figure in cm')
     n_random_synthetics = Int.T(
         default=10,
@@ -177,7 +256,7 @@ shows the filtered synthetic waveforms of the drawn models and the bottom plot
 shows the corresponding filtered and tapered synthetic waveforms. The colors of
 taper and synthetic traces are consistent for each random model. The given time
 is relative to the reference event origin time.
-            ''')
+''')
 
     def draw_figures(self, sources, targets, results_list):
         results_list = list(zip(*results_list))
@@ -283,8 +362,14 @@ class FitsWaveformEnsemblePlot(PlotConfig):
     name = 'fits_waveform_ensemble'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(29.7, 21.0),
+        default=(9., 5.),
         help='width and length of the figure in cm')
+    nx = Int.T(
+        default=1,
+        help='horizontal number of subplots on every page')
+    ny = Int.T(
+        default=1,
+        help='vertical number of subplots on every page')
     misfit_cutoff = Float.T(
         optional=True,
         help='Plot fits for models up to this misfit value')
@@ -311,10 +396,13 @@ class FitsWaveformEnsemblePlot(PlotConfig):
             section='fits',
             feather_icon='activity',
             description=u'''
-Plot showing waveform fits for the ensemble of solutions.
+Plot showing waveform (attribute) fits for the ensemble of solutions.
 
-Waveform fits for every nth model in the ensemble of bootstrap solutions. Each
-waveform plot gives a number of details:
+Waveform fits for every nth model in the ensemble of bootstrap solutions.
+Depending on the target configuration different types of comparisons are
+possible: (i) time domain waveform differences, (ii) amplitude spectra, (iii)
+envelopes, (iv) cross correlation functions. Each waveform plot gives a number
+of details:
 
 1) Target information (left side, from top to bottom) gives station name with
 component, distance to source, azimuth of station with respect to source,
@@ -345,13 +433,19 @@ traces.''')
         fontsize = self.font_size
         fontsize_title = self.font_size_title
 
+        nxmax = self.nx
+        nymax = self.ny
+
         problem = history.problem
 
         for target in problem.targets:
             target.set_dataset(ds)
 
-        target_index = dict(
-            (target, i) for (i, target) in enumerate(problem.targets))
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)[::-1]
@@ -394,15 +488,15 @@ traces.''')
             dtraces.append([])
 
             for target, result in zip(problem.targets, results):
-                if isinstance(result, gf.SeismosizerError):
-                    dtraces[-1].append(None)
+                if isinstance(result, gf.SeismosizerError) or \
+                        not isinstance(target, WaveformMisfitTarget):
+
+                    dtraces[-1].extend([None] * target.nmisfits)
                     continue
 
-                if not isinstance(target, WaveformMisfitTarget):
-                    dtraces[-1].append(None)
-                    continue
+                itarget, itarget_end = target_index[target]
+                assert itarget_end == itarget + 1
 
-                itarget = target_index[target]
                 w = target.get_combined_weight()
 
                 if target.misfit_config.domain == 'cc_max_norm':
@@ -463,8 +557,8 @@ traces.''')
                 all_syn_trs.append(result.processed_syn)
 
         if not all_syn_trs:
-            logger.warn('no traces to show')
-            return []
+            logger.warn('No traces to show!')
+            return
 
         def skey(tr):
             return tr.meta['normalisation_family'], tr.meta['path']
@@ -499,72 +593,11 @@ traces.''')
         for imodel in range(nmodels):
             imodel_to_color.append(cmap.to_rgba(icolor[imodel]))
 
-        figs = []
         for cg in cgs:
             targets = cg_to_targets[cg]
-            nframes = len(targets)
 
-            nx = int(math.ceil(math.sqrt(nframes)))
-            ny = (nframes-1) // nx+1
-
-            nxmax = 4
-            nymax = 4
-
-            nxx = (nx-1) // nxmax + 1
-            nyy = (ny-1) // nymax + 1
-
-            # nz = nxx * nyy
-
-            xs = num.arange(nx) / ((max(2, nx) - 1.0) / 2.)
-            ys = num.arange(ny) / ((max(2, ny) - 1.0) / 2.)
-
-            xs -= num.mean(xs)
-            ys -= num.mean(ys)
-
-            fxs = num.tile(xs, ny)
-            fys = num.repeat(ys, nx)
-
-            data = []
-
-            for target in targets:
-                azi = source.azibazi_to(target)[0]
-                dist = source.distance_to(target)
-                x = dist*num.sin(num.deg2rad(azi))
-                y = dist*num.cos(num.deg2rad(azi))
-                data.append((x, y, dist))
-
-            gxs, gys, dists = num.array(data, dtype=num.float).T
-
-            iorder = num.argsort(dists)
-
-            gxs = gxs[iorder]
-            gys = gys[iorder]
-            targets_sorted = [targets[ii] for ii in iorder]
-
-            gxs -= num.mean(gxs)
-            gys -= num.mean(gys)
-
-            gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
-            if gmax == 0.:
-                gmax = 1.
-
-            gxs /= gmax
-            gys /= gmax
-
-            dists = num.sqrt(
-                (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
-                (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
-
-            distmax = num.max(dists)
-
-            availmask = num.ones(dists.shape[1], dtype=num.bool)
-            frame_to_target = {}
-            for itarget, target in enumerate(targets_sorted):
-                iframe = num.argmin(
-                    num.where(availmask, dists[itarget], distmax + 1.))
-                availmask[iframe] = False
-                iy, ix = num.unravel_index(iframe, (ny, nx))
-                frame_to_target[iy, ix] = target
+            frame_to_target, nx, ny, nxx, nyy = layout(
+                source, targets, nxmax, nymax)
 
             figures = {}
             for iy in range(ny):
@@ -589,8 +622,6 @@ traces.''')
                             top=1.0 - 0.06,
                             wspace=0.2,
                             hspace=0.2)
-
-                        figs.append(figures[iyy, ixx])
 
                     item, fig = figures[iyy, ixx]
 
@@ -621,7 +652,9 @@ traces.''')
                     else:
                         axes.set_ylim(-absmax*1.33 * space_factor, absmax*1.33)
 
-                    itarget = target_index[target]
+                    itarget, itarget_end = target_index[target]
+                    assert itarget_end == itarget + 1
+
                     for imodel, result in enumerate(target_to_results[target]):
 
                         syn_color = imodel_to_color[imodel]
@@ -677,15 +710,16 @@ traces.''')
                                 [tmark, tmark], [-0.9, 0.1],
                                 color=tap_color_annot)
 
+                        dur = tmarks[1] - tmarks[0]
                         for tmark, text, ha in [
                                 (tmarks[0],
                                  '$\\,$ ' + meta.str_duration(
                                     tmarks[0] - source.time),
-                                 'right'),
+                                 'left'),
                                 (tmarks[1],
                                  '$\\Delta$ ' + meta.str_duration(
-                                    tmarks[1] - tmarks[0]),
-                                 'left')]:
+                                    dur),
+                                 'right')]:
 
                             axes2.annotate(
                                 text,
@@ -700,6 +734,9 @@ traces.''')
                                 color=tap_color_annot,
                                 fontsize=fontsize)
 
+                        axes2.set_xlim(
+                            tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
+
                     scale_string = None
 
                     if target.misfit_config.domain == 'cc_max_norm':
@@ -709,7 +746,10 @@ traces.''')
                     if scale_string:
                         infos.append(scale_string)
 
-                    infos.append('.'.join(x for x in target.codes if x))
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
                     dist = source.distance_to(target)
                     azi = source.azibazi_to(target)[0]
                     infos.append(meta.str_dist(dist))
@@ -725,14 +765,20 @@ traces.''')
                         fontsize=fontsize,
                         fontstyle='normal')
 
-            for (iyy, ixx), (_, fig) in figures.items():
-                title = '.'.join(x for x in cg if x)
-                if len(figures) > 1:
-                    title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
 
-                fig.suptitle(title, fontsize=fontsize_title)
+            if not (self.nx == 1 and self.ny == 1):
+                for (iyy, ixx), (_, fig) in figures.items():
+                    title = '.'.join(x for x in cg if x)
+                    if len(figures) > 1:
+                        title += ' (%i/%i, %i/%i)' % (iyy+1, nyy, ixx+1, nxx)
 
-        return figs
+                    fig.suptitle(title, fontsize=fontsize_title)
+
+            for item, fig in figures.values():
+                yield item, fig
 
 
 class FitsWaveformPlot(PlotConfig):
@@ -740,8 +786,14 @@ class FitsWaveformPlot(PlotConfig):
     name = 'fits_waveform'
     size_cm = Tuple.T(
         2, Float.T(),
-        default=(29.7, 21.),
+        default=(9., 5.),
         help='width and length of the figure in cm')
+    nx = Int.T(
+        default=1,
+        help='horizontal number of subplots on every page')
+    ny = Int.T(
+        default=1,
+        help='vertical number of subplots on every page')
     font_size = Float.T(
         default=8,
         help='Font Size of all fonts, except title')
@@ -762,10 +814,13 @@ class FitsWaveformPlot(PlotConfig):
             section='fits',
             feather_icon='activity',
             description=u'''
-Plot showing observed and synthetic waveforms for the best fitting model.
+Plot showing observed and synthetic waveform (attributes) for the best fitting
+model.
 
-Best model's waveform fits for all targets. Each waveform plot gives a number
-of details:
+Best model's waveform fits for all targets. Depending on the target
+configurations different types of comparisons are possible: (i) time domain
+waveform differences, (ii) amplitude spectra, (iii) envelopes, (iv) cross
+correlation functions. Each waveform plot gives a number of details:
 
 1) Target information (left side, from top to bottom) gives station name with
 component, distance to source, azimuth of station with respect to source,
@@ -798,13 +853,19 @@ box, red).
         fontsize = self.font_size
         fontsize_title = self.font_size_title
 
+        nxmax = self.nx
+        nymax = self.ny
+
         problem = history.problem
 
         for target in problem.targets:
             target.set_dataset(ds)
 
-        target_index = dict(
-            (target, i) for (i, target) in enumerate(problem.targets))
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
 
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)
@@ -832,10 +893,12 @@ box, red).
         dtraces = []
         for target, result in zip(problem.targets, results):
             if not isinstance(result, WaveformMisfitResult):
-                dtraces.append(None)
+                dtraces.extend([None] * target.nmisfits)
                 continue
 
-            itarget = target_index[target]
+            itarget, itarget_end = target_index[target]
+            assert itarget_end == itarget + 1
+
             w = target.get_combined_weight()
 
             if target.misfit_config.domain == 'cc_max_norm':
@@ -906,8 +969,8 @@ box, red).
                 all_syn_specs.append(result.spectrum_syn)
 
         if not all_syn_trs:
-            logger.warn('no traces to show')
-            return []
+            logger.warn('No traces to show!')
+            return
 
         def skey(tr):
             return tr.meta['normalisation_family'], tr.meta['path']
@@ -930,72 +993,11 @@ box, red).
 
         cgs = sorted(cg_to_targets.keys())
 
-        figs = []
         for cg in cgs:
             targets = cg_to_targets[cg]
-            nframes = len(targets)
 
-            nx = int(math.ceil(math.sqrt(nframes)))
-            ny = (nframes - 1) // nx + 1
-
-            nxmax = 4
-            nymax = 4
-
-            nxx = (nx - 1) // nxmax + 1
-            nyy = (ny - 1) // nymax + 1
-
-            # nz = nxx * nyy
-
-            xs = num.arange(nx) // ((max(2, nx) - 1.0) / 2.)
-            ys = num.arange(ny) // ((max(2, ny) - 1.0) / 2.)
-
-            xs -= num.mean(xs)
-            ys -= num.mean(ys)
-
-            fxs = num.tile(xs, ny)
-            fys = num.repeat(ys, nx)
-
-            data = []
-
-            for target in targets:
-                azi = source.azibazi_to(target)[0]
-                dist = source.distance_to(target)
-                x = dist * num.sin(num.deg2rad(azi))
-                y = dist * num.cos(num.deg2rad(azi))
-                data.append((x, y, dist))
-
-            gxs, gys, dists = num.array(data, dtype=num.float).T
-
-            iorder = num.argsort(dists)
-
-            gxs = gxs[iorder]
-            gys = gys[iorder]
-            targets_sorted = [targets[ii] for ii in iorder]
-
-            gxs -= num.mean(gxs)
-            gys -= num.mean(gys)
-
-            gmax = max(num.max(num.abs(gys)), num.max(num.abs(gxs)))
-            if gmax == 0.:
-                gmax = 1.
-
-            gxs /= gmax
-            gys /= gmax
-
-            dists = num.sqrt(
-                (fxs[num.newaxis, :] - gxs[:, num.newaxis])**2 +
-                (fys[num.newaxis, :] - gys[:, num.newaxis])**2)
-
-            distmax = num.max(dists)
-
-            availmask = num.ones(dists.shape[1], dtype=num.bool)
-            frame_to_target = {}
-            for itarget, target in enumerate(targets_sorted):
-                iframe = num.argmin(
-                    num.where(availmask, dists[itarget], distmax + 1.))
-                availmask[iframe] = False
-                iy, ix = num.unravel_index(iframe, (ny, nx))
-                frame_to_target[iy, ix] = target
+            frame_to_target, nx, ny, nxx, nyy = layout(
+                source, targets, nxmax, nymax)
 
             figures = {}
             for iy in range(ny):
@@ -1020,8 +1022,6 @@ box, red).
                             top=1.0 - 0.06,
                             wspace=0.2,
                             hspace=0.2)
-
-                        figs.append(figures[iyy, ixx])
 
                     item, fig = figures[iyy, ixx]
 
@@ -1053,7 +1053,9 @@ box, red).
                         axes.set_ylim(
                             -absmax * 1.33 * space_factor, absmax * 1.33)
 
-                    itarget = target_index[target]
+                    itarget, itarget_end = target_index[target]
+                    assert itarget_end == itarget + 1
+
                     result = target_to_result[target]
 
                     dtrace = dtraces[itarget]
@@ -1131,8 +1133,7 @@ box, red).
                         axes, result.processed_obs,
                         color=obs_color, lw=0.75)
 
-                    xdata = result.filtered_obs.get_xdata()
-                    axes.set_xlim(xdata[0], xdata[-1])
+                    # xdata = result.filtered_obs.get_xdata()
 
                     tmarks = [
                         result.processed_obs.tmin,
@@ -1142,15 +1143,15 @@ box, red).
                         axes2.plot(
                             [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
 
+                    dur = tmarks[1] - tmarks[0]
                     for tmark, text, ha in [
                             (tmarks[0],
                              '$\\,$ ' + meta.str_duration(
                                  tmarks[0] - source.time),
-                             'right'),
+                             'left'),
                             (tmarks[1],
-                             '$\\Delta$ ' + meta.str_duration(
-                                 tmarks[1] - tmarks[0]),
-                             'left')]:
+                             '$\\Delta$ ' + meta.str_duration(dur),
+                             'right')]:
 
                         axes2.annotate(
                             text,
@@ -1164,6 +1165,8 @@ box, red).
                             va='bottom',
                             color=tap_color_annot,
                             fontsize=fontsize)
+
+                    axes2.set_xlim(tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
 
                     rel_w = ws[itarget] / w_max
                     rel_c = gcms[itarget] / gcm_max
@@ -1197,7 +1200,11 @@ box, red).
                     if scale_string:
                         infos.append(scale_string)
 
-                    infos.append('.'.join(x for x in target.codes if x))
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
+
                     dist = source.distance_to(target)
                     azi = source.azibazi_to(target)[0]
                     infos.append(meta.str_dist(dist))
@@ -1215,19 +1222,134 @@ box, red).
                         fontsize=fontsize,
                         fontstyle='normal')
 
-            for (iyy, ixx), (_, fig) in figures.items():
-                title = '.'.join(x for x in cg if x)
-                if len(figures) > 1:
-                    title += ' (%i/%i, %i/%i)' % (iyy + 1, nyy, ixx + 1, nxx)
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
 
-                fig.suptitle(title, fontsize=fontsize_title)
+            if not (self.nx == 1 and self.ny == 1):
+                for (iyy, ixx), (_, fig) in figures.items():
+                    title = '.'.join(x for x in cg if x)
+                    if len(figures) > 1:
+                        title += ' (%i/%i, %i/%i)' % (
+                            iyy + 1, nyy, ixx + 1, nxx)
 
-        return figs
+                    fig.suptitle(title, fontsize=fontsize_title)
+
+            for item, fig in figures.values():
+                yield item, fig
+
+
+class WaveformStationDistribution(StationDistributionPlot):
+    ''' Plot showing all waveform fits for the ensemble of solutions'''
+
+    name = 'seismic_stations'
+
+    def make(self, environ):
+        from grond.problems.base import ProblemDataNotAvailable
+        from grond.environment import NoRundirAvailable
+
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+
+        problem = environ.get_problem()
+        dataset = environ.get_dataset()
+        try:
+            history = environ.get_history(subset='harvest')
+        except (NoRundirAvailable, ProblemDataNotAvailable):
+            history = None
+
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(problem, dataset, history),
+            title=u'Seismic station locations',
+            section='checks',
+            feather_icon='target',
+            description=u'''
+Plot showing seismic station locations and attributes.
+
+Station locations in dependence of distance and azimuth are shown. The center
+of the plot corresponds to the origin of the search space, not to the optimised
+location of the source.
+''')
+
+    def draw_figures(self, problem, dataset, history):
+
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
+
+        ws = problem.get_target_weights()
+
+        if history:
+            gms = problem.combine_misfits(history.misfits)
+            isort = num.argsort(gms)
+            gms = gms[isort]
+            misfits = history.misfits[isort, :]
+            gcms = problem.combine_misfits(
+                misfits[:1, :, :], get_contributions=True)[0, :]
+
+        event = problem.base_source
+
+        cg_to_targets = meta.gather(
+            problem.waveform_targets,
+            lambda t: (t.path, t.codes[3]))
+
+        cgs = sorted(cg_to_targets.keys())
+
+        for cg in cgs:
+            cg_str = '.'.join(cg)
+
+            targets = cg_to_targets[cg]
+            if len(targets) == 0:
+                continue
+
+            assert all(target_index[target][0] == target_index[target][1] - 1
+                       for target in targets)
+
+            itargets = num.array(
+                [target_index[target][0] for target in targets])
+
+            labels = ['.'.join(x for x in t.codes[:3] if x) for t in targets]
+
+            azimuths = num.array([event.azibazi_to(t)[0] for t in targets])
+            distances = num.array([t.distance_to(event) for t in targets])
+
+            item = PlotItem(
+                name='seismic_stations_weights_%s' % cg_str,
+                title=u'Station weights (%s)' % cg_str,
+                description=u'\n\nMarkers are scaled according to the '
+                            u'weighting factor of the corresponding target\'s '
+                            u'contribution in the misfit function.')
+            fig, ax, legend = self.plot_station_distribution(
+                azimuths, distances, ws[itargets], labels)
+            legend.set_title(
+                'Weight',
+                prop=dict(size=self.font_size))
+
+            yield (item, fig)
+
+            if history:
+                item = PlotItem(
+                    name='seismic_stations_contributions_%s' % cg_str,
+                    title=u'Station misfit contributions (%s)' % cg_str,
+                    description=u'\n\nMarkers are scaled according to their '
+                                u'misfit contribution for the globally best '
+                                u'source model.')
+                fig, ax, legend = self.plot_station_distribution(
+                    azimuths, distances, gcms[itargets], labels)
+                legend.set_title(
+                    'Contribution',
+                    prop=dict(size=self.font_size))
+
+                yield (item, fig)
 
 
 def get_plot_classes():
     return [
+        WaveformStationDistribution,
         CheckWaveformsPlot,
         FitsWaveformPlot,
-        FitsWaveformEnsemblePlot,
+        FitsWaveformEnsemblePlot
     ]

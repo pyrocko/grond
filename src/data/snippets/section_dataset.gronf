@@ -1,0 +1,84 @@
+%YAML 1.1
+# Section: Full dataset configuration.
+# -----------------------------------------------------------------------------
+# Configuration section for dataset (input data)
+#
+# The placeholder '${event_name}' will be expanded to the current event. This
+# enables us to use the same configuration for multiple events. The available 
+# events are detected by looking into possible expansions of
+# dataset_config.events_path
+# -----------------------------------------------------------------------------
+
+dataset_config: !grond.DatasetConfig
+
+  # Optional prefix for all paths in this config file
+  path_prefix: .
+
+  # List of files with station coordinates in Pyrocko format.
+  stations_path: 'data/events/${event_name}/waveforms/stations.txt'
+
+  # List of files with station coordinates.
+  stations_stationxml_paths: 
+  - 'data/events/${event_name}/waveforms/stations.geofon.xml'
+  - 'data/events/${event_name}/waveforms/stations.iris.xml'
+
+  # File with hypocenter information and possibly reference solution
+  events_path: 'data/events/${event_name}/event.txt'
+
+  # List of directories with raw waveform data
+  waveform_paths: 
+  - 'data/events/${event_name}/waveforms/raw'
+
+  # List of directories with kite InSAR scenes
+  kite_scene_paths: 
+  - 'data/events/${event_name}/insar'
+
+  # List of directories with GNSS data
+  gnss_campaign_paths: 
+  - 'data/events/${event_name}/gnss'
+
+  # List of files with instrument response information (can be the same as in
+  # stations_stationxml_paths above)
+  responses_stationxml_paths:
+  - 'data/events/${event_name}/waveforms/stations.geofon.xml'
+
+  # List of SACPZ response files for restitution of the raw waveform data.
+  responses_sacpz_path: 'data/events/${event_name}/responce.pz'
+
+  # File containing station correction informations.
+  station_corrections_path: 'data/events/${event_name}/corrections.txt'
+
+  # List event picks files
+  picks_paths:
+  - 'data/events/${event_name}/picks.txt'
+
+  # List of stations/components to be excluded according to their STA, NET.STA,
+  # NET.STA.LOC, or NET.STA.LOC.CHA codes
+  blacklist: ['GE.UGM', 'GE.PLAI']
+
+  # List of files with additional exclusion lists (one entry per line, same 
+  # format as above)
+  blacklist_paths:
+  - 'data/events/${event_name}/waveforms/blacklist.txt'
+
+  # List of text files with whitelisted stations.
+  whitelist_paths:
+  - 'data/events/${event_name}/waveforms/whitelist.txt'
+
+  # if not None, list of stations/components to include according
+  # to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes.
+  # Note: when whitelisting on channel level, both, the raw and the processed 
+  # channel codes have to be listed.
+  whitelist: ['GE.ZGQ', 'GE.FFAR']
+
+  # File containing the clipping information for waveform data
+  clippings_path: 'data/events/${event_name}/clipping.txt'
+
+  # Apply correction factors from station corrections.
+  apply_correction_factors: true
+
+  # Apply correction delays from station corrections.
+  apply_correction_delays: true
+
+  # Extend incomplete seismic traces.
+  extend_incomplete: false

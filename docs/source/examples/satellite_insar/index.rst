@@ -7,15 +7,11 @@ Setup
 -----
 
 To repeat this exercise on your machine, you should first `install Pyrocko
-<https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then, copy the
-exercise project directory from Grond's git repos to a place of your choice.
+<https://pyrocko.org/docs/current/install/>`_ and Grond (see :doc:`/install/index`), if you have not already done so. Then create the example project with:
 
 .. code-block :: sh
 
-    # git clone https://github.com/pyrocko/grond  # <- done during installation
-    cd grond
-    cp -r examples/grond-playground-insar ~/grond-playground-insar
-    cd ~/grond-playground-insar
+    grond init example_insar grond-playground-insar/
 
 
 The project folder
@@ -130,7 +126,7 @@ The project folder already contains a configuration file for rectangular source 
 It's a `YAML`_ file: This file format has been chosen for the Grond configuration because it can represent arbitrarily nested data structures built from mappings, lists, and scalar values. It also provides an excellent balance between human and machine readability. When working with YAML files, it is good to know that the **indentation is part of the syntax** and that comments can be introduced with the ``#`` symbol. The type markers, like ``!grond.RectangularProblemConfig``, select the Grond object type of the following mapping and it's documentation can likely be found in the :doc:`/library/index`.
 
 
-.. literalinclude :: ../../../../examples/grond-playground-insar/config/insar_rectangular.gronf
+.. literalinclude :: ../../../../examples/example_insar/config/insar_rectangular.gronf
     :language: yaml
     :caption: config/insar_rectangular.gronf (in project folder)
 
@@ -174,7 +170,7 @@ Once the optimisation is finished we can generate and open the final report with
 
 .. code-block :: sh
 
-    grond report -so rundir/rect_source.grun
+    grond report -so runs/rect_2009LaAquila.grun
 
 
 Example report

@@ -1,1 +1,1 @@
-__version__ = '1.0.0-beta'
+from grond.setup_info import version as __version__  # noqa

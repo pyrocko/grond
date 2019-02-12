@@ -17,7 +17,7 @@ def get_all_plot_classes():
     for cls in classes_with_have_get_plot_classes:
         plot_classes.update(cls.get_plot_classes())
 
-    return plot_classes
+    return sorted(list(plot_classes), key=lambda plot: plot.name)
 
 
 def get_plot_config_collection(env=None, plot_names=None):
@@ -47,7 +47,8 @@ def make_plots(
         env,
         plot_config_collection=None,
         plot_names=None,
-        plots_path=None):
+        plots_path=None,
+        show=False):
 
     if plot_config_collection is None:
         plot_config_collection = get_plot_config_collection(env, plot_names)
@@ -56,14 +57,14 @@ def make_plots(
         plots_path = env.get_plots_path()
 
     plots = plot_config_collection.plot_configs
-    manager = PlotCollectionManager(plots_path)
+    manager = PlotCollectionManager(plots_path, show=show)
     env.set_plot_collection_manager(manager)
 
     for plot in plots:
         try:
             plot.make(env)
         except (GrondEnvironmentError, GrondError) as e:
-            logger.warning('cannot create plot %s: %s' % (
+            logger.warning('Cannot create plot %s: %s' % (
                 plot.name, str(e)))
 
 

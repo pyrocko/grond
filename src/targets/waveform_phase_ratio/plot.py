@@ -12,6 +12,8 @@ from grond.plot.collection import PlotItem
 
 from .target import PhaseRatioTarget
 
+guts_prefix = 'grond'
+
 
 def S(text):
     return ' '.join(text.split())
@@ -69,15 +71,18 @@ class FitsPhaseRatioPlot(PlotConfig):
 
         cm.create_group_mpl(
             self, self.draw_figures(ds, history),
-            title=u'Fits of phase ratios',
+            title=u'Fits Phase Ratios',
             section='fits',
             feather_icon='activity',
             description=u'''
 Observed (black markers) and synthetic waveform amplitude phase ratio estimates
-(colored markers) at different stations for every Nth model in the bootstrap
-solution ensemble (N=%i).
+(spectral average ratio; colored markers) at different stations for every Nth
+model in the bootstrap solution ensemble (N=%i).
 
 %s
+
+The frequency range used to estimate spectral averages is not shown (see config
+file). Optimal solutions show good agreement between black and colored markers.
 ''' % (self.istride_ensemble, scolor))
 
     def draw_figures(self, ds, history):

@@ -3,7 +3,7 @@ import math
 import logging
 
 from pyrocko import gf, util, moment_tensor as mtm
-from pyrocko.guts import String, Float, Dict, StringChoice
+from pyrocko.guts import String, Float, Dict, StringChoice, Int
 
 from grond.meta import Forbidden, expand_template, Parameter, \
     has_get_plot_classes
@@ -16,11 +16,16 @@ km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
 
+class MTType(StringChoice):
+    choices = ['full', 'deviatoric', 'dc']
+
+
 class CMTProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
-    mt_type = StringChoice.T(choices=['full', 'deviatoric'])
+    mt_type = MTType.T(default='full')
+    nthreads = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
         if event.depth is None:
@@ -41,7 +46,8 @@ class CMTProblemConfig(ProblemConfig):
             ranges=self.ranges,
             distance_min=self.distance_min,
             mt_type=self.mt_type,
-            norm_exponent=self.norm_exponent)
+            norm_exponent=self.norm_exponent,
+            nthreads=self.nthreads)
 
         return problem
 
@@ -74,8 +80,7 @@ class CMTProblem(Problem):
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
     distance_min = Float.T(default=0.0)
-    mt_type = StringChoice.T(
-        default='full', choices=['full', 'deviatoric', 'dc'])
+    mt_type = MTType.T(default='full')
 
     def __init__(self, **kwargs):
         Problem.__init__(self, **kwargs)
@@ -156,12 +161,13 @@ class CMTProblem(Problem):
 
         return x
 
-    def random_uniform(self, xbounds):
+    def random_uniform(self, xbounds, rstate):
+
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
-        x[5:11] = mtm.random_m6()
+        x[5:11] = mtm.random_m6(x=rstate.random_sample(6))
 
         return x.tolist()
 
@@ -188,7 +194,7 @@ class CMTProblem(Problem):
         x = self.get_parameter_array(d)
 
         source = self.get_source(x)
-        for t in self.targets:
+        for t in self.waveform_targets:
             if (self.distance_min > num.asarray(t.distance_to(source))).any():
                 raise Forbidden()
 

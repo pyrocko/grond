@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en" ng-app="reportApp">
-    <head>
+    <head ng-controller="InfoController">
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Grond - Earthquake Reports</title>
+        <title>{{ get_info().title }}</title>
 
         <!-- CSS -->
         <link href="css/bootstrap.min.css" rel="stylesheet">
@@ -57,7 +57,7 @@
                 <div class="col-10">
                     <p class="text-center">
                         <a href="https://pyrocko.org/grond/" target="_blank">Busted with Grond</a> -
-                        <span ng-if="get_report_grond_versions().length > 0">Reports:
+                        <span ng-if="get_report_grond_versions().length > 0">Report:
                             <span ng-repeat="vers in get_report_grond_versions()">
                                 v{{ vers + ($last ? '' : ', ') }}
                             </span> -

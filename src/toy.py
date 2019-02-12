@@ -5,6 +5,7 @@ from pyrocko.guts import Object, Float, Dict, List, String
 from pyrocko import gf
 from grond import Problem, Parameter, MisfitTarget
 from grond.optimisers.highscore.plot import HighScoreOptimiserPlot
+from grond.targets import MisfitResult
 
 guts_prefix = 'grond.toy'
 
@@ -92,6 +93,9 @@ class ToyProblem(Problem):
             self._obs_distances = num.array(
                 [t.obs_distance for t in self.targets],
                 dtype=num.float)
+
+    def evaluate(self, x):
+        raise NotImplementedError('Toy problem does not have evaluate()')
 
     def misfits(self, x, mask=None):
         self._setup_modelling()

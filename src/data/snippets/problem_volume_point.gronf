@@ -1,0 +1,25 @@
+%YAML 1.1
+# Problem: Volume point source.
+problem_config: !grond.VolumePointProblemConfig
+
+  # Name used to identify the output
+  name_template: '${event_name}'
+
+  # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
+  norm_exponent: 2
+
+  # Station distances to consider [m]
+  distance_min: 0
+  distance_max: 200e3
+
+  # Define the ranges of the solution space
+  ranges:
+
+    # Location with respect to origin [m]
+    north_shift: '-40e3 .. 40e3'
+    east_shift: '-40e3 .. 40e3'
+    depth: '4e3 .. 50e3'
+
+    # Volume change in [m^3]
+    # Negative values for deflation, positive for inflational
+    volume_change: '-1e9 .. 1e9'

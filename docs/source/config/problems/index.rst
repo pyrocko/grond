@@ -4,16 +4,19 @@ Problems
 The problem is the optimisation task - the specific :term:`source` model we invert.
 The search ranges and inversion conditions can be configured flexibly. So far defined problems in Grond are the optimisations of different source types, which are derived from `Pyrocko Sources`_.
 
-These problems are:
+The optimisation problems which can be solved with Grond are:
 
-* ``CMTProblem``
+* :ref:`CMTProblem <cmt>`
     A problem that solves for a centroid moment tensor point source (derived from Pyrocko's ``CMTSource``). This problem fits the very general earthquake source analysis based on far-field seismic waveforms.
 
-* ``DoubleDCProblem``
+* :ref:`DoubleDCProblem <double_dc>`
     A problem that solves for two double-couple point sources (derived from ``DoubleDCSource``). This problem can be used to solve for somewhat complex, *segmented earthquake sources* to better fit far-field seismic data.
     
-* ``RectangularProblem``
+* :ref:`RectangularProblem <rectangular>`
     A problem that solves for a rectangular finite source (derived from Pyrocko's ``RectangularSource``). This problem fits well to large earthquakes and/or problems for which near-field surface displacement data (InSAR, GNSS, etc.) are available.
+
+* :ref:`VolumePointProblem <volume_point>`
+    A problem that solves for a spherical volume point (infinite) to model magmatic or volcanic processes. Only static targets (GNSS or InSAR) are supported.
 
 To define and configure a problem the part called ``problem_config`` in the configuration is set up.
 
@@ -24,20 +27,18 @@ General configuration
 .. code-block :: yaml
   :caption: Generic example ``ProblemConfig``
 
-  problem_config: !grond.RectangularProblemConfig
+  problem_config: !grond.ProblemConfig
+
+    # Name used to identify the output
     name_template: '${event_name}'
-    norm_exponent: 0
-    decimation_factor: 4
+
+    # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
+    norm_exponent: 2
+
+    # Define the ranges of the solution space.
     ranges:
-      north_shift: '-2000 .. 20000'
-      east_shift: '-2000 .. 20000'
-      depth: '5000 .. 30000'
-      length: '12000 .. 18000'
-      width: '4000 .. 14000'
-      slip: '0.2 .. 2.'
-      strike: '80 .. 330'
-      dip: '0 .. 60'
-      rake: '60 .. 90'
+      ..
+      # Problem specific, see below ...
 
 
 The following problem parameters are shared by all problems and are part of all
@@ -46,7 +47,7 @@ problem configurations:
 .. glossary::
 
   ``name_template``
-    can be any string and provides a stem for the result folders `runs` and `reports` to identify different optimisations. Meaningful is to use short event and problem identifications in this string.
+    can be any string and provides a stem for the result folders `runs` and `report` to identify different optimisations. Meaningful is to use short event and problem identifications in this string.
 
   ``norm_exponent``
     defines the norm of combining several `normalization_family` in the global misfit. This integer value is 1 or larger. Please find here more information on the global `misfit calculation in Grond`_.
@@ -57,31 +58,14 @@ problem configurations:
 An example for the configuration of a rectangular fault problem is given here:
 
 
+.. _cmt:
+
 ``CMTProblem`` configuration
 ----------------------------
 
-.. code-block :: yaml
+.. literalinclude :: ../../../../src/data/snippets/problem_cmt.gronf
+  :language: yaml
   :caption: Example ``CMTProblemConfig``
-
-  problem_config: !grond.CMTProblemConfig
-    name_template: '${event_name}_regional_mt'
-    norm_exponent: 1
-    distance_min: 0
-    mt_type: 'deviatoric'
-    ranges:
-      time: '-10 .. 10 | add'
-      north_shift: '-40e3 .. 40e3'
-      east_shift: '-40e3 .. 40e3'
-      depth: '4e3 .. 50e3'
-      magnitude: '4.0 .. 7.0'
-      rmnn: '-1.41421 .. 1.41421'
-      rmee: '-1.41421 .. 1.41421'
-      rmdd: '-1.41421 .. 1.41421'
-      rmne: '-1 .. 1'
-      rmnd: '-1 .. 1'
-      rmed: '-1 .. 1'
-      duration: '0. .. 0.'
-
 
 The Grond CMTProblem represents one of most popular problems in seismology.  
 Sought-after are moment tensor source models that well fit the observed seismic waveforms. The 
@@ -106,7 +90,7 @@ particularly for the ``CMTProblem``.
     is a maximum target distance to the source used to exclude targets farther than this. Tailored to the problem, too far away targets will not be considered in the misfit evaluation. Like this certain phase interferences may be efficiently excluded.
 
   ``mt_type``
-    configures the type of moment tensor. The source model can be set to be a full moment tensor (`` mt_type: full``) or can be constrained to a deviatoric moment tensor (``mt_type: deviatoric``) or even to a pure double couple source (``mt_type: dc``).
+    configures the type of moment tensor. The source model can be set to be a full moment tensor (``mt_type: full``) or can be constrained to a deviatoric moment tensor (``mt_type: deviatoric``) or even to a pure double couple source (``mt_type: dc``).
 
 **Source parameters**:
 
@@ -138,38 +122,15 @@ particularly for the ``CMTProblem``.
     ``duration``
       is the duration of the source time function in seconds.
 
-
+.. _double_dc:
 
 ``DoubleDCProblem`` configuration
 ---------------------------------
 
-.. code-block :: yaml
+.. literalinclude :: ../../../../src/data/snippets/problem_double_dc.gronf
+  :language: yaml
   :caption: Example ``DoubleDCProblemConfig``
 
-  problem_config: !grond.CMTProblemConfig
-    name_template: '${event_name}_regional_mt'
-    norm_exponent: 1
-    distance_min: 0
-    mt_type: 'deviatoric'
-    ranges:
-      time: '-10 .. 10 | add'
-      north_shift: '-40e3 .. 40e3'
-      east_shift: '-40e3 .. 40e3'
-      depth: '4e3 .. 50e3'
-      magnitude: '4.0 .. 7.0'
-      strike1: '30. .. 180.'
-      dip1: '30. .. 90.'
-      rake1: '20. .. 150.'
-      strike2: '30. .. 180.'
-      dip2: '30. .. 90.'
-      rake2: '20. .. 150.'
-      delta_time: '5. .. 10.'
-      delta_depth: '0. .. 10000.'
-      azimuth: '0. .. 360.'
-      distance: '10000. .. 40000.' 
-      mix: '0.2 .. 0.8'
-      duration1: '5. .. 10.'
-      duration2: '5. .. 10.'
 
 This problem has two double-couple point sources (derived from ``DoubleDCSource``). They are dependent in location and relative timing to avoid overlapping in either space or time. The mechanisms, the durations and the moments of the two sources are independent. Using this model more complex earthquakes with two prominent rupture phases or with a change of mechanism along the rupture plane can be studied. Or simply the potential of a major source
 complexity of an earthquake can be tested.
@@ -230,31 +191,14 @@ particularly for the ``DoubleDCProblem``.
       are the durations of the first and second source's source time functions, respectively, in seconds.
 
 
+.. _rectangular:
+
 ``RectangularProblem`` configuration
 ------------------------------------
 
-.. code-block :: yaml
+.. literalinclude :: ../../../../src/data/snippets/problem_rectangular.gronf
+  :language: yaml
   :caption: Example ``RectangularProblemConfig``
-
-  problem_config: !grond.RectangularProblemConfig
-    name_template: '${event_name}_joint'
-    norm_exponent: 1
-    decimation_factor: 4
-    ranges:
-      north_shift: '-2000 .. 20000'
-      east_shift: '-2000 .. 20000'
-      depth: '5000 .. 30000'
-      length: '12000 .. 18000'
-      width: '4000 .. 14000'
-      slip: '0.2 .. 2.'
-      strike: '80 .. 330'
-      dip: '0 .. 60'
-      rake: '60 .. 90'
-
-      # Dynamic constraints, not needed for static inversion
-      time: '-15. .. 10. | add'
-      nucleation_x: '-1. .. 1.'
-      nucleation_y: '-1. .. 1.'
 
 The rectangular source is a simple finite source model with a rectangular shape and uniform moment or slip across the rupture plane. It resembles the source model defined by `Haskell (1964)`_, but has a nucleation point from which spreads a circular rupture. The position of the nucleation point on the rupture plane can be part of the problem. Uniform and bilateral ruptures are therefore possible. With the ``RectangularProblem`` also directivity effects in the observations of large earthquake may be predicted.
 
@@ -310,6 +254,27 @@ For the source parameter configuration, please note that the last three paramete
     ``nucleation_y``
       relative along-dip position of the rupture nucleation point on the fault to the centre location. This parameter may range from -1 to 1. With 0 being in the centre, -1 being at the top fault edge, 1 at the bottom fault edge, and 0.5 is half-way between centroid and bottom fault edge.
 
+
+.. _volume_point:
+
+``VolumePointProblem`` configuration
+------------------------------------
+
+.. literalinclude :: ../../../../src/data/snippets/problem_volume_point.gronf
+  :language: yaml
+  :caption: Example ``VolumePointProblemConfig``
+
+
+The volume point problem is a simple dislocation source with a spherical shape, as a model for magmatic or volcanic processes.
+
+This problem can be used for static targets only (InSAR or GNSS), and is similar to the Mogi model, with the difference that the ``VolumePointProblem`` is using Pyrocko's Green's function databases and can act in layered media.
+
+**Source parameters**:
+
+``ranges:``
+
+  ``volume_change``
+    Allowed volume change of the point source, given in :math:`\mathrm{m}^3`. Positive for inflational volumes, negative values for deflation.
 
 .. _misfit calculation in Grond: ../method/index.html#Misfit calculation
 .. _Pyrocko Sources: _https://pyrocko.org/docs/current/library/reference/gf.html#module-pyrocko.gf.seismosizer

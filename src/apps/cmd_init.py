@@ -1,188 +1,118 @@
-import grond
+from __future__ import print_function, absolute_import
+
 import logging
 
-import math
-import shutil
-import os
-from os import path as op
-from pyrocko.gf import Range
+import glob
+import os.path as op
+from distutils.dir_util import copy_tree
 
 logger = logging.getLogger('grond.init')
 km = 1e3
 
-INIT_EVENT = '''name = 2011-myanmar
-time = 2011-03-24 13:55:12.010
-latitude = 20.687
-longitude = 99.822
-magnitude = 6.9
-moment = 1.9228e+19
-depth = 8000
-region = Myanmar
---------------------------------------------'''
 
+class GrondInit(object):
 
-class GrondProject(object):
+    snippet_path = op.join(op.dirname(__file__), '..', 'data', 'snippets')
+    example_path = op.join(op.dirname(__file__), '..', 'data', 'examples')
 
     def __init__(self):
-        self.dataset_config = grond.DatasetConfig(
-            events_path='events.txt',
-            stations_path='stations.txt',
-            responses_stationxml_paths=['stationxml.xml'])
+        pass
 
-        self.project_config = None
-        self.target_groups = []
+    def get_examples(self):
+        return {
+            self.filename_to_abbrv(fn): self._get_example_description(fn)
+            for fn in self.example_dirs
+        }
 
-        self.sub_dirs = ['gf_stores', 'config']
-        self.empty_files = []
+    def get_sections(self):
+        return {
+            self.filename_to_abbrv(fn): self._get_description(fn)
+            for fn in self.snippet_files
+        }
 
-    def add_waveforms(self):
-        logger.info('Added waveforms')
-        dsc = self.dataset_config
+    @property
+    def example_dirs(self):
+        return glob.glob(op.join(self.example_path, '*'))
 
-        self.sub_dirs.append('data')
-        dsc.waveform_paths = ['data']
+    @property
+    def section_files(self):
+        return self._get_snippet_files('section_*.gronf')
 
-        self.empty_files.append('stations.xml')
-        dsc.stations_path = 'stations.txt'
+    @property
+    def snippet_files(self):
+        return self._get_snippet_files('*.gronf')
 
-        self.target_groups.append(
-            grond.WaveformTargetGroup(
-                normalisation_family='time_domain',
-                path='all',
-                distance_min=10*km,
-                distance_max=1000*km,
-                channels=['Z', 'R', 'T'],
-                interpolation='multilinear',
-                store_id='gf_store_id',
-                misfit_config=grond.WaveformMisfitConfig(
-                    fmin=0.01,
-                    fmax=0.1)))
+    def _get_snippet_files(self, name):
+        files = glob.glob(op.join(self.snippet_path, name))
+        files.sort()
+        return files
 
-    def add_insar(self):
-        logger.info('Added InSAR')
-        dsc = self.dataset_config
+    @staticmethod
+    def _get_description(filename):
+        with open(filename, 'rt') as f:
+            for ln in f.readlines():
+                if ln.startswith('#'):
+                    return ln.split(':')[-1].strip('# \n')
+            return 'No description!'
 
-        self.sub_dirs.append('scenes')
-        dsc.kite_scene_paths = ['scenes']
+    def _get_example_description(self, example_dir):
+        config_file = self._get_example_config(example_dir)
+        with open(config_file, 'rt') as f:
+            for ln in f.readlines():
+                if ln.startswith('#'):
+                    return ln.split(':')[-1].strip('# \n')
+            return 'No description!'
 
-        self.target_groups.append(
-            grond.SatelliteTargetGroup(
-                normalisation_family='static',
-                path='all',
-                interpolation='multilinear',
-                store_id='gf_static_store_id',
-                kite_scenes=['*all'],
-                misfit_config=grond.SatelliteMisfitConfig(
-                    optimise_orbital_ramp=True,
-                    ranges={
-                        'offset': '-0.5 .. 0.5',
-                        'ramp_north': '-1e-4 .. 1e-4',
-                        'ramp_east': '-1e-4 .. 1e-4'
-                        }
-                    ))
-            )
+    @staticmethod
+    def _get_example_config(example_dir):
+        fpath_template = op.join(example_dir, 'config', '*.gronf')
+        config_file = glob.glob(fpath_template)
+        if len(config_file) == 0:
+            raise OSError('No example config file found: %s' % fpath_template)
+        return config_file[0]
 
-    def add_gnss(self):
-        logger.info('Added InSAR')
-        dsc = self.dataset_config
+    @staticmethod
+    def filename_to_abbrv(filename):
+        return op.basename(filename).split('.')[0]
 
-        self.sub_dirs.append('scenes')
-        dsc.kite_scene_paths = ['scenes']
+    def init_example(self, abbrv, path, force=False):
 
-        self.target_groups.append(
-            grond.GNSSCampaignTargetGroup(
-                normalisation_family='static',
-                path='all',
-                interpolation='multilinear',
-                store_id='gf_static_store_id',
-                misfit_config=grond.GNSSCampaignMisfitConfig()
-                )
-            )
+        path = op.abspath(path)
+        if op.exists(path) and not force:
+            raise OSError('Directory already exists: %s' % op.basename(path))
+        elif op.exists(path) and force:
+            pass
+        example_dir = self.abbrv_to_example_dir(abbrv)
 
-    def set_cmt_source(self):
-        logger.info('Set problem to rectangular')
-        pi2 = math.pi/2
-        self.problem_config = grond.CMTProblemConfig(
-            name_template='cmt_${event_name}',
-            distance_min=2.*km,
-            mt_type='deviatoric',
-            ranges=dict(
-                time=Range(0, 10.0, relative='add'),
-                north_shift=Range(-16*km, 16*km),
-                east_shift=Range(-16*km, 16*km),
-                depth=Range(1*km, 11*km),
-                magnitude=Range(4.0, 6.0),
-                rmnn=Range(-pi2, pi2),
-                rmee=Range(-pi2, pi2),
-                rmdd=Range(-pi2, pi2),
-                rmne=Range(-1.0, 1.0),
-                rmnd=Range(-1.0, 1.0),
-                rmed=Range(-1.0, 1.0),
-                duration=Range(1.0, 15.0))
-            )
+        logger.info('Initialising example "%s" in "%s".' % (abbrv, path))
+        copy_tree(example_dir, path)
 
-    def set_rectangular_source(self):
-        logger.info('Set problem to rectangular')
-        self.problem_config = grond.RectangularProblemConfig(
-            name_template='rect_source',
-            ranges=dict(
-                north_shift=Range(-20*km, 20*km),
-                east_shift=Range(-20*km, 20*km),
-                depth=Range(0*km, 10*km),
-                length=Range(20*km, 40*km),
-                width=Range(5*km, 12*km),
-                dip=Range(20, 70),
-                strike=Range(0, 180),
-                rake=Range(0, 90),
-                slip=Range(1, 3))
-            )
+    def abbrv_to_filename(self, abbrv):
+        ext = '.gronf'
+        fn = op.join(self.snippet_path, abbrv + ext)
 
-    def check(self):
-        assert self.target_groups, 'No target_groups set!'
-        assert self.problem_config, 'No problem set!'
+        if fn not in self._get_snippet_files('*.gronf'):
+            raise OSError('File not found: %s' % fn)
+        return fn
 
-    def get_config(self):
-        self.check()
+    def abbrv_to_example_dir(self, abbrv):
+        return op.join(self.example_path, abbrv)
 
-        engine_config = grond.EngineConfig(
-            gf_store_superdirs=['gf_stores'])
+    def get_content_example(self, abbrv):
+        try:
+            fn = self._get_example_config(
+                self.abbrv_to_example_dir(abbrv))
+        except OSError:
+            return False
 
-        optimiser_config = grond.HighScoreOptimiserConfig()
+        with open(fn, 'r') as f:
+            return f.read()
 
-        return grond.Config(
-            rundir_template=op.join('rundir', '${problem_name}.grun'),
-            dataset_config=self.dataset_config,
-            problem_config=self.problem_config,
-            target_groups=self.target_groups,
-            optimiser_config=optimiser_config,
-            engine_config=engine_config)
+    def get_content_snippet(self, abbrv):
+        try:
+            fn = self.abbrv_to_filename(abbrv)
+        except OSError:
+            return False
 
-    def build(self, project_dir, force=False):
-        if op.exists(project_dir) and not force:
-            raise grond.GrondError(
-                'Directory "%s" already exists! Use --force to overwrite'
-                % project_dir)
-        elif op.exists(project_dir) and force:
-            logger.info('Overwriting directory %s.' % project_dir)
-            shutil.rmtree(project_dir)
-
-        logger.info('Creating empty project in folder %s' % project_dir)
-        config = self.get_config()
-
-        def p(*fn):
-            return op.join(project_dir, *fn)
-
-        os.mkdir(op.abspath(project_dir))
-        for d in self.sub_dirs:
-            os.mkdir(p(d))
-
-        with open(p('config', 'config.gronf'), 'w') as f:
-            f.write(str(config))
-        with open(p('events.txt'), 'w') as f:
-            f.write(INIT_EVENT)
-
-        for fn in self.empty_files:
-            open(p(fn), 'w').close()
-
-    def dump(self):
-        return self.get_config().dump()
+        with open(fn, 'r') as f:
+            return f.read()

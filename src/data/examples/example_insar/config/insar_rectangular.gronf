@@ -1,3 +1,5 @@
+%YAML 1.1
+# Example: Inversion of planar rectangular source model from InSAR observations.
 --- !grond.Config
 
 # All file paths referenced below are treated relative to the location of this
@@ -121,10 +123,13 @@ problem_config: !grond.RectangularProblemConfig
     rake: 120 .. 360
     strike: 220 .. 360
 
-  # We are using a dense GF store and will reduce the number of discrete
-  # subsources by this factor. Decrease the decimation for a finer sub-source
-  # resolution, and increased computational time
-  decimation_factor: 12
+  # The number of subsources used in the modelling is dependent on the spatial
+  # spacing of the Green's function in the GF Store. The decimation_factor
+  # parameter allows to decrease the resolution of the discretised source model
+  # (use fewer sub-sources) for speedy computation with inaccurate results (for
+  # testing purposes). Higher value means faster computation and less accurate
+  # result.
+  decimation_factor: 1
 
   # Clearance distance around stations (no models with origin closer than this
   # distance to any station are produced by the sampler)
@@ -191,7 +196,7 @@ optimiser_config: !grond.HighScoreOptimiserConfig
 engine_config: !grond.EngineConfig
 
   # Whether to use GF store directories listed in ~/.pyrocko/config.pf
-  gf_stores_from_pyrocko_config: true
+  gf_stores_from_pyrocko_config: false
 
   # List of directories with GF stores
   gf_store_superdirs: ['gf_stores']

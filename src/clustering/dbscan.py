@@ -1,5 +1,6 @@
 '''This module provides basic cluster processing for seismic events.'''
 
+from __future__ import print_function
 import collections
 import numpy as num
 
@@ -26,7 +27,7 @@ class ClusterError(Exception):
     pass
 
 
-def dbscan(simmat, nmin, eps):
+def dbscan(simmat, nmin, eps, ncluster_limit):
     '''
     Apply DBSCAN algorithm, reading a similarity matrix and returning a list of
     events clusters
@@ -118,7 +119,10 @@ def dbscan(simmat, nmin, eps):
     resorting_dict[-1] = -1
 
     for icl in range(n_clusters):
-        resorting_dict[resorted_clustersizes[icl][0]] = icl
+        if ncluster_limit is None or icl < ncluster_limit:
+            resorting_dict[resorted_clustersizes[icl][0]] = icl
+        else:
+            resorting_dict[resorted_clustersizes[icl][0]] = -1
 
     for ievcl, evcl in enumerate(eventsclusters):
         eventsclusters[ievcl] = resorting_dict[evcl]

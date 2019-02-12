@@ -108,6 +108,26 @@ def str_duration(t):
         return s + '%.1f d' % (t / (24. * 3600.))
 
 
+try:
+    nanmedian = num.nanmedian
+except AttributeError:
+    def nanmedian(a, axis=None):
+        if axis is None:
+            return num.median(a[num.isfinite(a)])
+        else:
+            shape_out = list(a.shape)
+            shape_out.pop(axis)
+            out = num.empty(shape_out, dtype=a.dtype)
+            out[...] = num.nan
+            for iout in num.ndindex(tuple(shape_out)):
+                iin = list(iout)
+                iin[axis:axis] = [slice(0, a.shape[axis])]
+                b = a[tuple(iin)]
+                out[iout] = num.median(b[num.isfinite(b)])
+
+            return out
+
+
 class Forbidden(Exception):
     pass
 
@@ -280,6 +300,24 @@ class HasPaths(Object):
 
     def rel_path(self, path):
         return xrelpath(path, self.get_basepath())
+
+
+def nslc_to_pattern(s):
+    toks = s.split('.')
+    if len(toks) == 1:
+        return '*.%s.*.*' % s
+    elif len(toks) == 2:
+        return '%s.*.*' % s
+    elif len(toks) == 3:
+        return '%s.*' % s
+    elif len(toks) == 4:
+        return s
+    else:
+        raise GrondError('Invalid net.sta.loc.cha pattern: %s' % s)
+
+
+def nslcs_to_patterns(l):
+    return [nslc_to_pattern(s) for s in l]
 
 
 __all__ = '''

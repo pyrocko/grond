@@ -1,8 +1,8 @@
 <div>
     <script>$("#browser-warning").hide();</script>
 
-    <nav class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
-        <a href="" class="navbar-brand">Grond Reports</a>
+    <nav ng-controller="InfoController" class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
+        <a href="" class="navbar-brand">Grond Report</a>
         <input
                 class="form-control form-control-dark"
                 type="text"
@@ -23,6 +23,7 @@
             Open
         </a>
         <a
+                ng-if="have_archive()"
                 class="btn btn-primary ml-3"
                 href="grond-reports.tar.gz"
                 role="button">
@@ -113,7 +114,7 @@
                     </h6>
                     <a href="" ng-click="select_group_by_name_variant(group.name, group.variant)" class="nav-link {{ (group.can_compare && group_matches_keyword(group)) ? '' : 'disabled' }}">
                         <span data-feather="{{ group.feather_icon }}"></span>
-                        {{ group.name | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}
+                        {{ group.pri.title | nounderscore }} {{ group.variant == 'default' ? '' : '(' + group.variant + ')' }}
                     </a>
                   </li>
                 </ul>

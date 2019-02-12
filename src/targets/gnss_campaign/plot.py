@@ -2,10 +2,14 @@ import logging
 import numpy as num
 from pyrocko.model import gnss
 
-from pyrocko.plot import automap
+from pyrocko.plot import automap, mpl_init
+from pyrocko import orthodrome as od
+
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem
+from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem, VolumePointProblem
+
+from ..plot import StationDistributionPlot
 
 import copy
 from pyrocko.guts import Tuple, Float, Bool
@@ -20,7 +24,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
     ''' Maps showing horizontal surface displacements
         of a GNSS campaign and model '''
 
-    name = 'GNSS'
+    name = 'gnss'
 
     size_cm = Tuple.T(
         2, Float.T(),
@@ -50,7 +54,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
         cm.create_group_automap(
             self,
             self.draw_gnss_fits(ds, history, optimiser),
-            title=u'Static GNSS Surface Displacements',
+            title=u'GNSS Displacements',
             section='fits',
             feather_icon='map',
             description=u'''
@@ -102,12 +106,19 @@ Static surface displacement from GNSS campaign %s (black vectors) and
 displacements derived from best rupture model (red).
 ''' % campaign.name)
 
-            lat, lon = campaign.get_center_latlon()
+            event = source.pyrocko_event()
+            locations = campaign.stations + [event]
+
+            lat, lon = od.geographic_midpoint_locations(locations)
 
             if self.radius is None:
-                radius = campaign.get_radius()
+                coords = num.array([loc.effective_latlon for loc in locations])
+                radius = od.distance_accurate50m_numpy(
+                            lat[num.newaxis], lon[num.newaxis],
+                            coords[:, 0].max(), coords[:, 1]).max()
+                radius *= 1.1
 
-            if radius == 0.:
+            if radius < 30.*km:
                 logger.warn(
                     'Radius of GNSS campaign %s too small, defaulting'
                     ' to 30 km' % campaign.name)
@@ -123,8 +134,9 @@ displacements derived from best rupture model (red).
                 sta.east.shift = result.statics_syn['displacement.e'][ista]
                 sta.east.sigma = 0.
 
-                sta.up.shift = -result.statics_syn['displacement.d'][ista]
-                sta.up.sigma = 0.
+                if sta.up:
+                    sta.up.shift = -result.statics_syn['displacement.d'][ista]
+                    sta.up.sigma = 0.
 
             m = automap.Map(
                 width=self.size_cm[0],
@@ -138,37 +150,48 @@ displacements derived from best rupture model (red).
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
+            if sta.up:
+                offset_scale = num.array(
+                    [num.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
+                    for s in campaign.stations + model_camp.stations]).max()
+            else:
+                offset_scale = num.array(
+                    [num.sqrt(s.east.shift**2 + s.north.shift**2)
+                    for s in campaign.stations + model_camp.stations]).max()
+
             if vertical:
                 m.add_gnss_campaign(campaign, psxy_style={
                     'G': 'black',
                     'W': '0.8p,black',
-                    }, vertical=True)
+                    },
+                    offset_scale=offset_scale, vertical=True)
 
                 m.add_gnss_campaign(model_camp, psxy_style={
                     'G': 'red',
                     'W': '0.8p,red',
                     't': 30,
                     },
-                    vertical=True, labels=False)
+                    offset_scale=offset_scale, vertical=True, labels=False)
             else:
                 m.add_gnss_campaign(campaign, psxy_style={
                     'G': 'black',
                     'W': '0.8p,black',
-                    })
+                    },
+                    offset_scale=offset_scale)
 
                 m.add_gnss_campaign(model_camp, psxy_style={
                     'G': 'red',
                     'W': '0.8p,red',
                     't': 30,
                     },
-                    labels=False)
+                    offset_scale=offset_scale, labels=False)
 
             if isinstance(problem, CMTProblem):
                 from pyrocko import moment_tensor
                 from pyrocko.plot import gmtpy
 
-                event = source.pyrocko_event()
                 mt = event.moment_tensor.m_up_south_east()
+                ev_lat, ev_lon = event.effective_latlon
 
                 xx = num.trace(mt) / 3.
                 mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
@@ -179,7 +202,7 @@ displacements derived from best rupture model (red).
                 symbol_size = 20.
                 m.gmt.psmeca(
                     S='%s%g' % ('d', symbol_size / gmtpy.cm),
-                    in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
+                    in_rows=[(ev_lon, ev_lat, 10) + m6 + (1, 0, 0)],
                     M=True,
                     *m.jxyr)
 
@@ -203,6 +226,23 @@ displacements derived from best rupture model (red).
                             t=60,
                             *m.jxyr)
             
+            elif isinstance(problem, VolumePointProblem):
+                ev_lat, ev_lon = event.effective_latlon
+                dV = abs(source.volume_change)
+                sphere_radius = num.cbrt(dV / (4./3.*num.pi))
+
+                volcanic_circle = [
+                    ev_lon,
+                    ev_lat,
+                    '%fe' % sphere_radius
+                ]
+                m.gmt.psxy(
+                    S='E-',
+                    in_rows=[volcanic_circle],
+                    W='1p,black',
+                    G='orange3',
+                    *m.jxyr)
+
             return (item, m)
 
         ifig = 0
@@ -212,5 +252,61 @@ displacements derived from best rupture model (red).
                 ifig += 1
 
 
+class GNSSStationDistribution(StationDistributionPlot):
+    ''' Polar plot showing GNSS station distribution and weight '''
+    name = 'gnss_station_distribution'
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+
+        history = environ.get_history(subset='harvest')
+        problem = environ.get_problem()
+        dataset = environ.get_dataset()
+
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(problem, dataset, history),
+            title=u'GNSS Station Distribution',
+            section='checks',
+            feather_icon='target',
+            description=u'''
+Plots showing the GNSS station distribution and their weight.
+
+This polar plot visualises the station distribution in distance and azimuth,
+the marker's size is scaled to the stations weight (mean of spatial
+components).
+''')
+
+    def draw_figures(self, problem, dataset, history):
+
+        event = problem.base_source
+        targets = problem.gnss_targets
+
+        for target in targets:
+            target.set_dataset(dataset)
+            ws = target.station_weights / target.station_weights.max()
+            if ws.size == 0:
+                continue
+
+            distances = target.distance_to(event)
+            azimuths = od.azibazi_numpy(
+                num.array(event.effective_lat)[num.newaxis],
+                num.array(event.effective_lon)[num.newaxis],
+                target.get_latlon()[:, 0],
+                target.get_latlon()[:, 1])[0]
+            labels = target.station_names
+
+            item = PlotItem(name='station_distribution-%s' % target.path)
+            fig, ax, legend = self.plot_station_distribution(
+                azimuths, distances, ws, labels)
+            legend.set_title('Weight')
+
+            yield (item, fig)
+
+
 def get_plot_classes():
-    return [GNSSTargetMisfitPlot]
+    return [
+        GNSSTargetMisfitPlot,
+        GNSSStationDistribution
+    ]
