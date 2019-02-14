@@ -68,7 +68,7 @@ class CombiSource(gf.Source):
             assert num.all(lats == lats[0]) and num.all(lons == lons[0])
             lat, lon = lats[0], lons[0]
             depth = float(num.mean([p.depth for p in subsources]))
-            t = float(num.min([p.time for p in subsources]))
+            t = float(list([p.time for p in subsources])[0])
             kwargs.update(time=t, lat=float(lat), lon=float(lon), depth=depth)
 
         gf.Source.__init__(self, subsources=subsources, **kwargs)
