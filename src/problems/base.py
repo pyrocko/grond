@@ -29,6 +29,7 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.base')
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
+
 g_rstate = num.random.RandomState()
 
 def range_overlap(a_min, a_max, b_min, b_max):
@@ -66,8 +67,9 @@ class CombiSource(gf.Source):
 
             assert num.all(lats == lats[0]) and num.all(lons == lons[0])
             lat, lon = lats[0], lons[0]
-            t = float(num.min([p.time for p in subsources]))
-            kwargs.update(time=t, lat=float(lat), lon=float(lon))
+            depth = float(num.mean([p.depth for p in subsources]))
+            t = float(list([p.time for p in subsources])[0])
+            kwargs.update(time=t, lat=float(lat), lon=float(lon), depth=depth)
 
         gf.Source.__init__(self, subsources=subsources, **kwargs)
 
@@ -78,14 +80,13 @@ class CombiSource(gf.Source):
 
         dsources = []
         t0 = self.subsources[0].time
+        t1 = self.subsources[1].time
+        tdiff = t0-t1
         for sf in self.subsources:
             ds = sf.discretize_basesource(store, target)
             ds.m6s *= sf.get_factor()
-            t1 = sf.time
-            if t0 < t1:
-                tdiff = t0-t1
-                ds.times = ds.times - tdiff
             dsources.append(ds)
+        dsources[1].times = dsources[1].times - tdiff
 
         return gf.DiscretizedMTSource.combine(dsources)
 
@@ -158,9 +159,6 @@ class Problem(Object):
                                  % (grp.path, grp.__class__.__name__))
             paths.add(grp.path)
         logger.debug('TargetGroup check OK.')
-
-    def get_engine(self):
-        return self._engine
 
     def copy(self):
         o = copy.copy(self)
@@ -311,6 +309,14 @@ class Problem(Object):
 
     def set_engine(self, engine):
         self._engine = engine
+
+    def get_engine(self):
+        return self._engine
+
+    def get_gf_store(self, target):
+        if self.get_engine() is None:
+            raise GrondError('Cannot get GF Store, modelling is not set up!')
+        return self.get_engine().get_store(target.store_id)
 
     def random_uniform(self, xbounds, rstate):
         x = rstate.uniform(0., 1., self.nparameters)
@@ -531,9 +537,9 @@ class Problem(Object):
     def evaluate(self, x, mask=None, result_mode='full',
                  targets=None, nsources=None):
         patches = []
-        nsources = 2 # for testing
+        nsources = 2
         outlines = []
-        if nsources == 2: #if self.nsources:
+        if nsources == 2:
             for i in range(nsources):
                 source = self.get_source(x, i)
                 patches.append(source)
@@ -570,8 +576,9 @@ class Problem(Object):
 
         modelling_targets_unique = list(u2m_map.keys())
 
-        resp = engine.process(source, modelling_targets_unique,
+        resp = engine.process(sources, modelling_targets_unique,
                               nthreads=self.nthreads)
+
         modelling_results_unique = list(resp.results_list[0])
 
         modelling_results = [None] * len(modelling_targets)
@@ -634,16 +641,20 @@ class Problem(Object):
 
         return results
 
-    def get_random_model(self):
+    def get_random_model(self, ntries_limit=100):
         xbounds = self.get_parameter_bounds()
 
-        while True:
+        for _ in range(ntries_limit):
             x = self.random_uniform(xbounds, rstate=g_rstate)
             try:
                 return self.preconstrain(x)
 
             except Forbidden:
                 pass
+
+        raise GrondError(
+            'Could not find any suitable candidate sample within %i tries' % (
+                ntries_limit))
 
 
 class ProblemInfoNotAvailable(GrondError):

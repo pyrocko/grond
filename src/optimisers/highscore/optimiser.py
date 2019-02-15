@@ -8,7 +8,7 @@ import numpy as num
 from collections import OrderedDict
 from pyrocko.guts import StringChoice, Int, Float, Object, List
 from pyrocko.guts_array import Array
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, LineString
 
 from grond.meta import GrondError, Forbidden, has_get_plot_classes
 from grond.problems.base import ModelHistory
@@ -161,15 +161,33 @@ class UniformSamplerPhase(SamplerPhase):
                 for i in range(nsources):
                     source = problem.get_source(pars, i)
                     sources.append(source)
-            src1 = sources[0].outline('xy')
-            src2 = sources[1].outline('xy')
-            p1 = Polygon(src1)
-            p2 = Polygon(src2)
-            if not p1.intersects(p2):
-                intersect = False
-            else:
+            depths_max = []
+            depths_min = []
+            polygons = []
+            for src in sources:
+                depths_max.append(num.max(src.outline()[:, 2]))
+                depths_min.append(num.min(src.outline()[:, 2]))
+                src_outline = sources[0].outline('xy')
+                polygons.append(Polygon(src_outline))
+            for k in range(len(polygons)):
+                for j in range(len(polygons)):
+                    p1 = polygons[k]
+                    p2 = polygons[j]
+                    if not p1.intersects(p2) or p1 == p2:
+                        intersect = False
+                    else:
+                        line_1 = [(1.0, depths_min[k]), (1.0, depths_max[k])]
+                        line_2 = [(1.0, depths_min[j]), (1.0, depths_max[j])]
+                        line1 = LineString(line_1)
+                        line2 = LineString(line_2)
+                        intersection_depth = line1.intersection(line2)
+                        if intersection_depth is False:
+                            intersect = False
+                        else:
+                            intersect = True
+                        print('intersection, uniform phase redraw')
+            if any(sources.count(x) > 1 for x in sources):
                 intersect = True
-                print('intersection, uniform phase redraw')
 
         return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
 
@@ -331,18 +349,39 @@ class DirectedSamplerPhase(SamplerPhase):
             pars = x
             nsources = 2
             sources = []
+
             if nsources is not None:
                 for i in range(nsources):
                     source = problem.get_source(pars, i)
                     sources.append(source)
-            src1 = sources[0].outline('xy')
-            src2 = sources[1].outline('xy')
-            p1 = Polygon(src1)
-            p2 = Polygon(src2)
-            if not p1.intersects(p2):
-                intersect = False
-            else:
+            depths_max = []
+            depths_min = []
+            polygons = []
+            for src in sources:
+                depths_max.append(num.max(src.outline()[:,2]))
+                depths_min.append(num.min(src.outline()[:,2]))
+                src_outline = sources[0].outline('xy')
+                polygons.append(Polygon(src_outline))
+            for k in range(len(polygons)):
+                for j in range(len(polygons)):
+                    p1 = polygons[k]
+                    p2 = polygons[j]
+                    if not p1.intersects(p2) or p1 == p2:
+                        intersect = False
+                    else:
+                        line_1 = [(1.0, depths_min[k]), (1.0, depths_max[k])]
+                        line_2 = [(1.0, depths_min[j]), (1.0, depths_max[j])]
+                        line1 = LineString(line_1)
+                        line2 = LineString(line_2)
+                        intersection_depth = line1.intersection(line2)
+                        if intersection_depth is False:
+                            intersect = False
+                        else:
+                            intersect = True
+                        print('intersection, uniform phase redraw')
+            if any(sources.count(x) > 1 for x in sources):
                 intersect = True
+
         return Sample(
             model=x,
             ichain_base=ichain_choice,
