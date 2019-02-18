@@ -243,8 +243,8 @@ class SatelliteTargetDisplacement(PlotConfig):
                     target.scene.frame.llLat, target.scene.frame.llLon,
                     source.lat, source.lon))
             if target.scene.frame.isDegree():
-                off_n = source.effective_lat - target.scene.frame.llLat
-                off_e = source.effective_lon - target.scene.frame.llLon
+                off_n = source.lat - target.scene.frame.llLat
+                off_e = source.lon - target.scene.frame.llLon
 
             turE, turN, tllE, tllN = zip(
                 *[(l.gridE.max()-off_e,
@@ -290,8 +290,8 @@ data and (right) the model residual.
                     scene.frame.llLat, scene.frame.llLon,
                     source.lat, source.lon))
             elif scene.frame.isDegree():
-                offset_n = source.effective_lat - scene.frame.llLat
-                offset_e = source.effective_lon - scene.frame.llLon
+                offset_n = source.lat - scene.frame.llLat
+                offset_e = source.lon - scene.frame.llLon
 
             im_extent = (scene.frame.E.min() - offset_e,
                          scene.frame.E.max() - offset_e,
