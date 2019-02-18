@@ -8,6 +8,7 @@ from grond.plot.collection import PlotItem
 from matplotlib import pyplot as plt
 from matplotlib import patches
 from pyrocko.guts import Tuple, Float, String, Int, Bool
+import utm
 
 logger = logging.getLogger('grond.targets.satellite.plot')
 
@@ -108,10 +109,9 @@ class SatelliteTargetDisplacement(PlotConfig):
                 scale_x = {'scale': 1./km}
                 scale_y = {'scale': 1./km}
                 if not self.relative_coordinates:
-                    import utm
                     utm_E, utm_N, utm_zone, utm_zone_letter =\
-                        utm.from_latlon(source.effective_lat,
-                                        source.effective_lon)
+                        utm.from_latlon(source.lat,
+                                        source.lon)
                     scale_x['offset'] = utm_E
                     scale_y['offset'] = utm_N
 
@@ -128,9 +128,9 @@ class SatelliteTargetDisplacement(PlotConfig):
                 scale_x = {'scale': 1.}
                 scale_y = {'scale': 1.}
                 if not self.relative_coordinates:
-                    scale_x['offset'] = source.effective_lat
-                    scale_y['offset'] = source.effective_lon
-                ax.set_aspect(1./num.cos(source.effective_lat*d2r))
+                    scale_x['offset'] = source.lat
+                    scale_y['offset'] = source.lon
+                ax.set_aspect(1./num.cos(source.lat*d2r))
 
             scale_axes(ax.get_xaxis(), **scale_x)
             scale_axes(ax.get_yaxis(), **scale_y)
@@ -142,8 +142,8 @@ class SatelliteTargetDisplacement(PlotConfig):
                     fes = []
                     for subsource in sources:
                         fn_sub, fe_sub = subsource.outline(cs='xy').T
-                        fes.append(fe_sub.mean())
-                        fns.append(fn_sub.mean())
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
                 else:
                     fn, fe = source.outline(cs='xy').T
                     fn -= fn.mean()
@@ -155,8 +155,6 @@ class SatelliteTargetDisplacement(PlotConfig):
                     fes = []
                     for subsource in sources:
                         fn_sub, fe_sub = subsource.outline(cs='latlon').T
-                        fn_sub -= subsource.effective_lat
-                        fe_sub -= subsource.effective_lon
                         fes.append(fe_sub)
                         fns.append(fn_sub)
 
@@ -243,7 +241,7 @@ class SatelliteTargetDisplacement(PlotConfig):
             if target.scene.frame.isMeter():
                 off_n, off_e = map(float, latlon_to_ne_numpy(
                     target.scene.frame.llLat, target.scene.frame.llLon,
-                    source.effective_lat, source.effective_lon))
+                    source.lat, source.lon))
             if target.scene.frame.isDegree():
                 off_n = source.effective_lat - target.scene.frame.llLat
                 off_e = source.effective_lon - target.scene.frame.llLon
@@ -290,7 +288,7 @@ data and (right) the model residual.
             if scene.frame.isMeter():
                 offset_n, offset_e = map(float, latlon_to_ne_numpy(
                     scene.frame.llLat, scene.frame.llLon,
-                    source.effective_lat, source.effective_lon))
+                    source.lat, source.lon))
             elif scene.frame.isDegree():
                 offset_n = source.effective_lat - scene.frame.llLat
                 offset_e = source.effective_lon - scene.frame.llLon
