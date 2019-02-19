@@ -13,7 +13,8 @@ from pyrocko.guts import Object, String, Float, List
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import NotFound, InvalidObject
+from .dataset import NotFound, InvalidObject, StationCorrection, \
+    dump_station_corrections
 from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data
 
@@ -732,6 +733,38 @@ def export(
         out.close()
 
 
+def fits(env):
+
+    env.setup_modelling()
+
+    problem = env.get_problem()
+
+    logger.info(
+        'Number of targets (selected): %i' % len(problem.targets))
+
+    _, xs, misfits, _, _ = load_problem_info_and_data(
+        env.get_rundir_path(), subset='harvest')
+
+    gms = problem.combine_misfits(misfits)
+    ibest = num.argmin(gms)
+    xbest = xs[ibest, :]
+
+    scs = []
+    for x in [xbest]:
+        results = problem.evaluate(x)
+
+        for target, result in zip(problem.targets, results):
+            if isinstance(result, WaveformMisfitResult) \
+                    and result.tshift is not None:
+
+                scs.append(StationCorrection(
+                    codes=target.codes,
+                    delay=float(result.tshift),
+                    factor=1.0))
+
+    dump_station_corrections(scs, stream=sys.stdout)
+
+
 __all__ = '''
     forward
     harvest
@@ -740,4 +773,5 @@ __all__ = '''
     get_event_names
     check
     export
+    fits
 '''.split()
