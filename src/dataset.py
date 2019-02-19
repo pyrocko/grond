@@ -68,8 +68,8 @@ def load_station_corrections(filename):
     return scs
 
 
-def dump_station_corrections(station_corrections, filename):
-    return dump_all(station_corrections, filename=filename)
+def dump_station_corrections(station_corrections, filename=None, stream=None):
+    return dump_all(station_corrections, filename=filename, stream=stream)
 
 
 class Dataset(object):
