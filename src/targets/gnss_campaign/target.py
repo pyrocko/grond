@@ -1,8 +1,9 @@
 import logging
 import numpy as num
+from scipy import linalg
 
 from pyrocko import gf
-from pyrocko.guts import String, Dict, List
+from pyrocko.guts import String, Dict, List, Int
 
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
 from grond.meta import has_get_plot_classes
@@ -64,6 +65,7 @@ class GNSSCampaignTargetGroup(TargetGroup):
                 lons=lons,
                 east_shifts=east_shifts,
                 north_shifts=north_shifts,
+                ncomponents=camp.ncomponents,
                 tsnapshot=None,
                 interpolation=self.interpolation,
                 store_id=self.store_id,
@@ -85,6 +87,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     and predicted surface displacements.
     """
     campaign_name = String.T()
+    ncomponents = Int.T(optional=True)
     misfit_config = GNSSCampaignMisfitConfig.T()
 
     can_bootstrap_weights = True
@@ -108,8 +111,15 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         return self.campaign_name
 
     def misfits_string_ids(self):
-        return ['%s.%s' % (self.path, station.code)
-                for station in self.campaign.stations]
+        id_list = []
+        for station in self.campaign.stations:
+            for name in ('north', 'east', 'up'):
+                component = station.__getattribute__(name)
+                if not component:
+                    continue
+                id_list.append('%s.%s.%s' %
+                               (self.path, station.code, name[0].upper()))
+        return id_list
 
     @property
     def station_names(self):
@@ -118,14 +128,22 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def nmisfits(self):
-        return self.lats.size
+        if self.ncomponents is None:
+            try:
+                self.campaign.ncomponents
+            except ValueError:
+                raise ValueError('Set the dataset!')
+        return self.ncomponents
 
     @property
     def nstations(self):
-        return self.nmisfits
+        return self.lats.size
 
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
+
+    def get_correlated_weights(self):
+        return self.weights
 
     @property
     def campaign(self):
@@ -150,12 +168,13 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
     @property
     def weights(self):
-        """Weights are the inverse of the data error variance-covariance.
+        """Weights are the square-rooted, inverted the data error variance-covariance.
 
         The single component variances, and if provided the component
         covariances, are used to build a data variance matrix or
-        variance-covariance matrix. Correlations between stations are
-        not implemented.
+        variance-covariance matrix.
+
+        This matrix has the size for all possible NEU components, but throws zeros for not given components, also recorded in the _station_component_mask.
         """
         if self._weights is None:
             covar = self.campaign.get_covariance_matrix()
@@ -164,7 +183,25 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                 logger.warning('GNSS Stations have an empty covariance matrix.'
                                ' Weights will be all equal.')
                 num.fill_diagonal(covar, 1.)
-            self._weights = num.asmatrix(covar).I
+
+            #inv_reduc = num.linalg.pinv(num.asmatrix(cov_reduc)
+            # inverse of non-zero elements not working, so two steps
+            # a) reduction to valid rows and columns
+            # b) insertion in full matrix
+
+            inv_reduc = num.asmatrix(covar).I
+
+            # Use the sqrt?
+            root_inv_reduc = linalg.sqrtm(inv_reduc)
+
+            # count = 0
+            # for icomp, c_mask in enumerate(self._station_component_mask):
+            #     if c_mask:
+            #         w[icomp, comp_at] = inv_reduc[:, count].T
+            #         count += 1
+
+            self._weights = inv_reduc.T
+
         return self._weights
 
     @property
@@ -176,8 +213,11 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     @property
     def station_weights(self):
         weights = num.diag(self.weights)
-
         return num.mean([weights[0::3], weights[1::3], weights[2::3]], axis=0)
+
+    def component_weights(self):
+        ws = num.sum(self.weights, axis=0)
+        return ws
 
     def post_process(self, engine, source, statics):
         """Applies the objective function.
@@ -186,10 +226,6 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         synthetic data.
         """
         obs = self.obs_data
-        weights = self.weights
-        nstations = self.campaign.nstations
-        misfit_value = num.zeros(num.shape(self.station_component_mask))
-        misfit_norm = num.zeros(num.shape(self.station_component_mask))
 
         # All data is ordered in vectors as
         # S1_n, S1_e, S1_u, ..., Sn_n, Sn_e, Sn_u. Hence (.ravel(order='F'))
@@ -200,26 +236,15 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
             .ravel(order='F')
 
         syn = syn[self.station_component_mask]
+        res = obs - syn
 
-        res = num.abs(obs - syn)
+        misfit_value = res
+        misfit_norm = obs
 
-        misfit_value0 = res * weights
-        misfit_norm0 = obs * weights
-        
-        i_truecomponents = num.where(self.station_component_mask)
-        misfit_value[i_truecomponents] = misfit_value0
-        misfit_norm[i_truecomponents] = misfit_norm0
-        misfit_value = num.sum(
-            misfit_value.reshape((nstations, 3)), axis=1)
-        misfit_norm = num.sum(
-            misfit_norm.reshape((nstations, 3)), axis=1)
-        misfit_value = misfit_value.reshape(nstations, 1)
-        misfit_norm = misfit_norm.reshape(nstations, 1)
-        
-        mf = num.hstack((misfit_value, misfit_norm))
+        mf = num.vstack((misfit_value, misfit_norm)).T
+
         result = GNSSCampaignMisfitResult(
             misfits=mf)
-
         if self._result_mode == 'full':
             result.statics_syn = statics
             result.statics_obs = obs
@@ -243,31 +268,16 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         if rstate is None:
             rstate = num.random.RandomState()
         campaign = self.campaign
-        bootstraps = num.empty((nbootstraps, campaign.nstations))
-        sigmas = num.array([])
-        for s in campaign.stations:
-            if s.north:
-                sigmas = num.hstack((sigmas, s.north.sigma))
-            if s.east:
-                sigmas = num.hstack((sigmas, s.east.sigma))
-            if s.up:
-                sigmas = num.hstack((sigmas, s.up.sigma))
+        bootstraps = num.empty((nbootstraps, self.ncomponents))
 
-        #sigmas = num.array([(s.north.sigma, s.east.sigma, s.up.sigma)
-        #                    for s in campaign.stations])
-        sigmas = num.abs(sigmas)
-
+        sigmas = num.abs(num.diag(campaign.get_covariance_matrix())**2)
         if not num.all(sigmas):
             logger.warning('Bootstrapping GNSS stations is meaningless,'
                            ' all station\'s sigma are 0.0!')
 
         for ibs in range(nbootstraps):
-            syn_noise = num.zeros(num.shape(self.station_component_mask))
-            i_truecomponents = num.where(self.station_component_mask)
-            syn_noise0 = rstate.normal(scale=sigmas.ravel())
-            syn_noise[i_truecomponents] = syn_noise0
-            syn_noise = syn_noise.reshape(campaign.nstations, 3) \
-                .sum(axis=1)
+            syn_noise = num.zeros(campaign.ncomponents)
+            syn_noise = rstate.normal(scale=sigmas.ravel())
 
             bootstraps[ibs, :] = syn_noise
 

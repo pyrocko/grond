@@ -15,6 +15,10 @@ from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
 
+import cProfile
+
+pr = cProfile.Profile()
+
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
@@ -472,6 +476,7 @@ class HighScoreOptimiser(Optimiser):
         Optimiser.__init__(self, **kwargs)
         self._bootstrap_weights = None
         self._bootstrap_residuals = None
+        self._correlated_weights = None
         self._status_chains = None
         self._rstate_bootstrap = None
 
@@ -551,6 +556,22 @@ class HighScoreOptimiser(Optimiser):
 
         return self._bootstrap_residuals
 
+    def get_correlated_weights(self, problem):
+        if self._correlated_weights is None:
+            corr = dict()
+            misfit_idx = num.cumsum(
+                [0.] + [t.nmisfits for t in problem.targets], dtype=num.int)
+
+            for it, target in enumerate(problem.targets):
+                weights = target.get_correlated_weights()
+                if weights is None:
+                    continue
+                corr[misfit_idx[it]] = weights
+
+            self._correlated_weights = corr
+
+        return self._correlated_weights
+
     @property
     def nchains(self):
         return self.nbootstrap + 1
@@ -588,6 +609,7 @@ class HighScoreOptimiser(Optimiser):
             self._tlog_last = t
 
     def optimise(self, problem, rundir=None):
+        pr.enable()
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
@@ -616,8 +638,8 @@ class HighScoreOptimiser(Optimiser):
             bootstrap_misfits = problem.combine_misfits(
                 misfits,
                 extra_weights=self.get_bootstrap_weights(problem),
-                extra_residuals=self.get_bootstrap_residuals(problem))
-
+                extra_residuals=self.get_bootstrap_residuals(problem),
+                extra_correlated_weights=self.get_correlated_weights(problem))
             isbad_mask_new = num.isnan(misfits[:, 0])
             if isbad_mask is not None and num.any(
                     isbad_mask != isbad_mask_new):
@@ -643,6 +665,8 @@ class HighScoreOptimiser(Optimiser):
                     'Problem %s: all target misfit values are NaN.'
                     % problem.name)
 
+            pr.disable()
+            pr.dump_stats('/tmp/grond.cprof')
             history.append(
                 sample.model, misfits,
                 bootstrap_misfits,
