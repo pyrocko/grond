@@ -349,18 +349,18 @@ modified.
         for itarget, target in enumerate(problem.targets):
             target_gcms = gcms[:, idx:idx+target.nmisfits]
             if target.plot_misfits_cumulative:
-                cum_gcms[:, itarget] = target_gcms.sum(axis=1)
+                cum_gcms[:, idx] = target_gcms.sum(axis=1)
                 plot_target_labels.append(target.string_id())
+                idx += 1
             else:
-                cum_gcms[:, itarget:itarget+target.nmisfits] = target_gcms
+                cum_gcms[:, idx:idx+target.nmisfits] = target_gcms
                 plot_target_labels.extend(target.misfits_string_ids())
-
-            idx += target.nmisfits
+                idx += target.nmisfits
 
         # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
 
         jsort = num.argsort(cum_gcms[-1, :])[::-1]
-
+        #print(cum_gcms[-1, :])
         # ncols = 4
         # nrows = ((problem.ntargets + 1) - 1) / ncols + 1
 
@@ -478,6 +478,7 @@ class BootstrapPlot(PlotConfig):
 
     name = 'bootstrap'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+    show_ticks = Bool.T(default=False)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -516,20 +517,24 @@ functions of the bootstrap start to disagree.
         fig = plt.figure()
 
         problem = history.problem
-        gms = problem.combine_misfits(history.misfits)
-
         imodels = num.arange(history.nmodels)
-
+        gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
+        gms_softclip = num.where(gms > 1.0,
+                                 0.1 * num.log10(gms) + 1.0,
+                                 gms)
         axes = fig.add_subplot(1, 1, 1)
-
-        gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
         ibests = []
         for ibootstrap in range(optimiser.nbootstrap):
+            # if ibootstrap ==0:
+                # global, no-bootstrapping misfits, chain
+                # gms = history.bootstrap_misfits[:, ibootstrap]
+                # gms_softclip = num.where(gms > 1.0,
+                #                         0.1 * num.log10(gms) + 1.0,
+                #                         gms)
+
             bms = history.bootstrap_misfits[:, ibootstrap]
-
             isort_bms = num.argsort(bms)[::-1]
-
             ibests.append(isort_bms[-1])
 
             bms_softclip = num.where(
@@ -542,9 +547,8 @@ functions of the bootstrap start to disagree.
 
         axes.plot(iorder[ibests], gms_softclip[ibests], 'x', color='black')
 
-        m = num.median(gms[ibests])
-        s = num.std(gms[ibests])
-
+        m = num.median(gms_softclip[ibests])
+        s = num.std(gms_softclip[ibests])
         axes.axhline(m + s, color='black', alpha=0.5)
         axes.axhline(m, color='black')
         axes.axhline(m - s, color='black', alpha=0.5)
