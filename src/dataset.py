@@ -1032,15 +1032,23 @@ class DatasetConfig(HasPaths):
         def check_events(events, fn):
             for ev in events:
                 if not ev.name:
-                    logger.warning('Event in %s has no name!', fn)
-                    return
-                if not ev.lat or not ev.lon:
-                    logger.warning('Event %s has inconsistent coordinates!',
-                                   ev.name)
-                if not ev.depth:
-                    logger.warning('Event %s has no depth!', ev.name)
-                if not ev.time:
-                    logger.warning('Event %s has no time!', ev.name)
+                    raise DatasetError(
+                        'An event in file "%s" has no name.' % fn)
+
+                if ev.lat is None or ev.lon is None:
+                    logger.warning(
+                        'Event "%s" from file "%s" has no lat/lon.' % (
+                            ev.name, fn))
+
+                if ev.depth is None:
+                    logger.warning(
+                        'Event "%s" from file "%s" has no depth.' % (
+                            ev.name, fn))
+
+                if ev.time is None:
+                    logger.warning(
+                        'Event "%s" from file "%s" has no time.' % (
+                            ev.name, fn))
 
         events = []
         events_path = fp(self.events_path)
@@ -1049,11 +1057,11 @@ class DatasetConfig(HasPaths):
             raise DatasetError('No event files matching "%s".' % events_path)
 
         for fn in fns:
-            logger.debug('Loading from file %s' % fn)
-            ev = model.load_events(filename=fn)
-            check_events(ev, fn)
+            logger.debug('Loading from file "%s"' % fn)
+            events = model.load_events(filename=fn)
+            check_events(events, fn)
 
-            events.extend(ev)
+            events.extend(events)
 
         event_names = [ev.name for ev in events]
         event_names.sort()
