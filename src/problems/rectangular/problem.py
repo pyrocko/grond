@@ -1,10 +1,13 @@
-import numpy as num
 import logging
+import copy
+
+import numpy as num
 
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 
-from grond.meta import expand_template, Parameter, has_get_plot_classes
+from grond.meta import GrondError, expand_template, Parameter, \
+    has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
 
@@ -21,7 +24,15 @@ class RectangularProblemConfig(ProblemConfig):
     distance_min = Float.T(default=0.)
     nthreads = Int.T(default=4)
 
-    def get_problem(self, event, target_groups, targets):
+    def get_problem(self, event_group, target_groups, targets):
+        if len(event_group.get_events()) != 1:
+            raise GrondError('RectangularProblem cannot handle multi-events.')
+
+        event = copy.deepcopy(event_group.get_events()[0])
+
+        if event.depth is None:
+            event.depth = 0
+
         if self.decimation_factor != 1:
             logger.warn(
                 'Decimation factor for rectangular source set to %i. Results '

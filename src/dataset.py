@@ -72,6 +72,44 @@ def dump_station_corrections(station_corrections, filename):
     return dump_all(station_corrections, filename=filename)
 
 
+class EventGroup(Object):
+    name = String.T()
+    event_names = List.T(String.T())
+
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self._events = {}
+
+    @classmethod
+    def from_single_event(self, event):
+        eg = EventGroup(
+            name=event.name,
+            event_names=[event.name])
+
+        eg.set_events([event])
+        return eg
+
+    def set_events(self, events):
+        for ev in events:
+            assert ev.name in self.event_names
+            self._events[ev.name] = ev
+
+    def get_events(self):
+        return [self._events[n] for n in self.event_names]
+
+
+def load_event_groups(filename):
+    egs = load_all(filename=filename)
+    for eg in egs:
+        assert isinstance(eg, EventGroup)
+
+    return egs
+
+
+def dump_event_groups(event_groups, filename):
+    return dump_all(event_groups, filename=filename)
+
+
 def check_events(events, fn):
     for ev in events:
         if not ev.name:
@@ -116,10 +154,29 @@ def load_check_events(fns):
     return events
 
 
+def load_check_event_groups(fns):
+
+    egs = {}
+    for fn in fns:
+        egs_add = load_event_groups(fn)
+
+        for eg in egs_add:
+            if eg.name in egs:
+                raise DatasetError('Duplicate event group name: %s' % eg.name)
+
+            egs[eg.name] = eg
+
+    egs = list(egs.values())
+    egs.sort(key=lambda eg: eg.name)
+
+    return egs
+
+
 class Dataset(object):
 
-    def __init__(self, event_name=None):
+    def __init__(self, name=None):
         self.events = []
+        self.event_groups = {}
         self.pile = pile.Pile()
         self.stations = {}
         self.responses = defaultdict(list)
@@ -142,7 +199,7 @@ class Dataset(object):
         self.synthetic_test = None
         self._picks = None
         self._cache = {}
-        self._event_name = event_name
+        self._name = name
 
     def empty_cache(self):
         self._cache = {}
@@ -179,8 +236,11 @@ class Dataset(object):
                     stationxml_filename)
 
                 sx = fs.load_xml(filename=stationxml_filename)
-                ev = self.get_event()
-                for station in sx.get_pyrocko_stations(time=ev.time):
+                eg = self.get_event_group()
+                times = [ev.time for ev in eg.get_events()]
+                tmin = min(times)
+                tmax = max(times)
+                for station in sx.get_pyrocko_stations(timespan=(tmin, tmax)):
                     channels = station.get_channels()
                     if len(channels) == 1 and channels[0].name.endswith('Z'):
                         logger.warning(
@@ -211,6 +271,26 @@ class Dataset(object):
                     'Could not load events from file "%s"', filename)
 
                 raise e
+
+    def add_event_groups(self, filename):
+        event_groups = load_event_groups(filename)
+        event_names_avail = set(ev.name for ev in self.events)
+        for eg in event_groups:
+            for event_name in eg.event_names:
+                if event_name not in event_names_avail:
+                    raise DatasetError('Unknown event name: %s' % event_name)
+
+            if eg.name in self.event_groups:
+                raise DatasetError('Non-unique event group name: %s' % eg.name)
+
+            if eg.name in event_names_avail:
+                raise DatasetError(
+                    'Non-unique event group name (events and event groups'
+                    ' cannot have the same name): %s' % eg.name)
+
+            eg.set_events(self.get_events(event_names=eg.event_names))
+
+            self.event_groups[eg.name] = eg
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
                       show_progress=False):
@@ -933,14 +1013,20 @@ class Dataset(object):
         return ev_x
 
     def get_event(self):
-        if self._event_name is None:
+        if self._name is None:
             raise NotFound('No main event selected in dataset!')
 
         for ev in self.events:
-            if ev.name == self._event_name:
+            if ev.name == self._name:
                 return ev
 
-        raise NotFound('No such event: %s' % self._event_name)
+        raise NotFound('No such event: %s' % self._name)
+
+    def get_event_group(self):
+        if self._name in self.event_groups:
+            return self.event_groups[self._name]
+        else:
+            return EventGroup.from_single_event(self.get_event())
 
     def get_picks(self):
         if self._picks is None:
@@ -998,9 +1084,11 @@ class DatasetConfig(HasPaths):
         optional=True,
         help='List of files with station coordinates in StationXML format.')
     events_path = Path.T(
-        optional=True,
         help='File with hypocenter information and possibly'
-             ' reference solution')
+             ' reference solutions')
+    event_groups_path = Path.T(
+        optional=True,
+        help='File defining event groups for multi-source inversions')
     waveform_paths = List.T(
         Path.T(),
         optional=True,
@@ -1069,7 +1157,7 @@ class DatasetConfig(HasPaths):
         self._ds = {}
 
     def get_event_names(self):
-        logger.info('Loading events ...')
+        logger.info('Loading events...')
 
         def extra(path):
             return expand_template(path, dict(
@@ -1084,14 +1172,48 @@ class DatasetConfig(HasPaths):
             raise DatasetError('No event files matching "%s".' % events_path)
 
         events = load_check_events(fns)
-        event_names = [ev.name for ev in events]
-        return event_names
+        return [ev.name for ev in events]
 
-    def get_dataset(self, event_name):
-        if event_name not in self._ds:
+    def get_event_groups(self):
+
+        if self.event_groups_path is None:
+            raise DatasetError(
+                'No event groups available in dataset '
+                '(dataset_config.event_groups_path not set)')
+
+        def extra(path):
+            return expand_template(path, dict(
+                event_name='*'))
+
+        def fp(path):
+            return self.expand_path(path, extra=extra)
+
+        event_groups_path = fp(self.event_groups_path)
+        fns = glob.glob(event_groups_path)
+
+        if fns:
+            logger.info('Loading event groups...')
+
+        return load_check_event_groups(fns)
+
+    def get_event_group_names(self):
+        return [eg.name for eg in self.get_event_groups()]
+
+    def get_event_and_group_names(self):
+        return self.get_event_names() + self.get_event_group_names()
+
+    def get_event_names_group(self, group_name):
+        for eg in self.get_event_groups():
+            if eg.name == group_name:
+                return eg.event_names
+
+        raise GrondError('No such event group: %s' % group_name)
+
+    def get_dataset(self, event_or_group_name):
+        if event_or_group_name not in self._ds:
             def extra(path):
                 return expand_template(path, dict(
-                    event_name=event_name))
+                    event_name=event_or_group_name))
 
             def fp(path):
                 p = self.expand_path(path, extra=extra)
@@ -1108,9 +1230,13 @@ class DatasetConfig(HasPaths):
 
                 return p
 
-            ds = Dataset(event_name)
+
+            ds = Dataset(event_or_group_name)
             try:
                 ds.add_events(filename=fp(self.events_path))
+
+                if self.event_groups_path:
+                    ds.add_event_groups(filename=fp(self.event_groups_path))
 
                 ds.add_stations(
                     pyrocko_stations_filename=fp(self.stations_path),
@@ -1159,11 +1285,11 @@ class DatasetConfig(HasPaths):
                     ds.add_whitelist(filenames=fp(self.whitelist_paths))
 
                 ds.set_synthetic_test(copy.deepcopy(self.synthetic_test))
-                self._ds[event_name] = ds
+                self._ds[event_or_group_name] = ds
             except (FileLoadError, OSError) as e:
                 raise DatasetError(str(e))
 
-        return self._ds[event_name]
+        return self._ds[event_or_group_name]
 
 
 __all__ = '''
@@ -1175,4 +1301,7 @@ __all__ = '''
     StationCorrection
     load_station_corrections
     dump_station_corrections
+    EventGroup
+    load_event_groups
+    dump_event_groups
 '''.split()

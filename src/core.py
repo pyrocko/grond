@@ -232,18 +232,13 @@ def cluster(rundir, clustering, metric):
                 'Number of events in cluster %i: %5i' % (labels[i], ns[i]))
 
 
-def get_event_names(config):
-    return config.get_event_names()
-
-
 def check_problem(problem):
     if len(problem.targets) == 0:
         raise GrondError('No targets available')
 
 
 def check(
-        config,
-        event_names=None,
+        env,
         target_string_ids=None,
         show_waveforms=False,
         n_random_synthetics=10,
@@ -252,12 +247,12 @@ def check(
     markers = []
     stations_used = {}
     erroneous = []
-    for ievent, event_name in enumerate(event_names):
-        ds = config.get_dataset(event_name)
-        event = ds.get_event()
+    for iselected, name in enumerate(env.get_selected_names()):
+        env.set_current_name(name)
+        ds = env.get_dataset()
         trs_all = []
         try:
-            problem = config.get_problem(event)
+            problem = env.get_problem()
 
             _, nfamilies = problem.get_family_mask()
             logger.info('Problem: %s' % problem.name)
@@ -290,6 +285,7 @@ def check(
                     results_list.append(results)
 
             if show_waveforms:
+                config = env.get_config()
                 engine = config.engine_config.get_engine()
                 times = []
                 tdata = []
@@ -417,11 +413,11 @@ def check(
 
         except GrondError as e:
             logger.error('Event %i, "%s": %s' % (
-                ievent,
-                event.name or util.time_to_str(event.time),
+                iselected,
+                name,
                 str(e)))
 
-            erroneous.append(event)
+            erroneous.append(name)
 
         if show_waveforms:
             trace.snuffle(trs_all, stations=ds.get_stations(), markers=markers)
@@ -434,7 +430,7 @@ def check(
     if erroneous:
         raise GrondError(
             'Check failed for events: %s'
-            % ', '.join(ev.name for ev in erroneous))
+            % ', '.join(erroneous))
 
 
 g_state = {}
@@ -448,29 +444,32 @@ def go(environment,
               status, nparallel)
     g_state[id(g_data)] = g_data
 
-    nevents = environment.nevents_selected
+    nselected = environment.nselected
     for x in parimap.parimap(
             process_event,
-            range(environment.nevents_selected),
-            [id(g_data)] * nevents,
+            range(nselected),
+            [id(g_data)] * nselected,
             nprocs=nparallel):
 
         pass
 
 
-def process_event(ievent, g_data_id):
+def process_event(iselected, g_data_id):
 
     environment, force, preserve, status, nparallel = \
         g_state[g_data_id]
 
     config = environment.get_config()
-    event_name = environment.get_selected_event_names()[ievent]
-    nevents = environment.nevents_selected
+
+    name = environment.get_selected_names()[iselected]
+    nselected = environment.nselected
+
     tstart = time.time()
 
-    ds = config.get_dataset(event_name)
-    event = ds.get_event()
-    problem = config.get_problem(event)
+    environment.set_current_name(name)
+
+    ds = environment.get_dataset()
+    problem = environment.get_problem()
 
     synt = ds.synthetic_test
     if synt:
@@ -497,7 +496,8 @@ def process_event(ievent, g_data_id):
     util.ensuredir(rundir)
 
     logger.info(
-        'Starting event %i / %i' % (ievent+1, nevents))
+        'Processing problem %i / %i: %s' % (
+            iselected+1, nselected, problem.name))
 
     logger.info('Rundir: %s' % rundir)
 
@@ -553,7 +553,8 @@ def process_event(ievent, g_data_id):
 
     tstop = time.time()
     logger.info(
-        'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
+        'Stop %i / %i (%g min)' % (
+            iselected+1, nselected, (tstop - tstart)/60.))
 
     logger.info(
         'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
@@ -735,7 +736,6 @@ __all__ = '''
     harvest
     cluster
     go
-    get_event_names
     check
     export
 '''.split()

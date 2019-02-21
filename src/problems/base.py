@@ -48,6 +48,9 @@ class ProblemConfig(Object):
     norm_exponent = Int.T(default=2)
     nthreads = Int.T(default=1)
 
+    def need_event_group(self):
+        return False
+
     def get_problem(self, event, target_groups, targets):
         '''
         Instantiate the problem with a given event and targets.
@@ -323,10 +326,16 @@ class Problem(Object):
             ref = self.pack(self.base_source)
         return ref
 
+    def get_range(self, k):
+        try:
+            return self.ranges[k]
+        except KeyError:
+            raise GrondError('Invalid range key: %s' % k)
+
     def get_parameter_bounds(self):
         out = []
         for p in self.problem_parameters:
-            r = self.ranges[p.name]
+            r = self.get_range(p.name)
             out.append((r.start, r.stop))
 
         for target in self.targets:

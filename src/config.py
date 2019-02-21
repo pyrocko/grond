@@ -100,6 +100,18 @@ class Config(HasPaths):
 
         return [name for name in names if name not in self.event_names_exclude]
 
+    def get_event_group_names(self):
+        return self.dataset_config.get_event_group_names()
+
+    def get_names(self):
+        if self.need_event_group():
+            return self.get_event_group_names()
+        else:
+            return self.get_event_names()
+
+    def need_event_group(self):
+        return self.problem_config.need_event_group()
+
     @property
     def nevents(self):
         return len(self.dataset_config.get_events())

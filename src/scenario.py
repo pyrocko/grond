@@ -316,6 +316,8 @@ class DCSourceProblem(SourceProblem):
 
     def get_scenario_source_generator(self):
         return scenario.sources.DCSourceGenerator(
+            time_min=util.str_to_time('2018-02-26 01:00:00'),
+            time_max=util.str_to_time('2018-02-26 01:05:00'),
             magnitude_min=self.magnitude_min,
             magnitude_max=self.magnitude_max,
             depth_min=5*km,

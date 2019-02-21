@@ -22,6 +22,7 @@ from grond.version import __version__
 from grond import info
 from grond.plot import PlotConfigCollection, get_all_plot_classes
 from grond.run_info import RunInfo
+from grond.dataset import NotFound
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.report')
@@ -124,7 +125,7 @@ def report(env, report_config=None, update_without_plotting=False,
         report_config = ReportConfig()
         report_config.set_basepath('.')
 
-    event_name = env.get_current_event_name()
+    event_name = env.get_current_name()
     problem = env.get_problem()
     logger.info('Creating report entry for run "%s"...' % problem.name)
 
@@ -151,8 +152,12 @@ def report(env, report_config=None, update_without_plotting=False,
         plots_dir_out = op.join(entry_path, 'plots')
         util.ensuredir(plots_dir_out)
 
-        event = env.get_dataset().get_event()
-        guts.dump(event, filename=op.join(entry_path, 'event.reference.yaml'))
+        try:
+            event = env.get_dataset().get_event()
+            guts.dump(event, filename=op.join(entry_path, 'event.reference.yaml'))
+        except NotFound:
+            logger.info('No reference event available.')
+            pass
 
         try:
             rundir_path = env.get_rundir_path()

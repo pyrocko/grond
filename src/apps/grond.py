@@ -44,6 +44,8 @@ subcommand_descriptions = {
     'init': 'initialise new project structure or print configuration',
     'scenario': 'create a forward-modelled scenario project',
     'events': 'print available event names for given configuration',
+    'event-groups':
+        'print available event group names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimisation',
     'forward': 'run forward modelling',
@@ -67,6 +69,7 @@ subcommand_usages = {
         'init <example> <projectdir> [options]'),
     'scenario': 'scenario [options] <projectdir>',
     'events': 'events <configfile>',
+    'event-groups': 'event-groups <configfile>',
     'check': 'check <configfile> <eventnames> ... [options]',
     'go': 'go <configfile> <eventnames> ... [options]',
     'forward': (
@@ -118,6 +121,7 @@ Subcommands:
     scenario        %(scenario)s
     init            %(init)s
     events          %(events)s
+    event-groups    %(event_groups)s
     check           %(check)s
     go              %(go)s
     forward         %(forward)s
@@ -562,7 +566,7 @@ def command_init(args):
             try:
                 grond_init.init_example(args[0], args[1], force=options.force)
             except OSError as e:
-                print(str(e))
+                die(str(e))
 
     else:
         sec = grond_init.get_content_snippet(args[0])
@@ -654,8 +658,27 @@ def command_events(args):
     try:
         config = grond.read_config(config_path)
 
-        for event_name in grond.get_event_names(config):
+        for event_name in config.get_event_names():
             print(event_name)
+
+    except grond.GrondError as e:
+        die(str(e))
+
+
+def command_event_groups(args):
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('event-groups', args, setup)
+    if len(args) != 1:
+        help_and_die(parser, 'missing arguments')
+
+    config_path = args[0]
+    try:
+        config = grond.read_config(config_path)
+
+        for event_group_name in config.get_event_group_names():
+            print(event_group_name)
 
     except grond.GrondError as e:
         die(str(e))
@@ -694,15 +717,13 @@ def command_check(args):
 
     try:
         env = Environment(args)
-        config = env.get_config()
 
         target_string_ids = None
         if options.target_string_ids:
             target_string_ids = options.target_string_ids.split(',')
 
         grond.check(
-            config,
-            event_names=env.get_selected_event_names(),
+            env,
             target_string_ids=target_string_ids,
             show_waveforms=options.show_waveforms,
             n_random_synthetics=options.n_random_synthetics,
@@ -750,7 +771,7 @@ def command_go(args):
             preserve=options.preserve,
             status=status,
             nparallel=options.nparallel)
-        if len(env.get_selected_event_names()) == 1:
+        if len(env.get_selected_names()) == 1:
             logger.info(CLIHints(
                 'go', rundir=env.get_rundir_path()))
 
@@ -1083,7 +1104,7 @@ def make_report(env_args, event_name, conf, update_without_plotting):
     try:
         env = Environment(env_args)
         if event_name:
-            env.set_current_event_name(event_name)
+            env.set_current_name(event_name)
 
         report(
             env, conf,
@@ -1228,7 +1249,7 @@ def command_report(args):
     elif args:
         try:
             env = Environment(args)
-            for event_name in env.get_selected_event_names():
+            for event_name in env.get_selected_names():
                 payload.append((args, event_name,
                                 conf, options.update_without_plotting))
 

@@ -123,86 +123,88 @@ class WaveformTargetGroup(TargetGroup):
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
 
-    def get_targets(self, ds, event, default_path='none'):
+    def get_targets(self, ds, event_group, default_path='none'):
         logger.debug('Selecting waveform targets...')
-        origin = event
+
         targets = []
+        for origin in event_group.get_events():
 
-        for st in ds.get_stations():
-            for cha in self.channels:
+            for st in ds.get_stations():
+                for cha in self.channels:
 
-                nslc = st.nsl() + (cha,)
+                    nslc = st.nsl() + (cha,)
 
-                target = WaveformMisfitTarget(
-                    quantity='displacement',
-                    codes=nslc,
-                    lat=st.lat,
-                    lon=st.lon,
-                    depth=st.depth,
-                    interpolation=self.interpolation,
-                    store_id=self.store_id,
-                    misfit_config=self.misfit_config,
-                    manual_weight=self.weight,
-                    normalisation_family=self.normalisation_family,
-                    path=self.path or default_path)
+                    target = WaveformMisfitTarget(
+                        quantity='displacement',
+                        codes=nslc,
+                        lat=st.lat,
+                        lon=st.lon,
+                        depth=st.depth,
+                        interpolation=self.interpolation,
+                        store_id=self.store_id,
+                        misfit_config=self.misfit_config,
+                        manual_weight=self.weight,
+                        normalisation_family=self.normalisation_family,
+                        origin_name=origin.name,
+                        path=(self.path or default_path) + '.' + origin.name)
 
-                if ds.is_blacklisted(nslc):
-                    log_exclude(target, 'excluded by dataset')
-                    continue
+                    if ds.is_blacklisted(nslc):
+                        log_exclude(target, 'excluded by dataset')
+                        continue
 
-                if util.match_nslc(
-                        nslcs_to_patterns(self.exclude), nslc):
-                    log_exclude(target, 'excluded by target group')
-                    continue
+                    if util.match_nslc(
+                            nslcs_to_patterns(self.exclude), nslc):
+                        log_exclude(target, 'excluded by target group')
+                        continue
 
-                if self.include is not None and not util.match_nslc(
-                        nslcs_to_patterns(self.include), nslc):
-                    log_exclude(target, 'excluded by target group')
-                    continue
+                    if self.include is not None and not util.match_nslc(
+                            nslcs_to_patterns(self.include), nslc):
+                        log_exclude(target, 'excluded by target group')
+                        continue
 
-                if self.distance_min is not None and \
-                   target.distance_to(origin) < self.distance_min:
-                    log_exclude(target, 'distance < distance_min')
-                    continue
+                    if self.distance_min is not None and \
+                       target.distance_to(origin) < self.distance_min:
+                        log_exclude(target, 'distance < distance_min')
+                        continue
 
-                if self.distance_max is not None and \
-                   target.distance_to(origin) > self.distance_max:
-                    log_exclude(target, 'distance > distance_max')
-                    continue
+                    if self.distance_max is not None and \
+                       target.distance_to(origin) > self.distance_max:
+                        log_exclude(target, 'distance > distance_max')
+                        continue
 
-                if self.distance_3d_min is not None and \
-                   target.distance_3d_to(origin) < self.distance_3d_min:
-                    log_exclude(target, 'distance_3d < distance_3d_min')
-                    continue
+                    if self.distance_3d_min is not None and \
+                       target.distance_3d_to(origin) < self.distance_3d_min:
+                        log_exclude(target, 'distance_3d < distance_3d_min')
+                        continue
 
-                if self.distance_3d_max is not None and \
-                   target.distance_3d_to(origin) > self.distance_3d_max:
-                    log_exclude(target, 'distance_3d > distance_3d_max')
-                    continue
+                    if self.distance_3d_max is not None and \
+                       target.distance_3d_to(origin) > self.distance_3d_max:
+                        log_exclude(target, 'distance_3d > distance_3d_max')
+                        continue
 
-                if self.depth_min is not None and \
-                   target.depth < self.depth_min:
-                    log_exclude(target, 'depth < depth_min')
-                    continue
+                    if self.depth_min is not None and \
+                       target.depth < self.depth_min:
+                        log_exclude(target, 'depth < depth_min')
+                        continue
 
-                if self.depth_max is not None and \
-                   target.depth > self.depth_max:
-                    log_exclude(target, 'depth > depth_max')
-                    continue
+                    if self.depth_max is not None and \
+                       target.depth > self.depth_max:
+                        log_exclude(target, 'depth > depth_max')
+                        continue
 
-                azi, _ = target.azibazi_to(origin)
-                if cha == 'R':
-                    target.azimuth = azi - 180.
-                    target.dip = 0.
-                elif cha == 'T':
-                    target.azimuth = azi - 90.
-                    target.dip = 0.
-                elif cha == 'Z':
-                    target.azimuth = 0.
-                    target.dip = -90.
+                    azi, _ = target.azibazi_to(origin)
+                    if cha == 'R':
+                        target.azimuth = azi - 180.
+                        target.dip = 0.
+                    elif cha == 'T':
+                        target.azimuth = azi - 90.
+                        target.dip = 0.
+                    elif cha == 'Z':
+                        target.azimuth = 0.
+                        target.dip = -90.
 
-                target.set_dataset(ds)
-                targets.append(target)
+                    target.set_dataset(ds)
+                    targets.append(target)
 
         if self.limit:
             return weed(origin, targets, self.limit)[0]
@@ -278,6 +280,7 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
 class WaveformMisfitTarget(gf.Target, MisfitTarget):
     flip_norm = Bool.T(default=False)
     misfit_config = WaveformMisfitConfig.T()
+    origin_name = String.T(optional=True)
 
     can_bootstrap_weights = True
 
@@ -295,6 +298,17 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         plots = super(WaveformMisfitTarget, cls).get_plot_classes()
         plots.extend(plot.get_plot_classes())
         return plots
+
+    def get_origin_source(self, source):
+        if self.origin_name is None or source.name == self.origin_name:
+            return source
+
+        elif isinstance(source, gf.CombiSource):
+            for subsource in source.subsources:
+                if subsource.name == self.origin_name:
+                    return subsource
+        else:
+            raise GrondError('Invalid origin name: %s' % self.origin_name)
 
     def get_combined_weight(self):
         if self._combined_weight is None:
@@ -373,17 +387,20 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
     def post_process(self, engine, source, tr_syn):
 
+        origin = self.get_origin_source(source)
+
         tr_syn = tr_syn.pyrocko_trace()
+
         nslc = self.codes
 
         config = self.misfit_config
 
         tmin_fit, tmax_fit, tfade, tfade_taper = \
-            self.get_taper_params(engine, source)
+            self.get_taper_params(engine, origin)
 
         ds = self.get_dataset()
 
-        tobs, tsyn = self.get_pick_shift(engine, source)
+        tobs, tsyn = self.get_pick_shift(engine, origin)
         if None not in (tobs, tsyn):
             tobs_shift = tobs - tsyn
         else:
@@ -459,6 +476,12 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
             raise gf.SeismosizerError('No waveform data: %s' % str(e))
 
     def prepare_modelling(self, engine, source, targets):
+        tmin_fit, tmax_fit, tfade, tfade_taper = \
+            self.get_taper_params(engine, self.get_origin_source(source))
+
+        self.tmin = float(tmin_fit - 2.0 * tfade)
+        self.tmax = float(tmax_fit + 2.0 * tfade)
+
         return [self]
 
     def finalize_modelling(

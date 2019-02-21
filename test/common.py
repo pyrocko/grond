@@ -16,6 +16,8 @@ url = 'http://data.pyrocko.org/testing/grond/'
 logger = logging.getLogger('grond.test')
 op = os.path
 
+util.force_dummy_progressbar = True
+
 
 def test_data_path(fn):
     return op.abspath(os.path.join(os.path.split(__file__)[0], 'data', fn))
@@ -94,7 +96,7 @@ class Capture(object):
 
 
 def grond(*args, tee=False):
-    # tee = True
+    tee = True
     cap = Capture(tee=tee)
     with cap:
         main(['grond'] + list(args))
@@ -124,7 +126,7 @@ def get_rundir_paths(config_path, event_names):
 
     rundir_paths = []
     for event_name in event_names:
-        env.set_current_event_name(event_name)
+        env.set_current_name(event_name)
         problem_name = env.get_problem().name
         rundir_paths.append(expand_template(
             conf.rundir_template,
