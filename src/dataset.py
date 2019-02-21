@@ -72,6 +72,50 @@ def dump_station_corrections(station_corrections, filename):
     return dump_all(station_corrections, filename=filename)
 
 
+def check_events(events, fn):
+    for ev in events:
+        if not ev.name:
+            raise DatasetError(
+                'An event in file "%s" has no name.' % fn)
+
+        if ev.lat is None or ev.lon is None:
+            logger.warning(
+                'Event "%s" from file "%s" has no lat/lon.' % (
+                    ev.name, fn))
+
+        if ev.depth is None:
+            logger.warning(
+                'Event "%s" from file "%s" has no depth.' % (
+                    ev.name, fn))
+
+        if ev.time is None:
+            logger.warning(
+                'Event "%s" from file "%s" has no time.' % (
+                    ev.name, fn))
+
+
+def load_check_events(fns):
+    '''
+    Load events, check for missing attributes and if event names are unique.
+    '''
+
+    events = {}
+    for fn in fns:
+        events_add = model.load_events(filename=fn)
+        check_events(events_add, fn)
+
+        for ev in events_add:
+            if ev.name in events:
+                raise DatasetError('Duplicate event name: %s' % ev.name)
+
+            events[ev.name] = ev
+
+    events = list(events.values())
+    events.sort(key=lambda ev: ev.name)
+
+    return events
+
+
 class Dataset(object):
 
     def __init__(self, event_name=None):
@@ -155,12 +199,17 @@ class Dataset(object):
         if filename is not None:
             logger.debug('Loading events from file "%s"...' % filename)
             try:
-                events = model.load_events(filename)
-                self.events.extend(events)
-                logger.info('Loading events from %s: %s', filename,
+                events = load_check_events([filename])
+
+                logger.info('Loading events from file "%s": %s', filename,
                             ', '.join([e.name for e in events]))
+
+                self.events.extend(events)
+
             except Exception as e:
-                logger.warning('Could not load events from %s!', filename)
+                logger.warning(
+                    'Could not load events from file "%s"', filename)
+
                 raise e
 
     def add_waveforms(self, paths, regex=None, fileformat='detect',
@@ -1029,42 +1078,13 @@ class DatasetConfig(HasPaths):
         def fp(path):
             return self.expand_path(path, extra=extra)
 
-        def check_events(events, fn):
-            for ev in events:
-                if not ev.name:
-                    raise DatasetError(
-                        'An event in file "%s" has no name.' % fn)
-
-                if ev.lat is None or ev.lon is None:
-                    logger.warning(
-                        'Event "%s" from file "%s" has no lat/lon.' % (
-                            ev.name, fn))
-
-                if ev.depth is None:
-                    logger.warning(
-                        'Event "%s" from file "%s" has no depth.' % (
-                            ev.name, fn))
-
-                if ev.time is None:
-                    logger.warning(
-                        'Event "%s" from file "%s" has no time.' % (
-                            ev.name, fn))
-
-        events = []
         events_path = fp(self.events_path)
         fns = glob.glob(events_path)
         if not fns:
             raise DatasetError('No event files matching "%s".' % events_path)
 
-        for fn in fns:
-            logger.debug('Loading from file "%s"' % fn)
-            events = model.load_events(filename=fn)
-            check_events(events, fn)
-
-            events.extend(events)
-
+        events = load_check_events(fns)
         event_names = [ev.name for ev in events]
-        event_names.sort()
         return event_names
 
     def get_dataset(self, event_name):
