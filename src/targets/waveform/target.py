@@ -6,7 +6,7 @@ import numpy as num
 
 from pyrocko import gf, trace, weeding
 from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
-                          Timestamp, List)
+                          Timestamp, List, Dict)
 from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
@@ -34,6 +34,54 @@ class Crust2StoreIDSelector(StoreIDSelector):
         s = Template(self.template)
         return s.substitute(id=(
             crust2x2.get_profile(event.lat, event.lon)._ident).lower())
+
+
+class StationDictStoreIDSelector(StoreIDSelector):
+    dict_st_gfid = Dict.T(help='Dictionary with station-gfdb pairs')
+
+    def get_store_id(self, event, st, cha):
+        try: 
+            store_id = self.dict_st_gfid['%s.%s' % (st.network, st.station)]
+        except KeyError:
+            store_id = self.dict_st_gfid['others']
+
+        return store_id
+
+
+
+class StationDistrReq(Object):
+    min_nstats = Int.T(help='Minimum number of statios\
+                             used for waveform fitting.')
+    min_baz_cov = Float.T(help='Minimum backazimuthal coverage.')
+
+    def test_coverage(self, targets, origin, ok_stats, pile):
+        st_codes = list(set([st.station
+                             for st in ok_stats
+                             if st.station in pile.stations]))
+        n_stats = len(st_codes)
+
+        if n_stats > self.min_nstats:
+            azimuths = list(set([target.azibazi_to(origin)[0]
+                                 for target in targets
+                                 if target.codes[1] in st_codes]))
+            azimuths = sorted(list(azimuths))
+            azi_diffs = []
+            azimuths.append(azimuths[0])
+
+            for i_a, aa in enumerate(azimuths[0:-1]):
+                if azimuths[i_a+1] < 0 and aa > 0:
+                    diff = aa-azimuths[i_a+1]
+                    if diff > 180:
+                        diff = 360-diff
+                    azi_diffs.append(diff)
+                else:
+                    azi_diffs.append(abs(azimuths[i_a+1]-aa))
+            if num.max(azi_diffs) < (360. - self.min_baz_cov):
+                return True
+            else:
+                return False
+        else:
+            return False
 
 
 class DomainChoice(StringChoice):
@@ -132,6 +180,9 @@ class WaveformTargetGroup(TargetGroup):
     store_id_selector = StoreIDSelector.T(
         optional=True,
         help='select GF store based on event-station geometry.')
+    station_distr_req = StationDistrReq.T(
+        optional=True,
+        help='Use only targets with sufficient station distribution.')
 
     def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')
@@ -212,6 +263,7 @@ class WaveformTargetGroup(TargetGroup):
 
         if self.limit:
             return weed(origin, targets, self.limit)[0]
+
         else:
             return targets
 
@@ -702,10 +754,12 @@ def weed(origin, targets, limit, neighborhood=3):
 __all__ = '''
     StoreIDSelector
     Crust2StoreIDSelector
+    StationDictStoreIDSelector
     WaveformTargetGroup
     WaveformMisfitConfig
     WaveformMisfitTarget
     WaveformMisfitResult
     WaveformPiggybackSubtarget
     WaveformPiggybackSubresult
+    StationDistrReq
 '''.split()
