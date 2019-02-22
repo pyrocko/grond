@@ -40,13 +40,12 @@ class StationDictStoreIDSelector(StoreIDSelector):
     dict_st_gfid = Dict.T(help='Dictionary with station-gfdb pairs')
 
     def get_store_id(self, event, st, cha):
-        try: 
+        try:
             store_id = self.dict_st_gfid['%s.%s' % (st.network, st.station)]
         except KeyError:
             store_id = self.dict_st_gfid['others']
 
         return store_id
-
 
 
 class StationDistrReq(Object):
