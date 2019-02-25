@@ -237,9 +237,36 @@ def get_event_names(config):
     return config.get_event_names()
 
 
-def check_problem(problem):
+def check_problem(problem, **kwargs):
     if len(problem.targets) == 0:
         raise GrondError('No targets available')
+
+    stations = kwargs.get('stations', None)
+    event = kwargs.get('event', None)
+    config = kwargs.get('config', None)
+    p = kwargs.get('pile', None)
+
+    if stations and event and config and p:
+        for g in config.target_groups:
+            if g.station_distr_req:
+                x = problem.get_random_model()
+                results_list = problem.evaluate(x)
+                ok_stats = []
+                for result in results_list:
+                    if not isinstance(result, gf.SeismosizerError):
+                        for st in stations:
+                            if st.station == result.processed_obs.station:
+                                ok_stats.append(st)
+
+                ok_stats = list(set(ok_stats))
+                test = g.station_distr_req.test_coverage(problem.targets,
+                                                         event, ok_stats, p)
+                if test is False:
+                    raise GrondError('Number of stations or' +
+                                     ' station coverage not sufficient.')
+                else:
+                    logger.info('Number of station and' +
+                                ' azimuthal coverage sufficient.')
 
 
 def check(
@@ -271,7 +298,8 @@ def check(
             logger.info(
                 'Number of targets (selected): %i' % len(problem.targets))
 
-            check_problem(problem)
+            check_problem(problem, event=event, stations=ds.get_stations(),
+                          config=config, pile=ds.pile)
 
             results_list = []
             sources = []
@@ -433,83 +461,95 @@ def go(environment,
     g_state[id(g_data)] = g_data
 
     nevents = environment.nevents_selected
+
+    process_returns = []
     for x in parimap.parimap(
             process_event,
             range(environment.nevents_selected),
             [id(g_data)] * nevents,
             nprocs=nparallel):
-
+        process_returns.append(x)
         pass
+
+    print('------------------------')
+    print('Grond go done.')
+    print('Summary:')
+    for ev in process_returns:
+        if ev[1] is None:
+            print('%s: No error, succesfull run.' % ev[0])
+        else:
+            print('%s: %s' % (ev[0], ev[1]))
 
 
 def process_event(ievent, g_data_id):
 
     environment, force, preserve, status, nparallel = \
         g_state[g_data_id]
-
-    config = environment.get_config()
-    event_name = environment.get_selected_event_names()[ievent]
-    nevents = environment.nevents_selected
-    tstart = time.time()
-
-    ds = config.get_dataset(event_name)
-    event = ds.get_event()
-    problem = config.get_problem(event)
-
-    synt = ds.synthetic_test
-    if synt:
-        problem.base_source = problem.get_source(synt.get_x())
-
-    check_problem(problem)
-
-    rundir = expand_template(
-        config.rundir_template,
-        dict(problem_name=problem.name))
-    environment.set_rundir_path(rundir)
-
-    if op.exists(rundir):
-        if preserve:
-            nold_rundirs = len(glob.glob(rundir + '*'))
-            shutil.move(rundir, rundir+'-old-%d' % (nold_rundirs))
-        elif force:
-            shutil.rmtree(rundir)
-        else:
-            logger.warn('Skipping problem "%s": rundir already exists: %s' %
-                        (problem.name, rundir))
-            return
-
-    util.ensuredir(rundir)
-
-    logger.info(
-        'Starting event %i / %i' % (ievent+1, nevents))
-
-    logger.info('Rundir: %s' % rundir)
-
-    logger.info('Analysing problem "%s".' % problem.name)
-
-    for analyser_conf in config.analyser_configs:
-        analyser = analyser_conf.get_analyser()
-        analyser.analyse(problem, ds)
-
-    basepath = config.get_basepath()
-    config.change_basepath(rundir)
-    guts.dump(config, filename=op.join(rundir, 'config.yaml'))
-    config.change_basepath(basepath)
-
-    optimiser = config.optimiser_config.get_optimiser()
-    optimiser.init_bootstraps(problem)
-    problem.dump_problem_info(rundir)
-
     monitor = None
-    if status == 'state':
-        monitor = GrondMonitor.watch(rundir)
-
-    xs_inject = None
-    synt = ds.synthetic_test
-    if synt and synt.inject_solution:
-        xs_inject = synt.get_x()[num.newaxis, :]
+    event_name = environment.get_selected_event_names()[ievent]
 
     try:
+        config = environment.get_config()
+        nevents = environment.nevents_selected
+        tstart = time.time()
+
+        ds = config.get_dataset(event_name)
+        event = ds.get_event()
+        problem = config.get_problem(event)
+
+        synt = ds.synthetic_test
+        if synt:
+            problem.base_source = problem.get_source(synt.get_x())
+
+        rundir = expand_template(
+            config.rundir_template,
+            dict(problem_name=problem.name))
+        environment.set_rundir_path(rundir)
+
+        check_problem(problem, event=event, stations=ds.get_stations(),
+                      config=config, pile=ds.pile)
+
+        if op.exists(rundir):
+            if preserve:
+                nold_rundirs = len(glob.glob(rundir + '*'))
+                shutil.move(rundir, rundir+'-old-%d' % (nold_rundirs))
+            elif force:
+                shutil.rmtree(rundir)
+            else:
+                logger.warn('Skipping problem "%s": rundir already exists: %s' %
+                            (problem.name, rundir))
+                return
+
+        util.ensuredir(rundir)
+
+        logger.info(
+            'Starting event %i / %i' % (ievent+1, nevents))
+
+        logger.info('Rundir: %s' % rundir)
+
+        logger.info('Analysing problem "%s".' % problem.name)
+
+        for analyser_conf in config.analyser_configs:
+            analyser = analyser_conf.get_analyser()
+            analyser.analyse(problem, ds)
+
+        basepath = config.get_basepath()
+        config.change_basepath(rundir)
+        guts.dump(config, filename=op.join(rundir, 'config.yaml'))
+        config.change_basepath(basepath)
+
+        optimiser = config.optimiser_config.get_optimiser()
+        optimiser.init_bootstraps(problem)
+        problem.dump_problem_info(rundir)
+
+        if status == 'state':
+            monitor = GrondMonitor.watch(rundir)
+
+        xs_inject = None
+        synt = ds.synthetic_test
+        if synt and synt.inject_solution:
+            xs_inject = synt.get_x()[num.newaxis, :]
+
         if xs_inject is not None:
             from .optimisers import highscore
             if not isinstance(optimiser, highscore.HighScoreOptimiser):
@@ -530,6 +570,7 @@ def process_event(ievent, g_data_id):
 
     except GrondError as e:
         logger.error(str(e))
+        return((event_name, e))
 
     finally:
         if monitor:
@@ -541,6 +582,8 @@ def process_event(ievent, g_data_id):
 
     logger.info(
         'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
+
+    return((event_name, None))
 
 
 class ParameterStats(Object):
