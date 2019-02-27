@@ -19,6 +19,41 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
 
 
+class StationDistrReq(Object):
+    min_nstats = Int.T(help='Minimum number of statios\
+                             used for waveform fitting.')
+    min_baz_cov = Float.T(help='Minimum backazimuthal coverage.')
+
+    def test_coverage(self, targets, origin, ok_stats, pile):
+        st_codes = list(set([st.station
+                             for st in ok_stats
+                             if st.station in pile.stations]))
+        n_stats = len(st_codes)
+
+        if n_stats > self.min_nstats:
+            azimuths = list(set([target.azibazi_to(origin)[0]
+                                 for target in targets
+                                 if target.codes[1] in st_codes]))
+            azimuths = sorted(list(azimuths))
+            azi_diffs = []
+            azimuths.append(azimuths[0])
+
+            for i_a, aa in enumerate(azimuths[0:-1]):
+                if azimuths[i_a+1] < 0 and aa > 0:
+                    diff = aa-azimuths[i_a+1]
+                    if diff > 180:
+                        diff = 360-diff
+                    azi_diffs.append(diff)
+                else:
+                    azi_diffs.append(abs(azimuths[i_a+1]-aa))
+            if num.max(azi_diffs) < (360. - self.min_baz_cov):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+
 class DomainChoice(StringChoice):
     choices = [
         'time_domain',
@@ -122,6 +157,9 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
+    station_distr_req = StationDistrReq.T(
+        optional=True,
+        help='Use only targets with sufficient station distribution.')    
 
     def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')
@@ -711,4 +749,5 @@ __all__ = '''
     WaveformMisfitResult
     WaveformPiggybackSubtarget
     WaveformPiggybackSubresult
+    StationDistrReq    
 '''.split()
