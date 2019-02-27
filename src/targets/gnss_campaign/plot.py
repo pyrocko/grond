@@ -286,9 +286,223 @@ components).
 
             yield (item, fig)
 
+class GNSSTargetMisfitPlot_PosterAhar(PlotConfig):
+    ''' Maps showing horizontal surface displacements
+        of a GNSS campaign and model '''
+
+    name = 'gnss_poster'
+
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(20., 20.),
+        help='width and length of the figure in cm')
+    show_topo = Bool.T(
+        default=True,
+        help='show topography')
+    show_grid = Bool.T(
+        default=False,
+        help='show the lat/lon grid')
+    show_rivers = Bool.T(
+        default=True,
+        help='show rivers on the map')
+    radius = Float.T(
+        optional=True,
+        help='radius of the map around campaign center lat/lon')
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimiser = environ.get_optimiser()
+        ds = environ.get_dataset()
+
+        environ.setup_modelling()
+
+        cm.create_group_automap(
+            self,
+            self.draw_gnss_fits(ds, history, optimiser),
+            title=u'GNSS Displacements',
+            section='fits',
+            feather_icon='map',
+            description=u'''
+Maps showing station positions and statiom names of the GNSS targets.
+
+Arrows the observed surface displacements (black arrows) and synthetic
+displacements (red arrows). The top plot shows the horizontal displacements and
+the bottom plot the vertical displacements. The grey filled box shows the
+surface projection of the modelled source, with the thick-lined edge marking
+the upper fault edge.
+''')
+
+    def draw_gnss_fits(self, ds, history, optimiser, vertical=False):
+        problem = history.problem
+
+        gnss_targets = problem.gnss_targets
+        for target in gnss_targets:
+            target.set_dataset(ds)
+
+        gms = problem.combine_misfits(history.misfits)
+        isort = num.argsort(gms)
+        gms = gms[isort]
+        models = history.models[isort, :]
+        xbest = models[0, :]
+
+        source = problem.get_source(xbest)
+
+        results = problem.evaluate(
+            xbest, result_mode='full', targets=gnss_targets)
+
+        def plot_gnss(gnss_target, result, ifig, vertical=False):
+            campaign = gnss_target.campaign
+            item = PlotItem(
+                name='fig_%i' % ifig,
+                attributes={
+                    'targets': gnss_target.path
+                },
+                title=u'Static GNSS Surface Displacements - Campaign %s'
+                      % campaign.name,
+                description=u'''
+Static surface displacement from GNSS campaign %s (black vectors) and
+displacements derived from best rupture model (red).
+''' % campaign.name)
+
+            event = source.pyrocko_event()
+            locations = campaign.stations + [event]
+
+            lat, lon = od.geographic_midpoint_locations(locations)
+
+            if self.radius is None:
+                coords = num.array([loc.effective_latlon for loc in locations])
+                radius = od.distance_accurate50m_numpy(
+                            lat[num.newaxis], lon[num.newaxis],
+                            coords[:, 0].max(), coords[:, 1]).max()
+                radius *= 1.1
+
+            if radius < 30.*km:
+                logger.warn(
+                    'Radius of GNSS campaign %s too small, defaulting'
+                    ' to 30 km' % campaign.name)
+                radius = 30*km
+
+            model_camp = gnss.GNSSCampaign(
+                stations=copy.deepcopy(campaign.stations),
+                name='grond model')
+            for ista, sta in enumerate(model_camp.stations):
+                sta.north.shift = result.statics_syn['displacement.n'][ista]
+                sta.north.sigma = 0.
+
+                sta.east.shift = result.statics_syn['displacement.e'][ista]
+                sta.east.sigma = 0.
+
+                if sta.up:
+                    sta.up.shift = -result.statics_syn['displacement.d'][ista]
+                    sta.up.sigma = 0.
+
+            m = automap.Map(
+                width=self.size_cm[0],
+                height=self.size_cm[1],
+                lat=lat,
+                lon=lon,
+                radius=radius,
+                show_topo=self.show_topo,
+                show_grid=self.show_grid,
+                show_rivers=self.show_rivers,
+                #color_wet=(216, 242, 254),
+                color_dry=(238, 236, 230))
+
+            if sta.up:
+                offset_scale = num.array(
+                    [num.sqrt(s.east.shift**2 + s.north.shift**2 + s.up.shift**2)
+                    for s in campaign.stations + model_camp.stations]).max()
+            else:
+                offset_scale = num.array(
+                    [num.sqrt(s.east.shift**2 + s.north.shift**2)
+                    for s in campaign.stations + model_camp.stations]).max()
+
+            if vertical:
+                m.add_gnss_campaign(campaign, psxy_style={
+                    'G': 'black',
+                    'W': '0.8p,black',
+                    },
+                    offset_scale=offset_scale, vertical=True)
+
+                m.add_gnss_campaign(model_camp, psxy_style={
+                    'G': 'red',
+                    'W': '0.8p,red',
+                    't': 30,
+                    },
+                    offset_scale=offset_scale, vertical=True, labels=False)
+            else:
+                m.add_gnss_campaign(campaign, psxy_style={
+                    'G': 'black',
+                    'W': '1p,black',
+                    'S': 'e%dc/0.95/10' % scale,
+                    },
+                    offset_scale=offset_scale)
+
+                m.add_gnss_campaign(model_camp, psxy_style={
+                    'G': 'red',
+                    'W': '1p,red',
+                    't': 30,
+                    },
+                    offset_scale=offset_scale, labels=False)
+
+            if isinstance(problem, CMTProblem):
+                from pyrocko import moment_tensor
+                from pyrocko.plot import gmtpy
+
+                mt = event.moment_tensor.m_up_south_east()
+                ev_lat, ev_lon = event.effective_latlon
+
+                xx = num.trace(mt) / 3.
+                mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
+                mc = mt - mc
+                mc = mc / event.moment_tensor.scalar_moment() * \
+                    moment_tensor.magnitude_to_moment(5.0)
+                m6 = tuple(moment_tensor.to6(mc))
+                symbol_size = 20.
+                m.gmt.psmeca(
+                    S='%s%g' % ('d', symbol_size / gmtpy.cm),
+                    in_rows=[(ev_lon, ev_lat, 10) + m6 + (1, 0, 0)],
+                    M=True,
+                    *m.jxyr)
+
+            elif isinstance(problem, RectangularProblem):
+                m.gmt.psxy(
+                    in_rows=source.outline(cs='lonlat'),
+                    L='+p2p,black',
+                    W='1p,black',
+                    G='black',
+                    t=60,
+                    *m.jxyr)
+
+            elif isinstance(problem, VolumePointProblem):
+                ev_lat, ev_lon = event.effective_latlon
+                dV = abs(source.volume_change)
+                sphere_radius = num.cbrt(dV / (4./3.*num.pi))
+
+                volcanic_circle = [
+                    ev_lon,
+                    ev_lat,
+                    '%fe' % sphere_radius
+                ]
+                m.gmt.psxy(
+                    S='E-',
+                    in_rows=[volcanic_circle],
+                    W='1p,black',
+                    G='orange3',
+                    *m.jxyr)
+
+            return (item, m)
+
+        ifig = 0
+        for vertical in (False, True):
+            for gnss_target, result in zip(problem.gnss_targets, results):
+                yield plot_gnss(gnss_target, result, ifig, vertical)
+                ifig += 1
 
 def get_plot_classes():
     return [
         GNSSTargetMisfitPlot,
-        GNSSStationDistribution
+        GNSSStationDistribution,
+        GNSSTargetMisfitPlot_PosterAhar
     ]
