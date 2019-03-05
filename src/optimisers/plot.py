@@ -518,7 +518,7 @@ functions of the bootstrap start to disagree.
 
         problem = history.problem
         imodels = num.arange(history.nmodels)
-        gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
+        gms = problem.combine_misfits(history.misfits)
         gms_softclip = num.where(gms > 1.0,
                                  0.1 * num.log10(gms) + 1.0,
                                  gms)
