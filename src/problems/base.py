@@ -32,8 +32,6 @@ as_km = dict(scale_factor=km, scale_unit='km')
 
 g_rstate = num.random.RandomState()
 
-prev_norms = None
-
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
@@ -420,8 +418,6 @@ class Problem(Object):
             ``misfits[imodel, ibootstrap]`` with the misfit for every model and
             weighting/residual set is returned.
         '''
-        global prev_norms
-
         if misfits.ndim == 2:
             misfits = misfits[num.newaxis, :, :]
             return self.combine_misfits(
@@ -460,8 +456,6 @@ class Problem(Object):
         if num.any(extra_weights):
             weights = weights * extra_weights[num.newaxis, :, :]
 
-        weights = exp(weights)
-
         msk = num.ones(nmisfits, dtype=num.bool)
 
         for idx1, corr_weight_mat in extra_correlated_weights.items():
@@ -482,6 +476,7 @@ class Problem(Object):
         res[:, :, msk] = exp(res[:, :, msk])
         norms[:, :, msk] = exp(norms[:, :, msk])
 
+        weights = exp(weights)
         res *= weights
         norms *= weights
 
