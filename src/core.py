@@ -141,6 +141,7 @@ def forward(rundir_or_config_path, event_names):
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     env = Environment([rundir])
+    optimiser = env.get_optimiser()
     nchains = env.get_optimiser().nchains
 
     if problem is None:
@@ -164,7 +165,9 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     ibests_list = []
     ibests = []
-    gms = problem.combine_misfits(misfits)
+    gms = problem.combine_misfits(
+        misfits,
+        extra_correlated_weights=optimiser.get_correlated_weights(problem))
     isort = num.argsort(gms)
 
     ibests_list.append(isort[:nbest])

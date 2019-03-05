@@ -48,10 +48,12 @@ class SequencePlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
+        optimiser = environ.get_optimiser()
+
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
-            self.draw_figures(history),
+            self.draw_figures(history, optimiser),
             title=u'Sequence Plots',
             section='optimiser',
             description=u'''
@@ -68,7 +70,7 @@ corresponding misfit values.
 ''',
             feather_icon='fast-forward')
 
-    def draw_figures(self, history):
+    def draw_figures(self, history, optimiser):
         misfit_cutoff = self.misfit_cutoff
         sort_by = self.sort_by
 
@@ -85,7 +87,10 @@ corresponding misfit values.
 
         xref = problem.get_reference_model(expand=True)
 
-        gms = problem.combine_misfits(history.misfits)
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
 
         isort = num.argsort(gms)[::-1]
@@ -278,11 +283,13 @@ class ContributionsPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
+        optimiser = environ.get_optimiser()
         dataset = environ.get_dataset()
+
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
-            self.draw_figures(dataset, history),
+            self.draw_figures(dataset, history, optimiser),
             title=u'Target Contributions',
             section='solution',
             feather_icon='thermometer',
@@ -301,7 +308,7 @@ target is much larger than those of all others, the weighting should be
 modified.
 ''')
 
-    def draw_figures(self, dataset, history):
+    def draw_figures(self, dataset, history, optimiser):
 
         fontsize = self.font_size
 
@@ -325,7 +332,11 @@ modified.
 
         imodels = num.arange(history.nmodels)
 
-        gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+
+        gms **= problem.norm_exponent
 
         isort = num.argsort(gms)[::-1]
 
@@ -334,7 +345,9 @@ modified.
         gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
         gcms = problem.combine_misfits(
-            history.misfits, get_contributions=True)
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem),
+            get_contributions=True)
 
         gcms = gcms[isort, :]
         nmisfits = gcms.shape[1]  # noqa
@@ -360,7 +373,7 @@ modified.
         # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
 
         jsort = num.argsort(cum_gcms[-1, :])[::-1]
-        #print(cum_gcms[-1, :])
+
         # ncols = 4
         # nrows = ((problem.ntargets + 1) - 1) / ncols + 1
 
@@ -518,7 +531,10 @@ functions of the bootstrap start to disagree.
 
         problem = history.problem
         imodels = num.arange(history.nmodels)
-        gms = problem.combine_misfits(history.misfits)
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+
         gms_softclip = num.where(gms > 1.0,
                                  0.1 * num.log10(gms) + 1.0,
                                  gms)

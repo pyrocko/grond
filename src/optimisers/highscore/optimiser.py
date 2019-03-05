@@ -609,7 +609,6 @@ class HighScoreOptimiser(Optimiser):
             self._tlog_last = t
 
     def optimise(self, problem, rundir=None):
-        pr.enable()
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
@@ -665,8 +664,6 @@ class HighScoreOptimiser(Optimiser):
                     'Problem %s: all target misfit values are NaN.'
                     % problem.name)
 
-            pr.disable()
-            pr.dump_stats('/tmp/grond.cprof')
             history.append(
                 sample.model, misfits,
                 bootstrap_misfits,
