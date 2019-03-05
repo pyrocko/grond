@@ -239,7 +239,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         scene = self.scene
         qt = scene.quadtree
         cov = scene.covariance
-        bootstraps = num.empty((nbootstraps, qt.nleaves))
+        bootstraps = num.zeros((nbootstraps, qt.nleaves))
 
         for ibs in range(nbootstraps):
             if not (ibs+1) % 5:
