@@ -386,9 +386,11 @@ class FitsWaveformEnsemblePlot(PlotConfig):
         environ.setup_modelling()
         ds = environ.get_dataset()
         history = environ.get_history(subset='harvest')
+        optimiser = environ.get_optimiser()
+
         cm.create_group_mpl(
             self,
-            self.draw_figures(ds, history),
+            self.draw_figures(ds, history, optimiser),
             title=u'Waveform fits for the ensemble',
             section='fits',
             feather_icon='activity',
@@ -423,7 +425,7 @@ residuals for time domain comparisons (red filled), spectra of observed and
 synthetic traces for amplitude spectrum comparisons, or cross correlation
 traces.''')
 
-    def draw_figures(self, ds, history):
+    def draw_figures(self, ds, history, optimiser):
 
         color_parameter = self.color_parameter
         misfit_cutoff = self.misfit_cutoff
@@ -444,7 +446,9 @@ traces.''')
             target_index[target] = i, i+target.nmisfits
             i += target.nmisfits
 
-        gms = problem.combine_misfits(history.misfits)
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
         isort = num.argsort(gms)[::-1]
         gms = gms[isort]
         models = history.models[isort, :]
@@ -803,10 +807,12 @@ class FitsWaveformPlot(PlotConfig):
         mpl_init(fontsize=self.font_size)
         environ.setup_modelling()
         ds = environ.get_dataset()
+        optimiser = environ.get_optimiser()
+
         history = environ.get_history(subset='harvest')
         cm.create_group_mpl(
             self,
-            self.draw_figures(ds, history),
+            self.draw_figures(ds, history, optimiser),
             title=u'Waveform fits for best model',
             section='fits',
             feather_icon='activity',
@@ -845,7 +851,7 @@ relative misfit contribution to the global misfit of the optimisation (bottom
 box, red).
 ''')
 
-    def draw_figures(self, ds, history):
+    def draw_figures(self, ds, history, optimiser):
 
         fontsize = self.font_size
         fontsize_title = self.font_size_title
@@ -864,7 +870,9 @@ box, red).
             target_index[target] = i, i+target.nmisfits
             i += target.nmisfits
 
-        gms = problem.combine_misfits(history.misfits)
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
         isort = num.argsort(gms)
         gms = gms[isort]
         models = history.models[isort, :]
@@ -875,7 +883,9 @@ box, red).
         ws = problem.get_target_weights()
 
         gcms = problem.combine_misfits(
-            misfits[:1, :, :], get_contributions=True)[0, :]
+            misfits[:1, :, :],
+            extra_correlated_weights=optimiser.get_correlated_weights(problem),
+            get_contributions=True)[0, :]
 
         w_max = num.nanmax(ws)
         gcm_max = num.nanmax(gcms)

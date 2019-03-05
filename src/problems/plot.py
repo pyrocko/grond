@@ -121,7 +121,10 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
         if ibootstrap is not None:
             gms = history.bootstrap_misfits[:, ibootstrap]
         else:
-            gms = problem.combine_misfits(history.misfits)
+            gms = problem.combine_misfits(
+                history.misfits,
+                extra_correlated_weights=optimiser.get_correlated_weights(
+                    problem))
 
         isort = num.argsort(gms)[::-1]
 

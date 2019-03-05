@@ -295,11 +295,6 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         plots = super(WaveformMisfitTarget, cls).get_plot_classes()
         plots.extend(plot.get_plot_classes())
         return plots
-    
-    @property
-    def noise_weight_matrix(self):
-        #print('waveform noise matrix fct')
-        return None
 
     def get_combined_weight(self):
         if self._combined_weight is None:

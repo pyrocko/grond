@@ -5,6 +5,8 @@ import scipy.linalg as splinalg
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
 
+from concurrent.futures import ThreadPoolExecutor
+
 from grond.meta import Parameter, has_get_plot_classes
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
 

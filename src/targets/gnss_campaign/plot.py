@@ -75,7 +75,9 @@ the upper fault edge.
         for target in gnss_targets:
             target.set_dataset(ds)
 
-        gms = problem.combine_misfits(history.misfits)
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
         isort = num.argsort(gms)
         gms = gms[isort]
         models = history.models[isort, :]
