@@ -1,6 +1,6 @@
 import logging
 import numpy as num
-from scipy import linalg
+from scipy import linalg as splinalg
 
 from pyrocko import gf
 from pyrocko.guts import String, Dict, List, Int
@@ -101,6 +101,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         self._obs_data = None
         self._sigma = None
         self._weights = None
+        self._correlated_weights = None
         self._station_component_mask = None
 
     @property
@@ -143,7 +144,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         MisfitTarget.set_dataset(self, ds)
 
     def get_correlated_weights(self):
-        return self.weights
+        if self._correlated_weights is None:
+            self._correlated_weights = splinalg.sqrtm(self.weights)
+        return self._correlated_weights
 
     @property
     def campaign(self):
@@ -184,23 +187,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
                                ' Weights will be all equal.')
                 num.fill_diagonal(covar, 1.)
 
-            #inv_reduc = num.linalg.pinv(num.asmatrix(cov_reduc)
-            # inverse of non-zero elements not working, so two steps
-            # a) reduction to valid rows and columns
-            # b) insertion in full matrix
-
-            inv_reduc = num.asmatrix(covar).I
-
-            # Use the sqrt?
-            root_inv_reduc = linalg.sqrtm(inv_reduc)
-
-            # count = 0
-            # for icomp, c_mask in enumerate(self._station_component_mask):
-            #     if c_mask:
-            #         w[icomp, comp_at] = inv_reduc[:, count].T
-            #         count += 1
-
-            self._weights = inv_reduc.T
+            self._weights = num.asmatrix(covar).I
 
         return self._weights
 
