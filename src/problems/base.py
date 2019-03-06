@@ -44,14 +44,9 @@ def corr_misfits(w_misfits, weight_matrix):
     feed here a squeare-rooted, inverse covariance matrix.
 
     The function stops before doing the last sum.'''
-    w_res_dot1 = num.matmul(w_misfits, weight_matrix)
-    # For the next dot-product we flatten the weighted residual
-    # stack and do a simple multiplication and a reshape
-    # (sum is done later, after the applying other weight factors.)
-    w_res_dot1 = num.asarray(w_res_dot1)
-    product_w_res = w_res_dot1 * w_res_dot1
+    res = num.matmul(w_misfits, weight_matrix)
 
-    return product_w_res.reshape(w_misfits.shape)
+    return res
 
 
 class ProblemConfig(Object):
@@ -440,7 +435,7 @@ class Problem(Object):
         exp, root = self.get_norm_functions()
 
         nmodels = misfits.shape[0]
-        nmisfits = misfits.shape[1]
+        nmisfits = misfits.shape[1]  # noqa
 
         mf = misfits[:, num.newaxis, :, :]
 
@@ -456,12 +451,10 @@ class Problem(Object):
         if num.any(extra_weights):
             weights = weights * extra_weights[num.newaxis, :, :]
 
-        msk = num.ones(nmisfits, dtype=num.bool)
-
         for idx1, corr_weight_mat in extra_correlated_weights.items():
 
             idx2 = idx1 + corr_weight_mat.shape[0]
-            msk[idx1:idx2] = False
+            # msk[idx1:idx2] = False
 
             for imodel in range(nmodels):
                 corr_res = res[imodel, :, idx1:idx2]
@@ -473,19 +466,19 @@ class Problem(Object):
                 norms[imodel, :, idx1:idx2] = \
                     corr_misfits(corr_norms, corr_weight_mat)
 
-        res[:, :, msk] = exp(res[:, :, msk])
-        norms[:, :, msk] = exp(norms[:, :, msk])
+        res = exp(res)
+        norms = exp(norms)
 
         weights = exp(weights)
         res *= weights
         norms *= weights
 
         if get_contributions:
-            return res / num.nansum(norms, axis=-1)[:, :, num.newaxis]
+            return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
 
         result = root(
-            num.nansum(res, axis=-1) /
-            num.nansum(norms, axis=-1))
+            num.nansum(res, axis=2) /
+            num.nansum(norms, axis=2))
 
         assert result[result < 0].size == 0
         return result
