@@ -1,10 +1,11 @@
 import logging
 import numpy as num
-import scipy.linalg as splinalg
+from scipy import linalg as splinalg
 
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 from grond.meta import Parameter, has_get_plot_classes
@@ -243,11 +244,19 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         cov = scene.covariance
         bootstraps = num.zeros((nbootstraps, qt.nleaves))
 
-        for ibs in range(nbootstraps):
-            if not (ibs+1) % 5:
-                logger.info('Calculating noise realisation %d/%d.'
-                            % (ibs+1, nbootstraps))
-            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
+        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            res = executor.map(
+                cov.getQuadtreeNoise,
+                [rstate for _ in range(nbootstraps)])
+
+            for ibs, bs in enumerate(res):
+                bootstraps[ibs, :] = bs
+
+        # for ibs in range(nbootstraps):
+        #     if not (ibs+1) % 5:
+        #         logger.info('Calculating noise realisation %d/%d.'
+        #                     % (ibs+1, nbootstraps))
+        #     bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
 
         self.set_bootstrap_residuals(bootstraps)
 
