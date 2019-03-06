@@ -5,7 +5,7 @@ import numpy as num
 
 from numpy.testing import assert_almost_equal as assert_ae
 from pyrocko import gf
-from grond.toy import scenario, ToyProblem
+from grond.toy import scenario, ToyProblem, ToyTarget, ToySource
 
 
 def test_combine_misfits():
@@ -78,3 +78,55 @@ def test_combine_misfits():
         assert_ae(gm_2_contrib[1, :], gm_contrib)
         assert_ae(gms_2_contrib[ix, 0, :], gm_contrib)
         assert_ae(gms_2_contrib[ix, 1, :], gm_contrib)
+
+
+def test_combine_covariance():
+    nmodels = 1
+    nmisfits = 15
+
+    target = ToyTarget(
+        path='t_corr',
+        north=4.,
+        east=3.,
+        depth=0.,
+        obs_distance=0.,
+        nmisfits=nmisfits)
+
+    source = ToySource(
+        north=0,
+        east=0,
+        depth=5.)
+
+    p = ToyProblem(
+        name='toy_problem',
+        ranges={
+            'north': gf.Range(start=-10., stop=10.),
+            'east': gf.Range(start=-10., stop=10.),
+            'depth': gf.Range(start=0., stop=10.)},
+        base_source=source,
+        targets=[target])
+
+    rstate = num.random.RandomState(123)
+
+    misfits = num.zeros((nmisfits, 2))
+    misfits[:, 0] = rstate.normal(size=nmisfits)
+    misfits[:, 1] = rstate.normal(size=nmisfits) + 3.
+
+    weights = rstate.normal(size=nmisfits)
+
+    corr = num.zeros((nmisfits, nmisfits))
+    num.fill_diagonal(corr, weights)
+
+    extra_residuals = num.array([])
+
+    res_weights = p.combine_misfits(
+        misfits,
+        extra_weights=weights[num.newaxis, :],
+        extra_residuals=extra_residuals)
+
+    res_corr = p.combine_misfits(
+        misfits,
+        extra_correlated_weights={0: corr},
+        extra_residuals=extra_residuals)
+
+    num.testing.assert_equal(res_weights, res_corr)

@@ -25,7 +25,6 @@ from grond import stats
 
 from grond.version import __version__
 
-
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.base')
 km = 1e3
@@ -36,6 +35,18 @@ g_rstate = num.random.RandomState()
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
+
+
+def corr_misfits(w_misfits, weight_matrix):
+    ''' help function for the matrix multiplication
+    that combines misfits, weigths and correlated weights
+    - this is strictly L2 norm and covariance-weighted data
+    feed here a squeare-rooted, inverse covariance matrix.
+
+    The function stops before doing the last sum.'''
+    res = num.matmul(w_misfits, weight_matrix)
+
+    return res
 
 
 class ProblemConfig(Object):
@@ -278,8 +289,8 @@ class Problem(Object):
     def get_target_weights(self):
         if self._target_weights is None:
             self._target_weights = num.concatenate(
-                [target.get_combined_weight()
-                 for target in self.targets])
+               [target.get_combined_weight()
+                for target in self.targets])
 
         return self._target_weights
 
@@ -305,13 +316,14 @@ class Problem(Object):
         '''
 
         exp, root = self.get_norm_functions()
-
         family, nfamilies = self.get_family_mask()
+
         ws = num.zeros(ns.shape)
         for ifamily in range(nfamilies):
             mask = family == ifamily
             ws[:, mask] = (1.0 / root(
                 num.nansum(exp(ns[:, mask]), axis=1)))[:, num.newaxis]
+
         return ws
 
     def get_reference_model(self, expand=False):
@@ -367,6 +379,7 @@ class Problem(Object):
             self, misfits,
             extra_weights=None,
             extra_residuals=None,
+            extra_correlated_weights=dict(),
             get_contributions=False):
 
         '''
@@ -388,71 +401,87 @@ class Problem(Object):
             to the residuals, indexed as
             ``extra_residuals[ibootstrap, iresidual]``.
 
+        :param extra_correlated_weights: if given a dictionary of
+            ``idx_misfit: correlated weight matrix`` has to be passed.
+
         :param get_contributions: get the weighted and perturbed contributions
             (don't do the sum).
 
-        :returns: if no *extra_weights* or *extra_residuals* are given, a 1D
+        :returns: if no *extra_weights* or *extra_residuals* or are given, a 1D
             array indexed as ``misfits[imodel]`` containing the global misfit
             for each model is returned, otherwise a 2D array
             ``misfits[imodel, ibootstrap]`` with the misfit for every model and
             weighting/residual set is returned.
         '''
-
-        exp, root = self.get_norm_functions()
-
         if misfits.ndim == 2:
             misfits = misfits[num.newaxis, :, :]
             return self.combine_misfits(
-                misfits,
-                extra_weights,
-                extra_residuals,
-                get_contributions)[0, ...]
+                misfits, extra_weights, extra_residuals,
+                extra_correlated_weights, get_contributions)[0, ...]
+
+        if extra_weights is None and extra_residuals is None:
+            return self.combine_misfits(
+                misfits, False, False,
+                extra_correlated_weights, get_contributions)[:, 0]
 
         assert misfits.ndim == 3
-        assert extra_weights is None or extra_weights.ndim == 2
-        assert extra_residuals is None or extra_residuals.ndim == 2
+        assert not num.any(extra_weights) or extra_weights.ndim == 2
+        assert not num.any(extra_residuals) or extra_residuals.ndim == 2
 
-        if extra_weights is not None or extra_residuals is not None:
-            if extra_weights is not None:
-                w = extra_weights[num.newaxis, :, :] \
-                    * self.get_target_weights()[num.newaxis, num.newaxis, :] \
-                    * self.inter_family_weights2(
-                        misfits[:, :, 1])[:, num.newaxis, :]
-            else:
-                w = 1.0
+        if self.norm_exponent != 2 and extra_correlated_weights:
+            raise GrondError('Correlated weights can only be used '
+                             ' with norm_exponent=2!')
 
-            if extra_residuals is not None:
-                r = extra_residuals[num.newaxis, :, :]
-            else:
-                r = 0.0
+        exp, root = self.get_norm_functions()
 
-            if get_contributions:
-                return exp(w*(misfits[:, num.newaxis, :, 0]+r)) \
-                    / num.nansum(
-                        exp(w*misfits[:, num.newaxis, :, 1]),
-                        axis=2)[:, :, num.newaxis]
+        nmodels = misfits.shape[0]
+        nmisfits = misfits.shape[1]  # noqa
 
-            res = root(
-                num.nansum(exp(w*(misfits[:, num.newaxis, :, 0]+r)), axis=2) /
-                num.nansum(exp(w*(misfits[:, num.newaxis, :, 1])), axis=2))
-            assert res[res < 0].size == 0
-            return res
-        else:
-            w = self.get_target_weights()[num.newaxis, :] \
-                * self.inter_family_weights2(misfits[:, :, 1])
+        mf = misfits[:, num.newaxis, :, :]
 
-            r = self.get_target_weights()[num.newaxis, :] \
-                * self.inter_family_weights2(misfits[:, :, 1])
+        if num.any(extra_residuals):
+            mf = mf + extra_residuals[num.newaxis, :, :, num.newaxis]
 
-            if get_contributions:
-                return exp(w*misfits[:, :, 0]) \
-                    / num.nansum(
-                        exp(w*misfits[:, :, 1]),
-                        axis=1)[:, num.newaxis]
+        res = mf[..., 0]
+        norms = mf[..., 1]
 
-            return root(
-                num.nansum(exp(w*misfits[:, :, 0]), axis=1) /
-                num.nansum(exp(w*misfits[:, :, 1]), axis=1))
+        weights = self.get_target_weights()[num.newaxis, num.newaxis, :] * \
+            self.inter_family_weights2(misfits[:, :, 1])[:, num.newaxis, :]
+
+        if num.any(extra_weights):
+            weights = weights * extra_weights[num.newaxis, :, :]
+
+        for idx1, corr_weight_mat in extra_correlated_weights.items():
+
+            idx2 = idx1 + corr_weight_mat.shape[0]
+            # msk[idx1:idx2] = False
+
+            for imodel in range(nmodels):
+                corr_res = res[imodel, :, idx1:idx2]
+                corr_norms = norms[imodel, :, idx1:idx2]
+
+                res[imodel, :, idx1:idx2] = \
+                    corr_misfits(corr_res, corr_weight_mat)
+
+                norms[imodel, :, idx1:idx2] = \
+                    corr_misfits(corr_norms, corr_weight_mat)
+
+        res = exp(res)
+        norms = exp(norms)
+
+        weights = exp(weights)
+        res *= weights
+        norms *= weights
+
+        if get_contributions:
+            return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
+
+        result = root(
+            num.nansum(res, axis=2) /
+            num.nansum(norms, axis=2))
+
+        assert result[result < 0].size == 0
+        return result
 
     def make_family_mask(self):
         family_names = set()
@@ -625,6 +654,7 @@ class ModelHistory(object):
         self.models = None
         self.misfits = None
         self.bootstrap_misfits = None
+
         self.sampler_contexts = None
 
         self.nmodels_capacity = self.nmodels_capacity_min

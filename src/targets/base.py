@@ -110,6 +110,9 @@ class MisfitTarget(Object):
     @property
     def nmisfits(self):
         return 1
+    
+    def noise_weight_matrix(self):
+        return num.array([[1]])
 
     @property
     def nparameters(self):
@@ -143,6 +146,9 @@ class MisfitTarget(Object):
         if self._combined_weight is None:
             self._combined_weight = num.ones(1, dtype=num.float)
         return self._combined_weight
+
+    def get_correlated_weights(self):
+        pass
 
     def set_bootstrap_weights(self, weights):
         self.bootstrap_weights = weights
