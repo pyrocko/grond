@@ -73,10 +73,12 @@ the upper fault edge.
         gnss_targets = problem.gnss_targets
         for target in gnss_targets:
             target.set_dataset(ds)
+        print('aaa', history.misfits)
 
         gms = problem.combine_misfits(
             history.misfits,
             extra_correlated_weights=optimiser.get_correlated_weights(problem))
+        print('bbb', history.misfits)
         isort = num.argsort(gms)
         gms = gms[isort]
         models = history.models[isort, :]
@@ -98,7 +100,7 @@ the upper fault edge.
                       % campaign.name,
                 description=u'''
 Static surface displacement from GNSS campaign %s (black vectors) and
-displacements derived from best rupture model (red).
+displacements derived from best model (red).
 ''' % campaign.name)
 
             event = source.pyrocko_event()
@@ -263,12 +265,9 @@ components).
             target.set_dataset(dataset)
             comp_weights = target.component_weights()[0]
 
-            ws_n = comp_weights[:, 0::3] \
-                 / comp_weights.max()
-            ws_e = comp_weights[:, 1::3] \
-                 / comp_weights.max()
-            ws_u = comp_weights[:, 2::3] \
-                 / comp_weights.max()
+            ws_n = comp_weights[:, 0::3] / comp_weights.max()
+            ws_e = comp_weights[:, 1::3] / comp_weights.max()
+            ws_u = comp_weights[:, 2::3] / comp_weights.max()
             ws_e = num.array(ws_e[0]).flatten()
             ws_n = num.array(ws_n[0]).flatten()
             ws_u = num.array(ws_u[0]).flatten()
@@ -290,19 +289,19 @@ components).
             legend.set_title('Weight, N components')
 
             yield (item, fig)
-            
+
             item = PlotItem(name='station_distribution-E-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws_e, labels)
             legend.set_title('Weight, E components')
-            
+
             yield (item, fig)
-            
+
             item = PlotItem(name='station_distribution-U-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
                 azimuths, distances, ws_u, labels)
             legend.set_title('Weight, U components')
-            
+
             yield (item, fig)
 
 

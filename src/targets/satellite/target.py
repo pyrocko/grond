@@ -244,6 +244,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         cov = scene.covariance
         bootstraps = num.zeros((nbootstraps, qt.nleaves))
 
+        # TODO:mi Signal handler is not given back to the main task!
+
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             res = executor.map(
                 cov.getQuadtreeNoise,
