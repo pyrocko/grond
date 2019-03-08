@@ -177,7 +177,9 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
         covariances, are used to build a data variance matrix or
         variance-covariance matrix.
 
-        This matrix has the size for all possible NEU components, but throws zeros for not given components, also recorded in the _station_component_mask.
+        This matrix has the size for all possible NEU components,
+        but throws zeros for not given components, also recorded in
+        the _station_component_mask.
         """
         if self._weights is None:
             covar = self.campaign.get_covariance_matrix()
@@ -245,35 +247,26 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         return self._combined_weight
 
-    def prepare_modelling(self, engine, source, targets):
-        return [self]
-
     def init_bootstrap_residuals(self, nbootstraps, rstate=None):
         logger.info('GNSS campaign %s, bootstrapping residuals'
                     ' from measurement uncertainties ...'
                     % self.campaign.name)
         if rstate is None:
             rstate = num.random.RandomState()
+
         campaign = self.campaign
         bootstraps = num.empty((nbootstraps, self.ncomponents))
 
-        sigmas = num.abs(num.diag(campaign.get_covariance_matrix())**2)
+        sigmas = num.diag(num.sqrt(campaign.get_covariance_matrix()))
         if not num.all(sigmas):
             logger.warning('Bootstrapping GNSS stations is meaningless,'
                            ' all station\'s sigma are 0.0!')
 
         for ibs in range(nbootstraps):
-            syn_noise = num.zeros(campaign.ncomponents)
             syn_noise = rstate.normal(scale=sigmas.ravel())
-
             bootstraps[ibs, :] = syn_noise
 
         self.set_bootstrap_residuals(bootstraps)
-
-    def finalize_modelling(
-            self, engine, source, modelling_targets, modelling_results):
-
-        return modelling_results[0]
 
     @classmethod
     def get_plot_classes(cls):
