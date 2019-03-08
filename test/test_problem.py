@@ -81,7 +81,7 @@ def test_combine_misfits():
 
 
 def test_combine_covariance():
-    nmodels = 1
+    nmodels = 1  # noqa
     nmisfits = 15
 
     target = ToyTarget(
