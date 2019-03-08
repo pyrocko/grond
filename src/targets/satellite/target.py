@@ -1,12 +1,12 @@
+import os
 import logging
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as num
 from scipy import linalg as splinalg
 
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
-
-import os
-from concurrent.futures import ThreadPoolExecutor
 
 from grond.meta import Parameter, has_get_plot_classes
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
@@ -224,14 +224,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         return self._combined_weight
 
-    def prepare_modelling(self, engine, source, targets):
-        return [self]
-
-    def finalize_modelling(
-            self, engine, source, modelling_targets, modelling_results):
-        return modelling_results[0]
-
-    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+    def init_bootstrap_residuals(self, nbootstraps,
+                                 executor=None, rstate=None):
         logger.info(
             'Scene "%s", initializing bootstrapping residuals from noise '
             'pertubations...' % self.scene_id)
