@@ -437,7 +437,7 @@ class Problem(Object):
         nmodels = misfits.shape[0]
         nmisfits = misfits.shape[1]  # noqa
 
-        mf = misfits[:, num.newaxis, :, :]
+        mf = misfits[:, num.newaxis, :, :].copy()
 
         if num.any(extra_residuals):
             mf = mf + extra_residuals[num.newaxis, :, :, num.newaxis]
