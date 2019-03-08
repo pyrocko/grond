@@ -1,4 +1,7 @@
+import os
 import logging
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as num
 
 from pyrocko import gf
@@ -202,14 +205,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
             self._combined_weight = num.full(self.nmisfits, self.manual_weight)
         return self._combined_weight
 
-    def prepare_modelling(self, engine, source, targets):
-        return [self]
-
-    def finalize_modelling(
-            self, engine, source, modelling_targets, modelling_results):
-        return modelling_results[0]
-
-    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+    def init_bootstrap_residuals(self, nbootstraps,
+                                 executor=None, rstate=None):
         logger.info(
             'Scene "%s", initializing bootstrapping residuals from noise '
             'pertubations...' % self.scene_id)
