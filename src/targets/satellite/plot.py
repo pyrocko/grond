@@ -81,7 +81,9 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
-        gms = problem.combine_misfits(history.misfits)
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
         isort = num.argsort(gms)
         gms = gms[isort]
         models = history.models[isort, :]
@@ -230,7 +232,7 @@ edge marking the upper fault edge. Complete data extent is shown.
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
                 2, 3,
-                wspace=.05, hspace=.2,
+                wspace=.15, hspace=.2,
                 left=.1, right=.975, top=.95,
                 height_ratios=[12, 1])
 

@@ -62,6 +62,7 @@ class JointparPlot(PlotConfig):
     include = List.T(String.T())
     show_ellipses = Bool.T(default=False)
     nsubplots = Int.T(default=6)
+    show_ticks = Bool.T(default=False)
     show_reference = Bool.T(default=True)
 
     def make(self, environ):
@@ -120,7 +121,10 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
         if ibootstrap is not None:
             gms = history.bootstrap_misfits[:, ibootstrap]
         else:
-            gms = problem.combine_misfits(history.misfits)
+            gms = problem.combine_misfits(
+                history.misfits,
+                extra_correlated_weights=optimiser.get_correlated_weights(
+                    problem))
 
         isort = num.argsort(gms)[::-1]
 
@@ -267,8 +271,13 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
                 axes.set_xlim(xmin, xmax)
                 axes.set_ylim(ymin, ymax)
 
-                axes.get_xaxis().set_ticks([])
-                axes.get_yaxis().set_ticks([])
+                if not self.show_ticks:
+                    axes.get_xaxis().set_ticks([])
+                    axes.get_yaxis().set_ticks([])
+                else:
+                    axes.tick_params(length=4, which='both')
+                    axes.get_yaxis().set_ticklabels([])
+                    axes.get_xaxis().set_ticklabels([])
 
                 if iselected == nselected - 1 or ix == nsubplots - 1:
                     axes.annotate(

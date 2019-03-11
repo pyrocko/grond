@@ -58,7 +58,9 @@ def make_plots(
 
     plots = plot_config_collection.plot_configs
     manager = PlotCollectionManager(plots_path, show=show)
+
     env.set_plot_collection_manager(manager)
+    env.setup_modelling()
 
     for plot in plots:
         try:
