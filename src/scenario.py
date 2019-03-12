@@ -20,7 +20,7 @@ class GrondScenario(object):
 
     def __init__(self, project_dir,
                  center_lat=23., center_lon=52., radius=230*km,
-                 problem=None, observations=[]):
+                 problem=None, observations=None):
 
         self.project_dir = project_dir
         self.data_dir = op.join('data', 'scenario')
@@ -30,6 +30,8 @@ class GrondScenario(object):
         self.radius = radius
 
         self.problem = problem
+        if observations is None:
+            observations = []
         self.observations = observations
 
     def get_gf_stores_dir(self):
