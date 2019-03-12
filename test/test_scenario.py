@@ -22,7 +22,7 @@ def test_scenario():
         if os.path.exists(scenario_dir):
             shutil.rmtree(scenario_dir)
 
-        grond('scenario', '--targets=waveforms,insar,gnss', '--nevents=2',
+        grond('scenario', '--targets=waveforms,insar', '--nevents=2',
               '--nstations=3', '--gf-store-superdirs=%s' % gf_stores_path,
               scenario_dir)
 
