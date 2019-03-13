@@ -294,11 +294,15 @@ class DirectedSamplerPhase(SamplerPhase):
 
             x = xcandi
 
+        imodel_base = None
+        if ilink_choice is not None:
+            imodel_base = chains.imodel(ichain_choice, ilink_choice)
+
         return Sample(
             model=x,
             ichain_base=ichain_choice,
             ilink_base=ilink_choice,
-            imodel_base=chains.imodel(ichain_choice, ilink_choice))
+            imodel_base=imodel_base)
 
 
 def make_bayesian_weights(nbootstrap, nmisfits,

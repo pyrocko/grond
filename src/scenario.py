@@ -95,21 +95,25 @@ class GrondScenario(object):
                                for obs in self.observations],
             source_generator=self.problem.get_scenario_source_generator())
 
-    def create_scenario(self, interactive=True):
+    def create_scenario(self, interactive=True, gf_store_superdirs=None):
         logger.info('Creating scenario...')
 
         scenario = self.get_scenario()
         util.ensuredir(self.get_gf_stores_dir())
 
-        engine1 = gf.LocalEngine(
-            use_config=True,
-            store_superdirs=[self.get_gf_stores_dir()])
+        if gf_store_superdirs is None:
+            engine1 = gf.LocalEngine(
+                use_config=True,
+                store_superdirs=[self.get_gf_stores_dir()])
+        else:
+            engine1 = gf.LocalEngine(
+                use_config=False,
+                store_superdirs=gf_store_superdirs)
 
         scenario.init_modelling(engine=engine1)
 
         scenario.ensure_gfstores(
-            interactive=interactive,
-            gf_store_superdirs_extra=[self.get_gf_stores_dir()])
+            interactive=interactive)
 
         self.symlink_gfstores(engine1)
 
@@ -159,12 +163,13 @@ class GrondScenario(object):
         util.ensuredirs(config_path)
         grond.write_config(self.get_grond_config(), config_path)
 
-    def build(self, force=False, interactive=False):
+    def build(self, force=False, interactive=False, gf_store_superdirs=None):
         logger.info('Building scenario...')
 
         self.create_project_dir(force)
 
-        self.create_scenario(interactive=interactive)
+        self.create_scenario(
+            interactive=interactive, gf_store_superdirs=gf_store_superdirs)
 
         self.create_grond_files()
 

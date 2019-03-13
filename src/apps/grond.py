@@ -414,8 +414,16 @@ def command_scenario(args):
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing project folder.')
+        parser.add_option(
+            '--gf-store-superdirs',
+            dest='gf_store_superdirs',
+            help='Comma-separated list of directories containing GF stores')
 
     parser, options, args = cl_parse('scenario', args, setup)
+
+    gf_store_superdirs = None
+    if options.gf_store_superdirs:
+        gf_store_superdirs = options.gf_store_superdirs.split(',')
 
     if len(args) == 1:
         project_dir = args[0]
@@ -457,7 +465,11 @@ def command_scenario(args):
                 nevents=options.nevents)
         scenario.set_problem(problem)
 
-        scenario.build(force=options.force, interactive=True)
+        scenario.build(
+            force=options.force,
+            interactive=True,
+            gf_store_superdirs=gf_store_superdirs)
+
         logger.info(CLIHints('scenario',
                              config=scenario.get_grond_config_path(),
                              project_dir=project_dir))

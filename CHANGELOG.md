@@ -4,20 +4,49 @@ All notable changes to Grond will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [1.2.0] 2019-02-19
 
 ### Added
 - Waveform targets: switch to change to acceleration / velocity fitting.
 - Waveform targets: include / exclude stations by pattern on target-group
   level.
-- Option to export list of stations used in one or more setups
-  (`grond check --save-stations-used=<filename>`)
+- Option to export list of stations used in one or more setups (`grond check
+  --save-stations-used=<filename>`).
+- Can now handle GNSS stations lacking complete set of component orientations.
+- Noise analyser: added possibility to except stations with high S/N ratio from
+  removal due to high pre-event noise.
+- Improved unit tests.
+- Report archive generation can now be skipped via command line flag or report
+  configuration setting.
+- CMT problem: can now switch between different source time functions.
+- Added workaround switch for `"cannot project traces with displaced sampling"`
+  issues.
 
 ### Changed
 - Transparent event loading and checking.
+- Noise analyser: target groups are now handled independently. Each group now
+  uses its own threshold in weeding mode.
+- Improved error handling (`grond check`, instrument responses, 
+- Only exclude waveform targets when `distance_min` constraint is given in
+  `problem_config`.
+- Improved method chapter in documentation.
 
 ### Fixed
 - Waveform fit plots: fix crashes while plotting results from joint inversions.
+- Satellite fit plots: fix bug in source outline drawing
+- Waveform targets: fixed handling of channel epochs from StationXML for
+  channel orientations.
+- Station plots: fixed problems with empty target groups.
+- No more MPL warnings 'too many open figures' when creating sequence plots;
+  the plots are now created one by one.
+- Report: fix dsiplay issue with inaccessible elements in left navigation.
+- Fixed crash when `starting_point` setting in highscore optimiser is set to
+  `mean`.
+
+## [1.1.1] 2019-02-05
+
+### Fixed
+- Bug in volume point source plot causing crashes.
 
 ## [1.1.0] 2019-01-22
 

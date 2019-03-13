@@ -9,11 +9,11 @@ The very core of any optimisation is the evaluation of an objective function or 
 
 .. math::
   
-  {\bf d}_{obs} - {\bf d}_{synth}\mathrm{,}
+  {\bf d}_{\mathrm{obs}} - {\bf d}_{\mathrm{synth}},
 
 but can also be any other comparison, like a correlation measure for instance.
 
-`Observed data` :math:`{\bf d}_{obs}` are post-processed data (or features) derived from the `raw` measurements. For example, in the context of seismic source inversion, seismic waveforms are tapered to seismic phases of interest, restituted to displacement and filtered. `Predicted data` :math:`{\bf d}_{synth}` are then modelled seismograms which are tapered and filtered in the same way as the observed waveforms.
+`Observed data` :math:`{\bf d}_{\mathrm{obs}}` are post-processed data (or features) derived from the `raw` measurements. For example, in the context of seismic source inversion, seismic waveforms are tapered to seismic phases of interest, restituted to displacement and filtered. `Predicted data` :math:`{\bf d}_{\mathrm{synth}}` are then modelled seismograms which are tapered and filtered in the same way as the observed waveforms.
 
 .. contents :: Content
   :depth: 3
@@ -21,7 +21,7 @@ but can also be any other comparison, like a correlation measure for instance.
 Forward modelling with pre-calculated Green's functions
 =======================================================
 
-The forward modelling of raw synthetic data :math:`{\bf d}_{raw, synth}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium (velocity) model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, Grond uses pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`. Such GF Stores can be created with the `Fomosto`_ GF management tool of Pyrocko.
+The forward modelling of raw synthetic data :math:`{\bf d}_{\mathrm{raw, synth}}` for earthquake source models requires the calculation of the Green's function (GF) between all :term:`source` points and :term:`receiver` positions involved, based on a medium (velocity) model. In the general earthquake :term:`source problem <Problem>`, the positions of the sources change during the optimisation because the misfit is calculated for many different source-receiver configurations. The calculation of the GFs for each specific source-receiver pair is computationally costly and would be a significant contribution to the total computational duration of an optimisation. Therefore, Grond uses pre-calculated GFs, stored in a database called Pyrocko :term:`GF store <Green's Function Store>`. Such GF Stores can be created with the `Fomosto`_ GF management tool of Pyrocko.
 
 Different applications need different types of :term:`GF stores <Green's function store>`. For the purpose of forward modelling in Grond, we have to distinguish between
 
@@ -67,13 +67,11 @@ Misfit calculation and objective function
 
 The core of an optimisation is the data-point-wise calculation of the difference between observed and predicted data:
 
-TODO: avoid repetition
-
 .. math ::
 
-    |{\bf d}_{obs} - {\bf d}_{synth}|.
+    |{\bf d}_{\mathrm{obs}} - {\bf d}_{\mathrm{synth}}|.
 
-Grond supports different seismological observations and a combination of those, thus :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` can be:
+Grond supports different seismological observations and a combination of those, thus :math:`{\bf d}_{\mathrm{obs}}` and :math:`{\bf d}_{\mathrm{synth}}` can be:
 
 * Seismic waveforms
     * in time domain
@@ -91,15 +89,15 @@ The misfit is based on the configurable :math:`L^p`-norm with :math:`p \,\, \eps
 .. math::
   :label: eq:ms
 
-    \lVert e \rVert_p = \lVert {\bf{d}}_{obs} - {{\bf d}}_{synth} \rVert_p  = \
-        \left(\sum{|{ d}_{i, obs} - {d}_{i, synth}|^p}\right)^{\frac{1}{p}}
+    \lVert e \rVert_p = \lVert {\bf{d}}_{\mathrm{obs}} - {{\bf d}}_{\mathrm{ synth}} \rVert_p  = \
+        \left(\sum{|{ d}_{\mathrm{obs}, i} - {d}_{\mathrm{ synth}, i}|^p}\right)^{\frac{1}{p}}
 
 Further the misfit normalisation factor :math:`norm` is associated with each target. This measure will be used to normalise the misfit values for relative weighting:
 
 .. math::
   :label: ns
 
-    \lVert e_{\mathrm{0}} \rVert_p = \lVert {\bf{d}}_{obs} \rVert_p  = \left(\sum{|{d}_{i, obs}|^p} \right)^{\frac{1}{p}}.
+    \lVert e_{\mathrm{0}} \rVert_p = \lVert {\bf{d}}_{\mathrm{obs}} \rVert_p  = \left(\sum{|{d}_{\mathrm{obs},i}|^p} \right)^{\frac{1}{p}}.
 
 The resulting normalised misfit
 
@@ -117,10 +115,9 @@ Waveform misfit
 Waveform data is preprocessed before misfit calculation: Before the misfit is calculated, observed and synthetic data are tapered within a time window and bandpass filtered (see above).
 The misfit in Grond can further be based on the maximum waveform correlation.
 
-When measuring waveform data's cross-correlation, the misfit function is based on the maximum correlation :math:`\mathrm{max}(C)` of :math:`{\bf d}_{obs}` and :math:`{\bf d}_{synth}` defined as:
+When measuring waveform data's cross-correlation, the misfit function is based on the maximum correlation :math:`\mathrm{max}(C)` of :math:`{\bf d}_{\mathrm{obs}}` and :math:`{\bf d}_{\mathrm{synth}}` defined as:
 
 .. math::
-  :nowrap:
   :label: cor
 
   \begin{align*}
@@ -165,14 +162,13 @@ The misfit and data norm calculations with data weights
 :math:`w_{\mathrm{comb},i}` change to:
 
 .. math::
-  :nowrap:
   :label: wms_wns
 
   \begin{align*}
-    \lVert e \rVert_x &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot |{{d}}_{i,obs} - \
-  {{ d}}_{i,synth}|)^{x}}\right)^{\frac{1}{x}}\\
+    \lVert e \rVert_x &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot |{{d}}_{\mathrm{obs},i} - \
+  {{ d}}_{\mathrm{synth},i}|)^{x}}\right)^{\frac{1}{x}}\\
     \lVert e_{\mathrm{0}} \rVert_x  &= \left(\sum{ ({w_{\mathrm{comb},i}} \cdot \
-       |{{d}}_{i,obs} |)^{x}}\right)^{\frac{1}{x}}
+       |{{d}}_{\mathrm{obs},i} |)^{x}}\right)^{\frac{1}{x}}
   \end{align*}
 
 
@@ -190,12 +186,12 @@ With these weights waveform targets are `balanced` with respect to the expected 
 
     **Figure 2**: Qualitative sketch how target balancing weight increases with source-receiver distance to balance amplitude inferred by geometrical spreading. Large triangles indicate larger weights and vice versa.
 
-Signal amplitudes in a trace :math:`|{\bf{d}}_{i,synth}|_i` depend on the (1) source-receiver distance, (2) on the phase type and (3) the signal processing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitudes have higher contributions to the misfit than smaller signals, without providing more information about the source mechanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
+Signal amplitudes in a trace :math:`|{\bf{d}}_{\mathrm{synth}}|_l` depend on the (1) source-receiver distance, (2) on the phase type and (3) the signal processing applied (taper or bandpass). The problem tackled with this particular weight is that large signal amplitudes have higher contributions to the misfit than smaller signals, without providing more information about the source mechanism. From synthetic waveforms of `N` forward models that have been randomly drawn from the defined model space the mean signal amplitude of the traces is derived. The weight for each trace is then the inverse of these mean signal amplitudes:
 
     .. math::
       :label: wtba
 
-      {\bf w}_{\mathrm{tba}}=\frac{1}{{\bf a}},\quad \textrm{with trace weights}\,\,a_i= \frac{1}{N} \sum^N_j{|{\bf d}_{synth}|_{ji}}.
+      {\bf w}_{\mathrm{tba}}=\frac{1}{{\bf a}},\quad \textrm{with trace weights}\,\,a_l= \frac{1}{N} \sum^N_j{|{\bf d}_{\mathrm{synth}}|_{jl}}.
 
 These balancing weights will enhanced small signals and supress large signals in the objective function. This is described as `adaptive station weighting` in the PhD `thesis by Heimann`_ (2011) (page 23). In Grond they are defined as ``balancing weights`` and are received from the :class:`~grond.analysers.target_balancing.TargetBalancingAnalyser` module before the optimisation.
 
@@ -235,38 +231,21 @@ The normalisation in Grond is applied to data groups that are member of the so c
 Example 1: Fitting waveforms of P and S waves
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Let's say we use the waveform fit in time domain and in spectral domain combined. We then have weighted misfits as in Equation :eq:`wms_wns` for P waves with :math:`{\bf d}_{obs,\mathrm{Pt}}` and :math:`{\bf d}_{synth,\mathrm{Pt}}` in time domain and :math:`{\bf d}_{obs,\mathrm{Ps}}` and :math:`{\bf d}_{synth,\mathrm{Ps}}` in spectral domain. We have also the corresponding weighted misfit norms (see Equation :eq:`wms_wns`) and the same for S waveforms in time and spectral domain. Let's also say we are using the :math:`L^2\,`-norm.
+Let's say we use the waveform fit in time domain and in spectral domain combined. We then have weighted misfits as in Equation :eq:`wms_wns` for P waves with :math:`{\bf d}_{\mathrm{obs,Pt}}` and :math:`{\bf d}_{\mathrm{synth,Pt}}` in time domain and :math:`{\bf d}_{\mathrm{obs,Ps}}` and :math:`{\bf d}_{\mathrm{synth,Ps}}` in spectral domain. We have also the corresponding weighted misfit norms (see Equation :eq:`wms_wns`) and the same for S waveforms in time and spectral domain. Let's also say we are using the :math:`L^2\,`-norm.
 
-The waveforms of P and S waves in time domain are of a similar and kind and can, maybe even should, be normalised together. The same may be meaningful for the normalisation of the P and S waves in spectral domain.
+The waveforms of P and S waves in time domain are of a similar and kind and can, maybe even should, be normalised together. The same may be meaningful for the normalisation of the P and S waves in spectral domain. In our formulations the combined targets form combined vectors, e. g. :math:`{\bf d}_{\mathrm{obs,time}} = ({\bf d}_{\mathrm{obs,Pt}}, {\bf d}_{\mathrm{obs,Ps}})`.
 
-In Grond we say the time- domain data and the spectral-domain data each belong to a different ``normalisation_family``.
+In Grond we say the time- domain data and the spectral-domain data each belong to a different ``normalisation_family``. Hence, in this example, there are two normalisation families (:math:`N_{\mathrm{norm\_fams}}=2`). The global misfit of models that reduce the data variance
+is constrained to be smaller than 1. The number of normalisation families is
+accounted for in the global misfit calculation accordingly.
 
-The **global misfit** for two normalisations families will read:
+The **global misfit** for two normalisation families will read:
 
 
 .. math::
   :label: norm_ex1
 
-    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{ \
-       \frac{\left( \lVert e_{\mathrm{time}} \rVert_2 \right)^2  }{\
-        \left(\lVert e_{\mathrm{0,time}} \rVert_2\right)^2 } \
-    +  \frac{ \left( \lVert e_{\mathrm{spectral}} \rVert_2 \right)^2 }{\
-     \left( \lVert e_{\mathrm{0,spectral}} \rVert_2 \right)^2 } \
-    }
-
-
-Example 2: Fitting waveforms of P waves and static surface displacements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Let's say we use P waveforms in the time domain :math:`{\bf d}_{obs,\mathrm{Pt}}`. We combine the waveform misfit defined in Equation :eq:`wms_wns` with the misfit of the maximum waveform defined in Equation :eq:`cor` correlation. Furthermore we use InSAR-measured static surface displacements  :math:`{\bf d}_{obs,\mathrm{insar}}` and GNSS-measured static surface displacements :math:`{\bf d}_{obs,\mathrm{gnss}}`. The static surface displacement misfit is defined as in Equation :eq:`wms_wns`.
-
-The waveform misfits and the correlations, even if the same weights are applied, are measures of a different nature. Also the dynamic waveforms and the static near-field displacements have different relationships to the source parameters. Different normalisation is meaningful. The static surface displacement data themselves should be comparable, even though InSAR and GNSS positing are very different measuring techniques.
-
-The **global misfit** in this example is then:
-
-.. math::
-  :label: norm_ex2
-
+  
     \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{
     \frac{ \left( \frac{ \lVert e_{\mathrm{time}} \rVert_2}{\lVert \
        e_{\mathrm{0,time}} \rVert_2}\right)^2 + \
@@ -281,6 +260,50 @@ The **global misfit** in this example is then:
                \left( \frac{ \lVert e_{\mathrm{spectral}} \rVert_2}{\lVert \
                e_{\mathrm{0,spectral}} \rVert_2  }\right)^2 \
                }{ N_{\mathrm{norm\_fams}} }}
+
+Example 2: Fitting waveforms of P waves and static surface displacements
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Let's say we use P waveforms in the time domain :math:`{\bf d}_{obs,\mathrm{Pt}}`. We combine the waveform misfit defined in Equation :eq:`wms_wns` with the misfit of the maximum waveform  correlation defined in Equation :eq:`cor`. Furthermore we use InSAR-measured static surface displacements  :math:`{\bf d}_{\mathrm{obs,insar}}` and GNSS-measured static surface displacements :math:`{\bf d}_{\mathrm{obs, gnss}}`. The static surface displacement misfit is defined as in Equation :eq:`wms_wns`. InSAR and GNSS targets should commonly be combined in
+one normalisation family such that :math:`{\bf d}_{\mathrm{obs,static}} = ({\bf d}_{\mathrm{obs,insar}}, {\bf d}_{\mathrm{obs,gnss}})`.
+
+The waveform misfits and the correlations, even if the same weights are applied, are measures of a different nature. Also the dynamic waveforms and the static near-field displacements have different relationships to the source parameters. Different normalisation is meaningful. The static surface displacement data themselves should be comparable, even though InSAR and GNSS positing are very different measuring techniques.
+
+
+In this example we have four target groups that form normalizations families.
+The **global misfit** in this example is then:
+
+.. math::
+  :label: norm_ex2
+
+    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \sqrt{
+    \frac{ \left( \frac{ \lVert e_{\mathrm{time}} \rVert_2}{\lVert \
+       e_{\mathrm{0,time}} \rVert_2}\right)^2 + \
+        \left( \frac{ \lVert e_{\mathrm{cc}} \rVert_2}{\lVert \
+       e_{\mathrm{0,cc}} \rVert_2}\right)^2 + \
+       \left( \frac{ \lVert e_{\mathrm{static}} \rVert_2}{\lVert \
+        e_{\mathrm{0,static}} \rVert_2  }\right)^2 }{ \
+             \left( \frac{ \lVert e_{\mathrm{0,time}} \rVert_2}{\lVert \
+             e_{\mathrm{0,time}}\rVert_2}\right)^2 + \
+              \left( \frac{ \lVert e_{\mathrm{0,cc}} \rVert_2}{\lVert \
+             e_{\mathrm{0,cc}}\rVert_2}\right)^2 +\
+             \left( \frac{ \lVert e_{\mathrm{0,static}} \rVert_2}{\lVert \
+             e_{\mathrm{0,static}}\rVert_2}\right)^2 }},
+
+which is in principle:
+
+.. math::
+  :label: norm_ex3
+
+    \lVert e_{\mathrm{norm,\,global}} \rVert_{2} = \
+              \sqrt{ \frac{ \left( \frac{ \lVert e_{\mathrm{time}} \rVert_2}{ \
+              \lVert e_{\mathrm{0,time}} \rVert_2}\right)^2 + \
+              \left( \frac{ \lVert e_{\mathrm{cc}} \rVert_2}{ \
+              \lVert e_{\mathrm{0,cc}} \rVert_2}\right)^2 + \
+               \left( \frac{ \lVert e_{\mathrm{static}} \rVert_2}{\lVert \
+               e_{\mathrm{0,static}} \rVert_2  }\right)^2 \
+               }{ N_{\mathrm{norm\_fams}} }}.
+
 
 The bootstrap method
 ====================
@@ -317,7 +340,7 @@ For a `classic` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` rando
 Bayesian weights
 ^^^^^^^^^^^^^^^^
 
-For a `Bayesian` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` random real numbers :math:`{\bf r} \, \in \, [0, 1]` from a uniform distribution (Fig. 4, left). We then sort the obtained random values in an ascending order and ensure :math:`r_0 = 0` and :math:`x_N = 1` (Fig. 4, middle). The bootstrap weight now is the distance between two samples:
+For a `Bayesian` bootstrap realisation we draw :math:`N_{\mathrm{targets}}` random real numbers :math:`{\bf r} \, \in \, [0, N_{\mathrm{targets}}]` from a uniform distribution (Fig. 4, left). We then sort the obtained random values in an ascending order and ensure :math:`r_1 = 0` (Fig. 4, middle). The bootstrap weight now is the difference between two samples (Fig. 4, right):
 
 .. math::
 
@@ -380,7 +403,7 @@ Like in any `direct search` optimisation models are drawn from the model space. 
 
 Highscore list
 """"""""""""""
-This list contains a defined number of the current best models (lowest misfit). It is continuously updated at runtime. The `highscore` list length :math:`L_{hs}` (i.e. number of member models) is `problem`_ dependend: :math:`L_{hs} = f_{\mathrm{len}} (N_{\mathrm{par}} -1)`, with :math:`N_{\mathrm{par}}` being the number of model parameters. :math:`f_{\mathrm{len}}` is configurable (``chain_length_factor``, default is 8).
+This list contains a defined number of the current best models (lowest misfit). It is continuously updated at runtime. The `highscore` list length :math:`L_{\mathrm{hs}}` (i.e. number of member models) is `problem`_ dependend: :math:`L_{\mathrm{hs}} = f_{\mathrm{len}} (N_{\mathrm{par}} -1)`, with :math:`N_{\mathrm{par}}` being the number of model parameters. :math:`f_{\mathrm{len}}` is configurable (``chain_length_factor``, default is 8).
 
 There are three sampling phases defined, based on which models are drawn from
 the model space:
