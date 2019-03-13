@@ -1,4 +1,5 @@
 import logging
+import math
 import numpy as num
 from pyrocko.model import gnss
 
@@ -303,7 +304,7 @@ class GNSSTargetMisfitPlot_PosterAhar(PlotConfig):
         default=False,
         help='show the lat/lon grid')
     show_rivers = Bool.T(
-        default=True,
+        default=False,
         help='show rivers on the map')
     radius = Float.T(
         optional=True,
@@ -406,7 +407,7 @@ displacements derived from best rupture model (red).
                 show_topo=self.show_topo,
                 show_grid=self.show_grid,
                 show_rivers=self.show_rivers,
-                #color_wet=(216, 242, 254),
+                color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
             if sta.up:
@@ -417,6 +418,12 @@ displacements derived from best rupture model (red).
                 offset_scale = num.array(
                     [num.sqrt(s.east.shift**2 + s.north.shift**2)
                     for s in campaign.stations + model_camp.stations]).max()
+            
+            size = math.sqrt(self.size_cm[1]**2 + self.size_cm[0]**2)
+            scale = (size/10.) / offset_scale
+            
+            # add a scale Arrow that represents 1cm displacement in East direction:
+            #m.gmt.psxy(in_rows=[[46, 37.75, 0, scale*0.01]], S="v8p+e", G="black", W="0.75p,black", *m.jxyr)
 
             if vertical:
                 m.add_gnss_campaign(campaign, psxy_style={
