@@ -4,7 +4,7 @@ import copy
 import numpy as num
 
 from pyrocko import gf, util
-from pyrocko.guts import String, Float, Dict, Int
+from pyrocko.guts import String, Float, Dict, StringChoice, Int, clone
 
 from grond.meta import GrondError, expand_template, Parameter, \
     has_get_plot_classes
@@ -128,7 +128,175 @@ class RectangularProblem(Problem):
         return plots
 
 
+class MultiRectangularProblemConfig(ProblemConfig):
+
+    ranges = Dict.T(String.T(), gf.Range.T())
+    decimation_factor = Int.T(default=1)
+    distance_min = Float.T(default=0.0)
+    nthreads = Int.T(default=1)
+
+    def need_event_group(self):
+        return True
+
+    def get_problem(self, event_group, target_groups, targets):
+        sources = []
+        for event in event_group.get_events():
+            source = gf.RectangularSource.from_pyrocko_event(
+                event,
+                anchor='top',
+                decimation_factor=self.decimation_factor)
+            sources.append(source)
+
+        base_source = gf.CombiSource(
+            name=event_group.name,
+            subsources=sources)
+
+        subs = dict(
+            event_name=event_group.name)
+
+        problem = MultiRectangularProblem(
+            name=expand_template(self.name_template, subs),
+            base_source=base_source,
+            target_groups=target_groups,
+            targets=targets,
+            ranges=self.ranges,
+            distance_min=self.distance_min,
+            norm_exponent=self.norm_exponent,
+            nthreads=self.nthreads)
+
+        return problem
+
+
+@has_get_plot_classes
+class MultiRectangularProblem(Problem):
+
+    problem_parameters_single = [
+        Parameter('east_shift', 'm', label='Easting', **as_km),
+        Parameter('north_shift', 'm', label='Northing', **as_km),
+        Parameter('depth', 'm', label='Depth', **as_km),
+        Parameter('length', 'm', label='Length', **as_km),
+        Parameter('width', 'm', label='Width', **as_km),
+        Parameter('slip', 'm', label='Slip'),
+        Parameter('strike', 'deg', label='Strike'),
+        Parameter('dip', 'deg', label='Dip'),
+        Parameter('rake', 'deg', label='Rake')]
+
+#    problem_waveform_parameters_single = [
+#        Parameter('nucleation_x', 'offset', label='Nucleation X'),
+#        Parameter('nucleation_y', 'offset', label='Nucleation Y'),
+#        Parameter('time', 's', label='Time')]
+
+    dependants_single = []
+
+    distance_min = Float.T(default=0.0)
+
+    def __init__(self, **kwargs):
+        Problem.__init__(self, **kwargs)
+        self.deps_cache = {}
+
+        parameters = []
+        dependants = []
+        for source in self.base_source.subsources:
+            for bparameter in self.problem_parameters_single:
+                parameter = clone(bparameter)
+                parameter.name = '.'.join([source.name, bparameter.name])
+                parameters.append(parameter)
+
+            if hasattr(self, 'problem_waveform_parameters'):
+                print('yes has')
+                for bparameter in self.problem_waveform_parameters_single:
+                    parameter = clone(bparameter)
+                    parameter.name = '.'.join([source.name, bparameter.name])
+                    parameters.append(parameter)
+
+        self.nsubsources = len(self.base_source.subsources)
+
+        self.problem_parameters = parameters
+        self.dependants = dependants
+
+    def get_range(self, k):
+        try:
+            return self.ranges[k]
+        except KeyError:
+            return self.ranges[k.split('.')[1]]
+        except (IndexError, KeyError):
+            raise GrondError('Invalid range key: %s' % k)
+
+    def get_source(self, x):
+        d = self.get_parameter_dict(x)
+        subsources = []
+        for source in self.base_source.subsources:
+            n = source.name
+            p = {}
+            for k in source.keys():
+                if k in d:
+                    p[k] = float(
+                        self.get_range(n+'.'+k).make_relative(
+                            source[k], d[n+'.'+k]))
+
+            csource = source.clone(**p)
+            subsources.append(csource)
+
+        source = self.base_source.clone(subsources=subsources)
+        return source
+
+    def pack(self, source):
+
+        xs = []
+        for isub, subsource in enumerate(source.subsources):
+            if hasattr(self, 'problem_waveform_parameters'):
+                print('yes has1')
+                xs.append(num.array([
+                    subsource.north_shift,
+                    subsource.east_shift,
+                    subsource.depth,
+                    subsource.length,
+                    subsource.width,
+                    subsource.slip,
+                    subsource.strike,
+                    subsource.dip,
+                    subsource.rake,
+                    subsource.nucleation_x,
+                    subsource.nucleation_y,
+                    subsource.time - self.base_source.subsources[isub].time,
+                    ]))
+            else:
+                print('no has')
+                xs.append(num.array([
+                    subsource.north_shift,
+                    subsource.east_shift,
+                    subsource.depth,
+                    subsource.length,
+                    subsource.width,
+                    subsource.slip,
+                    subsource.strike,
+                    subsource.dip,
+                    subsource.rake]))
+
+        x = num.concatenate(xs)
+        return x
+
+    def random_uniform(self, xbounds, rstate):
+        x = num.zeros(self.nparameters)
+        for i in range(self.nparameters):
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
+
+        return x
+
+    def preconstrain(self, x):
+        return x
+
+
+    @classmethod
+    def get_plot_classes(cls):
+        from .. import plot  # noqa
+        plots = super(MultiRectangularProblem, cls).get_plot_classes()
+        return plots
+
+
 __all__ = '''
     RectangularProblem
     RectangularProblemConfig
+    MultiRectangularProblem
+    MultiRectangularProblemConfig
 '''.split()
