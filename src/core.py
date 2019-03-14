@@ -247,25 +247,6 @@ def check_problem(problem, **kwargs):
 
     if stations and event and config and p:
         for g in config.target_groups:
-            # if g.station_distr_req:
-            #     x = problem.get_random_model()
-            #     results_list = problem.evaluate(x)
-            #     ok_stats = []
-            #     for result in results_list:
-            #         if not isinstance(result, gf.SeismosizerError):
-            #             for st in stations:
-            #                 if st.station == result.processed_obs.station:
-            #                     ok_stats.append(st)
-
-            #     ok_stats = list(set(ok_stats))
-            #     test = g.station_distr_req.test_coverage(problem.targets,
-            #                                              event, ok_stats, p)
-            #     if test is False:
-            #         raise GrondError('Number of stations or' +
-            #                          ' station coverage not sufficient.')
-            #     else:
-            #         logger.info('Number of station and' +
-            #                     ' azimuthal coverage sufficient.')
             if g.checks:
                 for ch in g.checks:
                     if type(ch) is 'grond.targets.waveform.target.StationDistributionCheck':

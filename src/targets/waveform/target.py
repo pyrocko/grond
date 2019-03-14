@@ -160,9 +160,6 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
-    #station_distr_req = StationDistrReq.T(
-    #    optional=True,
-    #    help='Use only targets with sufficient station distribution.')
     checks = List.T(Check.T(optional=True,
                             help='List of checks, e.g. StationDistributionCheck.'))   
 
