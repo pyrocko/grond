@@ -19,7 +19,10 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
 
 
-class StationDistrReq(Object):
+class Check(Object):
+    pass
+
+class StationDistributionCheck(Check):
     min_nstats = Int.T(help='Minimum number of statios\
                              used for waveform fitting.')
     min_baz_cov = Float.T(help='Minimum backazimuthal coverage.')
@@ -157,9 +160,11 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
-    station_distr_req = StationDistrReq.T(
-        optional=True,
-        help='Use only targets with sufficient station distribution.')    
+    #station_distr_req = StationDistrReq.T(
+    #    optional=True,
+    #    help='Use only targets with sufficient station distribution.')
+    checks = List.T(Check.T(optional=True,
+                            help='List of checks, e.g. StationDistributionCheck.'))   
 
     def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')
@@ -749,5 +754,5 @@ __all__ = '''
     WaveformMisfitResult
     WaveformPiggybackSubtarget
     WaveformPiggybackSubresult
-    StationDistrReq    
+    Check
 '''.split()
