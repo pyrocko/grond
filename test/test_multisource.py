@@ -70,7 +70,7 @@ def test_2cmt_distinct():
             grond('report', '--parallel=2', *rundir_paths)
 
 
-def test_2rectangular_distinct():
+def test_2rectangular():
     playground_dir = common.get_playground_dir()
     common.get_test_data('gf_stores/crust2_ib/')
     common.get_test_data('gf_stores/crust2_ib_static/')
@@ -88,7 +88,7 @@ def test_2rectangular_distinct():
 
         with chdir(scenario_dir):
             config_path = 'config/scenario.gronf'
-            quick_config_path = 'config/scenario_quick_multi.gronf'
+            quick_config_path = 'config/scenario_quick_multi_rect.gronf'
             event_names = grond('events', config_path).strip().split('\n')
             event_group_name = 'group'
 
