@@ -203,7 +203,6 @@ class MultiRectangularProblem(Problem):
                 parameters.append(parameter)
 
             if hasattr(self, 'problem_waveform_parameters'):
-                print('yes has')
                 for bparameter in self.problem_waveform_parameters_single:
                     parameter = clone(bparameter)
                     parameter.name = '.'.join([source.name, bparameter.name])
@@ -245,7 +244,6 @@ class MultiRectangularProblem(Problem):
         xs = []
         for isub, subsource in enumerate(source.subsources):
             if hasattr(self, 'problem_waveform_parameters'):
-                print('yes has1')
                 xs.append(num.array([
                     subsource.north_shift,
                     subsource.east_shift,
@@ -261,7 +259,6 @@ class MultiRectangularProblem(Problem):
                     subsource.time - self.base_source.subsources[isub].time,
                     ]))
             else:
-                print('no has')
                 xs.append(num.array([
                     subsource.north_shift,
                     subsource.east_shift,
