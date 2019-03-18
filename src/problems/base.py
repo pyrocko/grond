@@ -37,16 +37,16 @@ def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
 
-def corr_misfits(w_misfits, weight_matrix):
-    ''' help function for the matrix multiplication
+def correlated_weights(w_misfits, weight_matrix):
+    ''' Correlated weights function
+
     that combines misfits, weigths and correlated weights
     - this is strictly L2 norm and covariance-weighted data
     feed here a squeare-rooted, inverse covariance matrix.
 
-    The function stops before doing the last sum.'''
-    res = num.matmul(w_misfits, weight_matrix)
-
-    return res
+    The function stops before doing the last sum.
+    '''
+    return num.matmul(w_misfits, weight_matrix)
 
 
 class ProblemConfig(Object):
@@ -454,10 +454,10 @@ class Problem(Object):
                 corr_norms = norms[imodel, :, idx1:idx2]
 
                 res[imodel, :, idx1:idx2] = \
-                    corr_misfits(corr_res, corr_weight_mat)
+                    correlated_weights(corr_res, corr_weight_mat)
 
                 norms[imodel, :, idx1:idx2] = \
-                    corr_misfits(corr_norms, corr_weight_mat)
+                    correlated_weights(corr_norms, corr_weight_mat)
 
         # get and apply more target weights
         weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :] 

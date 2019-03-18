@@ -15,10 +15,6 @@ from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
 
-import cProfile
-
-pr = cProfile.Profile()
-
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
