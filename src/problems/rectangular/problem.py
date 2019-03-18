@@ -181,10 +181,11 @@ class MultiRectangularProblem(Problem):
         Parameter('dip', 'deg', label='Dip'),
         Parameter('rake', 'deg', label='Rake')]
 
-#    problem_waveform_parameters_single = [
-#        Parameter('nucleation_x', 'offset', label='Nucleation X'),
-#        Parameter('nucleation_y', 'offset', label='Nucleation Y'),
-#        Parameter('time', 's', label='Time')]
+    problem_waveform_parameters_single = [
+        Parameter('nucleation_x', 'offset', label='Nucleation X'),
+        Parameter('nucleation_y', 'offset', label='Nucleation Y'),
+        Parameter('time', 's', label='Time'),
+    ]
 
     dependants_single = []
 
@@ -201,12 +202,6 @@ class MultiRectangularProblem(Problem):
                 parameter = clone(bparameter)
                 parameter.name = '.'.join([source.name, bparameter.name])
                 parameters.append(parameter)
-
-            if hasattr(self, 'problem_waveform_parameters'):
-                for bparameter in self.problem_waveform_parameters_single:
-                    parameter = clone(bparameter)
-                    parameter.name = '.'.join([source.name, bparameter.name])
-                    parameters.append(parameter)
 
         self.nsubsources = len(self.base_source.subsources)
 
@@ -228,14 +223,13 @@ class MultiRectangularProblem(Problem):
             n = source.name
             p = {}
             for k in source.keys():
-                if k in d:
+                if n+'.'+k in d:
                     p[k] = float(
-                        self.get_range(n+'.'+k).make_relative(
+                        self.get_range('.'+k).make_relative(
                             source[k], d[n+'.'+k]))
 
             csource = source.clone(**p)
             subsources.append(csource)
-
         source = self.base_source.clone(subsources=subsources)
         return source
 
@@ -243,7 +237,7 @@ class MultiRectangularProblem(Problem):
 
         xs = []
         for isub, subsource in enumerate(source.subsources):
-            if hasattr(self, 'problem_waveform_parameters'):
+            if hasattr(self, 'problem_waveform_parameters_single'):
                 xs.append(num.array([
                     subsource.north_shift,
                     subsource.east_shift,
@@ -269,7 +263,6 @@ class MultiRectangularProblem(Problem):
                     subsource.strike,
                     subsource.dip,
                     subsource.rake]))
-
         x = num.concatenate(xs)
         return x
 

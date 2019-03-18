@@ -8,6 +8,7 @@ from grond.plot.collection import PlotItem
 from matplotlib import pyplot as plt
 from matplotlib import patches
 from pyrocko.guts import Tuple, Float, String, Int, Bool
+from pyrocko.gf import CombiSource
 
 logger = logging.getLogger('grond.targets.satellite.plot')
 
@@ -128,20 +129,44 @@ edge marking the upper fault edge. Complete data extent is shown.
 
         def drawSource(ax, scene):
             if scene.frame.isMeter():
-                fn, fe = source.outline(cs='xy').T
-                fn -= fn.mean()
-                fe -= fe.mean()
+                if isinstance(source, CombiSource):
+                    fns = []
+                    fes = []
+                    for subsource in source.subsources:
+                        fn_sub, fe_sub = subsource.outline(cs='xy').T
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
+                else:
+                    fn, fe = source.outline(cs='xy').T
+                    fn -= fn.mean()
+                    fe -= fe.mean()
+
             elif scene.frame.isDegree():
-                fn, fe = source.outline(cs='latlon').T
-                fn -= source.effective_lat
-                fe -= source.effective_lon
+                if isinstance(source, CombiSource):
+                    fns = []
+                    fes = []
+                    for subsource in source.subsources:
+                        fn_sub, fe_sub = subsource.outline(cs='latlon').T
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
+                else:
+                    fn, fe = source.outline(cs='latlon').T
+                    fn -= source.effective_lat
+                    fe -= source.effective_lon
 
             # source is centered
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
-            ax.fill(fe, fn,
-                    edgecolor=(0., 0., 0.),
-                    facecolor=(.5, .5, .5), alpha=0.7)
-            ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
+            if isinstance(source, CombiSource):
+                for fe, fn in zip(fes, fns):
+                    ax.fill(fe, fn,
+                            edgecolor=(0., 0., 0.),
+                            facecolor=(.5, .5, .5), alpha=0.5)
+                    ax.plot(fe[0:2], fn[0:2], 'k', linewidth=6.3)
+            else:
+                ax.fill(fe, fn,
+                        edgecolor=(0., 0., 0.),
+                        facecolor=(.5, .5, .5), alpha=0.7)
+                ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
 
         def mapDisplacementGrid(displacements, scene):
             arr = num.full_like(scene.displacement, fill_value=num.nan)
@@ -320,21 +345,65 @@ data and (right) the model residual.
 
             if closeup:
                 if scene.frame.isMeter():
-                    fn, fe = source.outline(cs='xy').T
+                    if isinstance(source, CombiSource):
+                        fns = []
+                        fes = []
+                        for subsource in source.subsources:
+                            fn_sub, fe_sub = subsource.outline(cs='xy').T
+                            fes.append(fe_sub)
+                            fns.append(fn_sub)
+                        fnv = list(fns[0])
+                        fnv.extend(list(fns[1]))
+                        fnv = num.array(fnv)
+                        fev = list(fes[0])
+                        fev.extend(list(fes[1]))
+                        fev = num.array(fev)
+                        off_n = (fns[0][0] + fns[1][1]) / 2
+                        off_e = (fes[0][0] + fes[1][1]) / 2
+                    else:
+                        fn, fe = source.outline(cs='xy').T
+                        if fn.size > 1:
+                            off_n = (fn[0] + fn[1]) / 2
+                            off_e = (fe[0] + fe[1]) / 2
+                        else:
+                            off_n = fn[0]
+                            off_e = fe[0]
+                        fnv = fn
+                        fev = fe
+
                 elif scene.frame.isDegree():
-                    fn, fe = source.outline(cs='latlon').T
-                    fn -= source.effective_lat
-                    fe -= source.effective_lon
+                    if isinstance(source, CombiSource):
+                        fns = []
+                        fes = []
+                        for subsource in source.subsources:
+                            fn_sub, fe_sub = subsource.outline(cs='latlon').T
+                            fn_sub -= subsource.effective_lat
+                            fe_sub -= subsource.effective_lon
+                            fes.append(fe_sub)
+                            fns.append(fn_sub)
+                        fnv = list(fns[0])
+                        fnv.extend(list(fns[1]))
+                        fnv = num.array(fnv)
+                        fev = list(fes[0])
+                        fev.extend(list(fes[1]))
+                        fev = num.array(fev)
+                        off_n = (fns[0][0] + fns[1][1]) / 2
+                        off_e = (fes[0][0] + fes[1][1]) / 2
+                    else:
+                        fn, fe = source.outline(cs='latlon').T
+                        fn -= source.effective_lat
+                        fe -= source.effective_lon
+                        if fn.size > 1:
+                            off_n = (fn[0] + fn[1]) / 2
+                            off_e = (fe[0] + fe[1]) / 2
+                        else:
+                            off_n = fn[0]
+                            off_e = fe[0]
+                        fnv = fn
+                        fev = fe
 
-                if fn.size > 1:
-                    off_n = (fn[0] + fn[1]) / 2
-                    off_e = (fe[0] + fe[1]) / 2
-                else:
-                    off_n = fn[0]
-                    off_e = fe[0]
-
-                fault_size = 2*num.sqrt(max(abs(fn-off_n))**2
-                                        + max(abs(fe-off_e))**2)
+                fault_size = 2*num.sqrt(max(abs(fnv-off_n))**2
+                                        + max(abs(fev-off_e))**2)
                 fault_size *= self.map_scale
                 if fault_size == 0.0:
                     if scene.frame.isMeter():
