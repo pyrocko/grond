@@ -359,16 +359,18 @@ modified.
         # Squash matrix and sum large targets.nmisifts, eg SatelliteTarget
         plot_target_labels = []
         idx = 0
+        idx_cum = 0
         for itarget, target in enumerate(problem.targets):
             target_gcms = gcms[:, idx:idx+target.nmisfits]
             if target.plot_misfits_cumulative:
-                cum_gcms[:, idx] = target_gcms.sum(axis=1)
+                cum_gcms[:, idx_cum] = target_gcms.sum(axis=1)
                 plot_target_labels.append(target.string_id())
-                idx += 1
+                idx_cum += 1
             else:
-                cum_gcms[:, idx:idx+target.nmisfits] = target_gcms
+                cum_gcms[:, idx_cum:idx_cum+target.nmisfits] = target_gcms
                 plot_target_labels.extend(target.misfits_string_ids())
-                idx += target.nmisfits
+                idx_cum += target.nmisfits
+            idx += target.nmisfits
 
         # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
 

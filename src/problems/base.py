@@ -444,17 +444,10 @@ class Problem(Object):
 
         res = mf[..., 0]
         norms = mf[..., 1]
-
-        weights = self.get_target_weights()[num.newaxis, num.newaxis, :] * \
-            self.inter_family_weights2(misfits[:, :, 1])[:, num.newaxis, :]
-
-        if num.any(extra_weights):
-            weights = weights * extra_weights[num.newaxis, :, :]
-
+        
         for idx1, corr_weight_mat in extra_correlated_weights.items():
 
             idx2 = idx1 + corr_weight_mat.shape[0]
-            # msk[idx1:idx2] = False
 
             for imodel in range(nmodels):
                 corr_res = res[imodel, :, idx1:idx2]
@@ -466,13 +459,25 @@ class Problem(Object):
                 norms[imodel, :, idx1:idx2] = \
                     corr_misfits(corr_norms, corr_weight_mat)
 
-        res = exp(res)
-        norms = exp(norms)
+        # get and apply more target weights
+        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :] 
 
-        weights = exp(weights)
-        res *= weights
-        norms *= weights
+        if num.any(extra_weights):
+            weights_tar = weights_tar * extra_weights[num.newaxis, :, :]
 
+        res = exp(res * weights_tar)
+        norms = exp(norms * weights_tar)
+ 
+        # get and apply normalization family weights (these weights depend on
+        # on just calculated norms!)
+        weights_fam = \
+            self.inter_family_weights2(root(norms[:, 0, :]))[:, num.newaxis, :]
+
+        weights_fam = exp(weights_fam)
+ 
+        res *= weights_fam
+        norms *= weights_fam 
+        
         if get_contributions:
             return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
 
@@ -502,6 +507,7 @@ class Problem(Object):
         return self._family_mask
 
     def evaluate(self, x, mask=None, result_mode='full', targets=None):
+        #print(x)
         source = self.get_source(x)
         engine = self.get_engine()
 
