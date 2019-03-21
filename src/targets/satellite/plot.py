@@ -81,16 +81,9 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
-        gms = problem.combine_misfits(
-            history.misfits,
-            extra_correlated_weights=optimiser.get_correlated_weights(problem))
-        isort = num.argsort(gms)
-        gms = gms[isort]
-        models = history.models[isort, :]
-        xbest = models[0, :]
-
-        source = problem.get_source(xbest)
-        results = problem.evaluate(xbest, targets=sat_targets)
+        source = history.get_best_source()
+        best_model = history.get_best_model()
+        results = problem.evaluate(best_model, targets=sat_targets)
 
         def initAxes(ax, scene, title, last_axes=False):
             ax.set_title(title)

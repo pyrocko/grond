@@ -148,7 +148,7 @@ class Problem(Object):
         guts.dump(self, filename=fn)
 
     def dump_problem_data(
-            self, dirname, x, misfits, bootstraps=None,
+            self, dirname, x, misfits, chains=None,
             sampler_context=None):
 
         fn = op.join(dirname, 'models')
@@ -161,10 +161,10 @@ class Problem(Object):
         with open(fn, 'ab') as f:
             misfits.astype('<f8').tofile(f)
 
-        if bootstraps is not None:
-            fn = op.join(dirname, 'bootstraps')
+        if chains is not None:
+            fn = op.join(dirname, 'chains')
             with open(fn, 'ab') as f:
-                bootstraps.astype('<f8').tofile(f)
+                chains.astype('<f8').tofile(f)
 
         if sampler_context is not None:
             fn = op.join(dirname, 'choices')
@@ -444,7 +444,7 @@ class Problem(Object):
 
         res = mf[..., 0]
         norms = mf[..., 1]
-        
+
         for idx1, corr_weight_mat in extra_correlated_weights.items():
 
             idx2 = idx1 + corr_weight_mat.shape[0]
@@ -460,24 +460,24 @@ class Problem(Object):
                     correlated_weights(corr_norms, corr_weight_mat)
 
         # get and apply more target weights
-        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :] 
+        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :]
 
         if num.any(extra_weights):
             weights_tar = weights_tar * extra_weights[num.newaxis, :, :]
 
         res = exp(res * weights_tar)
         norms = exp(norms * weights_tar)
- 
+
         # get and apply normalization family weights (these weights depend on
         # on just calculated norms!)
         weights_fam = \
             self.inter_family_weights2(root(norms[:, 0, :]))[:, num.newaxis, :]
 
         weights_fam = exp(weights_fam)
- 
+
         res *= weights_fam
-        norms *= weights_fam 
-        
+        norms *= weights_fam
+
         if get_contributions:
             return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
 
@@ -507,7 +507,6 @@ class Problem(Object):
         return self._family_mask
 
     def evaluate(self, x, mask=None, result_mode='full', targets=None):
-        #print(x)
         source = self.get_source(x)
         engine = self.get_engine()
 
@@ -657,6 +656,8 @@ class ModelHistory(object):
         self._bootstraps_buffer = None
         self._sample_contexts_buffer = None
 
+        self._sorted_misfit_idx = {}
+
         self.models = None
         self.misfits = None
         self.bootstrap_misfits = None
@@ -673,7 +674,7 @@ class ModelHistory(object):
 
     @staticmethod
     def verify_rundir(rundir):
-        _rundir_files = ['misfits', 'models']
+        _rundir_files = ('misfits', 'models')
 
         if not op.exists(rundir):
             raise ProblemDataNotAvailable(
@@ -767,6 +768,7 @@ class ModelHistory(object):
                 self._bootstraps_buffer = bootstraps_buffer
 
     def clear(self):
+        assert self.mode != 'r', 'History is read-only, cannot clear.'
         self.nmodels = 0
         self.nmodels_capacity = self.nmodels_capacity_min
 
@@ -807,6 +809,8 @@ class ModelHistory(object):
                     if bootstrap_misfits is not None else None,
                     sampler_contexts[i, :]
                     if sampler_contexts is not None else None)
+
+        self._sorted_misfit_idx.clear()
 
         self.emit('extend', nmodels, n, models, misfits, sampler_contexts)
 
@@ -856,6 +860,11 @@ class ModelHistory(object):
             new_sampler_contexts)
 
     def add_listener(self, listener):
+        ''' Add a listener to the history
+
+        The listening class can implement the following methods:
+        * ``extend``
+        '''
         self.listeners.append(listener)
 
     def emit(self, event_name, *args, **kwargs):
@@ -958,6 +967,46 @@ class ModelHistory(object):
             for (icluster, percentage, models)
             in self.models_by_cluster(cluster_attribute)]
 
+    def get_sorted_misfits_idx(self, chain=0):
+        if chain not in self._sorted_misfit_idx.keys():
+            self._sorted_misfit_idx[chain] = num.argsort(
+                self.bootstrap_misfits[:, chain])
+
+        return self._sorted_misfit_idx[chain]
+
+    def get_sorted_misfits(self, chain=0):
+        isort = self.get_sorted_misfits_idx(chain)
+        return self.bootstrap_misfits[:, chain][isort]
+
+    def get_sorted_models(self, chain=0):
+        isort = self.get_sorted_misfits_idx(chain=0)
+        return self.models[isort, :]
+
+    def get_sorted_primary_misfits(self):
+        return self.get_sorted_misfits(chain=0)
+
+    def get_sorted_primary_models(self):
+        return self.get_sorted_models(chain=0)
+
+    def get_best_model(self, chain=0):
+        return self.get_sorted_models(chain)[0, ...]
+
+    def get_best_misfit(self, chain=0):
+        return self.get_sorted_misfits(chain)[0]
+
+    def get_best_source(self, chain=0):
+        return self.problem.get_source(self.get_best_model(chain))
+
+    def get_mean_source(self, chain=0):
+        mean_model = num.mean(self.models, axis=0)
+        return self.problem.get_source(mean_model)
+
+    def get_chain_misfits(self, chain=0):
+        return self.bootstrap_misfits[:, chain]
+
+    def get_primary_chain_misfits(self):
+        return self.get_chain_misfits(chain=0)
+
 
 def get_nmodels(dirname, problem):
     fn = op.join(dirname, 'models')
@@ -995,6 +1044,13 @@ def load_problem_info(dirname):
 
 def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
 
+    def get_chains_fn():
+        for fn in (op.join(dirname, 'bootstraps'),
+                   op.join(dirname, 'chains')):
+            if op.exists(fn):
+                return fn
+        return False
+
     try:
         nmodels = get_nmodels(dirname, problem) - nmodels_skip
 
@@ -1017,17 +1073,17 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
                 .astype(num.float)
         misfits = misfits.reshape((nmodels, problem.nmisfits, 2))
 
-        bootstraps = None
-        fn = op.join(dirname, 'bootstraps')
-        if op.exists(fn) and nchains is not None:
+        chains = None
+        fn = get_chains_fn()
+        if fn and nchains is not None:
             with open(fn, 'r') as f:
                 f.seek(nmodels_skip * nchains * 8)
-                bootstraps = num.fromfile(
+                chains = num.fromfile(
                         f, dtype='<f8',
                         count=nmodels*nchains)\
                     .astype(num.float)
 
-            bootstraps = bootstraps.reshape((nmodels, nchains))
+            chains = chains.reshape((nmodels, nchains))
 
         sampler_contexts = None
         fn = op.join(dirname, 'choices')
@@ -1045,7 +1101,7 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
         raise ProblemDataNotAvailable(
             'No problem data available (%s).' % dirname)
 
-    return models, misfits, bootstraps, sampler_contexts
+    return models, misfits, chains, sampler_contexts
 
 
 __all__ = '''

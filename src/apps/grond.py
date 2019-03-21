@@ -919,21 +919,18 @@ def command_plot(args):
     elif args[0] == 'all':
         if env is None:
             help_and_die(parser, 'two or three arguments required')
-        env.setup_modelling()
         plot_names = plot.get_plot_names(env)
         plot.make_plots(env, plot_names=plot_names, show=options.show)
 
     elif op.exists(args[0]):
         if env is None:
             help_and_die(parser, 'two or three arguments required')
-        env.setup_modelling()
         plots = plot.PlotConfigCollection.load(args[0])
         plot.make_plots(env, plots, show=options.show)
 
     else:
         if env is None:
             help_and_die(parser, 'two or three arguments required')
-        env.setup_modelling()
         plot_names = [name.strip() for name in args[0].split(',')]
         plot.make_plots(env, plot_names=plot_names, show=options.show)
 

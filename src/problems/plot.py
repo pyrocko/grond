@@ -96,7 +96,7 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
         include = self.include
         nsubplots = self.nsubplots
         figsize = self.size_inch
-        ibootstrap = self.ibootstrap
+        ibootstrap = 0 if self.ibootstrap is None else self.ibootstrap
         misfit_cutoff = self.misfit_cutoff
         show_ellipses = self.show_ellipses
         msize = 1.5
@@ -118,25 +118,16 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
 
         xref = problem.get_reference_model(expand=True)
 
-        if ibootstrap is not None:
-            gms = history.bootstrap_misfits[:, ibootstrap]
-        else:
-            gms = problem.combine_misfits(
-                history.misfits,
-                extra_correlated_weights=optimiser.get_correlated_weights(
-                    problem))
+        isort = history.get_sorted_misfits_idx(chain=ibootstrap)[::-1]
+        models = history.get_sorted_models(chain=ibootstrap)[::-1]
+        nmodels = history.nmodels
 
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-        models = models[isort, :]
-
+        gms = history.get_sorted_misfits(chain=ibootstrap)[::-1]
         if misfit_cutoff is not None:
             ibest = gms < misfit_cutoff
             gms = gms[ibest]
             models = models[ibest]
 
-        nmodels = models.shape[0]
         kwargs = {}
 
         if color_parameter == 'dist':
@@ -569,13 +560,12 @@ best have similar symbol size and patterns.
         # iorder = num.empty_like(isort)
         # iorder[isort] = num.arange(iorder.size)[::-1]
 
+        ref_source = problem.base_source
+
         mean_source = stats.get_mean_source(
             problem, history.models)
 
-        best_source = stats.get_best_source(
-            problem, history.models, history.misfits)
-
-        ref_source = problem.base_source
+        best_source = history.get_best_source()
 
         nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
 
@@ -759,12 +749,7 @@ high (blue) misfit.
 
         bounds = problem.get_combined_bounds()
 
-        gms = problem.combine_misfits(history.misfits)
-
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-        models = history.models[isort, :]
+        models = history.get_sorted_primary_models()[::-1]
 
         iorder = num.arange(history.nmodels)
 
@@ -983,9 +968,8 @@ fitting solution.
         beachball_type = self.beachball_type
 
         problem = history.problem
-        mean_source = stats.get_mean_source(problem, history.models)
-        best_source = stats.get_best_source(
-            problem, history.models, history.misfits)
+        best_source = history.get_best_source()
+        mean_source = history.get_mean_source()
 
         fig = plt.figure(figsize=self.size_inch)
         axes = fig.add_subplot(1, 1, 1)

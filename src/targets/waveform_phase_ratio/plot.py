@@ -109,10 +109,8 @@ file). Optimal solutions show good agreement between black and colored markers.
             t for t in problem.targets
             if isinstance(t, PhaseRatioTarget) and t.path == tpath]
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)[::-1]
-        gms = gms[isort]
-        models = history.models[isort, :]
+        gms = history.get_sorted_misfits(chain=0)[::-1]
+        models = history.get_sorted_models(chain=0)[::-1]
 
         if misfit_cutoff is not None:
             ibest = gms < misfit_cutoff
