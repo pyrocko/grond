@@ -172,10 +172,19 @@ class MisfitTarget(Object):
         return self.bootstrap_residuals.reshape(nbootstraps, self.nmisfits)
 
     def prepare_modelling(self, engine, source, targets):
+        ''' Prepare modelling target
+
+        This function shall return a list of :class:`pyrocko.gf.Target`
+        for forward modelling in the :class:`pyrocko.gf.LocalEngine`.
+        '''
         return [self]
 
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
+        ''' Manipulate modelling before misfit calculation
+
+        This function can be overloaded interact with the modelling results.
+        '''
         return modelling_results[0]
 
 

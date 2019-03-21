@@ -37,16 +37,19 @@ def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
 
-def correlated_weights(w_misfits, weight_matrix):
-    ''' Correlated weights function
-
-    that combines misfits, weigths and correlated weights
-    - this is strictly L2 norm and covariance-weighted data
-    feed here a squeare-rooted, inverse covariance matrix.
-
-    The function stops before doing the last sum.
+def correlated_weights(values, weight_matrix):
     '''
-    return num.matmul(w_misfits, weight_matrix)
+    Applies correlated weights to values
+
+    The resulting weighed values have to be squared! Check out
+    :meth:`Problem.combine_misfits` for more information.
+
+    :param values: Misfits or norms as :class:`numpy.Array`
+    :param weight: Weight matrix, commonly the inverse of covariance matrix
+
+    :returns: :class:`numpy.Array` weighted values
+    '''
+    return num.matmul(values, weight_matrix)
 
 
 class ProblemConfig(Object):
@@ -289,8 +292,7 @@ class Problem(Object):
     def get_target_weights(self):
         if self._target_weights is None:
             self._target_weights = num.concatenate(
-               [target.get_combined_weight()
-                for target in self.targets])
+               [target.get_combined_weight() for target in self.targets])
 
         return self._target_weights
 
@@ -401,13 +403,16 @@ class Problem(Object):
             to the residuals, indexed as
             ``extra_residuals[ibootstrap, iresidual]``.
 
-        :param extra_correlated_weights: if given a dictionary of
-            ``idx_misfit: correlated weight matrix`` has to be passed.
+        :param extra_correlated_weights: if a dictionary of
+            ``imisfit: correlated weight matrix`` is passed a correlated
+            weight matrix is applied to the misfit and normalisation values.
+            `imisfit` is the starting index in the misfits vector the
+            correlated weight matrix applies to.
 
         :param get_contributions: get the weighted and perturbed contributions
             (don't do the sum).
 
-        :returns: if no *extra_weights* or *extra_residuals* or are given, a 1D
+        :returns: if no *extra_weights* or *extra_residuals* are given, a 1D
             array indexed as ``misfits[imodel]`` containing the global misfit
             for each model is returned, otherwise a 2D array
             ``misfits[imodel, ibootstrap]`` with the misfit for every model and
@@ -430,7 +435,7 @@ class Problem(Object):
 
         if self.norm_exponent != 2 and extra_correlated_weights:
             raise GrondError('Correlated weights can only be used '
-                             ' with norm_exponent=2!')
+                             ' with norm_exponent=2')
 
         exp, root = self.get_norm_functions()
 
@@ -445,18 +450,18 @@ class Problem(Object):
         res = mf[..., 0]
         norms = mf[..., 1]
 
-        for idx1, corr_weight_mat in extra_correlated_weights.items():
+        for imisfit, corr_weight_mat in extra_correlated_weights.items():
 
-            idx2 = idx1 + corr_weight_mat.shape[0]
+            jmisfit = imisfit + corr_weight_mat.shape[0]
 
             for imodel in range(nmodels):
-                corr_res = res[imodel, :, idx1:idx2]
-                corr_norms = norms[imodel, :, idx1:idx2]
+                corr_res = res[imodel, :, imisfit:jmisfit]
+                corr_norms = norms[imodel, :, imisfit:jmisfit]
 
-                res[imodel, :, idx1:idx2] = \
+                res[imodel, :, imisfit:jmisfit] = \
                     correlated_weights(corr_res, corr_weight_mat)
 
-                norms[imodel, :, idx1:idx2] = \
+                norms[imodel, :, imisfit:jmisfit] = \
                     correlated_weights(corr_norms, corr_weight_mat)
 
         # get and apply more target weights
