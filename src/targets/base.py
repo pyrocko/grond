@@ -111,6 +111,9 @@ class MisfitTarget(Object):
     def nmisfits(self):
         return 1
 
+    def noise_weight_matrix(self):
+        return num.array([[1]])
+
     @property
     def nparameters(self):
         if self._target_parameters is None:
@@ -144,6 +147,9 @@ class MisfitTarget(Object):
             self._combined_weight = num.ones(1, dtype=num.float)
         return self._combined_weight
 
+    def get_correlated_weights(self):
+        pass
+
     def set_bootstrap_weights(self, weights):
         self.bootstrap_weights = weights
 
@@ -166,12 +172,11 @@ class MisfitTarget(Object):
         return self.bootstrap_residuals.reshape(nbootstraps, self.nmisfits)
 
     def prepare_modelling(self, engine, source, targets):
-        return []
+        return [self]
 
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
-
-        raise NotImplementedError('must be overloaded in subclass')
+        return modelling_results[0]
 
 
 __all__ = '''

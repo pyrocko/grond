@@ -20,11 +20,24 @@ class MTType(StringChoice):
     choices = ['full', 'deviatoric', 'dc']
 
 
+class STFType(StringChoice):
+    choices = ['HalfSinusoidSTF', 'ResonatorSTF']
+
+    cls = {
+        'HalfSinusoidSTF': gf.HalfSinusoidSTF,
+        'ResonatorSTF': gf.ResonatorSTF}
+
+    @classmethod
+    def base_stf(cls, name):
+        return cls.cls[name]()
+
+
 class CMTProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     mt_type = MTType.T(default='full')
+    stf_type = STFType.T(default='HalfSinusoidSTF')
     nthreads = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
@@ -32,7 +45,11 @@ class CMTProblemConfig(ProblemConfig):
             event.depth = 0.
 
         base_source = gf.MTSource.from_pyrocko_event(event)
-        base_source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
+
+        stf = STFType.base_stf(self.stf_type)
+        stf.duration = event.duration or 0.0
+
+        base_source.stf = stf
 
         subs = dict(
             event_name=event.name,
@@ -46,6 +63,7 @@ class CMTProblemConfig(ProblemConfig):
             ranges=self.ranges,
             distance_min=self.distance_min,
             mt_type=self.mt_type,
+            stf_type=self.stf_type,
             norm_exponent=self.norm_exponent,
             nthreads=self.nthreads)
 
@@ -66,8 +84,14 @@ class CMTProblem(Problem):
         Parameter('rmdd', label='$m_{dd} / M_0$'),
         Parameter('rmne', label='$m_{ne} / M_0$'),
         Parameter('rmnd', label='$m_{nd} / M_0$'),
-        Parameter('rmed', label='$m_{ed} / M_0$'),
-        Parameter('duration', 's', label='Duration')]
+        Parameter('rmed', label='$m_{ed} / M_0$')]
+
+    problem_parameters_stf = {
+        'HalfSinusoidSTF': [
+            Parameter('duration', 's', label='Duration')],
+        'ResonatorSTF': [
+            Parameter('duration', 's', label='Duration'),
+            Parameter('frequency', 'Hz', label='Frequency')]}
 
     dependants = [
         Parameter('strike1', u'\u00b0', label='Strike 1'),
@@ -81,10 +105,21 @@ class CMTProblem(Problem):
 
     distance_min = Float.T(default=0.0)
     mt_type = MTType.T(default='full')
+    stf_type = STFType.T(default='HalfSinusoidSTF')
 
     def __init__(self, **kwargs):
         Problem.__init__(self, **kwargs)
         self.deps_cache = {}
+        self.problem_parameters = self.problem_parameters \
+            + self.problem_parameters_stf[self.stf_type]
+        self._base_stf = STFType.base_stf(self.stf_type)
+
+    def get_stf(self, d):
+        d_stf = {}
+        for p in self.problem_parameters_stf[self.stf_type]:
+            d_stf[p.name] = float(d[p.name])
+
+        return self._base_stf.clone(**d_stf)
 
     def get_source(self, x):
         d = self.get_parameter_dict(x)
@@ -100,9 +135,7 @@ class CMTProblem(Problem):
                 p[k] = float(
                     self.ranges[k].make_relative(self.base_source[k], d[k]))
 
-        stf = gf.HalfSinusoidSTF(duration=float(d.duration))
-
-        source = self.base_source.clone(m6=m6, stf=stf, **p)
+        source = self.base_source.clone(m6=m6, stf=self.get_stf(d), **p)
         return source
 
     def make_dependant(self, xs, pname):
@@ -146,6 +179,10 @@ class CMTProblem(Problem):
 
         return y
 
+    def pack_stf(self, stf):
+        return [
+            stf[p.name] for p in self.problem_parameters_stf[self.stf_type]]
+
     def pack(self, source):
         m6 = source.m6
         mt = source.pyrocko_moment_tensor()
@@ -157,7 +194,7 @@ class CMTProblem(Problem):
             source.east_shift,
             source.depth,
             mt.moment_magnitude(),
-            ] + rm6.tolist() + [source.stf.duration], dtype=num.float)
+            ] + rm6.tolist() + self.pack_stf(source.stf), dtype=num.float)
 
         return x
 

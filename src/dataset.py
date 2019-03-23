@@ -90,6 +90,7 @@ class Dataset(object):
         self.pick_markers = []
         self.apply_correction_delays = True
         self.apply_correction_factors = True
+        self.apply_displaced_sampling_workaround = False
         self.extend_incomplete = False
         self.clip_handling = 'by_nsl'
         self.kite_scenes = []
@@ -561,6 +562,10 @@ class Dataset(object):
             trace_selector=lambda tr: tr.nslc_id == (net, sta, loc, cha),
             want_incomplete=want_incomplete or extend_incomplete)
 
+        if self.apply_displaced_sampling_workaround:
+            for tr in trs:
+                tr.snap()
+
         if toffset_noise_extract != 0.0:
             for tr in trs:
                 tr.shift(-toffset_noise_extract)
@@ -988,6 +993,10 @@ class DatasetConfig(HasPaths):
         optional=True,
         default=True,
         help='Apply correction delays from station corrections.')
+    apply_displaced_sampling_workaround = Bool.T(
+        optional=True,
+        default=False,
+        help='Work around displaced sampling issues.')
     extend_incomplete = Bool.T(
         default=False,
         help='Extend incomplete seismic traces.')
@@ -1121,6 +1130,8 @@ class DatasetConfig(HasPaths):
 
                 ds.apply_correction_factors = self.apply_correction_factors
                 ds.apply_correction_delays = self.apply_correction_delays
+                ds.apply_displaced_sampling_workaround = \
+                    self.apply_displaced_sampling_workaround
                 ds.extend_incomplete = self.extend_incomplete
 
                 for picks_path in self.picks_paths:

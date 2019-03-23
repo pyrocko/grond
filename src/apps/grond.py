@@ -414,8 +414,16 @@ def command_scenario(args):
         parser.add_option(
             '--force', dest='force', action='store_true',
             help='overwrite existing project folder.')
+        parser.add_option(
+            '--gf-store-superdirs',
+            dest='gf_store_superdirs',
+            help='Comma-separated list of directories containing GF stores')
 
     parser, options, args = cl_parse('scenario', args, setup)
+
+    gf_store_superdirs = None
+    if options.gf_store_superdirs:
+        gf_store_superdirs = options.gf_store_superdirs.split(',')
 
     if len(args) == 1:
         project_dir = args[0]
@@ -457,7 +465,11 @@ def command_scenario(args):
                 nevents=options.nevents)
         scenario.set_problem(problem)
 
-        scenario.build(force=options.force, interactive=True)
+        scenario.build(
+            force=options.force,
+            interactive=True,
+            gf_store_superdirs=gf_store_superdirs)
+
         logger.info(CLIHints('scenario',
                              config=scenario.get_grond_config_path(),
                              project_dir=project_dir))
@@ -907,18 +919,21 @@ def command_plot(args):
     elif args[0] == 'all':
         if env is None:
             help_and_die(parser, 'two or three arguments required')
+        env.setup_modelling()
         plot_names = plot.get_plot_names(env)
         plot.make_plots(env, plot_names=plot_names, show=options.show)
 
     elif op.exists(args[0]):
         if env is None:
             help_and_die(parser, 'two or three arguments required')
+        env.setup_modelling()
         plots = plot.PlotConfigCollection.load(args[0])
         plot.make_plots(env, plots, show=options.show)
 
     else:
         if env is None:
             help_and_die(parser, 'two or three arguments required')
+        env.setup_modelling()
         plot_names = [name.strip() for name in args[0].split(',')]
         plot.make_plots(env, plot_names=plot_names, show=options.show)
 
