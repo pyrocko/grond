@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os.path as op
 import nose.tools as t
 
 import numpy as num
@@ -8,7 +9,7 @@ from pyrocko import gf
 from grond.toy import scenario, ToyProblem, ToyTarget, ToySource
 
 
-def test_combine_misfits():
+def test_combine_misfits(dump=False, reference=None):
     source, targets = scenario('wellposed', 'noisefree')
 
     p = ToyProblem(
@@ -47,6 +48,9 @@ def test_combine_misfits():
         extra_weights=bweights,
         get_contributions=True)
 
+    if dump:
+        num.savez(dump, gms, gms_contrib, gms_2)
+
     # gms_2[imodel, ibootstrap]
     # gms_2_contrib[imodel, ibootstrap, itarget]
 
@@ -78,6 +82,18 @@ def test_combine_misfits():
         assert_ae(gm_2_contrib[1, :], gm_contrib)
         assert_ae(gms_2_contrib[ix, 0, :], gm_contrib)
         assert_ae(gms_2_contrib[ix, 1, :], gm_contrib)
+
+    if reference:
+        ref_data = num.load(reference)
+
+        assert_ae(ref_data['arr_0'], gms)
+        assert_ae(ref_data['arr_1'], gms_contrib)
+        assert_ae(ref_data['arr_2'], gms_2)
+
+
+def test_combine_reference():
+    ref_fn = op.join(op.dirname(__file__), 'combine_misfits-v1.2.0.npz')
+    test_combine_misfits(reference=ref_fn)
 
 
 def test_combine_covariance():
@@ -130,3 +146,7 @@ def test_combine_covariance():
         extra_residuals=extra_residuals)
 
     num.testing.assert_equal(res_weights, res_corr)
+
+
+def dump_combine_misfits():
+    test_combine_misfits(dump='combined_misfits.npz')
