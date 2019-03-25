@@ -464,24 +464,27 @@ class Problem(Object):
                 norms[imodel, :, imisfit:jmisfit] = \
                     correlated_weights(corr_norms, corr_weight_mat)
 
-        # get and apply more target weights
-        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :]
-
-        if num.any(extra_weights):
-            weights_tar = weights_tar * extra_weights[num.newaxis, :, :]
-
-        res = exp(res * weights_tar)
-        norms = exp(norms * weights_tar)
-
-        # get and apply normalization family weights (these weights depend on
-        # on just calculated norms!)
+        # Apply normalization family weights (these weights depend on
+        # on just calculated correlated norms!)
         weights_fam = \
             self.inter_family_weights2(root(norms[:, 0, :]))[:, num.newaxis, :]
 
         weights_fam = exp(weights_fam)
 
+        res = exp(res)
+        norms = exp(norms)
+
         res *= weights_fam
         norms *= weights_fam
+
+        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :]
+        if num.any(extra_weights):
+            weights_tar = weights_tar * extra_weights[num.newaxis, :, :]
+
+        weights_tar = exp(weights_tar)
+
+        res *= weights_tar
+        norms *= weights_tar
 
         if get_contributions:
             return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
