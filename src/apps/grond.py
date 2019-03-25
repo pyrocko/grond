@@ -733,7 +733,11 @@ def command_go(args):
         parser.add_option(
             '--parallel', dest='nparallel', type=int, default=1,
             help='set number of events to process in parallel, '
-                 'If set to more than one, --status=quiet is implied.')
+                 'if set to more than one, --status=quiet is implied.')
+        parser.add_option(
+            '--threads', dest='nthreads', type=int, default=0,
+            help='set number of threads per process. This defaults to 0,'
+                 'which is using all available cores.')
 
     parser, options, args = cl_parse('go', args, setup)
 
@@ -749,7 +753,8 @@ def command_go(args):
             force=options.force,
             preserve=options.preserve,
             status=status,
-            nparallel=options.nparallel)
+            nparallel=options.nparallel,
+            nthreads=options.nthreads)
         if len(env.get_selected_event_names()) == 1:
             logger.info(CLIHints(
                 'go', rundir=env.get_rundir_path()))

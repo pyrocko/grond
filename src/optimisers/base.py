@@ -15,6 +15,13 @@ class BadProblem(GrondError):
 @has_get_plot_classes
 class Optimiser(Object):
 
+    def __init__(self, *args, **kwargs):
+        self._nthreads = 0
+
+    def set_nthreads(self, nthreads):
+        logger.debug('Setting nthreads to %d', nthreads)
+        self._nthreads = nthreads
+
     def optimise(self, problem):
         raise NotImplementedError
 

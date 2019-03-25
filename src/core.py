@@ -442,10 +442,10 @@ g_state = {}
 
 def go(environment,
        force=False, preserve=False,
-       nparallel=1, status='state'):
+       nparallel=1, status='state', nthreads=0):
 
     g_data = (environment, force, preserve,
-              status, nparallel)
+              status, nparallel, nthreads)
     g_state[id(g_data)] = g_data
 
     nevents = environment.nevents_selected
@@ -460,7 +460,7 @@ def go(environment,
 
 def process_event(ievent, g_data_id):
 
-    environment, force, preserve, status, nparallel = \
+    environment, force, preserve, status, nparallel, nthreads = \
         g_state[g_data_id]
 
     config = environment.get_config()
@@ -513,6 +513,8 @@ def process_event(ievent, g_data_id):
     config.change_basepath(basepath)
 
     optimiser = config.optimiser_config.get_optimiser()
+    optimiser.set_nthreads(nthreads)
+
     optimiser.init_bootstraps(problem)
     problem.dump_problem_info(rundir)
 

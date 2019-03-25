@@ -513,7 +513,8 @@ class HighScoreOptimiser(Optimiser):
         for t in problem.targets:
             if t.can_bootstrap_residuals:
                 t.init_bootstrap_residuals(
-                    self.nbootstrap, rstate=self.get_rstate_bootstrap())
+                    self.nbootstrap, rstate=self.get_rstate_bootstrap(),
+                    nthreads=self._nthreads)
             else:
                 t.set_bootstrap_residuals(
                     num.zeros((self.nbootstrap, t.nmisfits)))

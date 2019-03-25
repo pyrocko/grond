@@ -159,7 +159,7 @@ class MisfitTarget(Object):
         nbootstraps = self.bootstrap_weights.size // self.nmisfits
         return self.bootstrap_weights.reshape(nbootstraps, self.nmisfits)
 
-    def init_bootstrap_residuals(self, nbootstrap, rstate=None):
+    def init_bootstrap_residuals(self, nbootstrap, rstate=None, nthreads=0):
         raise NotImplementedError()
 
     def set_bootstrap_residuals(self, residuals):

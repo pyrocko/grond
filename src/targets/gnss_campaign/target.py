@@ -247,7 +247,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         return self._combined_weight
 
-    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+    def init_bootstrap_residuals(self, nbootstraps, rstate=None, nthreads=0):
         logger.info('GNSS campaign %s, bootstrapping residuals'
                     ' from measurement uncertainties ...'
                     % self.campaign.name)
