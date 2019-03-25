@@ -56,7 +56,7 @@ class ToyTarget(MisfitTarget):
     east = Float.T()
     depth = Float.T()
     obs_distance = Float.T()
-    nmisfits = Int.T(optional=True)
+    nmisfits = Int.T(default=1)
 
 
 class ToySource(Object):

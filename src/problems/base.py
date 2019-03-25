@@ -467,7 +467,7 @@ class Problem(Object):
         # Apply normalization family weights (these weights depend on
         # on just calculated correlated norms!)
         weights_fam = \
-            self.inter_family_weights2(root(norms[:, 0, :]))[:, num.newaxis, :]
+            self.inter_family_weights2(norms[:, 0, :])[:, num.newaxis, :]
 
         weights_fam = exp(weights_fam)
 
@@ -483,8 +483,8 @@ class Problem(Object):
 
         weights_tar = exp(weights_tar)
 
-        res *= weights_tar
-        norms *= weights_tar
+        res = res * weights_tar
+        norms = norms * weights_tar
 
         if get_contributions:
             return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
