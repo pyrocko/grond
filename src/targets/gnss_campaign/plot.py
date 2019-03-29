@@ -160,8 +160,9 @@ displacements derived from best model (red).
 
             for ista, sta in enumerate(all_stations):
                 for comp in sta.components.values():
-                    offset_scale[ista] += comp.shift
-            offset_scale = num.sqrt(offset_scale**2).max()
+                    offset_scale[ista] += comp.shift**2
+                offset_scale[ista] = num.sqrt(offset_scale[ista])
+            offset_scale = offset_scale.max()
 
             m.add_gnss_campaign(
                 campaign,
