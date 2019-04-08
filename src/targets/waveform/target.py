@@ -22,13 +22,30 @@ guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
 
 
+class StoreIDSelectorError(GrondError):
+    pass
+
+
 class StoreIDSelector(Object):
+    '''
+    Base class for GF store selectors.
+
+    GF store selectors can be implemented to select different stores, based on
+    station location, source location or other characteristics.
+    '''
+
     pass
 
 
 class Crust2StoreIDSelector(StoreIDSelector):
-    template = String.T(help='template for gf store ID,\
-                              for example crust2_${id}')
+    '''
+    Store ID selector picking CRUST 2.0 model based on event location.
+    '''
+
+    template = String.T(
+        help="Template for the GF store ID. For example ``'crust2_${id}'`` "
+             "where ``'${id}'`` will be replaced with the corresponding CRUST "
+             "2.0 profile identifier for the source location.")
 
     def get_store_id(self, event, st, cha):
         s = Template(self.template)
@@ -37,14 +54,25 @@ class Crust2StoreIDSelector(StoreIDSelector):
 
 
 class StationDictStoreIDSelector(StoreIDSelector):
-    mapping = Dict.T(help='Dictionary with station-gfdb pairs,\
-                           keys are NETWORK.STATION')
+    '''
+    Store ID selector using a manual station to store ID mapping.
+    '''
+
+    mapping = Dict.T(
+        String.T(), String.T(),
+        help='Dictionary with station to store ID pairs, keys are NET.STA. '
+             "Add a fallback store ID under the key ``'others'``.")
 
     def get_store_id(self, event, st, cha):
         try:
             store_id = self.mapping['%s.%s' % (st.network, st.station)]
         except KeyError:
-            store_id = self.mapping['others']
+            try:
+                store_id = self.mapping['others']
+            except KeyError:
+                raise StoreIDSelectorError(
+                    'No store ID found for station "%s.%s".' % (
+                        st.network, st.station))
 
         return store_id
 
@@ -747,7 +775,7 @@ def weed(origin, targets, limit, neighborhood=3):
 __all__ = '''
     StoreIDSelector
     Crust2StoreIDSelector
-    StationDictStoreIDSelector    
+    StationDictStoreIDSelector
     WaveformTargetGroup
     WaveformMisfitConfig
     WaveformMisfitTarget
