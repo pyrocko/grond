@@ -27,19 +27,26 @@ class StationDistributionCheck(Check):
                              used for waveform fitting.')
     min_baz_cov = Float.T(help='Minimum backazimuthal coverage.')
 
-    def test_coverage(self, targets, origin, ok_stats, pile):
-        st_codes = list(set([st.station
-                             for st in ok_stats
-                             if st.station in pile.stations]))
-        n_stats = len(st_codes)
+    # def test_coverage(self, targets, origin, ok_stats, pile):
+    def test_coverage(self, targets, ok_stats, pile):
+
+        #st_with_data = list(set([st.station
+        #                     for st in ok_stats
+        #                     if st.station in pile.stations]))
+
+
+        n_stats = len(st_with_data)
 
         if n_stats > self.min_nstats:
-            azimuths = list(set([target.azibazi_to(origin)[0]
-                                 for target in targets
-                                 if target.codes[1] in st_codes]))
-            azimuths = sorted(list(azimuths))
+            #azimuths = list(set([target.azibazi_to(origin)[0]
+            #                     for target in targets
+            #                     if target.codes[1] in st_codes]))
+
+            #azimuths = sorted(list(azimuths))
+            
             azi_diffs = []
-            azimuths.append(azimuths[0])
+            #azimuths.append(azimuths[0])
+            azimuths = sorted([t.azimuth for t in targets])
 
             for i_a, aa in enumerate(azimuths[0:-1]):
                 if azimuths[i_a+1] < 0 and aa > 0:

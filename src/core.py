@@ -240,12 +240,18 @@ def check_problem(problem, **kwargs):
     if len(problem.targets) == 0:
         raise GrondError('No targets available')
 
-    stations = kwargs.get('stations', None)
+    #stations = kwargs.get('stations', None)
+    stations = [t.codes for t in problem.targets]
     event = kwargs.get('event', None)
+    print(event)
+    input()
     config = kwargs.get('config', None)
-    p = kwargs.get('pile', None)
+    #p = kwargs.get('pile', None)
+    p = config.get_dataset(event.name).pile
 
-    if stations and event and config and p:
+    #if stations and event and config and p:
+    if stations and config and p:
+
         for g in config.target_groups:
             if g.checks:
                 for ch in g.checks:
@@ -256,12 +262,15 @@ def check_problem(problem, **kwargs):
                         for result in results_list:
                             if not isinstance(result, gf.SeismosizerError):
                                 for st in stations:
-                                    if st.station == result.processed_obs.station:
+                                    #if st.station == result.processed_obs.station:
+                                    if st[1] == result.processed_obs.station:
                                         ok_stats.append(st)
 
                         ok_stats = list(set(ok_stats))
-                        test = ch.test_coverage(problem.targets,
-                                                                 event, ok_stats, p)
+                        #test = ch.test_coverage(problem.targets,
+                        #                                         event, ok_stats, p)
+                        test = ch.test_coverage(problem.targets, ok_stats, p)
+
                         if test is False:
                             raise GrondError('Number of stations or' +
                                              ' station coverage not sufficient.')
@@ -516,9 +525,10 @@ def process_event(ievent, g_data_id):
         if synt:
             problem.base_source = problem.get_source(synt.get_x())
 
-        check_problem(problem, event=event, stations=ds.get_stations(),
-                      config=config, pile=ds.pile)
-
+        #check_problem(problem, event=event, stations=ds.get_stations(),
+        #              config=config, pile=ds.pile)
+        check_problem(problem, event=event,
+                      config=config)
         rundir = expand_template(
             config.rundir_template,
             dict(problem_name=problem.name))
