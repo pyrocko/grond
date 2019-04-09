@@ -237,46 +237,23 @@ def get_event_names(config):
 
 
 def check_problem(problem, **kwargs):
+
     if len(problem.targets) == 0:
         raise GrondError('No targets available')
 
-    #stations = kwargs.get('stations', None)
-    stations = [t.codes for t in problem.targets]
-    event = kwargs.get('event', None)
-    print(event)
-    input()
-    config = kwargs.get('config', None)
-    #p = kwargs.get('pile', None)
-    p = config.get_dataset(event.name).pile
+    p = kwargs.get('pile', None)
 
-    #if stations and event and config and p:
-    if stations and config and p:
-
-        for g in config.target_groups:
+    if p:
+        for g in problem.target_groups:
             if g.checks:
                 for ch in g.checks:
-                    if type(ch) is 'grond.targets.waveform.target.StationDistributionCheck':
-                        x = problem.get_random_model()
-                        results_list = problem.evaluate(x)
-                        ok_stats = []
-                        for result in results_list:
-                            if not isinstance(result, gf.SeismosizerError):
-                                for st in stations:
-                                    #if st.station == result.processed_obs.station:
-                                    if st[1] == result.processed_obs.station:
-                                        ok_stats.append(st)
+                    ch.check(problem, targets=g.target_groups.get_targets(),
+                             pile=p)
 
-                        ok_stats = list(set(ok_stats))
-                        #test = ch.test_coverage(problem.targets,
-                        #                                         event, ok_stats, p)
-                        test = ch.test_coverage(problem.targets, ok_stats, p)
+        if problem.checks:
+            for ch in problem.checks:
+                ch.check(problem, targets=problem.targets, pile=p)
 
-                        if test is False:
-                            raise GrondError('Number of stations or' +
-                                             ' station coverage not sufficient.')
-                        else:
-                            logger.info('Number of station and' +
-                                        ' azimuthal coverage sufficient.')
 
 def check(
         config,
@@ -309,8 +286,7 @@ def check(
             logger.info(
                 'Number of targets (selected): %i' % len(problem.targets))
 
-            check_problem(problem, event=event, stations=ds.get_stations(),
-                          config=config, pile=ds.pile)
+            check_problem(problem, pile=ds.pile)
 
             results_list = []
             sources = []
@@ -500,7 +476,7 @@ def go(environment,
     logger.info('Grond go done. Summary:')
     for ev in process_returns:
         if ev[1] is None:
-            logger.info('%s: No error, successfull run.' % ev[0])
+            logger.info('%s: Successfull run.' % ev[0])
         else:
             logger.info('%s: %s' % (ev[0], ev[1]))
 
@@ -525,10 +501,7 @@ def process_event(ievent, g_data_id):
         if synt:
             problem.base_source = problem.get_source(synt.get_x())
 
-        #check_problem(problem, event=event, stations=ds.get_stations(),
-        #              config=config, pile=ds.pile)
-        check_problem(problem, event=event,
-                      config=config)
+        check_problem(problem, pile=ds.pile)
         rundir = expand_template(
             config.rundir_template,
             dict(problem_name=problem.name))

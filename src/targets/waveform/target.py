@@ -20,33 +20,49 @@ logger = logging.getLogger('grond.targets.waveform.target')
 
 
 class Check(Object):
+    '''
+    Base class for checks performed before inversion.
+    '''
     pass
 
+
 class StationDistributionCheck(Check):
-    min_nstats = Int.T(help='Minimum number of statios\
+    '''
+    Class for checking the number of stations and the azimuthal 
+    station distribution of targets.
+
+    '''
+
+    min_nstats = Int.T(help='Minimum number of stations\
                              used for waveform fitting.')
     min_baz_cov = Float.T(help='Minimum backazimuthal coverage.')
 
-    # def test_coverage(self, targets, origin, ok_stats, pile):
-    def test_coverage(self, targets, ok_stats, pile):
+    def check(self, problem, targets, pile):
 
-        #st_with_data = list(set([st.station
-        #                     for st in ok_stats
-        #                     if st.station in pile.stations]))
+        stations = [t.codes for t in targets]
+        x = problem.get_random_model()
+        results_list = problem.evaluate(x)
+        ok_stats = []
+        for result in results_list:
+            if not isinstance(result, gf.SeismosizerError):
+                for st in stations:
+                    if st[1] == result.processed_obs.station:
+                        ok_stats.append(st)
 
+        ok_stats = list(set(ok_stats))
+
+        st_with_data = []
+        for st in ok_stats:
+            if st[0] in pile.networks and st[1] in pile.stations:
+                st_with_data.append(st)
+        st_with_data = set(st_with_data)
 
         n_stats = len(st_with_data)
-
         if n_stats > self.min_nstats:
-            #azimuths = list(set([target.azibazi_to(origin)[0]
-            #                     for target in targets
-            #                     if target.codes[1] in st_codes]))
-
-            #azimuths = sorted(list(azimuths))
-            
             azi_diffs = []
-            #azimuths.append(azimuths[0])
-            azimuths = sorted([t.azimuth for t in targets])
+            azimuths = sorted(
+                [t.azimuth for t in targets if t.codes in st_with_data]
+                )
 
             for i_a, aa in enumerate(azimuths[0:-1]):
                 if azimuths[i_a+1] < 0 and aa > 0:
@@ -56,12 +72,16 @@ class StationDistributionCheck(Check):
                     azi_diffs.append(diff)
                 else:
                     azi_diffs.append(abs(azimuths[i_a+1]-aa))
+
             if num.max(azi_diffs) < (360. - self.min_baz_cov):
-                return True
+                logger.info('Number of station and' +
+                            ' azimuthal coverage sufficient.')
             else:
-                return False
+                raise GrondError('Number of stations or' +
+                                 ' station coverage not sufficient.')
         else:
-            return False
+            raise GrondError('Number of stations or' +
+                             ' station coverage not sufficient.')
 
 
 class DomainChoice(StringChoice):
@@ -167,8 +187,10 @@ class WaveformTargetGroup(TargetGroup):
         optional=True,
         help="set channels to include, e.g. ['Z', 'T']")
     misfit_config = WaveformMisfitConfig.T()
-    checks = List.T(Check.T(optional=True,
-                            help='List of checks, e.g. StationDistributionCheck.'))   
+    checks = List.T(
+        Check.T(),
+        optional=True,
+        help='List of checks, e.g. StationDistributionCheck.')
 
     def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting waveform targets...')

@@ -19,7 +19,7 @@ from pyrocko.guts import Object, String, List, Dict, Int
 from grond.meta import ADict, Parameter, GrondError, xjoin, Forbidden, \
     StringID, has_get_plot_classes
 from ..targets import MisfitResult, MisfitTarget, TargetGroup, \
-    WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget
+    WaveformMisfitTarget, SatelliteMisfitTarget, GNSSCampaignMisfitTarget, Check
 
 from grond import stats
 
@@ -73,6 +73,8 @@ class Problem(Object):
     target_groups = List.T(TargetGroup.T())
     grond_version = String.T(optional=True)
     nthreads = Int.T(default=1)
+    checks = List.T(Check.T(optional=True,
+                            help='List of checks, e.g. StationDistributionCheck.'))
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)

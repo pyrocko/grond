@@ -3,12 +3,13 @@ import math
 import logging
 
 from pyrocko import gf, util, moment_tensor as mtm
-from pyrocko.guts import String, Float, Dict, StringChoice, Int
+from pyrocko.guts import String, Float, Dict, StringChoice, Int, List
 
 from grond.meta import Forbidden, expand_template, Parameter, \
     has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
+from ...targets import Check
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.cmt.problem')
@@ -39,6 +40,10 @@ class CMTProblemConfig(ProblemConfig):
     mt_type = MTType.T(default='full')
     stf_type = STFType.T(default='HalfSinusoidSTF')
     nthreads = Int.T(default=1)
+    checks = List.T(
+        Check.T(),
+        optional=True,
+        help='List of checks, e.g. StationDistributionCheck.')
 
     def get_problem(self, event, target_groups, targets):
         if event.depth is None:
@@ -65,7 +70,8 @@ class CMTProblemConfig(ProblemConfig):
             mt_type=self.mt_type,
             stf_type=self.stf_type,
             norm_exponent=self.norm_exponent,
-            nthreads=self.nthreads)
+            nthreads=self.nthreads,
+            checks=self.checks)
 
         return problem
 
