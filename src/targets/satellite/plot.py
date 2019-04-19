@@ -166,7 +166,7 @@ class SatelliteTargetDisplacement(PlotConfig):
                     fe -= source.effective_lon
 
             # source is centered
-            ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
+            ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')# shows references
             if nsources is not None:
                 for fe, fn in zip(fes, fns):
                     ax.fill(fe, fn,
