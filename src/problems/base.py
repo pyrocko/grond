@@ -32,10 +32,21 @@ as_km = dict(scale_factor=km, scale_unit='km')
 
 g_rstate = num.random.RandomState()
 
+def range_overlap(a_min, a_max, b_min, b_max):
+    '''Neither range is completely greater than the other
+    '''
+    overlapping = True
+    if (a_min > b_max) or (a_max < b_min):
+        overlapping = False
+    return overlapping
+
+def overlap(r1, r2):
+    '''Overlapping rectangles overlap both horizontally & vertically
+    '''
+    return range_overlap(r1.left, r1.right, r2.left, r2.right) and range_overlap(r1.bottom, r1.top, r2.bottom, r2.top)
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
-
 
 def correlated_weights(values, weight_matrix):
     '''
@@ -51,6 +62,47 @@ def correlated_weights(values, weight_matrix):
     '''
     return num.matmul(values, weight_matrix)
 
+class CombiSource(gf.Source):
+    '''Composite source model.'''
+
+    discretized_source_class = gf.DiscretizedMTSource
+
+    subsources = List.T(gf.Source.T())
+
+    def __init__(self, subsources=[], **kwargs):
+        if subsources:
+
+            lats = num.array(
+                [subsource.lat for subsource in subsources], dtype=num.float)
+            lons = num.array(
+                [subsource.lon for subsource in subsources], dtype=num.float)
+
+            assert num.all(lats == lats[0]) and num.all(lons == lons[0])
+            lat, lon = lats[0], lons[0]
+
+            # if not same use:
+            # lat, lon = center_latlon(subsources)
+
+            depth = float(num.mean([p.depth for p in subsources]))
+            t = float(num.mean([p.time for p in subsources]))
+            kwargs.update(time=t, lat=float(lat), lon=float(lon), depth=depth)
+
+        gf.Source.__init__(self, subsources=subsources, **kwargs)
+
+    def get_factor(self):
+        return 1.0
+
+    def discretize_basesource(self, store, target=None):
+
+        dsources = []
+        t0 = self.subsources[0].time
+        for sf in self.subsources:
+            assert t0 == sf.time
+            ds = sf.discretize_basesource(store, target)
+            ds.m6s *= sf.get_factor()
+            dsources.append(ds)
+
+        return gf.DiscretizedMTSource.combine(dsources)
 
 class ProblemConfig(Object):
     '''
@@ -59,8 +111,10 @@ class ProblemConfig(Object):
     Factory for :py:class:`Problem` objects.
     '''
     name_template = String.T()
+    nsources = Int.T(default=1)
     norm_exponent = Int.T(default=2)
     nthreads = Int.T(default=1)
+
 
     def get_problem(self, event, target_groups, targets):
         '''
@@ -83,6 +137,7 @@ class Problem(Object):
     dependants = List.T(Parameter.T())
     norm_exponent = Int.T(default=2)
     base_source = gf.Source.T(optional=True)
+    nsources = Int.T(default=1)
     targets = List.T(MisfitTarget.T())
     target_groups = List.T(TargetGroup.T())
     grond_version = String.T(optional=True)
@@ -90,9 +145,6 @@ class Problem(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
-
-        if self.grond_version is None:
-            self.grond_version = __version__
 
         self._target_weights = None
         self._engine = None
@@ -103,6 +155,7 @@ class Problem(Object):
                 self.problem_parameters + self.problem_waveform_parameters
 
         self.check()
+        logger.name = self.__class__.__name__
 
     @classmethod
     def get_plot_classes(cls):
@@ -131,11 +184,19 @@ class Problem(Object):
             target.set_parameter_values(x[nprob:nprob+target.nparameters])
             nprob += target.nparameters
 
-    def get_parameter_dict(self, model, group=None):
+    def get_parameter_dict(self, model, group=None, nsources=None):
         params = []
-        for ip, p in enumerate(self.parameters):
-            if group in p.groups or group is None:
-                params.append((p.name, model[ip]))
+        if nsources is not None:
+            for ip, p in enumerate(self.parameters):
+                if group in p.groups:
+                    try:
+                        params.append((p.name[:-1], model[ip]))
+                    except:
+                        pass
+        else:
+            for ip, p in enumerate(self.parameters):
+                if group in p.groups:
+                    params.append((p.name, model[ip]))
         return ADict(params)
 
     def get_parameter_array(self, d):
@@ -514,10 +575,20 @@ class Problem(Object):
 
         return self._family_mask
 
-    def evaluate(self, x, mask=None, result_mode='full', targets=None):
-        source = self.get_source(x)
-        engine = self.get_engine()
 
+    def evaluate(self, x, mask=None, result_mode='full', targets=None, nsources=None):
+        patches = []
+        outlines = []
+        if self.nsources:
+            for i in range(self.nsources):
+                source = self.get_source(x, i)
+                patches.append(source)
+                outlines.append(source.outline())
+        else:
+                source = self.get_source(x)
+
+        engine = self.get_engine()
+        sources = CombiSource(subsources=patches)
         self.set_target_parameter_values(x)
 
         if mask is not None and targets is not None:
@@ -530,7 +601,7 @@ class Problem(Object):
         modelling_targets = []
         t2m_map = {}
         for itarget, target in enumerate(targets):
-            t2m_map[target] = target.prepare_modelling(engine, source, targets)
+            t2m_map[target] = target.prepare_modelling(engine, sources, targets)
             if mask is None or mask[itarget]:
                 modelling_targets.extend(t2m_map[target])
 
@@ -561,14 +632,14 @@ class Problem(Object):
             nmt_this = len(t2m_map[target])
             if mask is None or mask[itarget]:
                 result = target.finalize_modelling(
-                    engine, source,
+                    engine, sources,
                     t2m_map[target],
                     modelling_results[imt:imt+nmt_this])
 
                 imt += nmt_this
             else:
                 result = gf.SeismosizerError(
-                    'target was excluded from modelling')
+                        'target was excluded from modelling')
 
             results.append(result)
 
@@ -1002,8 +1073,8 @@ class ModelHistory(object):
     def get_best_misfit(self, chain=0):
         return self.get_sorted_misfits(chain)[0]
 
-    def get_best_source(self, chain=0):
-        return self.problem.get_source(self.get_best_model(chain))
+    def get_best_source(self, i, chain=0):
+        return self.problem.get_source(self.get_best_model(chain), i)
 
     def get_mean_source(self, chain=0):
         mean_model = num.mean(self.models, axis=0)

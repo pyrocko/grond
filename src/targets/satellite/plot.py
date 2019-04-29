@@ -81,8 +81,19 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
-        source = history.get_best_source()
         best_model = history.get_best_model()
+        gms = problem.combine_misfits(history.misfits)
+        isort = num.argsort(gms)
+        gms = gms[isort]
+        #nsources = problem.nsources #help
+        nsources = 2
+        if nsources is not None:
+		sources = []
+        	for i in range(nsources):
+			sources.append(history.get_best_source(best_model, i))
+	else:
+        	source = problem.get_source(xbest)
+
         results = problem.evaluate(best_model, targets=sat_targets)
 
         def initAxes(ax, scene, title, last_axes=False):
@@ -120,23 +131,52 @@ edge marking the upper fault edge. Complete data extent is shown.
 
             scale_axes(ax.get_xaxis(), **scale_x)
             scale_axes(ax.get_yaxis(), **scale_y)
-
         def drawSource(ax, scene):
             if scene.frame.isMeter():
-                fn, fe = source.outline(cs='xy').T
-                fn -= fn.mean()
-                fe -= fe.mean()
+                if nsources is not None:
+                    fn = []
+                    fe = []
+                    for source in sources:
+                        fn_sub, fe_sub = source1.outline(cs='xy').T
+                    fn_sub -= fn_sub.mean()
+                    fe_sub -= fe_sub.mean()
+                    fe.append(fe_sub)
+                    fn.append(fn_sub)
+                else:
+                    fn, fe = source.outline(cs='xy').T
+
             elif scene.frame.isDegree():
-                fn, fe = source.outline(cs='latlon').T
-                fn -= source.effective_lat
-                fe -= source.effective_lon
+                if nsources is not None:
+                    fns = []
+                    fes = []
+                    for source in sources:
+                        fn_sub, fe_sub = source.outline(cs='latlon').T
+                    fn_sub -= source.effective_lat
+                    fe_sub -= source.effective_lon
+                    fes.append(fe_sub)
+                    fns.append(fn_sub)
+
+                else:
+                    fn, fe = source.outline(cs='latlon').T
+                    fn -= source.lat
+                    fe -= source.lon
+
 
             # source is centered
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
-            ax.fill(fe, fn,
-                    edgecolor=(0., 0., 0.),
-                    facecolor=(.5, .5, .5), alpha=0.7)
-            ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
+            if nsources is not None:
+                for fe, fn in zip(fes, fns):
+                    ax.fill(fe, fn,
+                        edgecolor=(0., 0., 0.),
+                        facecolor=(.5, .5, .5), alpha=0.5)
+                    ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
+
+            else:
+
+                ax.fill(fe, fn,
+                        edgecolor=(0., 0., 0.),
+                        facecolor=(.1, .2, .4), alpha=0.5)
+                ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
 
         def mapDisplacementGrid(displacements, scene):
             arr = num.full_like(scene.displacement, fill_value=num.nan)

@@ -111,6 +111,7 @@ setup(
         'grond.problems.double_dc',
         'grond.problems.rectangular',
         'grond.problems.volume_point',
+        'grond.problems.multirectangular',
         'grond.optimisers',
         'grond.optimisers.highscore',
         'grond.analysers',
