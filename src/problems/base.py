@@ -32,6 +32,7 @@ as_km = dict(scale_factor=km, scale_unit='km')
 
 g_rstate = num.random.RandomState()
 
+
 def range_overlap(a_min, a_max, b_min, b_max):
     '''Neither range is completely greater than the other
     '''
@@ -40,13 +41,16 @@ def range_overlap(a_min, a_max, b_min, b_max):
         overlapping = False
     return overlapping
 
+
 def overlap(r1, r2):
     '''Overlapping rectangles overlap both horizontally & vertically
     '''
     return range_overlap(r1.left, r1.right, r2.left, r2.right) and range_overlap(r1.bottom, r1.top, r2.bottom, r2.top)
 
+
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
+
 
 def correlated_weights(values, weight_matrix):
     '''
@@ -61,6 +65,7 @@ def correlated_weights(values, weight_matrix):
     :returns: :class:`numpy.Array` weighted values
     '''
     return num.matmul(values, weight_matrix)
+
 
 class CombiSource(gf.Source):
     '''Composite source model.'''
@@ -104,6 +109,7 @@ class CombiSource(gf.Source):
 
         return gf.DiscretizedMTSource.combine(dsources)
 
+
 class ProblemConfig(Object):
     '''
     Base class for config section defining the objective function setup.
@@ -114,7 +120,6 @@ class ProblemConfig(Object):
     nsources = Int.T(default=1)
     norm_exponent = Int.T(default=2)
     nthreads = Int.T(default=1)
-
 
     def get_problem(self, event, target_groups, targets):
         '''
@@ -191,7 +196,7 @@ class Problem(Object):
                 if group in p.groups:
                     try:
                         params.append((p.name[:-1], model[ip]))
-                    except:
+                    except Exception:
                         pass
         else:
             for ip, p in enumerate(self.parameters):
@@ -574,7 +579,6 @@ class Problem(Object):
             self._family_mask = self.make_family_mask()
 
         return self._family_mask
-
 
     def evaluate(self, x, mask=None, result_mode='full', targets=None, nsources=None):
         patches = []
