@@ -16,6 +16,7 @@ class BadProblem(GrondError):
 class Optimiser(Object):
 
     def __init__(self, *args, **kwargs):
+        Object.__init__(self, **kwargs)
         self._nthreads = 0
 
     def set_nthreads(self, nthreads):
