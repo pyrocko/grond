@@ -19,7 +19,7 @@ class MultiRectangularProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     decimation_factor = Int.T(default=1)
     distance_min = Float.T(default=0.)
-    nsources = Int.T(default=1) 
+    nsources = Int.T(default=1)
 
     def get_problem(self, event, target_groups, targets):
         base_source = gf.RectangularSource.from_pyrocko_event(
@@ -93,10 +93,10 @@ class MultiRectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds):
+    def random_uniform(self, xbounds, rstate):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
 
         return x
 
