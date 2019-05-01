@@ -573,9 +573,11 @@ class SatelliteCustom(PlotConfig):
         #     src_cnt.append([num.mean(src_ee), num.mean(src_nn), num.mean(src_zz)])
 
         # centroids relative to reference location
-        centroids_xyz = []
+        centroids_xyz0 = []
+        centroids_xyz1 = []
         # relative position of the nucleation point (off the centroid)
-        nucs_xy_xyz = []
+        nucs_xy_xyz0 = []
+        nucs_xy_xyz1 = []
         outlines_e0 = []
         outlines_n0 = []
         outlines_e1 = []
@@ -615,25 +617,30 @@ class SatelliteCustom(PlotConfig):
 
 
 
-                if num.shape(nucs_xy_xyz)[0]==0:
-                    # relative position of the nucleation point (off the centroid)
-                    nucs_xy_xyz =  xy
-                    # centroids relative to reference location
-                    centroids_xyz = centroid
-                    print("i=",i,"fe",fe)
-                    if i==0:
+                if i==0:
+                    if num.shape(nucs_xy_xyz0)[0]==0:
+                        print("i=",i,"fe",fe)
+                        # relative position of the nucleation point (off the centroid)
+                        nucs_xy_xyz0 =  xy
+                        # centroids relative to reference location
+                        centroids_xyz0 = centroid
                         outlines_e0 = fe
                         outlines_n0 = fn
-                    elif i==1:
-                        outlines_e1 = fe
-                        outlines_n1 = fn
-                else:
-                    nucs_xy_xyz = num.vstack((nucs_xy_xyz, xy))
-                    centroids_xyz = num.vstack((centroids_xyz, centroid))
-                    if i==0:
+                    else:
+                        nucs_xy_xyz0 = num.vstack((nucs_xy_xyz0, xy))
+                        centroids_xyz0 = num.vstack((centroids_xyz0, centroid))
                         outlines_e0 = num.vstack((outlines_e0, fe))
                         outlines_n0 = num.vstack((outlines_n0, fn))
-                    elif i==1:
+                elif i==1:
+                    if num.shape(nucs_xy_xyz1)[0]==0:
+                        print("i=",i,"fe",fe)
+                        nucs_xy_xyz1 =  xy
+                        centroids_xyz1 = centroid
+                        outlines_e1 = fe
+                        outlines_n1 = fn
+                    else:
+                        nucs_xy_xyz1 = num.vstack((nucs_xy_xyz1, xy))
+                        centroids_xyz1 = num.vstack((centroids_xyz1, centroid))
                         outlines_e1 = num.vstack((outlines_e1, fe))
                         outlines_n1 = num.vstack((outlines_n1, fn))
 
@@ -929,8 +936,7 @@ class SatelliteCustom(PlotConfig):
                 2, 2,
                 wspace=.05, hspace=.2,
                 left=.1, right=.975, top=.95,
-                width_ratios=[2,2,2],
-                height_ratios=[12, 8, 1])
+                height_ratios=[12, 1])
 
             item = PlotItem(
                 name='fig_%i' % ifig,
