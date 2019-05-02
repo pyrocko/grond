@@ -656,25 +656,30 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         print('#', ' '.join(['%16s' % x for x in pnames]), file=out)
 
     def dump(x, gm, indices):
+        nsources = 2
+        sources = []
+        events = []
         if type == 'vector':
             print(' ', ' '.join(
                 '%16.7g' % problem.extract(x, i) for i in indices),
                 '%16.7g' % gm, file=out)
 
         elif type == 'source':
-            source = problem.get_source(x)
-            guts.dump(source, stream=out)
+            for i in range(nsources):
+                sources.append(self.get_source(x, i))
+            guts.dump(sources, stream=out)
 
         elif type == 'event':
-            ev = problem.get_source(x).pyrocko_event()
-            model.dump_events([ev], stream=out)
+            for i in range(nsources):
+                events.append(problem.get_source(x, i).pyrocko_event())
+            model.dump_events([events], stream=out)
 
         elif type == 'event-yaml':
-            ev = problem.get_source(x).pyrocko_event()
+            ev = problem.get_source(x, 0).pyrocko_event()
             guts.dump_all([ev], stream=out)
 
         else:
-            raise GrondError('Invalid argument: type=%s' % repr(type))
+            raise GrondError('invalid argument: type=%s' % repr(type))
 
     header = None
     for rundir in rundirs:

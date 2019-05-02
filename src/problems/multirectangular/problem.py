@@ -96,7 +96,7 @@ class MultiRectangularProblem(Problem):
     def random_uniform(self, xbounds, rstate):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
-            x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
+            x[i] = num.random.uniform(xbounds[i, 0], xbounds[i, 1])
 
         return x
 

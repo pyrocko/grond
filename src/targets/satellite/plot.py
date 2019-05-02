@@ -90,9 +90,10 @@ edge marking the upper fault edge. Complete data extent is shown.
         if nsources is not None:
             sources = []
             for i in range(nsources):
-                sources.append(history.get_best_source(best_model, i))
+                sources.append(history.get_best_source(i))
+            source = sources[0]
         else:
-            source = problem.get_source(best_model)
+            source = problem.get_source(0)
 
         results = problem.evaluate(best_model, targets=sat_targets)
 
@@ -135,14 +136,14 @@ edge marking the upper fault edge. Complete data extent is shown.
         def drawSource(ax, scene):
             if scene.frame.isMeter():
                 if nsources is not None:
-                    fn = []
-                    fe = []
+                    fns = []
+                    fes = []
                     for source in sources:
                         fn_sub, fe_sub = source.outline(cs='xy').T
                     fn_sub -= fn_sub.mean()
                     fe_sub -= fe_sub.mean()
-                    fe.append(fe_sub)
-                    fn.append(fn_sub)
+                    fes.append(fe_sub)
+                    fns.append(fn_sub)
                 else:
                     fn, fe = source.outline(cs='xy').T
 
