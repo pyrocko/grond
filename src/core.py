@@ -672,7 +672,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         elif type == 'event':
             for i in range(nsources):
                 events.append(problem.get_source(x, i).pyrocko_event())
-            model.dump_events([events], stream=out)
+            model.dump_events(events, stream=out)
 
         elif type == 'event-yaml':
             ev = problem.get_source(x, 0).pyrocko_event()
