@@ -65,13 +65,22 @@ class StationDistributionCheck(Check):
                 )
 
             for i_a, aa in enumerate(azimuths[0:-1]):
-                if azimuths[i_a+1] < 0 and aa > 0:
-                    diff = aa-azimuths[i_a+1]
-                    if diff > 180:
-                        diff = 360-diff
-                    azi_diffs.append(diff)
+
+                if azimuths[i_a+1] < aa:
+                    # only for last iteration
+                    if azimuths[i_a+1] < 0 and aa > 0:
+                        diff = 360. + azimuths[i_a+1] - aa
+
+                    elif azimuths[i_a+1] > 0 and aa > 0:
+                        diff = 360 - (aa - azimuths[i_a+1])
+
+                    elif azimuths[i_a+1] < 0 and aa < 0:
+                        diff = 360 - (aa - azimuths[i_a+1])
+                    
                 else:
-                    azi_diffs.append(abs(azimuths[i_a+1]-aa))
+                    diff = azimuths[i_a+1] - aa
+                
+                azi_diffs.append(diff)
 
             if num.max(azi_diffs) < (360. - self.min_baz_cov):
                 logger.info('Number of station and' +
