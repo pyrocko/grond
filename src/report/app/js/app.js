@@ -564,6 +564,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                         doc.name = 'parameter results';
                         doc.variant = 'default';
                         doc.section = 'run';
+                        doc.stats_path = get_path(problem_name) + '/stats.yaml';
                         doc.feather_icon = 'book';
                         doc.template = 'parameter-table';
 
