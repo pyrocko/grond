@@ -7,9 +7,9 @@ import numpy as num
 from matplotlib import pyplot as plt
 from matplotlib import cm, patches
 
-from pyrocko import plot, gf, trace
+from pyrocko import plot, gf, trace, util
 from pyrocko.plot import mpl_init, mpl_color
-from pyrocko.guts import Tuple, Float, Int, String
+from pyrocko.guts import Tuple, Float, Int, String, List
 
 from grond import core, meta
 from .target import WaveformMisfitResult, WaveformMisfitTarget
@@ -1355,11 +1355,477 @@ location of the source.
 
                 yield (item, fig)
 
+class FitsWaveformPlot_extra(PlotConfig):
+    ''' Plot showing the waveform fits for the best model '''
+    name = 'fits_waveform_extra'
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(9., 5.),
+        help='width and length of the figure in cm')
+    nx = Int.T(
+        default=1,
+        help='horizontal number of subplots on every page')
+    ny = Int.T(
+        default=1,
+        help='vertical number of subplots on every page')
+    font_size = Float.T(
+        default=8,
+        help='Font Size of all fonts, except title')
+    font_size_title = Float.T(
+        default=10,
+        help='Font Size of title')
+    include = List.T(String.T(),
+        optional=True,
+        help='include specific station')
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        mpl_init(fontsize=self.font_size)
+        environ.setup_modelling()
+        ds = environ.get_dataset()
+        optimiser = environ.get_optimiser()
+
+        history = environ.get_history(subset='harvest')
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(ds, history, optimiser),
+            title=u'Waveform fits for best model',
+            section='fits',
+            feather_icon='activity',
+            description=u'''
+Plot showing observed and synthetic waveform (attributes) for the best fitting
+model.
+Best model's waveform fits for all targets. Depending on the target
+configurations different types of comparisons are possible: (i) time domain
+waveform differences, (ii) amplitude spectra, (iii) envelopes, (iv) cross
+correlation functions. Each waveform plot gives a number of details:
+1) Target information (left side, from top to bottom) gives station name with
+component, distance to source, azimuth of station with respect to source,
+target weight, target misfit and starting time of the waveform relative to the
+origin time.
+2) The background gray area shows the applied taper function.
+3) The waveforms shown are: the restituted and filtered observed trace without
+tapering (light grey) and the same trace with tapering and processing (dark
+gray), the synthetic trace (light red) and the filtered, tapered and (if
+enabled) shifted and processed synthetic target trace (red). The traces are
+scaled according to the target weight (small weight, small amplitude) and
+normed relative to the maximum amplitude of the targets of the corresponding
+normalisation family.
+4) The bottom panel shows, depending on the type of comparison, sample-wise
+residuals for time domain comparisons (red filled), spectra of observed and
+synthetic traces for amplitude spectrum comparisons, or cross correlation
+traces.
+5) Colored boxes on the upper right show the relative weight of the target
+within the entire dataset of the optimisation (top box, orange) and the
+relative misfit contribution to the global misfit of the optimisation (bottom
+box, red).
+''')
+
+    def draw_figures(self, ds, history, optimiser):
+
+        fontsize = self.font_size
+        fontsize_title = self.font_size_title
+
+        nxmax = self.nx
+        nymax = self.ny
+
+        problem = history.problem
+
+        for target in problem.targets:
+            target.set_dataset(ds)
+
+        target_index = {}
+        i = 0
+        for target in problem.targets:
+            target_index[target] = i, i+target.nmisfits
+            i += target.nmisfits
+
+        gms = problem.combine_misfits(
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+        isort = num.argsort(gms)
+        gms = gms[isort]
+        models = history.models[isort, :]
+        misfits = history.misfits[isort, :]
+
+        xbest = models[0, :]
+
+        ws = problem.get_target_weights()
+
+        gcms = problem.combine_misfits(
+            misfits[:1, :, :],
+            extra_correlated_weights=optimiser.get_correlated_weights(problem),
+            get_contributions=True)[0, :]
+
+        w_max = num.nanmax(ws)
+        gcm_max = num.nanmax(gcms)
+
+        source = problem.get_source(xbest,0)
+
+        target_to_result = {}
+        all_syn_trs = []
+        all_syn_specs = []
+        results = problem.evaluate(xbest)
+
+        dtraces = []
+        for target, result in zip(problem.targets, results):
+            if not isinstance(result, WaveformMisfitResult):
+                dtraces.extend([None] * target.nmisfits)
+                continue
+            
+            test=0
+            if self.include:
+                if not util.match_nslc(meta.nslcs_to_patterns(self.include), target.string_id()):
+                    dtraces.extend([None] * target.nmisfits)
+                    continue
+
+            itarget, itarget_end = target_index[target]
+            assert itarget_end == itarget + 1
+
+            w = target.get_combined_weight()
+
+            if target.misfit_config.domain == 'cc_max_norm':
+                tref = (
+                    result.filtered_obs.tmin + result.filtered_obs.tmax) * 0.5
+                for tr_filt, tr_proc, tshift in (
+                        (result.filtered_obs,
+                         result.processed_obs,
+                         0.),
+                        (result.filtered_syn,
+                         result.processed_syn,
+                         result.tshift)):
+
+                    norm = num.sum(num.abs(tr_proc.ydata)) / tr_proc.data_len()
+                    tr_filt.ydata /= norm
+                    tr_proc.ydata /= norm
+
+                    tr_filt.shift(tshift)
+                    tr_proc.shift(tshift)
+
+                ctr = result.cc
+                ctr.shift(tref)
+
+                dtrace = ctr
+
+            else:
+                for tr in (
+                        result.filtered_obs,
+                        result.filtered_syn,
+                        result.processed_obs,
+                        result.processed_syn):
+
+                    tr.ydata *= w
+
+                for spec in (
+                        result.spectrum_obs,
+                        result.spectrum_syn):
+
+                    if spec is not None:
+                        spec.ydata *= w
+
+                if result.tshift is not None and result.tshift != 0.0:
+                    # result.filtered_syn.shift(result.tshift)
+                    result.processed_syn.shift(result.tshift)
+
+                dtrace = make_norm_trace(
+                    result.processed_syn, result.processed_obs,
+                    problem.norm_exponent)
+
+            target_to_result[target] = result
+
+            dtrace.meta = dict(
+                normalisation_family=target.normalisation_family,
+                path=target.path)
+            dtraces.append(dtrace)
+
+            result.processed_syn.meta = dict(
+                normalisation_family=target.normalisation_family,
+                path=target.path)
+
+            all_syn_trs.append(result.processed_syn)
+
+            if result.spectrum_syn:
+                result.spectrum_syn.meta = dict(
+                    normalisation_family=target.normalisation_family,
+                    path=target.path)
+
+                all_syn_specs.append(result.spectrum_syn)
+
+        if not all_syn_trs:
+            logger.warn('No traces to show!')
+            return
+
+        def skey(tr):
+            return tr.meta['normalisation_family'], tr.meta['path']
+
+        trace_minmaxs = trace.minmax(all_syn_trs, skey)
+
+        amp_spec_maxs = amp_spec_max(all_syn_specs, skey)
+
+        dminmaxs = trace.minmax([x for x in dtraces if x is not None], skey)
+
+        for tr in dtraces:
+            if tr:
+                dmin, dmax = dminmaxs[skey(tr)]
+                tr.ydata /= max(abs(dmin), abs(dmax))
+
+        cg_to_targets = meta.gather(
+            problem.waveform_targets,
+            lambda t: (t.path, t.codes[3]),
+            filter=lambda t: t in target_to_result)
+
+        cgs = sorted(cg_to_targets.keys())
+
+        for cg in cgs:
+            targets = cg_to_targets[cg]
+
+            frame_to_target, nx, ny, nxx, nyy = layout(
+                source, targets, nxmax, nymax)
+
+            figures = {}
+            for iy in range(ny):
+                for ix in range(nx):
+                    if (iy, ix) not in frame_to_target:
+                        continue
+
+                    ixx = ix // nxmax
+                    iyy = iy // nymax
+                    if (iyy, ixx) not in figures:
+                        title = '_'.join(x for x in cg if x)
+                        item = PlotItem(
+                            name='fig_%s_%i_%i' % (title, ixx, iyy))
+                        item.attributes['targets'] = []
+                        figures[iyy, ixx] = (
+                            item, plt.figure(figsize=self.size_inch))
+
+                        figures[iyy, ixx][1].subplots_adjust(
+                            left=0.03,
+                            right=1.0 - 0.03,
+                            bottom=0.03,
+                            top=1.0 - 0.06,
+                            wspace=0.2,
+                            hspace=0.2)
+
+                    item, fig = figures[iyy, ixx]
+
+                    target = frame_to_target[iy, ix]
+
+                    item.attributes['targets'].append(target.string_id())
+
+                    amin, amax = trace_minmaxs[
+                        target.normalisation_family, target.path]
+                    absmax = max(abs(amin), abs(amax))
+
+                    ny_this = nymax  # min(ny, nymax)
+                    nx_this = nxmax  # min(nx, nxmax)
+                    i_this = (iy % ny_this) * nx_this + (ix % nx_this) + 1
+
+                    axes2 = fig.add_subplot(ny_this, nx_this, i_this)
+
+                    space = 0.5
+                    space_factor = 1.0 + space
+                    axes2.set_axis_off()
+                    axes2.set_ylim(-1.05 * space_factor, 1.05)
+
+                    axes = axes2.twinx()
+                    axes.set_axis_off()
+
+                    if target.misfit_config.domain == 'cc_max_norm':
+                        axes.set_ylim(-10. * space_factor, 10.)
+                    else:
+                        axes.set_ylim(
+                            -absmax * 2. * space_factor, absmax * 2.) #change scaling if needed
+
+                    itarget, itarget_end = target_index[target]
+                    assert itarget_end == itarget + 1
+
+                    result = target_to_result[target]
+
+                    dtrace = dtraces[itarget]
+
+                    tap_color_annot = (0.35, 0.35, 0.25)
+                    tap_color_edge = (0.85, 0.85, 0.80)
+                    tap_color_fill = (0.95, 0.95, 0.90)
+
+                    plot_taper(
+                        axes2, result.processed_obs.get_xdata(), result.taper,
+                        fc=tap_color_fill, ec=tap_color_edge)
+
+                    obs_color = mpl_color('aluminium5')
+                    obs_color_light = light(obs_color, 0.5)
+
+                    syn_color = mpl_color('scarletred2')
+                    syn_color_light = light(syn_color, 0.5)
+
+                    misfit_color = mpl_color('scarletred2')
+                    weight_color = mpl_color('chocolate2')
+
+                    cc_color = mpl_color('aluminium5')
+
+                    #if target.misfit_config.domain == 'cc_max_norm':
+                        #tref = (result.filtered_obs.tmin +
+                                #result.filtered_obs.tmax) * 0.5
+
+                        #plot_dtrace(
+                            #axes2, dtrace, space, -1., 1.,
+                            #fc=light(cc_color, 0.5),
+                            #ec=cc_color)
+
+                        #plot_dtrace_vline(
+                            #axes2, tref, space, color=tap_color_annot)
+
+                    #elif target.misfit_config.domain == 'frequency_domain':
+
+                        #asmax = amp_spec_maxs[
+                            #target.normalisation_family, target.path]
+                        #fmin, fmax = \
+                            #target.misfit_config.get_full_frequency_range()
+
+                        #plot_spectrum(
+                            #axes2,
+                            #result.spectrum_syn,
+                            #result.spectrum_obs,
+                            #fmin, fmax,
+                            #space, 0., asmax,
+                            #syn_color=syn_color,
+                            #obs_color=obs_color,
+                            #syn_lw=1.0,
+                            #obs_lw=0.75,
+                            #color_vline=tap_color_annot,
+                            #fontsize=fontsize)
+
+                    #else:
+                        #plot_dtrace(
+                            #axes2, dtrace, space, 0., 1.,
+                            #fc=light(misfit_color, 0.3),
+                            #ec=misfit_color)
+
+                    plot_trace(
+                        axes, result.filtered_syn,
+                        color=syn_color_light, lw=1.0)
+
+                    plot_trace(
+                        axes, result.filtered_obs,
+                        color=obs_color_light, lw=0.75)
+
+                    plot_trace(
+                        axes, result.processed_syn,
+                        color=syn_color, lw=1.0)
+
+                    plot_trace(
+                        axes, result.processed_obs,
+                        color=obs_color, lw=0.75)
+
+                    # xdata = result.filtered_obs.get_xdata()
+
+                    tmarks = [
+                        result.processed_obs.tmin,
+                        result.processed_obs.tmax]
+
+                    for tmark in tmarks:
+                        axes2.plot(
+                            [tmark, tmark], [-0.9, 0.1], color=tap_color_annot)
+
+                    dur = tmarks[1] - tmarks[0]
+                    for tmark, text, ha in [
+                            (tmarks[0],
+                             '$\\,$ ' + meta.str_duration(
+                                 tmarks[0] - source.time),
+                             'left'),
+                            (tmarks[1],
+                             '$\\Delta$ ' + meta.str_duration(dur),
+                             'right')]:
+
+                        axes2.annotate(
+                            text,
+                            xy=(tmark, -0.9),
+                            xycoords='data',
+                            xytext=(
+                                fontsize * 0.4 * [-1, 1][ha == 'left'],
+                                fontsize * 0.2),
+                            textcoords='offset points',
+                            ha=ha,
+                            va='bottom',
+                            color=tap_color_annot,
+                            fontsize=fontsize)
+
+                    axes2.set_xlim(tmarks[0] - dur*0.1, tmarks[1] + dur*0.1)
+
+                    rel_w = ws[itarget] / w_max
+                    rel_c = gcms[itarget] / gcm_max
+
+                    sw = 0.25
+                    sh = 0.1
+                    ph = 0.01
+
+                    #for (ih, rw, facecolor, edgecolor) in [
+                            #(0, rel_w, light(weight_color, 0.5),
+                             #weight_color),
+                            #(1, rel_c, light(misfit_color, 0.5),
+                             #misfit_color)]:
+
+                        #bar = patches.Rectangle(
+                            #(1.0 - rw * sw, 1.0 - (ih + 1) * sh + ph),
+                            #rw * sw,
+                            #sh - 2 * ph,
+                            #facecolor=facecolor, edgecolor=edgecolor,
+                            #zorder=10,
+                            #transform=axes.transAxes, clip_on=False)
+
+                        #axes.add_patch(bar)
+
+                    scale_string = None
+
+                    if target.misfit_config.domain == 'cc_max_norm':
+                        scale_string = 'Syn/obs scales differ!'
+
+                    infos = []
+                    if scale_string:
+                        infos.append(scale_string)
+
+                    if self.nx == 1 and self.ny == 1:
+                        infos.append(target.string_id())
+                    else:
+                        infos.append('.'.join(x for x in target.codes if x))
+
+                    dist = source.distance_to(target)
+                    azi = source.azibazi_to(target)[0]
+                    infos.append(meta.str_dist(dist))
+                    infos.append('%.0f\u00B0' % azi)
+                    #infos.append('%.3g' % ws[itarget])
+                    #infos.append('%.3g' % gcms[itarget])
+                    axes2.annotate(
+                        '\n'.join(infos),
+                        xy=(0., 1.),
+                        xycoords='axes fraction',
+                        xytext=(2., 2.),
+                        textcoords='offset points',
+                        ha='left',
+                        va='top',
+                        fontsize=fontsize,
+                        fontstyle='normal')
+
+                    if (self.nx == 1 and self.ny == 1):
+                        yield item, fig
+                        del figures[iyy, ixx]
+
+            if not (self.nx == 1 and self.ny == 1):
+                for (iyy, ixx), (_, fig) in figures.items():
+                    title = '.'.join(x for x in cg if x)
+                    if len(figures) > 1:
+                        title += ' (%i/%i, %i/%i)' % (
+                            iyy + 1, nyy, ixx + 1, nxx)
+
+                    fig.suptitle(title, fontsize=fontsize_title)
+
+            for item, fig in figures.values():
+                yield item, fig
 
 def get_plot_classes():
     return [
         WaveformStationDistribution,
         CheckWaveformsPlot,
         FitsWaveformPlot,
-        FitsWaveformEnsemblePlot
+        FitsWaveformEnsemblePlot,
+        FitsWaveformPlot_extra
     ]
