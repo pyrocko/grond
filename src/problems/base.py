@@ -1002,12 +1002,17 @@ class ModelHistory(object):
     def get_best_misfit(self, chain=0):
         return self.get_sorted_misfits(chain)[0]
 
+    def get_mean_model(self):
+        return num.mean(self.models, axis=0)
+
+    def get_mean_misfit(self, chain=0):
+        return num.mean(self.bootstrap_misfits[:, chain])
+
     def get_best_source(self, chain=0):
         return self.problem.get_source(self.get_best_model(chain))
 
     def get_mean_source(self, chain=0):
-        mean_model = num.mean(self.models, axis=0)
-        return self.problem.get_source(mean_model)
+        return self.problem.get_source(self.get_mean_model())
 
     def get_chain_misfits(self, chain=0):
         return self.bootstrap_misfits[:, chain]

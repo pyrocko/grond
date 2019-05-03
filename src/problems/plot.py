@@ -432,7 +432,9 @@ space.
             problem.combined[smap[iselected]].name
             for iselected in range(nselected)]
 
-        rstats = make_stats(problem, models, misfits, pnames=pnames)
+        rstats = make_stats(problem, models,
+                            history.get_primary_chain_misfits(),
+                            pnames=pnames)
 
         for iselected in range(nselected):
             ipar = smap[iselected]
