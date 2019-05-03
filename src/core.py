@@ -584,8 +584,7 @@ class ResultStats(Object):
     parameter_stats_list = List.T(ParameterStats.T())
 
 
-def make_stats(problem, xs, misfits, pnames=None):
-    gms = problem.combine_misfits(misfits)
+def make_stats(problem, models, gms, pnames=None):
     ibest = num.argmin(gms)
     rs = ResultStats(problem=problem)
     if pnames is None:
@@ -593,7 +592,7 @@ def make_stats(problem, xs, misfits, pnames=None):
 
     for pname in pnames:
         iparam = problem.name_to_index(pname)
-        vs = problem.extract(xs, iparam)
+        vs = problem.extract(models, iparam)
         mi, p5, p16, median, p84, p95, ma = map(float, num.percentile(
             vs, [0., 5., 16., 50., 84., 95., 100.]))
 
@@ -678,9 +677,12 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     header = None
     for rundir in rundirs:
-        problem, xs, misfits, bootstrap_misfits, _ = \
-            load_problem_info_and_data(
-                rundir, subset='harvest')
+        env = Environment(rundir)
+        history = env.get_history(subset='harvest')
+
+        problem = history.problem
+        models = history.models
+        misfits = history.get_primary_chain_misfits()
 
         if type == 'vector':
             pnames_take = pnames_clean or \
@@ -705,21 +707,25 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             indices = None
 
         if what == 'best':
-            x_best, gm_best = stats.get_best_x_and_gm(problem, xs, misfits)
+            x_best = history.get_best_model()
+            gm_best = history.get_best_misfit()
             dump(x_best, gm_best, indices)
 
         elif what == 'mean':
-            x_mean, gm_mean = stats.get_mean_x_and_gm(problem, xs, misfits)
+            x_mean = history.get_mean_model()
+            gm_mean = history.get_mean_misfit(chain=0)
             dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
-            gms = problem.combine_misfits(misfits)
+            gms = misfits
             isort = num.argsort(gms)
             for i in isort:
-                dump(xs[i], gms[i], indices)
+                dump(models[i], gms[i], indices)
 
         elif what == 'stats':
-            rs = make_stats(problem, xs, misfits, pnames_clean)
+            rs = make_stats(problem, models,
+                            history.get_primary_chain_misfits(),
+                            pnames_clean)
             if shortform:
                 print(' ', format_stats(rs, pnames), file=out)
             else:
