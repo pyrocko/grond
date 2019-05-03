@@ -54,7 +54,7 @@ class CLVDVolumeProblem(Problem):
 
         Parameter('dip', 'deg', label='Dip'),
         Parameter('azimuth', 'deg', label='Azimuth'),
-        Parameter('clvd_magnitude', 'M', label='CLVD Magnitude'),
+        Parameter('clvd_moment', 'Nm', label='CLVD Moment'),
         Parameter('volume_change', 'm^3', label='Volume Change', **as_km3),
 
     ]
