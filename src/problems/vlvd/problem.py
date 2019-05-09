@@ -15,7 +15,7 @@ as_km = dict(scale_factor=km, scale_unit='km')
 as_km3 = dict(scale_factor=km**3, scale_unit='km^3')
 
 
-class CLVDVolumeProblemConfig(ProblemConfig):
+class VLVDProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     nthreads = Int.T(default=1)
@@ -24,14 +24,14 @@ class CLVDVolumeProblemConfig(ProblemConfig):
         if event.depth is None:
             event.depth = 0.
 
-        base_source = gf.CLVDVolumeSource.from_pyrocko_event(event)
+        base_source = gf.VLVDSource.from_pyrocko_event(event)
         base_source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
 
         subs = dict(
             event_name=event.name,
             event_time=util.time_to_str(event.time))
 
-        problem = CLVDVolumeProblem(
+        problem = VLVDProblem(
             name=expand_template(self.name_template, subs),
             base_source=base_source,
             target_groups=target_groups,
@@ -45,7 +45,7 @@ class CLVDVolumeProblemConfig(ProblemConfig):
 
 
 @has_get_plot_classes
-class CLVDVolumeProblem(Problem):
+class VLVDProblem(Problem):
 
     problem_parameters = [
         Parameter('north_shift', 'm', label='Northing', **as_km),
@@ -90,5 +90,5 @@ class CLVDVolumeProblem(Problem):
     def get_plot_classes(cls):
         from . import plot
         plots = super().get_plot_classes()
-        plots.extend([plot.CLVDVolumeLocationPlot])
+        plots.extend([plot.VLVDLocationPlot])
         return plots

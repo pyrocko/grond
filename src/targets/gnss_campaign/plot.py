@@ -8,7 +8,7 @@ from pyrocko import orthodrome as od
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 from grond.problems import CMTProblem, RectangularProblem, \
-    VolumePointProblem, CLVDVolumeProblem
+    VolumePointProblem, VLVDProblem
 
 from ..plot import StationDistributionPlot
 
@@ -168,7 +168,7 @@ displacements derived from best model (red).
                 labels=False)
 
             if isinstance(problem, CMTProblem) \
-                    or isinstance(problem, CLVDVolumeProblem):
+                    or isinstance(problem, VLVDProblem):
                 from pyrocko import moment_tensor
                 from pyrocko.plot import gmtpy
 

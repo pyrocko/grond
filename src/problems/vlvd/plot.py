@@ -2,8 +2,8 @@ from ..plot import MTLocationPlot
 from pyrocko.plot import mpl_init
 
 
-class CLVDVolumeLocationPlot(MTLocationPlot):
-    name = 'location_clvd'
+class VLVDLocationPlot(MTLocationPlot):
+    name = 'location_vlvd'
     beachball_type = 'full'
 
     def make(self, environ):
