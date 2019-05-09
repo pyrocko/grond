@@ -40,19 +40,29 @@ class NoPlotCollectionManagerAvailable(GrondEnvironmentError):
 
 class Environment(object):
 
-    def __init__(self, args):
+    def __init__(self, args=None, config=None, event_names=None):
 
         self._current_event_name = None
         self._selected_event_names = None
         self._config = None
         self._plot_collection_manager = None
+
         if isinstance(args, str):
             args = [args]
 
-        if not args:
+        if not args and not config:
             raise GrondEnvironmentError('missing arguments')
 
-        if op.isdir(args[0]):
+        if config and event_names:
+            self._config_path = None
+            self._rundir_path = None
+            self._config = config
+
+            if isinstance(event_names, str):
+                event_names = [event_names]
+            self.set_selected_event_names(event_names)
+
+        elif op.isdir(args[0]):
             self._rundir_path = args[0]
             self._config_path = op.join(self._rundir_path, 'config.yaml')
 
