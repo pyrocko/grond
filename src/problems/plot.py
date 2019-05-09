@@ -731,7 +731,7 @@ high (blue) misfit.
         for obj in self._to_be_closed:
             obj.close()
 
-    def draw_figures(self, history):
+    def draw_figures(self, history, color_p_axis=False):
         from matplotlib import colors
 
         color = 'black'
@@ -765,6 +765,18 @@ high (blue) misfit.
             set_label(par.get_label())
             xmin, xmax = fixlim(*par.scaled(bounds[ipar]))
             set_lim(xmin, xmax)
+
+        if 'volume_change' in problem.parameter_names:
+            volumes = models[:, problem.name_to_index('volume_change')]
+            volume_max = volumes.max()
+            volume_min = volumes.min()
+
+        def scale_size(source):
+            if not hasattr(source, 'volume_change'):
+                return beachballsize_small
+            volume_change = source.volume_change
+            fac = (volume_change - volume_min) / (volume_max - volume_min)
+            return markersize * .25 + markersize * .5 * fac
 
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
@@ -825,8 +837,9 @@ high (blue) misfit.
                         mt, axes,
                         beachball_type=beachball_type,
                         position=(sx, sy),
-                        size=beachballsize_small,
+                        size=scale_size(source),
                         color_t=color,
+                        color_p=color if color_p_axis else None,
                         alpha=alpha,
                         zorder=1,
                         linewidth=0.25)

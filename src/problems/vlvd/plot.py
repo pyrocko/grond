@@ -27,3 +27,7 @@ high (blue) misfit.
 ''')
         for obj in self._to_be_closed:
             obj.close()
+
+    def draw_figures(self, history):
+        return MTLocationPlot.draw_figures(
+            self, history, color_p_axis=True)
