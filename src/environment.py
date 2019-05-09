@@ -1,11 +1,14 @@
 import time
 import logging
-import os.path as op
+import shutil
+import os
 
-from grond.config import read_config
+from grond.config import read_config, write_config
 from grond import meta, run_info
 from grond.problems.base import load_optimiser_info, load_problem_info, \
     ModelHistory
+
+op = os.path
 
 logger = logging.getLogger('grond.environment')
 
@@ -95,6 +98,38 @@ class Environment(object):
             if not op.exists(op.join(rundir_path, fn)):
                 raise GrondEnvironmentError('inconsistent rundir')
 
+    def copy(self, destination, force=False):
+        ''' Copy the environment and return it '''
+        files = [
+            'config.yaml',
+            'problem.yaml',
+            'optimiser.yaml',
+            'misfits',
+            'models',
+            'choices',
+            'chains'
+            ]
+
+        if op.exists(destination) and not force:
+            raise OSError('Directory %s already exists' % destination)
+
+        destination = op.abspath(destination)
+        os.makedirs(destination, exist_ok=True)
+
+        for file in files:
+            src = op.join(self._rundir_path, file)
+            dest = op.join(destination, file)
+
+            if not op.isfile(src):
+                logger.debug('Cannot find file %s', src)
+                continue
+            logger.debug('Copying %s to %s', src, dest)
+
+            shutil.copy(src, dest)
+
+        cls = self.__class__
+        return cls(destination)
+
     def reset(self):
         self._histories = {}
         self._dataset = None
@@ -106,6 +141,9 @@ class Environment(object):
             self._config = read_config(self._config_path)
 
         return self._config
+
+    def write_config(self):
+        write_config(self.get_config(), self.get_config_path())
 
     def get_available_event_names(self):
         return self.get_config().get_event_names()
