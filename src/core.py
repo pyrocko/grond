@@ -656,7 +656,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         print('#', ' '.join(['%16s' % x for x in pnames]), file=out)
 
     def dump(x, gm, indices):
-        nsources = 2
+        nsources = 3
         sources = []
         events = []
         if type == 'vector':

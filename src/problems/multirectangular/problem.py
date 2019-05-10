@@ -51,7 +51,7 @@ day= 24.*3600.
 class MultiRectangularProblem(Problem):
 
     #nsources = Problem.nsources #here i need help
-    nsources = 2
+    nsources = 3
     problem_parameters = []
     problem_waveform_parameters = []
 
@@ -82,6 +82,7 @@ class MultiRectangularProblem(Problem):
         return arr
 
     def get_source(self, x, i):
+        #print("n:",self.nsources)
         d = self.get_parameter_dict(x[0+9*i:9+i*9], nsources=self.nsources)
 
         p = {}

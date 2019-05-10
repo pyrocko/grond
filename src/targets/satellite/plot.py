@@ -81,16 +81,19 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
+        
         best_model = history.get_best_model()
+        
         gms = problem.combine_misfits(history.misfits)
         isort = num.argsort(gms)
         gms = gms[isort]
         #nsources = problem.nsources #help
-        nsources = 2
+        nsources = 3
         if nsources is not None:
             sources = []
             for i in range(nsources):
                 sources.append(history.get_best_source(i))
+                
             source = sources[0]
         else:
             source = problem.get_source(0)
@@ -126,8 +129,8 @@ edge marking the upper fault edge. Complete data extent is shown.
                 scale_x = {'scale': 1.}
                 scale_y = {'scale': 1.}
                 if not self.relative_coordinates:
-                    scale_x['offset'] = source.effective_lat
-                    scale_y['offset'] = source.effective_lon
+                    scale_y['offset'] = source.effective_lat
+                    scale_x['offset'] = source.effective_lon
                 ax.set_aspect(1./num.cos(source.effective_lat*d2r))
 
             scale_axes(ax.get_xaxis(), **scale_x)
@@ -140,10 +143,10 @@ edge marking the upper fault edge. Complete data extent is shown.
                     fes = []
                     for source in sources:
                         fn_sub, fe_sub = source.outline(cs='xy').T
-                    fn_sub -= fn_sub.mean()
-                    fe_sub -= fe_sub.mean()
-                    fes.append(fe_sub)
-                    fns.append(fn_sub)
+                        fn_sub -= fn_sub.mean()
+                        fe_sub -= fe_sub.mean()
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
                 else:
                     fn, fe = source.outline(cs='xy').T
 
@@ -151,12 +154,13 @@ edge marking the upper fault edge. Complete data extent is shown.
                 if nsources is not None:
                     fns = []
                     fes = []
+                    sourceref = sources[0]
                     for source in sources:
                         fn_sub, fe_sub = source.outline(cs='latlon').T
-                    fn_sub -= source.effective_lat
-                    fe_sub -= source.effective_lon
-                    fes.append(fe_sub)
-                    fns.append(fn_sub)
+                        fn_sub -= sourceref.effective_lat
+                        fe_sub -= sourceref.effective_lon
+                        fes.append(fe_sub)
+                        fns.append(fn_sub)
 
                 else:
                     fn, fe = source.outline(cs='latlon').T

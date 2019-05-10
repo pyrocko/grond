@@ -583,11 +583,12 @@ class Problem(Object):
     def evaluate(self, x, mask=None, result_mode='full', targets=None, nsources=None):
         patches = []
         outlines = []
-        self.nsources = 2
+        self.nsources = 3
         if self.nsources:
             for i in range(self.nsources):
                 source = self.get_source(x, i)
                 patches.append(source)
+                print(patches)
                 outlines.append(source.outline())
         else:
                 source = self.get_source(x)
@@ -619,7 +620,7 @@ class Problem(Object):
 
         modelling_targets_unique = list(u2m_map.keys())
 
-        resp = engine.process(source, modelling_targets_unique,
+        resp = engine.process(sources, modelling_targets_unique,
                               nthreads=self.nthreads)
         modelling_results_unique = list(resp.results_list[0])
 
