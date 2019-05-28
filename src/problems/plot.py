@@ -708,6 +708,10 @@ class MTLocationPlot(SectionPlotConfig):
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
+    normalisation_gamma = Float.T(
+        default=3.,
+        help='Normalisation of colors and alpha as :math:`x^\gamma`.'
+             'A linear colormap/alpha with :math:`\gamma=1`.')
 
     def make(self, environ):
         environ.setup_modelling()
@@ -774,6 +778,7 @@ high (blue) misfit.
         def scale_size(source):
             if not hasattr(source, 'volume_change'):
                 return beachballsize_small
+
             volume_change = source.volume_change
             fac = (volume_change - volume_min) / (volume_max - volume_min)
             return markersize * .25 + markersize * .5 * fac
@@ -811,9 +816,10 @@ high (blue) misfit.
             # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
 
             cmap = cm.ScalarMappable(
-                norm=colors.Normalize(
-                    vmin=num.min(iorder),
-                    vmax=num.max(iorder)),
+                norm=colors.PowerNorm(
+                    gamma=self.normalisation_gamma,
+                    vmin=iorder.min(),
+                    vmax=iorder.max()),
 
                 cmap=plt.get_cmap('coolwarm'))
 
@@ -827,10 +833,12 @@ high (blue) misfit.
                 fy = problem.extract(x, iypar)
                 sx, sy = xpar.scaled(fx), ypar.scaled(fy)
 
+                # TODO: Add rotation in cross-sections
                 color = cmap.to_rgba(iorder[ix])
 
-                alpha = (iorder[ix] - num.min(iorder)) / \
-                    float(num.max(iorder) - num.min(iorder))
+                alpha = (iorder[ix] - iorder.min()) / \
+                    float(iorder.max() - iorder.min())
+                alpha = alpha**self.normalisation_gamma
 
                 try:
                     beachball.plot_beachball_mpl(
