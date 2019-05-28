@@ -1,4 +1,5 @@
 import logging
+import warnings
 import numpy as num
 from scipy import linalg as splinalg
 
@@ -246,6 +247,9 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         try:
             # TODO:mi Signal handler is not given back to the main task!
             # This is a python3.7 bug
+            warnings.warn('Using multi-threading for SatelliteTargets. '
+                          'Python 3.7 needs to be killed hard:'
+                          ' `killall grond`', UserWarning)
             from concurrent.futures import ThreadPoolExecutor
             nthreads = os.cpu_count() if not nthreads else nthreads
 
