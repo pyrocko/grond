@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `MTLocationPlot` supports Gamma scaling (misfit^gamma).
 - `SatelliteTarget` speeds up bootstrapping by multi-threading.
 - `Envronment` can be initialised from `ProblemConfig`.
+- Improved: `grondown` downloading seismic wave forms.
 
 
 ## [1.2.0] 2019-02-19
