@@ -81,23 +81,10 @@ def cut_n_dump(traces, win, out_path):
     return io.save(otraces, out_path)
 
 
-aliases = {
-    '2010_haiti': '2010-01-12 21:53:00',
-    '2012_emilia': ('2012-05-20 02:03:52', '2012-05-29 07:00:03'),
-    '2009_laquila': '2009-04-06 01:32:39',
-}
-
-
 def get_events_by_name_or_date(event_names_or_dates, catalog=geofon):
     stimes = []
     for sev in event_names_or_dates:
-        if sev in aliases:
-            if isinstance(aliases[sev], str):
-                stimes.append(aliases[sev])
-            else:
-                stimes.extend(aliases[sev])
-        else:
-            stimes.append(sev)
+        stimes.append(sev)
 
     events_out = []
     for stime in stimes:
@@ -129,14 +116,18 @@ class PhaseWindow(object):
         self.omax = omax
 
     def __call__(self, time, distance, depth):
+        tts = []
         for ray in self.model.arrivals(
                 phases=self.phases,
                 zstart=depth,
                 distances=[distance*cake.m2d]):
 
-            return time + ray.t + self.omin, time + ray.t + self.omax
+            tts.append(ray.t)
 
-        raise NoArrival
+        if tts:
+            return time + min(tts) + self.omin, time + max(tts) + self.omax
+
+        raise NoArrival()
 
 
 class VelocityWindow(object):
@@ -190,19 +181,21 @@ logger = logging.getLogger('')
 
 usage = '''
 usage: grondown [options] [--] <YYYY-MM-DD> <HH:MM:SS> <lat> <lon> \\
-                               <depth_km> <radius_km> <fmin_hz> \\
-                               <sampling_rate_hz> \\
-                               <eventname>
+                               <depth_km> ( <radius_km> | <stations> )
+                               <fmin_hz> <sampling_rate_hz> <eventname>
 
-       grondown [options] [--] <YYYY-MM-DD> <HH:MM:SS> <radius_km> <fmin_hz> \\
-                               <sampling_rate_hz> <eventname>
+       grondown [options] [--] <YYYY-MM-DD> <HH:MM:SS> \\
+                               ( <radius_km> | <stations> ) \\
+                               <fmin_hz> <sampling_rate_hz> <eventname>
 
-       grondown [options] [--] <catalog-eventname> <radius_km> <fmin_hz> \\
-                               <sampling_rate_hz> <eventname>
+       grondown [options] [--] <catalog-eventname> \\
+                               ( <radius_km> | <stations> ) \\
+                               <fmin_hz> <sampling_rate_hz> <eventname>
 
        grondown [options] --window="<YYYY-MM-DD HH:MM:SS, YYYY-MM-DD HH:MM:\
 SS>" \\
-                               [--] <lat> <lon> <radius_km> <fmin_hz> \\
+                               [--] <lat> <lon>
+                               ( <radius_km> | <stations> ) <fmin_hz> \\
                                <sampling_rate_hz> <eventname>
 '''.strip()
 
@@ -241,6 +234,12 @@ if __name__ == '__main__':
         help='continue download after a accident')
 
     parser.add_option(
+        '--local-catalog',
+        dest='local_catalog',
+        metavar='FILENAME',
+        help='local catalog to use in combination with <catalog-eventname>')
+
+    parser.add_option(
         '--local-data',
         dest='local_data',
         action='append',
@@ -273,8 +272,8 @@ if __name__ == '__main__':
         '--window',
         dest='window',
         default='full',
-        help='set time window to choose [full, p, "<time-start>,<time-end>"'
-             '] (time format is YYYY-MM-DD HH:MM:SS)')
+        help='set time window to choose [full, p, body, '
+             '"<time-start>,<time-end>"] (time format is YYYY-MM-DD HH:MM:SS)')
 
     parser.add_option(
         '--out-components',
@@ -386,6 +385,7 @@ if __name__ == '__main__':
     try:
         ename = ''
         magnitude = None
+        depth = None
         mt = None
         if len(args) == 9:
             time = util.str_to_time(args[0] + ' ' + args[1])
@@ -411,8 +411,13 @@ if __name__ == '__main__':
             iarg = 1
 
         if len(args) in (6, 5) and sname_or_date is not None:
-            events = get_events_by_name_or_date([sname_or_date],
-                                                catalog=geofon)
+            if options.local_catalog:
+                events = [
+                    ev for ev in model.load_events(options.local_catalog)
+                    if ev.name == sname_or_date]
+            else:
+                events = get_events_by_name_or_date([sname_or_date],
+                                                    catalog=geofon)
             if len(events) == 0:
                 logger.critical('no event found')
                 sys.exit(1)
@@ -429,7 +434,19 @@ if __name__ == '__main__':
             magnitude = event.magnitude
             mt = event.moment_tensor
 
-        radius = float(args[iarg])*km
+        sarg = args[iarg]
+        if op.exists(sarg):
+            stations_want = model.load_stations(sarg)
+            if event is None:
+                radius_max = None
+            else:
+                radius_max = max(
+                    orthodrome.distance_accurate50m(event, station)
+                    for station in stations_want)
+        else:
+            stations_want = None
+            radius_max = float(sarg)*km
+
         fmin = float(args[iarg+1])
         sample_rate = float(args[iarg+2])
 
@@ -440,6 +457,10 @@ if __name__ == '__main__':
         raise
         parser.print_help()
         sys.exit(1)
+
+    if depth is None:
+        logger.warn('No event depth given. Assuming zero.')
+        depth = 0.0
 
     if options.force and op.isdir(event_dir):
         if not options.continue_:
@@ -467,21 +488,26 @@ if __name__ == '__main__':
         timewindow = VelocityWindow(
             low_velocity, tpad=options.padding_factor/fmin)
 
-        tmin, tmax = timewindow(time, radius, depth)
+        tmin, tmax = timewindow(time, radius_max, depth)
 
-    elif options.window == 'p':
+    elif options.window in ('p', 'body'):
         if event is None:
-            logger.critical('need event for --window=p')
+            logger.critical('need event for --window=%s' % options.window)
             sys.exit(1)
 
-        phases = list(map(cake.PhaseDef, 'P p'.split()))
+        if options.window == 'p':
+            phases = list(map(cake.PhaseDef, 'P p'.split()))
+
+        elif options.window == 'body':
+            phases = list(map(cake.PhaseDef, 'P p S s SS'.split()))
+
         emod = cake.load_model()
 
         tpad = options.padding_factor / fmin
         timewindow = PhaseWindow(emod, phases, -tpad, tpad)
 
         arrivaltimes = []
-        for dist in num.linspace(0, radius, 20):
+        for dist in num.linspace(options.radius_min, radius_max, 20):
             try:
                 arrivaltimes.extend(timewindow(time, dist, depth))
             except NoArrival:
@@ -529,13 +555,6 @@ if __name__ == '__main__':
     for s in priority_instrument_code:
         if len(s) != 1:
             logger.critical('invalid instrument code: %s' % s)
-
-    station_query_conf = dict(
-        latitude=lat,
-        longitude=lon,
-        minradius=options.radius_min*km*cake.m2d,
-        maxradius=radius*cake.m2d,
-        channel=','.join('?%s?' % s for s in priority_band_code))
 
     target_sample_rate = sample_rate
 
@@ -591,20 +610,38 @@ if __name__ == '__main__':
                 'iris': dict(matchtimeseries=True),
             }.get(site, {})
 
-            extra_args.update(station_query_conf)
+            extra_args.update(
+                includerestricted=(
+                    site in g_user_credentials or site in g_auth_tokens))
 
-            if site == 'geonet':
+            if not stations_want:
                 extra_args.update(
-                    starttime=tmin,
-                    endtime=tmax)
+                    latitude=lat,
+                    longitude=lon,
+                    minradius=options.radius_min*km*cake.m2d,
+                    maxradius=radius_max*cake.m2d,
+                    channel=','.join('?%s?' % s for s in priority_band_code))
+
+                if site == 'geonet':
+                    extra_args.update(
+                        starttime=tmin,
+                        endtime=tmax)
+                else:
+                    extra_args.update(
+                        startbefore=tmax,
+                        endafter=tmin)
+
             else:
-                extra_args.update(
-                    startbefore=tmax,
-                    endafter=tmin,
-                    includerestricted=(
-                        site in g_user_credentials or site in g_auth_tokens))
+                selection = []
+                for station in stations_want:
+                    for channel in station.get_channels():
+                        selection.append(
+                            station.nsl() + (channel.name, tmin, tmax))
+
+                extra_args.update(selection=selection)
 
             logger.info('downloading channel information (%s)' % site)
+
             sx = fdsn.station(
                 site=site,
                 format='text',
@@ -615,8 +652,7 @@ if __name__ == '__main__':
             logger.error('No stations matching given criteria. (%s)' % site)
             sx = None
 
-        if sx is not None:
-            sxs.append(sx)
+        sxs.append(sx)
 
     if all(sx is None for sx in sxs) and not options.local_data:
         sys.exit(1)
@@ -624,12 +660,19 @@ if __name__ == '__main__':
     nsl_to_sites = defaultdict(list)
     nsl_to_station = {}
     for sx, site in zip(sxs, sites):
-        site_stations = sx.get_pyrocko_stations()
+        if sx is not None:
+            site_stations = sx.get_pyrocko_stations()
+        else:
+            site_stations = []
+
         for s in site_stations:
             nsl = s.nsl()
             nsl_to_sites[nsl].append(site)
             if nsl not in nsl_to_station:
                 nsl_to_station[nsl] = s  # using first site with this station
+
+            logger.debug(str(s))
+
     logger.info('number of stations found: %i' % len(nsl_to_station))
 
     # station weeding
@@ -680,6 +723,8 @@ if __name__ == '__main__':
             trs_avail = p.all(tmin=tmin_win, tmax=tmax_win, load_data=False)
             for tr in trs_avail:
                 have_data_this_window.add(tr.nslc_id)
+                have_data.add(tr.nslc_id)
+
         for site, sx in zip(sites, sxs):
             if sx is None:
                 continue
@@ -710,13 +755,16 @@ if __name__ == '__main__':
                         channel.latitude.value, channel.longitude.value)
 
                     if event:
-                        depth_ = event.depth
+                        depth_ = event.depth or 0.0
                         time_ = event.time
                     else:
                         depth_ = None
                         time_ = None
 
-                    tmin_, tmax_ = timewindow(time_, dist, depth_)
+                    try:
+                        tmin_, tmax_ = timewindow(time_, dist, depth_)
+                    except NoArrival:
+                        continue
 
                     tmin_this = tmin_ - tpad
                     tmax_this = tmax_ + tpad
@@ -773,6 +821,7 @@ if __name__ == '__main__':
                             try:
                                 tr.chop(tmin_win, tmax_win)
                                 have_data.add(tr.nslc_id)
+                                have_data_this_window.add(tr.nslc_id)
                                 have_data_site[site].add(tr.nslc_id)
                             except trace.NoData:
                                 pass
@@ -854,12 +903,34 @@ if __name__ == '__main__':
             selection.append(nslc + (tmin-tpad, tmax+tpad))
 
         if selection:
-            logger.info('downloading response information (%s)' % site)
-            sxs[site] = fdsn.station(
-                site=site, level='response', selection=selection)
+            neach = 100
+            nbatches = ((len(selection)-1) // neach) + 1
+            sxs_batches = []
+            ibatch = 0
+            for ibatch in range(nbatches):
+                selection_batch = selection[ibatch*neach:(ibatch+1)*neach]
 
+                logger.info(
+                    'downloading response information for %i channels  '
+                    '(%s) (batch %i/%i)' % (
+                        len(selection_batch),
+                        site, ibatch+1, nbatches))
+
+                sxs_batch = fdsn.station(
+                    site=site, level='response', selection=selection_batch)
+
+                sxs_batch.dump_xml(
+                    filename=op.join(
+                        output_dir,
+                        'stations.%s.%i.xml' % (site, ibatch)))
+
+                sxs_batches.append(sxs_batch)
+
+            sxs[site] = stationxml.primitive_merge(sxs_batches)
             sxs[site].dump_xml(
-                filename=op.join(output_dir, 'stations.%s.xml' % site))
+                filename=op.join(
+                    output_dir,
+                    'stations.%s.xml' % site))
 
     # chapter 1.5: inject local data
 
@@ -1041,7 +1112,11 @@ if __name__ == '__main__':
 
         keep = []
         for tr in traces:
+
             if deltat is not None:
+                if tr.data_len() * tr.deltat < 10*deltat:
+                    continue
+
                 try:
                     tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
                     keep.append(tr)
