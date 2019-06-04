@@ -4,6 +4,21 @@ All notable changes to Grond will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+- Added Covariance weighting from `SatelliteTarget` and `GNSSTarget`.
+- Added new Volume source (VLVD).
+- Added SVG as `grond plot` export format.
+
+### Changed
+- Consistent utilisation of `ModelHistory` for plots and results.
+- `MTLocationPlot` supports Gamma scaling (misfit^gamma).
+- `SatelliteTarget` speeds up bootstrapping by multi-threading.
+- `Envronment` can be initialised from `ProblemConfig`.
+- Improved: `grondown` downloading seismic wave forms.
+
+
 ## [1.2.0] 2019-02-19
 
 ### Added

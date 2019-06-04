@@ -81,14 +81,9 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)
-        gms = gms[isort]
-        models = history.models[isort, :]
-        xbest = models[0, :]
-
-        source = problem.get_source(xbest)
-        results = problem.evaluate(xbest, targets=sat_targets)
+        source = history.get_best_source()
+        best_model = history.get_best_model()
+        results = problem.evaluate(best_model, targets=sat_targets)
 
         def initAxes(ax, scene, title, last_axes=False):
             ax.set_title(title)
@@ -230,7 +225,7 @@ edge marking the upper fault edge. Complete data extent is shown.
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
                 2, 3,
-                wspace=.05, hspace=.2,
+                wspace=.15, hspace=.2,
                 left=.1, right=.975, top=.95,
                 height_ratios=[12, 1])
 

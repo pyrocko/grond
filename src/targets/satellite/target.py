@@ -1,8 +1,12 @@
 import logging
+import warnings
 import numpy as num
+from scipy import linalg as splinalg
 
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
+
+import os
 
 from grond.meta import Parameter, has_get_plot_classes
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
@@ -142,6 +146,8 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         self.parameter_values = {}
 
+        self._noise_weight_matrix = None
+
     @property
     def target_ranges(self):
         return self.misfit_config.ranges
@@ -149,12 +155,25 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def string_id(self):
         return '.'.join([self.path, self.scene_id])
 
+    @property
+    def id(self):
+        return self.scene_id
+
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
 
     @property
     def nmisfits(self):
         return self.lats.size
+
+    def get_correlated_weights(self):
+        ''' is for L2-norm weighting, the square-rooted, inverse covar '''
+        logger.info('Inverting scene covariance matrix...')
+        if self._noise_weight_matrix is None:
+            self._noise_weight_matrix = splinalg.sqrtm(
+                num.linalg.inv(self.scene.covariance.covariance_matrix))
+
+        return self._noise_weight_matrix
 
     @property
     def scene(self):
@@ -199,7 +218,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
     def get_combined_weight(self):
         if self._combined_weight is None:
+            # invcov = self.scene.covariance.weight_matrix
+            # self._combined_weight = invcov * self.manual_weight
             self._combined_weight = num.full(self.nmisfits, self.manual_weight)
+
         return self._combined_weight
 
     def prepare_modelling(self, engine, source, targets):
@@ -209,7 +231,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
             self, engine, source, modelling_targets, modelling_results):
         return modelling_results[0]
 
-    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+    def init_bootstrap_residuals(self, nbootstraps, rstate=None, nthreads=0):
         logger.info(
             'Scene "%s", initializing bootstrapping residuals from noise '
             'pertubations...' % self.scene_id)
@@ -220,13 +242,30 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         scene = self.scene
         qt = scene.quadtree
         cov = scene.covariance
-        bootstraps = num.empty((nbootstraps, qt.nleaves))
+        bootstraps = num.zeros((nbootstraps, qt.nleaves))
 
-        for ibs in range(nbootstraps):
-            if not (ibs+1) % 5:
-                logger.info('Calculating noise realisation %d/%d.'
-                            % (ibs+1, nbootstraps))
-            bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
+        try:
+            # TODO:mi Signal handler is not given back to the main task!
+            # This is a python3.7 bug
+            warnings.warn('Using multi-threading for SatelliteTargets. '
+                          'Python 3.7 needs to be killed hard:'
+                          ' `killall grond`', UserWarning)
+            from concurrent.futures import ThreadPoolExecutor
+            nthreads = os.cpu_count() if not nthreads else nthreads
+
+            with ThreadPoolExecutor(max_workers=nthreads) as executor:
+                res = executor.map(
+                    cov.getQuadtreeNoise,
+                    [rstate for _ in range(nbootstraps)])
+
+                for ibs, bs in enumerate(res):
+                    bootstraps[ibs, :] = bs
+        except ImportError:
+            for ibs in range(nbootstraps):
+                if not (ibs+1) % 5:
+                    logger.info('Calculating noise realisation %d/%d.'
+                                % (ibs+1, nbootstraps))
+                bootstraps[ibs, :] = cov.getQuadtreeNoise(rstate=rstate)
 
         self.set_bootstrap_residuals(bootstraps)
 

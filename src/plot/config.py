@@ -91,6 +91,23 @@ class PDF(PlotFormat):
         return automap.save(path, **kwargs)
 
 
+class SVG(PlotFormat):
+    name = 'svg'
+
+    dpi = Int.T(
+        default=150,
+        help='DPI of the figure')
+
+    def get_dpi(self, size_cm):
+        return self.dpi
+
+    def render_mpl(self, fig, path, **kwargs):
+        return fig.savefig(path, format=self.name, **kwargs)
+
+    def render_automap(self, automap, path, **kwargs):
+        return automap.save(path, **kwargs)
+
+
 class HTML(PlotFormat):
     name = 'html'
 

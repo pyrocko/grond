@@ -62,6 +62,7 @@ class JointparPlot(PlotConfig):
     include = List.T(String.T())
     show_ellipses = Bool.T(default=False)
     nsubplots = Int.T(default=6)
+    show_ticks = Bool.T(default=False)
     show_reference = Bool.T(default=True)
 
     def make(self, environ):
@@ -95,7 +96,7 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
         include = self.include
         nsubplots = self.nsubplots
         figsize = self.size_inch
-        ibootstrap = self.ibootstrap
+        ibootstrap = 0 if self.ibootstrap is None else self.ibootstrap
         misfit_cutoff = self.misfit_cutoff
         show_ellipses = self.show_ellipses
         msize = 1.5
@@ -117,22 +118,16 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
 
         xref = problem.get_reference_model(expand=True)
 
-        if ibootstrap is not None:
-            gms = history.bootstrap_misfits[:, ibootstrap]
-        else:
-            gms = problem.combine_misfits(history.misfits)
+        isort = history.get_sorted_misfits_idx(chain=ibootstrap)[::-1]
+        models = history.get_sorted_models(chain=ibootstrap)[::-1]
+        nmodels = history.nmodels
 
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-        models = models[isort, :]
-
+        gms = history.get_sorted_misfits(chain=ibootstrap)[::-1]
         if misfit_cutoff is not None:
             ibest = gms < misfit_cutoff
             gms = gms[ibest]
             models = models[ibest]
 
-        nmodels = models.shape[0]
         kwargs = {}
 
         if color_parameter == 'dist':
@@ -267,8 +262,13 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
                 axes.set_xlim(xmin, xmax)
                 axes.set_ylim(ymin, ymax)
 
-                axes.get_xaxis().set_ticks([])
-                axes.get_yaxis().set_ticks([])
+                if not self.show_ticks:
+                    axes.get_xaxis().set_ticks([])
+                    axes.get_yaxis().set_ticks([])
+                else:
+                    axes.tick_params(length=4, which='both')
+                    axes.get_yaxis().set_ticklabels([])
+                    axes.get_xaxis().set_ticklabels([])
 
                 if iselected == nselected - 1 or ix == nsubplots - 1:
                     axes.annotate(
@@ -432,7 +432,9 @@ space.
             problem.combined[smap[iselected]].name
             for iselected in range(nselected)]
 
-        rstats = make_stats(problem, models, misfits, pnames=pnames)
+        rstats = make_stats(problem, models,
+                            history.get_primary_chain_misfits(),
+                            pnames=pnames)
 
         for iselected in range(nselected):
             ipar = smap[iselected]
@@ -560,13 +562,12 @@ best have similar symbol size and patterns.
         # iorder = num.empty_like(isort)
         # iorder[isort] = num.arange(iorder.size)[::-1]
 
+        ref_source = problem.base_source
+
         mean_source = stats.get_mean_source(
             problem, history.models)
 
-        best_source = stats.get_best_source(
-            problem, history.models, history.misfits)
-
-        ref_source = problem.base_source
+        best_source = history.get_best_source()
 
         nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
 
@@ -707,6 +708,10 @@ class MTLocationPlot(SectionPlotConfig):
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
+    normalisation_gamma = Float.T(
+        default=3.,
+        help='Normalisation of colors and alpha as :math:`x^\gamma`.'
+             'A linear colormap/alpha with :math:`\gamma=1`.')
 
     def make(self, environ):
         environ.setup_modelling()
@@ -730,7 +735,7 @@ high (blue) misfit.
         for obj in self._to_be_closed:
             obj.close()
 
-    def draw_figures(self, history):
+    def draw_figures(self, history, color_p_axis=False):
         from matplotlib import colors
 
         color = 'black'
@@ -750,12 +755,7 @@ high (blue) misfit.
 
         bounds = problem.get_combined_bounds()
 
-        gms = problem.combine_misfits(history.misfits)
-
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-        models = history.models[isort, :]
+        models = history.get_sorted_primary_models()[::-1]
 
         iorder = num.arange(history.nmodels)
 
@@ -769,6 +769,19 @@ high (blue) misfit.
             set_label(par.get_label())
             xmin, xmax = fixlim(*par.scaled(bounds[ipar]))
             set_lim(xmin, xmax)
+
+        if 'volume_change' in problem.parameter_names:
+            volumes = models[:, problem.name_to_index('volume_change')]
+            volume_max = volumes.max()
+            volume_min = volumes.min()
+
+        def scale_size(source):
+            if not hasattr(source, 'volume_change'):
+                return beachballsize_small
+
+            volume_change = source.volume_change
+            fac = (volume_change - volume_min) / (volume_max - volume_min)
+            return markersize * .25 + markersize * .5 * fac
 
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
@@ -803,9 +816,10 @@ high (blue) misfit.
             # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
 
             cmap = cm.ScalarMappable(
-                norm=colors.Normalize(
-                    vmin=num.min(iorder),
-                    vmax=num.max(iorder)),
+                norm=colors.PowerNorm(
+                    gamma=self.normalisation_gamma,
+                    vmin=iorder.min(),
+                    vmax=iorder.max()),
 
                 cmap=plt.get_cmap('coolwarm'))
 
@@ -819,18 +833,21 @@ high (blue) misfit.
                 fy = problem.extract(x, iypar)
                 sx, sy = xpar.scaled(fx), ypar.scaled(fy)
 
+                # TODO: Add rotation in cross-sections
                 color = cmap.to_rgba(iorder[ix])
 
-                alpha = (iorder[ix] - num.min(iorder)) / \
-                    float(num.max(iorder) - num.min(iorder))
+                alpha = (iorder[ix] - iorder.min()) / \
+                    float(iorder.max() - iorder.min())
+                alpha = alpha**self.normalisation_gamma
 
                 try:
                     beachball.plot_beachball_mpl(
                         mt, axes,
                         beachball_type=beachball_type,
                         position=(sx, sy),
-                        size=beachballsize_small,
+                        size=scale_size(source),
                         color_t=color,
+                        color_p=color if color_p_axis else None,
                         alpha=alpha,
                         zorder=1,
                         linewidth=0.25)
@@ -974,9 +991,8 @@ fitting solution.
         beachball_type = self.beachball_type
 
         problem = history.problem
-        mean_source = stats.get_mean_source(problem, history.models)
-        best_source = stats.get_best_source(
-            problem, history.models, history.misfits)
+        best_source = history.get_best_source()
+        mean_source = history.get_mean_source()
 
         fig = plt.figure(figsize=self.size_inch)
         axes = fig.add_subplot(1, 1, 1)

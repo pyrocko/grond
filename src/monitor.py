@@ -77,6 +77,7 @@ class GrondMonitor(threading.Thread):
     def __init__(self, rundir):
         threading.Thread.__init__(self)
         self.rundir = rundir
+        self.daemon = True
 
         self.sig_terminate = threading.Event()
         self.iter_per_second = 0
