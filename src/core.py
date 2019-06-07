@@ -262,7 +262,7 @@ def check(
             results_list = []
             sources = []
             if n_random_synthetics == 0:
-                x = problem.get_reference_model()
+                x = problem.get_reference_model(expand=True)
                 sources.append(problem.base_source)
                 results = problem.evaluate(x)
                 results_list.append(results)
