@@ -62,7 +62,7 @@ downloaded from the internet.*
 
     grond report -so
 
-TODO: link to results
+`See the generated report online. <https://pyrocko.org/grond/reports/quickstart>`_
 
 Next steps
 ----------
