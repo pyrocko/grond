@@ -93,8 +93,10 @@ class Capture(object):
         return self.file.getvalue()
 
 
-def grond(*args, tee=False):
+def grond(*args, **kwargs):
     # tee = True
+    tee = kwargs.get('tee', False)
+    logger.info('Calling: grond %s' % ' '.join(args))
     cap = Capture(tee=tee)
     with cap:
         main(['grond'] + list(args))
