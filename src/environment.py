@@ -2,7 +2,6 @@ import time
 import logging
 import shutil
 import os
-import warnings
 
 from grond.config import read_config, write_config
 from grond import meta, run_info
@@ -320,23 +319,6 @@ class Environment(object):
 
     def get_config_path(self):
         return self._config_path
-
-    def get_stores(self):
-        self.setup_modelling()
-        engine = self.get_config().engine_config.get_engine()
-
-        store_ids = set([t.store_id for t in self.get_problem().targets])
-        return [engine.get_store(s_id) for s_id in store_ids]
-
-    def get_default_store(self):
-        stores = self.get_stores()
-        def_store = stores[0]
-        if len(stores) > 1:
-            warnings.warn(
-                'Found multiple target stores, using %s' % def_store.id,
-                UserWarning)
-
-        return def_store
 
 
 __all__ = [

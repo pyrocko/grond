@@ -54,7 +54,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
 
         cm.create_group_automap(
             self,
-            self.draw_gnss_fits(ds, history, optimiser, environ),
+            self.draw_gnss_fits(ds, history, optimiser),
             title=u'GNSS Displacements',
             section='fits',
             feather_icon='map',
@@ -68,7 +68,7 @@ surface projection of the modelled source, with the thick-lined edge marking
 the upper fault edge.
 ''')
 
-    def draw_gnss_fits(self, ds, history, optimiser, env, vertical=False):
+    def draw_gnss_fits(self, ds, history, optimiser, vertical=False):
         problem = history.problem
 
         gnss_targets = problem.gnss_targets
@@ -77,7 +77,6 @@ the upper fault edge.
 
         xbest = history.get_best_model()
         source = history.get_best_source()
-        store = env.get_default_store()
 
         results = problem.evaluate(
             xbest, result_mode='full', targets=gnss_targets)
@@ -96,7 +95,7 @@ Static surface displacement from GNSS campaign %s (black vectors) and
 displacements derived from best model (red).
 ''' % campaign.name)
 
-            event = source.pyrocko_event(store=store)
+            event = source.pyrocko_event()
             locations = campaign.stations + [event]
 
             lat, lon = od.geographic_midpoint_locations(locations)

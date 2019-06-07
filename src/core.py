@@ -85,28 +85,32 @@ def forward(rundir_or_config_path, event_names):
         return
 
     if op.isdir(rundir_or_config_path):
-        env = Environment(rundir_or_config_path)
-    else:
-        env = Environment(config=rundir_or_config_path)
+        rundir = rundir_or_config_path
+        config = read_config(op.join(rundir, 'config.yaml'))
 
-    env.setup_modelling()
-    config = env.get_config()
-    problem = env.get_problem()
-    history = env.get_history(subset='harvest')
-    store = env.get_default_store()
+        problem, xs, misfits, _ = load_problem_info_and_data(
+            rundir, subset='harvest')
 
-    if op.isdir(rundir_or_config_path):
-        xbest = history.get_best_model()
+        gms = problem.combine_misfits(misfits)
+        ibest = num.argmin(gms)
+        xbest = xs[ibest, :]
+
+        ds = config.get_dataset(problem.base_source.name)
+        problem.set_engine(config.engine_config.get_engine())
+
+        for target in problem.targets:
+            target.set_dataset(ds)
+
         payload = [(problem, xbest)]
 
     else:
-        payload = []
+        config = read_config(rundir_or_config_path)
 
+        payload = []
         for event_name in event_names:
             ds = config.get_dataset(event_name)
             event = ds.get_event()
             problem = config.get_problem(event)
-
             xref = problem.preconstrain(
                 problem.pack(problem.base_source))
             payload.append((problem, xref))
@@ -117,7 +121,7 @@ def forward(rundir_or_config_path, event_names):
         ds.empty_cache()
         results = problem.evaluate(x)
 
-        event = problem.get_source(x).pyrocko_event(store)
+        event = problem.get_source(x).pyrocko_event()
         events.append(event)
 
         for result in results:
@@ -201,10 +205,8 @@ def cluster(rundir, clustering, metric):
     history = env.get_history(subset='harvest')
     problem = history.problem
     models = history.models
-    store = env.get_default_store()
 
-    events = [problem.get_source(model).pyrocko_event(store)
-              for model in models]
+    events = [problem.get_source(model).pyrocko_event() for model in models]
 
     from grond.clustering import metrics
 
@@ -652,7 +654,7 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
     if shortform:
         print('#', ' '.join(['%16s' % x for x in pnames]), file=out)
 
-    def dump(x, gm, indices, store):
+    def dump(x, gm, indices):
         if type == 'vector':
             print(' ', ' '.join(
                 '%16.7g' % problem.extract(x, i) for i in indices),
@@ -663,11 +665,11 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             guts.dump(source, stream=out)
 
         elif type == 'event':
-            ev = problem.get_source(x).pyrocko_event(store=store)
+            ev = problem.get_source(x).pyrocko_event()
             model.dump_events([ev], stream=out)
 
         elif type == 'event-yaml':
-            ev = problem.get_source(x).pyrocko_event(store=store)
+            ev = problem.get_source(x).pyrocko_event()
             guts.dump_all([ev], stream=out)
 
         else:
@@ -681,7 +683,6 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         problem = history.problem
         models = history.models
         misfits = history.get_primary_chain_misfits()
-        def_store = env.get_default_store()
 
         if type == 'vector':
             pnames_take = pnames_clean or \
@@ -708,18 +709,18 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
         if what == 'best':
             x_best = history.get_best_model()
             gm_best = history.get_best_misfit()
-            dump(x_best, gm_best, indices, def_store)
+            dump(x_best, gm_best, indices)
 
         elif what == 'mean':
             x_mean = history.get_mean_model()
             gm_mean = history.get_mean_misfit(chain=0)
-            dump(x_mean, gm_mean, indices, def_store)
+            dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
             gms = misfits
             isort = num.argsort(gms)
             for i in isort:
-                dump(models[i], gms[i], indices, def_store)
+                dump(models[i], gms[i], indices)
 
         elif what == 'stats':
             rs = make_stats(problem, models,
