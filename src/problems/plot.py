@@ -400,7 +400,6 @@ space.
         stats_color3 = mpl_color('scarletred3')
 
         problem = history.problem
-        misfits = history.misfits
 
         models = history.models
 

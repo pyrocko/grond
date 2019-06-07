@@ -869,7 +869,6 @@ box, red).
             i += target.nmisfits
 
         xbest = history.get_best_model()
-        models = history.get_sorted_primary_models()
         misfits = history.misfits[history.get_sorted_misfits_idx(chain=0), ...]
 
         ws = problem.get_target_weights()
