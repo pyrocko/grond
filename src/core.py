@@ -15,13 +15,11 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound, InvalidObject
 from .problems.base import Problem, load_problem_info_and_data, \
-    load_problem_data, load_optimiser_info
+    load_problem_data
 
 from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
 from .meta import expand_template, GrondError
-from .config import read_config
-from . import stats
 from .environment import Environment
 from .monitor import GrondMonitor
 
@@ -79,46 +77,30 @@ def sarr(a):
     return ' '.join('%15g' % x for x in a)
 
 
-def forward(rundir_or_config_path, event_names):
-
-    if not event_names:
-        return
-
-    if op.isdir(rundir_or_config_path):
-        rundir = rundir_or_config_path
-        config = read_config(op.join(rundir, 'config.yaml'))
-
-        problem, xs, misfits, _ = load_problem_info_and_data(
-            rundir, subset='harvest')
-
-        gms = problem.combine_misfits(misfits)
-        ibest = num.argmin(gms)
-        xbest = xs[ibest, :]
-
-        ds = config.get_dataset(problem.base_source.name)
-        problem.set_engine(config.engine_config.get_engine())
-
-        for target in problem.targets:
-            target.set_dataset(ds)
-
-        payload = [(problem, xbest)]
+def forward(env):
+    payload = []
+    if env.have_rundir():
+        env.setup_modelling()
+        xbest = env.get_history().get_best_model()
+        problem = env.get_problem()
+        ds = env.get_dataset()
+        payload.append((ds, problem, xbest))
 
     else:
-        config = read_config(rundir_or_config_path)
-
-        payload = []
-        for event_name in event_names:
-            ds = config.get_dataset(event_name)
-            event = ds.get_event()
-            problem = config.get_problem(event)
+        for event_name in env.get_selected_event_names():
+            env.set_current_event_name(event_name)
+            env.setup_modelling()
+            problem = env.get_problem()
+            ds = env.get_dataset()
             xref = problem.preconstrain(
-                problem.pack(problem.base_source))
-            payload.append((problem, xref))
+                problem.get_reference_model(expand=True))
+
+            payload.append((ds, problem, xref))
 
     all_trs = []
     events = []
-    for (problem, x) in payload:
-        ds.empty_cache()
+    stations = {}
+    for (ds, problem, x) in payload:
         results = problem.evaluate(x)
 
         event = problem.get_source(x).pyrocko_event()
@@ -131,11 +113,14 @@ def forward(rundir_or_config_path, event_names):
                 all_trs.append(result.filtered_obs)
                 all_trs.append(result.filtered_syn)
 
+        for station in ds.get_stations():
+            stations[station.nsl()] = station
+
     markers = []
     for ev in events:
         markers.append(pmarker.EventMarker(ev))
 
-    trace.snuffle(all_trs, markers=markers, stations=ds.get_stations())
+    trace.snuffle(all_trs, markers=markers, stations=list(stations.values()))
 
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):

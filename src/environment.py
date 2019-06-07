@@ -223,6 +223,9 @@ class Environment(object):
 
         return self._rundir_path
 
+    def have_rundir(self):
+        return self._rundir_path is not None
+
     def get_run_info_path(self):
         return op.join(self.get_rundir_path(), 'run_info.yaml')
 
