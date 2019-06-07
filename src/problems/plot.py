@@ -116,7 +116,7 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
             if lo == hi:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
         isort = history.get_sorted_misfits_idx(chain=ibootstrap)[::-1]
         models = history.get_sorted_models(chain=ibootstrap)[::-1]
@@ -412,7 +412,7 @@ space.
             if vmin == vmax:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
         smap = {}
         iselected = 0

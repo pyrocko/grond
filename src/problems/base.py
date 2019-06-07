@@ -328,14 +328,11 @@ class Problem(Object):
 
         return ws
 
-    def get_reference_model(self, expand=False):
-        if expand:
-            src_params = self.pack(self.base_source)
-            ref = num.zeros(self.nparameters)
-            ref[:src_params.size] = src_params
-        else:
-            ref = self.pack(self.base_source)
-        return ref
+    def get_reference_model(self):
+        model = num.zeros(self.nparameters)
+        model_source_params = self.pack(self.base_source)
+        model[:model_source_params.size] = model_source_params
+        return model
 
     def get_parameter_bounds(self):
         out = []

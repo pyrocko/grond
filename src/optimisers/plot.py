@@ -85,7 +85,7 @@ corresponding misfit values.
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
         gms = history.get_primary_chain_misfits()
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)

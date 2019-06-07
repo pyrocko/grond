@@ -92,9 +92,7 @@ def forward(env):
             env.setup_modelling()
             problem = env.get_problem()
             ds = env.get_dataset()
-            xref = problem.preconstrain(
-                problem.get_reference_model(expand=True))
-
+            xref = problem.preconstrain(problem.get_reference_model())
             payload.append((ds, problem, xref))
 
     all_trs = []
@@ -262,7 +260,7 @@ def check(
             results_list = []
             sources = []
             if n_random_synthetics == 0:
-                x = problem.get_reference_model(expand=True)
+                x = problem.preconstrain(problem.get_reference_model())
                 sources.append(problem.base_source)
                 results = problem.evaluate(x)
                 results_list.append(results)
