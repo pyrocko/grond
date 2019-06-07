@@ -560,7 +560,8 @@ class HighScoreOptimiser(Optimiser):
                 [0.] + [t.nmisfits for t in problem.targets], dtype=num.int)
 
             for it, target in enumerate(problem.targets):
-                weights = target.get_correlated_weights()
+                weights = target.get_correlated_weights(
+                    nthreads=self._nthreads)
                 if weights is None:
                     continue
                 corr[misfit_idx[it]] = weights

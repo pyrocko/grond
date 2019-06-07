@@ -147,7 +147,7 @@ class MisfitTarget(Object):
             self._combined_weight = num.ones(1, dtype=num.float)
         return self._combined_weight
 
-    def get_correlated_weights(self):
+    def get_correlated_weights(self, nthreads=0):
         pass
 
     def set_bootstrap_weights(self, weights):

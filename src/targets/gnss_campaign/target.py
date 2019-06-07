@@ -143,7 +143,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
 
-    def get_correlated_weights(self):
+    def get_correlated_weights(self, nthreads=0):
         if self._correlated_weights is None:
             self._correlated_weights = splinalg.sqrtm(self.weights)
         return self._correlated_weights
