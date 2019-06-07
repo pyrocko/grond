@@ -847,7 +847,7 @@ high (blue) misfit.
                         position=(sx, sy),
                         size=scale_size(source),
                         color_t=color,
-                        color_p=color if color_p_axis else None,
+                        color_p=color if color_p_axis else 'white',
                         alpha=alpha,
                         zorder=1,
                         linewidth=0.25)
