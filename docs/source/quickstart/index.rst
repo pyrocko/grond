@@ -67,5 +67,6 @@ TODO: link to results
 Next steps
 ----------
 
-Read the :doc:`../overview/index` to see how to set up a project folder with
-your own data or take a tour through our :doc:`../examples/index`.
+Read the :doc:`overview section <../overview/index>` to see how to set up a
+project folder with your own data or take a tour through our 
+:doc:`example projects <../examples/index>`.
