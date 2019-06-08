@@ -735,9 +735,9 @@ def command_go(args):
             help='set number of events to process in parallel, '
                  'if set to more than one, --status=quiet is implied.')
         parser.add_option(
-            '--threads', dest='nthreads', type=int, default=0,
-            help='set number of threads per process. This defaults to 0,'
-                 'which is using all available cores.')
+            '--threads', dest='nthreads', type=int, default=1,
+            help='set number of threads per process (default: 1).'
+                 'Set to 0 to use all available cores.')
 
     parser, options, args = cl_parse('go', args, setup)
 
@@ -1175,9 +1175,9 @@ def command_report(args):
             help='set number of runs to process in parallel, '
                  'If set to more than one, --status=quiet is implied.')
         parser.add_option(
-            '--threads', dest='nthreads', type=int, default=0,
-            help='set number of threads per process. This defaults to 0,'
-                 'which is using all available cores.')
+            '--threads', dest='nthreads', type=int, default=1,
+            help='set number of threads per process (default: 1).'
+                 'Set to 0 to use all available cores.')
         parser.add_option(
             '--no-archive',
             dest='no_archive',
