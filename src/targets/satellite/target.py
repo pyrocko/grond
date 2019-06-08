@@ -169,12 +169,16 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def get_correlated_weights(self, nthreads=0):
         ''' is for L2-norm weighting, the square-rooted, inverse covar '''
         if self._noise_weight_matrix is None:
-            logger.info('Inverting scene covariance matrix...')
+            logger.info(
+                'Inverting scene covariance matrix (nthreads=%i)...'
+                % nthreads)
             cov = self.scene.covariance
             cov.nthreads = nthreads
 
             self._noise_weight_matrix = splinalg.sqrtm(
                 num.linalg.inv(cov.covariance_matrix))
+
+            logger.info('Inverting scene covariance matrix done.')
 
         return self._noise_weight_matrix
 
