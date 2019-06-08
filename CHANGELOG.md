@@ -1,8 +1,24 @@
 # Changelog
 
-All notable changes to Grond will be documented in this file.
+All notable changes to Grond are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## [1.3.1] 2019-06-08
+
+### Added
+- Allow controlling number of threads in `grond report` with `--threads`
+
+### Changed
+- Default number of threads used in `grond go` and `grond report` is now 1.
+  Setting both together, `--parallel` and `--threads,` to values higher than 1
+  may currently cause hangs.
+- Improved control on threading utilization.
+
+### Fixed
+- Repaired `grond report` and `grond plot location_mt` which were broken in
+  v1.3.0.
+
 
 ## [1.3.0] 2019-06-04
 
