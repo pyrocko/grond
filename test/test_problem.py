@@ -145,7 +145,7 @@ def test_combine_covariance():
         extra_correlated_weights={0: corr},
         extra_residuals=extra_residuals)
 
-    num.testing.assert_equal(res_weights, res_corr)
+    num.testing.assert_almost_equal(res_weights, res_corr)
 
 
 def dump_combine_misfits():

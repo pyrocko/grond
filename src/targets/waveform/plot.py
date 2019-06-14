@@ -223,7 +223,7 @@ class CheckWaveformsPlot(PlotConfig):
         results_list = []
         sources = []
         if self.n_random_synthetics == 0:
-            x = problem.get_reference_model()
+            x = problem.preconstrain(problem.get_reference_model())
             sources.append(problem.base_source)
             results = problem.evaluate(x)
             results_list.append(results)
@@ -869,7 +869,6 @@ box, red).
             i += target.nmisfits
 
         xbest = history.get_best_model()
-        models = history.get_sorted_primary_models()
         misfits = history.misfits[history.get_sorted_misfits_idx(chain=0), ...]
 
         ws = problem.get_target_weights()

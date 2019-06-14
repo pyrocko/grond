@@ -735,9 +735,9 @@ def command_go(args):
             help='set number of events to process in parallel, '
                  'if set to more than one, --status=quiet is implied.')
         parser.add_option(
-            '--threads', dest='nthreads', type=int, default=0,
-            help='set number of threads per process. This defaults to 0,'
-                 'which is using all available cores.')
+            '--threads', dest='nthreads', type=int, default=1,
+            help='set number of threads per process (default: 1).'
+                 'Set to 0 to use all available cores.')
 
     parser, options, args = cl_parse('go', args, setup)
 
@@ -764,6 +764,9 @@ def command_go(args):
 
 
 def command_forward(args):
+
+    from grond.environment import Environment
+
     def setup(parser):
         pass
 
@@ -771,15 +774,11 @@ def command_forward(args):
     if len(args) < 1:
         help_and_die(parser, 'missing arguments')
 
-    event_names = args[1:]
-
-    if not event_names:
-        help_and_die(parser, 'no event names given')
-
-    run_path = args[0]
-    grond.forward(
-        run_path,
-        event_names=event_names)
+    try:
+        env = Environment(args)
+        grond.forward(env)
+    except grond.GrondError as e:
+        die(str(e))
 
 
 def command_harvest(args):
@@ -1082,7 +1081,7 @@ def command_tag(args):
         die('Errors occurred, see log messages above.')
 
 
-def make_report(env_args, event_name, conf, update_without_plotting):
+def make_report(env_args, event_name, conf, update_without_plotting, nthreads):
     from grond.environment import Environment
     from grond.report import report
     try:
@@ -1094,7 +1093,8 @@ def make_report(env_args, event_name, conf, update_without_plotting):
             env, conf,
             update_without_plotting=update_without_plotting,
             make_index=False,
-            make_archive=False)
+            make_archive=False,
+            nthreads=nthreads)
 
         return True
 
@@ -1175,6 +1175,10 @@ def command_report(args):
             help='set number of runs to process in parallel, '
                  'If set to more than one, --status=quiet is implied.')
         parser.add_option(
+            '--threads', dest='nthreads', type=int, default=1,
+            help='set number of threads per process (default: 1).'
+                 'Set to 0 to use all available cores.')
+        parser.add_option(
             '--no-archive',
             dest='no_archive',
             action='store_true',
@@ -1227,15 +1231,17 @@ def command_report(args):
         rundirs = args
         all_failed = True
         for rundir in rundirs:
-            payload.append(([rundir], None,
-                           conf, options.update_without_plotting))
+            payload.append((
+                [rundir], None, conf, options.update_without_plotting,
+                options.nthreads))
 
     elif args:
         try:
             env = Environment(args)
             for event_name in env.get_selected_event_names():
-                payload.append((args, event_name,
-                                conf, options.update_without_plotting))
+                payload.append((
+                    args, event_name, conf, options.update_without_plotting,
+                    options.nthreads))
 
         except grond.GrondError as e:
             die(str(e))

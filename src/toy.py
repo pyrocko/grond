@@ -5,7 +5,6 @@ from pyrocko.guts import Object, Float, Dict, List, String, Int
 from pyrocko import gf
 from grond import Problem, Parameter, MisfitTarget
 from grond.optimisers.highscore.plot import HighScoreOptimiserPlot
-from grond.targets import MisfitResult
 
 guts_prefix = 'grond.toy'
 

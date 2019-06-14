@@ -7,7 +7,7 @@ from setuptools import setup
 from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 
-version = '1.2.0'
+version = '1.3.1'
 
 
 class CustomInstallCommand(install):
@@ -112,6 +112,7 @@ setup(
         'grond.problems.rectangular',
         'grond.problems.volume_point',
         'grond.problems.multirectangular',
+        'grond.problems.vlvd',
         'grond.optimisers',
         'grond.optimisers.highscore',
         'grond.analysers',

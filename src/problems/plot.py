@@ -116,7 +116,7 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
             if lo == hi:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
         isort = history.get_sorted_misfits_idx(chain=ibootstrap)[::-1]
         models = history.get_sorted_models(chain=ibootstrap)[::-1]
@@ -400,7 +400,6 @@ space.
         stats_color3 = mpl_color('scarletred3')
 
         problem = history.problem
-        misfits = history.misfits
 
         models = history.models
 
@@ -412,7 +411,7 @@ space.
             if vmin == vmax:
                 exclude.append(par.name)
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
         smap = {}
         iselected = 0
@@ -432,7 +431,9 @@ space.
             problem.combined[smap[iselected]].name
             for iselected in range(nselected)]
 
-        rstats = make_stats(problem, models, misfits, pnames=pnames)
+        rstats = make_stats(problem, models,
+                            history.get_primary_chain_misfits(),
+                            pnames=pnames)
 
         for iselected in range(nselected):
             ipar = smap[iselected]
@@ -706,6 +707,10 @@ class MTLocationPlot(SectionPlotConfig):
     beachball_type = StringChoice.T(
         choices=['full', 'deviatoric', 'dc'],
         default='dc')
+    normalisation_gamma = Float.T(
+        default=3.,
+        help='Normalisation of colors and alpha as :math:`x^\gamma`.'
+             'A linear colormap/alpha with :math:`\gamma=1`.')
 
     def make(self, environ):
         environ.setup_modelling()
@@ -729,7 +734,7 @@ high (blue) misfit.
         for obj in self._to_be_closed:
             obj.close()
 
-    def draw_figures(self, history):
+    def draw_figures(self, history, color_p_axis=False):
         from matplotlib import colors
 
         color = 'black'
@@ -764,6 +769,19 @@ high (blue) misfit.
             xmin, xmax = fixlim(*par.scaled(bounds[ipar]))
             set_lim(xmin, xmax)
 
+        if 'volume_change' in problem.parameter_names:
+            volumes = models[:, problem.name_to_index('volume_change')]
+            volume_max = volumes.max()
+            volume_min = volumes.min()
+
+        def scale_size(source):
+            if not hasattr(source, 'volume_change'):
+                return beachballsize_small
+
+            volume_change = source.volume_change
+            fac = (volume_change - volume_min) / (volume_max - volume_min)
+            return markersize * .25 + markersize * .5 * fac
+
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
                 (axes_dn, 'depth', 'north_shift'),
@@ -797,9 +815,10 @@ high (blue) misfit.
             # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
 
             cmap = cm.ScalarMappable(
-                norm=colors.Normalize(
-                    vmin=num.min(iorder),
-                    vmax=num.max(iorder)),
+                norm=colors.PowerNorm(
+                    gamma=self.normalisation_gamma,
+                    vmin=iorder.min(),
+                    vmax=iorder.max()),
 
                 cmap=plt.get_cmap('coolwarm'))
 
@@ -813,18 +832,21 @@ high (blue) misfit.
                 fy = problem.extract(x, iypar)
                 sx, sy = xpar.scaled(fx), ypar.scaled(fy)
 
+                # TODO: Add rotation in cross-sections
                 color = cmap.to_rgba(iorder[ix])
 
-                alpha = (iorder[ix] - num.min(iorder)) / \
-                    float(num.max(iorder) - num.min(iorder))
+                alpha = (iorder[ix] - iorder.min()) / \
+                    float(iorder.max() - iorder.min())
+                alpha = alpha**self.normalisation_gamma
 
                 try:
                     beachball.plot_beachball_mpl(
                         mt, axes,
                         beachball_type=beachball_type,
                         position=(sx, sy),
-                        size=beachballsize_small,
+                        size=scale_size(source),
                         color_t=color,
+                        color_p=color if color_p_axis else 'white',
                         alpha=alpha,
                         zorder=1,
                         linewidth=0.25)

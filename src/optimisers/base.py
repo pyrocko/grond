@@ -15,7 +15,7 @@ class BadProblem(GrondError):
 @has_get_plot_classes
 class Optimiser(Object):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
         self._nthreads = 0
 

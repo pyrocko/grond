@@ -333,7 +333,7 @@ strategies.
         A seismic event which has a unique name among all events available to a specific configuration of Grond. An event usually has a preliminary origin location and sometimes a reference mechanism attached to it.
 
     Source
-        The earthquake dislocation source can be a moment tensor point source or a finite fault.
+        The earthquake dislocation source, can be e.g. a moment tensor point source or a finite fault.
 
     Receiver
         Is the recipient side of the source's excitation. This can be a modelled seismometer, a GNSS station or a InSAR satellite.
@@ -360,7 +360,7 @@ strategies.
     Analyser
         Before running the optimisation, station weights and other internal parameters may need to be adapted to the observed data and configured setup of Grond. Such pre-optimisation tasks are done by one or more of Grond's analysers.
 
-    Objective Function
+    Objective function
         The objective function gives a scalar misfit value how well the source model fits the observed data. A smaller misfit value is better than a large one. It is often called misfit function.
 
     Optimiser
@@ -369,7 +369,7 @@ strategies.
     Bootstrapping
         In statistics, bootstrapping is any test or metric that relies on random sampling with replacement. Bootstrapping allows assigning measures of accuracy (defined in terms of bias, variance, confidence intervals, prediction error or some other such measure) to sample estimates. This technique allows estimation of the sampling distribution of almost any statistic using random sampling methods. Generally, it falls in the broader class of re-sampling methods. `Wiki <https://en.wikipedia.org/wiki/Bootstrapping_(statistics)>`_
 
-    Green's Function Store
+    Green's function store
         Refers to Green's function databases to be used for the forward modelling. In Grond these stores are addressed with directory paths and an individual ``store_id``.
 
     Engine

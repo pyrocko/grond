@@ -1,4 +1,5 @@
 import logging
+import warnings
 import numpy as num
 from scipy import linalg as splinalg
 
@@ -165,12 +166,19 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
     def nmisfits(self):
         return self.lats.size
 
-    def get_correlated_weights(self):
+    def get_correlated_weights(self, nthreads=0):
         ''' is for L2-norm weighting, the square-rooted, inverse covar '''
-        logger.info('Inverting scene covariance matrix...')
         if self._noise_weight_matrix is None:
+            logger.info(
+                'Inverting scene covariance matrix (nthreads=%i)...'
+                % nthreads)
+            cov = self.scene.covariance
+            cov.nthreads = nthreads
+
             self._noise_weight_matrix = splinalg.sqrtm(
-                num.linalg.inv(self.scene.covariance.covariance_matrix))
+                num.linalg.inv(cov.covariance_matrix))
+
+            logger.info('Inverting scene covariance matrix done.')
 
         return self._noise_weight_matrix
 
@@ -246,6 +254,9 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         try:
             # TODO:mi Signal handler is not given back to the main task!
             # This is a python3.7 bug
+            warnings.warn('Using multi-threading for SatelliteTargets. '
+                          'Python 3.7 needs to be killed hard:'
+                          ' `killall grond`', UserWarning)
             from concurrent.futures import ThreadPoolExecutor
             nthreads = os.cpu_count() if not nthreads else nthreads
 
