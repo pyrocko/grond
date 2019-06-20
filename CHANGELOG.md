@@ -4,6 +4,19 @@ All notable changes to Grond are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [unreleased]
+
+### Added
+- Can now run target balancing with a fixed magnitude (reference event) for
+  automatic removal of stations providing unreasonably large misfits
+  (`use_reference_magnitude` and `cutoff` in `TargetBalancingAnalyserConfig`).
+- Add possibility to export only results from runs matching given criteria.
+  At the moment, it is possible to select by rundir tag (`grond export
+  --selection`).
+
+### Fixed
+- Corrected time window calculation in `NoiseAnalyser`
+
 ## [1.3.1] 2019-06-08
 
 ### Added
