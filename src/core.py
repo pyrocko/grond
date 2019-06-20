@@ -19,7 +19,7 @@ from .problems.base import Problem, load_problem_info_and_data, \
 
 from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
-from .meta import expand_template, GrondError
+from .meta import expand_template, GrondError, selected
 from .environment import Environment
 from .monitor import GrondMonitor
 
@@ -605,7 +605,9 @@ def format_stats(rs, fmt):
     return ' '.join('%16.7g' % v for v in values)
 
 
-def export(what, rundirs, type=None, pnames=None, filename=None):
+def export(
+        what, rundirs, type=None, pnames=None, filename=None, selection=None):
+
     if pnames is not None:
         pnames_clean = [pname.split('.')[0] for pname in pnames]
         shortform = all(len(pname.split('.')) == 2 for pname in pnames)
@@ -661,6 +663,15 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
     header = None
     for rundir in rundirs:
         env = Environment(rundir)
+        info = env.get_run_info()
+
+        if selection and not selected(
+                selection,
+                data=dict(tags=info.tags),
+                types=dict(tags=(list, str))):
+
+            continue
+
         history = env.get_history(subset='harvest')
 
         problem = history.problem
