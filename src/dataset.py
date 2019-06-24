@@ -60,6 +60,12 @@ class StationCorrection(Object):
     factor = Float.T()
 
 
+class WFTargetMisfit(Object):
+    codes = Tuple.T(4, String.T())
+    misfit = Float.T()
+    norm = Float.T()
+
+
 def load_station_corrections(filename):
     scs = load_all(filename=filename)
     for sc in scs:
@@ -70,6 +76,10 @@ def load_station_corrections(filename):
 
 def dump_station_corrections(station_corrections, filename=None, stream=None):
     return dump_all(station_corrections, filename=filename, stream=stream)
+
+
+def dump_wftarget_misfits(wftarget_misfits, filename=None, stream=None):
+    return dump_all(wftarget_misfits, filename=filename, stream=stream)
 
 
 class Dataset(object):
@@ -1155,6 +1165,8 @@ __all__ = '''
     InvalidObject
     NotFound
     StationCorrection
+    WFTargetMisfit
     load_station_corrections
     dump_station_corrections
+    dump_wftarget_misfits
 '''.split()

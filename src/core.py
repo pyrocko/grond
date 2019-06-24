@@ -15,7 +15,7 @@ from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound, InvalidObject, StationCorrection, \
-    dump_station_corrections
+    dump_station_corrections, WFTargetMisfit, dump_wftarget_misfits
 from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data, ProblemDataNotAvailable
 
@@ -792,10 +792,18 @@ def fits(env):
     xbest = xs[ibest, :]
 
     scs = []
+    wftm = []
     for x in [xbest]:
         results = problem.evaluate(x)
 
         for target, result in zip(problem.targets, results):
+            if isinstance(result, WaveformMisfitResult):
+
+                wftm.append(WFTargetMisfit(
+                    codes=target.codes,
+                    misfit=float(result.misfits[0][0]),
+                    norm=result.misfits[0][1]))
+
             if isinstance(result, WaveformMisfitResult) \
                     and result.tshift is not None:
 
@@ -804,7 +812,10 @@ def fits(env):
                     delay=float(result.tshift),
                     factor=1.0))
 
-    dump_station_corrections(scs, stream=sys.stdout)
+    dump_station_corrections(scs, filename='%s/StationCorrections.yaml'
+                             % env.get_rundir_path())
+    dump_wftarget_misfits(wftm, filename='%s/WFTargetMisfits.yaml'
+                          % env.get_rundir_path())
 
 
 __all__ = '''
