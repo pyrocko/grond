@@ -89,6 +89,6 @@ class VLVDProblem(Problem):
     @classmethod
     def get_plot_classes(cls):
         from . import plot
-        plots = super().get_plot_classes()
+        plots = super(VLVDProblem, cls).get_plot_classes()
         plots.extend([plot.VLVDLocationPlot])
         return plots
