@@ -66,7 +66,6 @@ class MultiRectangularProblem(Problem):
         problem_parameters.append(Parameter('rake%s' % i, 'deg', label='Rake'))
         problem_parameters.append(Parameter('slip%s' % i, 'm', label='Slip'))
 
-
         problem_waveform_parameters.append(Parameter('nucleation_x%s' % i, 'offset', label='Nucleation X'))
         problem_waveform_parameters.append(Parameter('nucleation_y%s' % i, 'offset', label='Nucleation Y'))
         problem_waveform_parameters.append(Parameter('time%s' % i, 's', label='Time'))

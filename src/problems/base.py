@@ -102,7 +102,7 @@ class CombiSource(gf.Source):
         dsources = []
         t0 = self.subsources[0].time
         for sf in self.subsources:
-            assert t0 == sf.time
+            #assert t0 == sf.time
             ds = sf.discretize_basesource(store, target)
             ds.m6s *= sf.get_factor()
             dsources.append(ds)
@@ -585,7 +585,6 @@ class Problem(Object):
             for i in range(self.nsources):
                 source = self.get_source(x, i)
                 patches.append(source)
-                print(patches)
                 outlines.append(source.outline())
         else:
                 source = self.get_source(x)
