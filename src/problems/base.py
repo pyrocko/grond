@@ -336,7 +336,12 @@ class Problem(Object):
             raise GrondError('Cannot get GF Store, modelling is not set up!')
         return self.get_engine().get_store(target.store_id)
 
-    def random_uniform(self, xbounds, rstate):
+    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
+        if fixed_magnitude is not None:
+            raise GrondError(
+                'Setting fixed magnitude in random model generation not '
+                'supported for this type of problem.')
+
         x = rstate.uniform(0., 1., self.nparameters)
         x *= (xbounds[:, 1] - xbounds[:, 0])
         x += xbounds[:, 0]

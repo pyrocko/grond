@@ -985,6 +985,11 @@ def command_export(args):
                  '"percentile84", "maximum".')
 
         parser.add_option(
+            '--selection', dest='selection', metavar='EXPRESSION',
+            help='only export data for runs which match EXPRESSION. '
+                 'Example expression: "tags_contains:excellent,good"')
+
+        parser.add_option(
             '--output', dest='filename', metavar='FILE',
             help='write output to FILE')
 
@@ -1015,7 +1020,8 @@ def command_export(args):
             dirnames,
             filename=options.filename,
             type=options.type,
-            pnames=pnames)
+            pnames=pnames,
+            selection=options.selection)
 
     except grond.GrondError as e:
         die(str(e))
