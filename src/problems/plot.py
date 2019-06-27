@@ -354,7 +354,7 @@ class HistogramPlot(PlotConfig):
     include = List.T(String.T())
     method = StringChoice.T(
         choices=['gaussian_kde', 'histogram'],
-        default='gaussian_kde')
+        default='histogram')
     show_reference = Bool.T(default=True)
 
     def make(self, environ):
