@@ -260,12 +260,20 @@ components).
             target.set_dataset(dataset)
             comp_weights = target.component_weights()[0]
 
-            ws_n = comp_weights[:, 0::3] / comp_weights.max()
-            ws_e = comp_weights[:, 1::3] / comp_weights.max()
-            ws_u = comp_weights[:, 2::3] / comp_weights.max()
-            ws_e = num.array(ws_e[0]).flatten()
-            ws_n = num.array(ws_n[0]).flatten()
-            ws_u = num.array(ws_u[0]).flatten()
+            comp_weights = comp_weights.A1
+            mask=target.station_component_mask
+            ws_all=num.empty(mask.shape)
+            i=0
+            for x in range(len(mask)):
+                if mask[x]==True:
+                    ws_all[x]=comp_weights[i]/ comp_weights.max()
+                    i+=1
+                else:
+                    ws_all[x]=num.nan
+
+            ws_n = ws_all[0::3]
+            ws_e = ws_all[1::3]
+            ws_u = ws_all[2::3]
 
             if ws_n.size == 0:
                 continue
@@ -431,10 +439,10 @@ displacements derived from best rupture model (red).
                 offset_scale = num.array(
                     [num.sqrt(s.east.shift**2 + s.north.shift**2)
                     for s in campaign.stations + model_camp.stations]).max()
-            
+
             size = math.sqrt(self.size_cm[1]**2 + self.size_cm[0]**2)
             scale = (size/10.) / offset_scale
-            
+
             # add a scale Arrow that represents 1cm displacement in East direction:
             #m.gmt.psxy(in_rows=[[46, 37.75, 0, scale*0.01]], S="v8p+e", G="black", W="0.75p,black", *m.jxyr)
 
