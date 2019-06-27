@@ -230,6 +230,7 @@ class NoiseAnalyser(Analyser):
                     data.append([
                         tmin_fit,
                         tmax_fit,
+                        tfade_taper,
                         ds.get_waveform(
                             target.codes,
                             tmin=arrival_time-tdur-tfade,
@@ -243,16 +244,19 @@ class NoiseAnalyser(Analyser):
 
                 except (NotFound, OutOfBounds) as e:
                     logger.debug(str(e))
-                    data.append([None, None, None])
+                    data.append([None, None, None, None])
 
             traces_noise = []
             traces_signal = []
-            for tmin_fit, tmax_fit, tr in data:
+            for tmin_fit, tmax_fit, tfade_taper, tr in data:
                 if tr:
                     traces_noise.append(
                         tr.chop(tr.tmin, tr.tmin + tdur, inplace=False))
                     traces_signal.append(
-                        tr.chop(tmin_fit, tmax_fit, inplace=False))
+                        tr.chop(
+                            tmin_fit-tfade_taper,
+                            tmax_fit+tfade_taper,
+                            inplace=False))
                 else:
                     traces_noise.append(None)
                     traces_signal.append(None)

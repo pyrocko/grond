@@ -118,7 +118,7 @@ def copytree(src, dst):
 
 
 def report(env, report_config=None, update_without_plotting=False,
-           make_index=True, make_archive=True):
+           make_index=True, make_archive=True, nthreads=0):
 
     if report_config is None:
         report_config = ReportConfig()
@@ -127,6 +127,9 @@ def report(env, report_config=None, update_without_plotting=False,
     event_name = env.get_current_event_name()
     problem = env.get_problem()
     logger.info('Creating report entry for run "%s"...' % problem.name)
+
+    optimiser = env.get_optimiser()
+    optimiser.set_nthreads(nthreads)
 
     fp = report_config.expand_path
     entry_path = expand_template(

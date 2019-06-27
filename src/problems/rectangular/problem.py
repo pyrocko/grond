@@ -4,7 +4,8 @@ import logging
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 
-from grond.meta import expand_template, Parameter, has_get_plot_classes
+from grond.meta import expand_template, Parameter, has_get_plot_classes, \
+    GrondError
 
 from ..base import Problem, ProblemConfig
 
@@ -97,7 +98,12 @@ class RectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds, rstate):
+    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
+        if fixed_magnitude is not None:
+            raise GrondError(
+                'Setting fixed magnitude in random model generation not '
+                'supported for this type of problem.')
+
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
             x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])

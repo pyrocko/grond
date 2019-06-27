@@ -143,7 +143,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
     def set_dataset(self, ds):
         MisfitTarget.set_dataset(self, ds)
 
-    def get_correlated_weights(self):
+    def get_correlated_weights(self, nthreads=0):
         if self._correlated_weights is None:
             self._correlated_weights = splinalg.sqrtm(self.weights)
         return self._correlated_weights
@@ -247,7 +247,7 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         return self._combined_weight
 
-    def init_bootstrap_residuals(self, nbootstraps, rstate=None):
+    def init_bootstrap_residuals(self, nbootstraps, rstate=None, nthreads=0):
         logger.info('GNSS campaign %s, bootstrapping residuals'
                     ' from measurement uncertainties ...'
                     % self.campaign.name)

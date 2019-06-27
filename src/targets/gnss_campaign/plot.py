@@ -8,7 +8,8 @@ from pyrocko import orthodrome as od
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import CMTProblem, RectangularProblem, VolumePointProblem
+from grond.problems import CMTProblem, RectangularProblem, \
+    VolumePointProblem, VLVDProblem
 
 from ..plot import StationDistributionPlot
 
@@ -74,18 +75,9 @@ the upper fault edge.
         gnss_targets = problem.gnss_targets
         for target in gnss_targets:
             target.set_dataset(ds)
-        #print('aaa', history.misfits)
 
-        gms = problem.combine_misfits(
-            history.misfits,
-            extra_correlated_weights=optimiser.get_correlated_weights(problem))
-        #print('bbb', history.misfits)
-        isort = num.argsort(gms)
-        gms = gms[isort]
-        models = history.models[isort, :]
-        xbest = models[0, :]
-
-        source = problem.get_source(xbest)
+        xbest = history.get_best_model()
+        source = history.get_best_source()
 
         results = problem.evaluate(
             xbest, result_mode='full', targets=gnss_targets)
@@ -177,7 +169,8 @@ displacements derived from best model (red).
                 vertical=vertical,
                 labels=False)
 
-            if isinstance(problem, CMTProblem):
+            if isinstance(problem, CMTProblem) \
+                    or isinstance(problem, VLVDProblem):
                 from pyrocko import moment_tensor
                 from pyrocko.plot import gmtpy
 

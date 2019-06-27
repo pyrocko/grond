@@ -85,12 +85,9 @@ corresponding misfit values.
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
-        gms = problem.combine_misfits(
-            history.misfits,
-            extra_correlated_weights=optimiser.get_correlated_weights(problem))
-
+        gms = history.get_primary_chain_misfits()
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
 
         isort = num.argsort(gms)[::-1]
@@ -286,6 +283,8 @@ class ContributionsPlot(PlotConfig):
         optimiser = environ.get_optimiser()
         dataset = environ.get_dataset()
 
+        environ.setup_modelling()
+
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
@@ -332,16 +331,10 @@ modified.
 
         imodels = num.arange(history.nmodels)
 
-        gms = problem.combine_misfits(
-            history.misfits,
-            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+        gms = history.get_sorted_primary_misfits()[::-1]
+        isort = history.get_sorted_misfits_idx(chain=0)[::-1]
 
         gms **= problem.norm_exponent
-
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-
         gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
         gcms = problem.combine_misfits(
@@ -371,8 +364,6 @@ modified.
                 plot_target_labels.extend(target.misfits_string_ids())
                 idx_cum += target.nmisfits
             idx += target.nmisfits
-
-        # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
 
         jsort = num.argsort(cum_gcms[-1, :])[::-1]
 
@@ -531,11 +522,8 @@ functions of the bootstrap start to disagree.
 
         fig = plt.figure()
 
-        problem = history.problem
         imodels = num.arange(history.nmodels)
-        gms = problem.combine_misfits(
-            history.misfits,
-            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+        gms = history.bootstrap_misfits[:, 0]
 
         gms_softclip = num.where(gms > 1.0,
                                  0.1 * num.log10(gms) + 1.0,
@@ -543,13 +531,13 @@ functions of the bootstrap start to disagree.
         axes = fig.add_subplot(1, 1, 1)
 
         ibests = []
-        for ibootstrap in range(optimiser.nbootstrap):
+        for ibootstrap in range(history.nchains):
             # if ibootstrap ==0:
-                # global, no-bootstrapping misfits, chain
-                # gms = history.bootstrap_misfits[:, ibootstrap]
-                # gms_softclip = num.where(gms > 1.0,
-                #                         0.1 * num.log10(gms) + 1.0,
-                #                         gms)
+            #    global, no-bootstrapping misfits, chain
+            #    gms = history.bootstrap_misfits[:, ibootstrap]
+            #    gms_softclip = num.where(gms > 1.0,
+            #                            0.1 * num.log10(gms) + 1.0,
+            #                            gms)
 
             bms = history.bootstrap_misfits[:, ibootstrap]
             isort_bms = num.argsort(bms)[::-1]

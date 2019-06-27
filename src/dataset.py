@@ -1070,7 +1070,7 @@ class DatasetConfig(HasPaths):
 
             events.extend(ev)
 
-        event_names = [ev.name for ev in events]
+        event_names = [ev_.name for ev_ in events]
         event_names.sort()
         return event_names
 
