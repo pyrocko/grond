@@ -20,7 +20,7 @@ import numpy as num
 from pyrocko import trace, util, io, cake, catalog, automap, pile, model
 from pyrocko import orthodrome, weeding
 from pyrocko.client import fdsn
-from pyrocko.io import resp, enhanced_sacpz as epz, stationxml
+from pyrocko.io import quakeml, resp, enhanced_sacpz as epz, stationxml
 
 km = 1000.
 
@@ -52,7 +52,36 @@ def nice_seconds_floor(s):
     return s
 
 
-def get_events(time_range, region=None, catalog=geofon, **kwargs):
+def request_to_pyrocko_events(request):
+    return quakeml.QuakeML.load_xml(request).get_pyrocko_events()
+
+
+def get_events_fdsn(time_range=None, region=None, site='geofon', **kwargs):
+    starttime, endtime = time_range
+    events = []
+    if not region:
+        events.extend(
+            request_to_pyrocko_events(
+                fdsn.event(
+                    site=site,
+                    starttime=starttime,
+                    endtime=endtime,
+                    **kwargs)))
+    else:
+        for (west, east, south, north) in automap.split_region(region):
+            events.extend(
+                request_to_pyrocko_events(
+                    fdsn.event(
+                        site=site, starttime=starttime, endtime=endtime,
+                        minlongitude=west,
+                        maxlongitude=east,
+                        minlatitude=south,
+                        maxlatitude=north, **kwargs)))
+
+    return events
+
+
+def get_events_catalog(time_range, region=None, catalog=geofon, **kwargs):
     if not region:
         return catalog.get_events(time_range, **kwargs)
 
@@ -69,6 +98,22 @@ def get_events(time_range, region=None, catalog=geofon, **kwargs):
     return events
 
 
+def get_events(time_range=None, region=None, site=None, **kwargs):
+    if not time_range:
+        time_range = (
+            util.str_to_time('1800-01-01 00:00:00'),
+            util.str_to_time('2050-01-01 00:00:00'))
+
+    if site == 'geofon':
+        eventid = kwargs.pop('eventid', None)
+        if eventid:
+            return geofon.get_event(eventid)
+
+        return get_events_catalog(time_range, region, catalog=geofon, **kwargs)
+    else:
+        return get_events_fdsn(time_range, region, site, **kwargs)
+
+
 def cut_n_dump(traces, win, out_path):
     otraces = []
     for tr in traces:
@@ -81,7 +126,15 @@ def cut_n_dump(traces, win, out_path):
     return io.save(otraces, out_path)
 
 
-def get_events_by_name_or_date(event_names_or_dates, catalog=geofon):
+def is_time_string(stime):
+    try:
+        util.stt(stime)
+        return True
+    except util.TimeStrError:
+        return False
+
+
+def get_events_by_name_or_date(event_names_or_dates, site='geofon'):
     stimes = []
     for sev in event_names_or_dates:
         stimes.append(sev)
@@ -90,14 +143,14 @@ def get_events_by_name_or_date(event_names_or_dates, catalog=geofon):
     for stime in stimes:
         if op.isfile(stime):
             events_out.extend(model.Event.load_catalog(stime))
-        elif stime.startswith('gfz'):
-            event = geofon.get_event(stime)
-            events_out.append(event)
-        else:
+        elif is_time_string(stime):
             t = util.str_to_time(stime)
-            events = get_events(time_range=(t-60., t+60.), catalog=catalog)
+            events = get_events(time_range=(t-60., t+60.), site=site)
             events.sort(key=lambda ev: abs(ev.time - t))
             event = events[0]
+            events_out.append(event)
+        else:
+            event = get_events(eventid=stime.strip(), site=site)
             events_out.append(event)
 
     return events_out
@@ -232,6 +285,13 @@ if __name__ == '__main__':
         action='store_true',
         default=False,
         help='continue download after a accident')
+
+    parser.add_option(
+        '--catalog',
+        default='geofon',
+        dest='catalog',
+        metavar='CATALOGNAME|SITE|FDSNWS-ENDPOINT',
+        help='catalog to query for events')
 
     parser.add_option(
         '--local-catalog',
@@ -416,8 +476,9 @@ if __name__ == '__main__':
                     ev for ev in model.load_events(options.local_catalog)
                     if ev.name == sname_or_date]
             else:
-                events = get_events_by_name_or_date([sname_or_date],
-                                                    catalog=geofon)
+                events = get_events_by_name_or_date(
+                        [sname_or_date], site=options.catalog)
+
             if len(events) == 0:
                 logger.critical('no event found')
                 sys.exit(1)
