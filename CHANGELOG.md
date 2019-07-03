@@ -4,7 +4,7 @@ All notable changes to Grond are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [unreleased]
+## [1.3.2] 2019-07-03
 
 ### Added
 - Can now run target balancing with a fixed magnitude (reference event) for
@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Corrected time window calculation in `NoiseAnalyser`
+- Plots not using `harvest` subset.
 
 ## [1.3.1] 2019-06-08
 

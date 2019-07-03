@@ -46,7 +46,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
-        history = environ.get_history()
+        history = environ.get_history(subset='harvest')
         optimiser = environ.get_optimiser()
         ds = environ.get_dataset()
 
