@@ -4,6 +4,14 @@ All notable changes to Grond are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Added
+- `grond go` utilises `--threads` arguments for various tasks.
+
+### Fixed
+- Improvements in documentation and examples
+
 ## [1.3.2] 2019-07-03
 
 ### Added
