@@ -1009,11 +1009,13 @@ class DatasetConfig(HasPaths):
 
     kite_scene_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of directories for the InSAR scenes.')
 
     gnss_campaign_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of directories for the GNSS campaign data.')
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)

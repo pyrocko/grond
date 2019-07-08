@@ -516,7 +516,8 @@ class Problem(Object):
 
         return self._family_mask
 
-    def evaluate(self, x, mask=None, result_mode='full', targets=None):
+    def evaluate(self, x, mask=None, result_mode='full', targets=None,
+                 nthreads=0):
         source = self.get_source(x)
         engine = self.get_engine()
 
@@ -546,7 +547,7 @@ class Problem(Object):
         modelling_targets_unique = list(u2m_map.keys())
 
         resp = engine.process(source, modelling_targets_unique,
-                              nthreads=self.nthreads)
+                              nthreads=nthreads)
         modelling_results_unique = list(resp.results_list[0])
 
         modelling_results = [None] * len(modelling_targets)
@@ -576,8 +577,9 @@ class Problem(Object):
 
         return results
 
-    def misfits(self, x, mask=None):
-        results = self.evaluate(x, mask=mask, result_mode='sparse')
+    def misfits(self, x, mask=None, nthreads=0):
+        results = self.evaluate(
+            x, mask=mask, result_mode='sparse', nthreads=nthreads)
         misfits = num.full((self.nmisfits, 2), num.nan)
 
         imisfit = 0
