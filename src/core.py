@@ -81,7 +81,8 @@ def forward(env):
     payload = []
     if env.have_rundir():
         env.setup_modelling()
-        xbest = env.get_history().get_best_model()
+        history = env.get_history(subset='harvest')
+        xbest = history.get_best_model()
         problem = env.get_problem()
         ds = env.get_dataset()
         payload.append((ds, problem, xbest))
