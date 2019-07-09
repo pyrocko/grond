@@ -147,7 +147,7 @@ class MisfitTarget(Object):
             self._combined_weight = num.ones(1, dtype=num.float)
         return self._combined_weight
 
-    def get_correlated_weights(self):
+    def get_correlated_weights(self, nthreads=0):
         pass
 
     def set_bootstrap_weights(self, weights):
@@ -159,7 +159,7 @@ class MisfitTarget(Object):
         nbootstraps = self.bootstrap_weights.size // self.nmisfits
         return self.bootstrap_weights.reshape(nbootstraps, self.nmisfits)
 
-    def init_bootstrap_residuals(self, nbootstrap, rstate=None):
+    def init_bootstrap_residuals(self, nbootstrap, rstate=None, nthreads=0):
         raise NotImplementedError()
 
     def set_bootstrap_residuals(self, residuals):
@@ -172,10 +172,19 @@ class MisfitTarget(Object):
         return self.bootstrap_residuals.reshape(nbootstraps, self.nmisfits)
 
     def prepare_modelling(self, engine, source, targets):
+        ''' Prepare modelling target
+
+        This function shall return a list of :class:`pyrocko.gf.Target`
+        for forward modelling in the :class:`pyrocko.gf.LocalEngine`.
+        '''
         return [self]
 
     def finalize_modelling(
             self, engine, source, modelling_targets, modelling_results):
+        ''' Manipulate modelling before misfit calculation
+
+        This function can be overloaded interact with the modelling results.
+        '''
         return modelling_results[0]
 
 

@@ -90,16 +90,20 @@ class CombiSource(gf.Source):
 
         return gf.DiscretizedMTSource.combine(dsources)
 
-def corr_misfits(w_misfits, weight_matrix):
-    ''' help function for the matrix multiplication
-    that combines misfits, weigths and correlated weights
-    - this is strictly L2 norm and covariance-weighted data
-    feed here a squeare-rooted, inverse covariance matrix.
 
-    The function stops before doing the last sum.'''
-    res = num.matmul(w_misfits, weight_matrix)
+def correlated_weights(values, weight_matrix):
+    '''
+    Applies correlated weights to values
 
-    return res
+    The resulting weighed values have to be squared! Check out
+    :meth:`Problem.combine_misfits` for more information.
+
+    :param values: Misfits or norms as :class:`numpy.Array`
+    :param weight: Weight matrix, commonly the inverse of covariance matrix
+
+    :returns: :class:`numpy.Array` weighted values
+    '''
+    return num.matmul(values, weight_matrix)
 
 
 class ProblemConfig(Object):
@@ -211,7 +215,7 @@ class Problem(Object):
         guts.dump(self, filename=fn)
 
     def dump_problem_data(
-            self, dirname, x, misfits, bootstraps=None,
+            self, dirname, x, misfits, chains=None,
             sampler_context=None):
 
         fn = op.join(dirname, 'models')
@@ -224,10 +228,10 @@ class Problem(Object):
         with open(fn, 'ab') as f:
             misfits.astype('<f8').tofile(f)
 
-        if bootstraps is not None:
-            fn = op.join(dirname, 'bootstraps')
+        if chains is not None:
+            fn = op.join(dirname, 'chains')
             with open(fn, 'ab') as f:
-                bootstraps.astype('<f8').tofile(f)
+                chains.astype('<f8').tofile(f)
 
         if sampler_context is not None:
             fn = op.join(dirname, 'choices')
@@ -330,7 +334,12 @@ class Problem(Object):
             raise GrondError('Cannot get GF Store, modelling is not set up!')
         return self.get_engine().get_store(target.store_id)
 
-    def random_uniform(self, xbounds, rstate):
+    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):>>>>>>> ahar
+        if fixed_magnitude is not None:
+            raise GrondError(
+                'Setting fixed magnitude in random model generation not '
+                'supported for this type of problem.')
+
         x = rstate.uniform(0., 1., self.nparameters)
         x *= (xbounds[:, 1] - xbounds[:, 0])
         x += xbounds[:, 0]
@@ -352,8 +361,7 @@ class Problem(Object):
     def get_target_weights(self):
         if self._target_weights is None:
             self._target_weights = num.concatenate(
-               [target.get_combined_weight()
-                for target in self.targets])
+               [target.get_combined_weight() for target in self.targets])
 
         return self._target_weights
 
@@ -389,14 +397,11 @@ class Problem(Object):
 
         return ws
 
-    def get_reference_model(self, expand=False):
-        if expand:
-            src_params = self.pack(self.base_source)
-            ref = num.zeros(self.nparameters)
-            ref[:src_params.size] = src_params
-        else:
-            ref = self.pack(self.base_source)
-        return ref
+    def get_reference_model(self):
+        model = num.zeros(self.nparameters)
+        model_source_params = self.pack(self.base_source)
+        model[:model_source_params.size] = model_source_params
+        return model
 
     def get_parameter_bounds(self):
         out = []
@@ -464,13 +469,16 @@ class Problem(Object):
             to the residuals, indexed as
             ``extra_residuals[ibootstrap, iresidual]``.
 
-        :param extra_correlated_weights: if given a dictionary of
-            ``idx_misfit: correlated weight matrix`` has to be passed.
+        :param extra_correlated_weights: if a dictionary of
+            ``imisfit: correlated weight matrix`` is passed a correlated
+            weight matrix is applied to the misfit and normalisation values.
+            `imisfit` is the starting index in the misfits vector the
+            correlated weight matrix applies to.
 
         :param get_contributions: get the weighted and perturbed contributions
             (don't do the sum).
 
-        :returns: if no *extra_weights* or *extra_residuals* or are given, a 1D
+        :returns: if no *extra_weights* or *extra_residuals* are given, a 1D
             array indexed as ``misfits[imodel]`` containing the global misfit
             for each model is returned, otherwise a 2D array
             ``misfits[imodel, ibootstrap]`` with the misfit for every model and
@@ -493,7 +501,7 @@ class Problem(Object):
 
         if self.norm_exponent != 2 and extra_correlated_weights:
             raise GrondError('Correlated weights can only be used '
-                             ' with norm_exponent=2!')
+                             ' with norm_exponent=2')
 
         exp, root = self.get_norm_functions()
 
@@ -507,40 +515,43 @@ class Problem(Object):
 
         res = mf[..., 0]
         norms = mf[..., 1]
-        
-        for idx1, corr_weight_mat in extra_correlated_weights.items():
 
-            idx2 = idx1 + corr_weight_mat.shape[0]
+        for imisfit, corr_weight_mat in extra_correlated_weights.items():
+
+            jmisfit = imisfit + corr_weight_mat.shape[0]
 
             for imodel in range(nmodels):
-                corr_res = res[imodel, :, idx1:idx2]
-                corr_norms = norms[imodel, :, idx1:idx2]
+                corr_res = res[imodel, :, imisfit:jmisfit]
+                corr_norms = norms[imodel, :, imisfit:jmisfit]
 
-                res[imodel, :, idx1:idx2] = \
-                    corr_misfits(corr_res, corr_weight_mat)
+                res[imodel, :, imisfit:jmisfit] = \
+                    correlated_weights(corr_res, corr_weight_mat)
 
-                norms[imodel, :, idx1:idx2] = \
-                    corr_misfits(corr_norms, corr_weight_mat)
+                norms[imodel, :, imisfit:jmisfit] = \
+                    correlated_weights(corr_norms, corr_weight_mat)
 
-        # get and apply more target weights
-        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :] 
+        # Apply normalization family weights (these weights depend on
+        # on just calculated correlated norms!)
+        weights_fam = \
+            self.inter_family_weights2(norms[:, 0, :])[:, num.newaxis, :]
 
+        weights_fam = exp(weights_fam)
+
+        res = exp(res)
+        norms = exp(norms)
+
+        res *= weights_fam
+        norms *= weights_fam
+
+        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :]
         if num.any(extra_weights):
             weights_tar = weights_tar * extra_weights[num.newaxis, :, :]
 
-        res = exp(res * weights_tar)
-        norms = exp(norms * weights_tar)
- 
-        # get and apply normalization family weights (these weights depend on
-        # on just calculated norms!)
-        weights_fam = \
-            self.inter_family_weights2(root(norms[:, 0, :]))[:, num.newaxis, :]
+        weights_tar = exp(weights_tar)
 
-        weights_fam = exp(weights_fam)
- 
-        res *= weights_fam
-        norms *= weights_fam 
-        
+        res = res * weights_tar
+        norms = norms * weights_tar
+
         if get_contributions:
             return res / num.nansum(norms, axis=2)[:, :, num.newaxis]
 
@@ -732,6 +743,8 @@ class ModelHistory(object):
         self._bootstraps_buffer = None
         self._sample_contexts_buffer = None
 
+        self._sorted_misfit_idx = {}
+
         self.models = None
         self.misfits = None
         self.bootstrap_misfits = None
@@ -748,7 +761,7 @@ class ModelHistory(object):
 
     @staticmethod
     def verify_rundir(rundir):
-        _rundir_files = ['misfits', 'models']
+        _rundir_files = ('misfits', 'models')
 
         if not op.exists(rundir):
             raise ProblemDataNotAvailable(
@@ -842,6 +855,7 @@ class ModelHistory(object):
                 self._bootstraps_buffer = bootstraps_buffer
 
     def clear(self):
+        assert self.mode != 'r', 'History is read-only, cannot clear.'
         self.nmodels = 0
         self.nmodels_capacity = self.nmodels_capacity_min
 
@@ -882,6 +896,8 @@ class ModelHistory(object):
                     if bootstrap_misfits is not None else None,
                     sampler_contexts[i, :]
                     if sampler_contexts is not None else None)
+
+        self._sorted_misfit_idx.clear()
 
         self.emit('extend', nmodels, n, models, misfits, sampler_contexts)
 
@@ -931,6 +947,11 @@ class ModelHistory(object):
             new_sampler_contexts)
 
     def add_listener(self, listener):
+        ''' Add a listener to the history
+
+        The listening class can implement the following methods:
+        * ``extend``
+        '''
         self.listeners.append(listener)
 
     def emit(self, event_name, *args, **kwargs):
@@ -1033,6 +1054,51 @@ class ModelHistory(object):
             for (icluster, percentage, models)
             in self.models_by_cluster(cluster_attribute)]
 
+    def get_sorted_misfits_idx(self, chain=0):
+        if chain not in self._sorted_misfit_idx.keys():
+            self._sorted_misfit_idx[chain] = num.argsort(
+                self.bootstrap_misfits[:, chain])
+
+        return self._sorted_misfit_idx[chain]
+
+    def get_sorted_misfits(self, chain=0):
+        isort = self.get_sorted_misfits_idx(chain)
+        return self.bootstrap_misfits[:, chain][isort]
+
+    def get_sorted_models(self, chain=0):
+        isort = self.get_sorted_misfits_idx(chain=0)
+        return self.models[isort, :]
+
+    def get_sorted_primary_misfits(self):
+        return self.get_sorted_misfits(chain=0)
+
+    def get_sorted_primary_models(self):
+        return self.get_sorted_models(chain=0)
+
+    def get_best_model(self, chain=0):
+        return self.get_sorted_models(chain)[0, ...]
+
+    def get_best_misfit(self, chain=0):
+        return self.get_sorted_misfits(chain)[0]
+
+    def get_mean_model(self):
+        return num.mean(self.models, axis=0)
+
+    def get_mean_misfit(self, chain=0):
+        return num.mean(self.bootstrap_misfits[:, chain])
+
+    def get_best_source(self, chain=0):
+        return self.problem.get_source(self.get_best_model(chain))
+
+    def get_mean_source(self, chain=0):
+        return self.problem.get_source(self.get_mean_model())
+
+    def get_chain_misfits(self, chain=0):
+        return self.bootstrap_misfits[:, chain]
+
+    def get_primary_chain_misfits(self):
+        return self.get_chain_misfits(chain=0)
+
 
 def get_nmodels(dirname, problem):
     fn = op.join(dirname, 'models')
@@ -1070,6 +1136,13 @@ def load_problem_info(dirname):
 
 def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
 
+    def get_chains_fn():
+        for fn in (op.join(dirname, 'bootstraps'),
+                   op.join(dirname, 'chains')):
+            if op.exists(fn):
+                return fn
+        return False
+
     try:
         nmodels = get_nmodels(dirname, problem) - nmodels_skip
 
@@ -1092,17 +1165,17 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
                 .astype(num.float)
         misfits = misfits.reshape((nmodels, problem.nmisfits, 2))
 
-        bootstraps = None
-        fn = op.join(dirname, 'bootstraps')
-        if op.exists(fn) and nchains is not None:
+        chains = None
+        fn = get_chains_fn()
+        if fn and nchains is not None:
             with open(fn, 'r') as f:
                 f.seek(nmodels_skip * nchains * 8)
-                bootstraps = num.fromfile(
+                chains = num.fromfile(
                         f, dtype='<f8',
                         count=nmodels*nchains)\
                     .astype(num.float)
 
-            bootstraps = bootstraps.reshape((nmodels, nchains))
+            chains = chains.reshape((nmodels, nchains))
 
         sampler_contexts = None
         fn = op.join(dirname, 'choices')
@@ -1120,7 +1193,7 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
         raise ProblemDataNotAvailable(
             'No problem data available (%s).' % dirname)
 
-    return models, misfits, bootstraps, sampler_contexts
+    return models, misfits, chains, sampler_contexts
 
 
 __all__ = '''

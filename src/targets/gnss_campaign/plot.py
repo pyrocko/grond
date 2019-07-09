@@ -8,7 +8,8 @@ from pyrocko import orthodrome as od
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
-from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem, VolumePointProblem
+from grond.problems import CMTProblem, RectangularProblem, \
+     MultiRectangularProblem, VolumePointProblem, VLVDProblem
 
 from ..plot import StationDistributionPlot
 
@@ -46,7 +47,7 @@ class GNSSTargetMisfitPlot(PlotConfig):
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
-        history = environ.get_history()
+        history = environ.get_history(subset='harvest')
         optimiser = environ.get_optimiser()
         ds = environ.get_dataset()
 
@@ -74,7 +75,6 @@ the upper fault edge.
         gnss_targets = problem.gnss_targets
         for target in gnss_targets:
             target.set_dataset(ds)
-        #print('aaa', history.misfits)
 
         gms = problem.combine_misfits(
             history.misfits,
@@ -184,7 +184,8 @@ displacements derived from best model (red).
                 vertical=vertical,
                 labels=False)
 
-            if isinstance(problem, CMTProblem):
+            if isinstance(problem, CMTProblem) \
+                    or isinstance(problem, VLVDProblem):
                 from pyrocko import moment_tensor
                 from pyrocko.plot import gmtpy
 
@@ -285,12 +286,20 @@ components).
             target.set_dataset(dataset)
             comp_weights = target.component_weights()[0]
 
-            ws_n = comp_weights[:, 0::3] / comp_weights.max()
-            ws_e = comp_weights[:, 1::3] / comp_weights.max()
-            ws_u = comp_weights[:, 2::3] / comp_weights.max()
-            ws_e = num.array(ws_e[0]).flatten()
-            ws_n = num.array(ws_n[0]).flatten()
-            ws_u = num.array(ws_u[0]).flatten()
+            comp_weights = comp_weights.A1
+            mask=target.station_component_mask
+            ws_all=num.empty(mask.shape)
+            i=0
+            for x in range(len(mask)):
+                if mask[x]==True:
+                    ws_all[x]=comp_weights[i]/ comp_weights.max()
+                    i+=1
+                else:
+                    ws_all[x]=num.nan
+
+            ws_n = ws_all[0::3]
+            ws_e = ws_all[1::3]
+            ws_u = ws_all[2::3]
 
             if ws_n.size == 0:
                 continue

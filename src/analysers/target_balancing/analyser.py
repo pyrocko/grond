@@ -2,9 +2,10 @@ import copy
 import time
 import logging
 import numpy as num
-from pyrocko.guts import Int, Float
+from pyrocko.guts import Int, Float, Bool
+from pyrocko import gf
 
-from grond.meta import Forbidden
+from grond.meta import Forbidden, GrondError
 
 from ..base import Analyser, AnalyserConfig, AnalyserResult
 
@@ -29,9 +30,11 @@ class TargetBalancingAnalyser(Analyser):
      described as adaptive station weighting in Heimann (2011).
      """
 
-    def __init__(self, niter):
+    def __init__(self, niter, use_reference_magnitude, cutoff):
         Analyser.__init__(self)
         self.niter = niter
+        self.use_reference_magnitude = use_reference_magnitude
+        self.cutoff = cutoff
 
     def log_progress(self, problem, iiter, niter):
         t = time.time()
@@ -64,9 +67,8 @@ class TargetBalancingAnalyser(Analyser):
         wproblem.targets = wtargets
 
         xbounds = wproblem.get_parameter_bounds()
-        npar = xbounds.shape[0]
 
-        mss = num.zeros((self.niter, wproblem.ntargets))
+        misfits = num.zeros((self.niter, wproblem.ntargets, 2))
         rstate = num.random.RandomState(123)
 
         isbad_mask = None
@@ -75,10 +77,18 @@ class TargetBalancingAnalyser(Analyser):
         for iiter in range(self.niter):
             self.log_progress(problem, iiter, self.niter)
             while True:
-                x = []
-                for ipar in range(npar):
-                    v = rstate.uniform(xbounds[ipar, 0], xbounds[ipar, 1])
-                    x.append(v)
+                if self.use_reference_magnitude:
+                    try:
+                        fixed_magnitude = wproblem.base_source.get_magnitude()
+                    except gf.DerivedMagnitudeError:
+                        raise GrondError(
+                            'Cannot use use_reference_magnitude for this type '
+                            'of source model.')
+                else:
+                    fixed_magnitude = None
+
+                x = wproblem.random_uniform(
+                    xbounds, rstate, fixed_magnitude=fixed_magnitude)
 
                 try:
                     x = wproblem.preconstrain(x)
@@ -91,13 +101,15 @@ class TargetBalancingAnalyser(Analyser):
                 isok_mask = num.logical_not(isbad_mask)
             else:
                 isok_mask = None
-            ms = wproblem.misfits(x, mask=isok_mask)[:, 1]
-            mss[iiter, :] = ms
+            misfits[iiter, :, :] = wproblem.misfits(x, mask=isok_mask)
 
-            isbad_mask = num.isnan(ms)
+            isbad_mask = num.isnan(misfits[iiter, :, 1])
 
-        mean_ms = num.mean(mss, axis=0)
-        weights = 1. / mean_ms
+        mean_ms = num.mean(misfits[:, :, 0], axis=0)
+
+        mean_ps = num.mean(misfits[:, :, 1], axis=0)
+
+        weights = 1. / mean_ps
         families, nfamilies = wproblem.get_family_mask()
 
         for ifamily in range(nfamilies):
@@ -105,9 +117,22 @@ class TargetBalancingAnalyser(Analyser):
                 num.nansum(weights[families == ifamily]) /
                 num.nansum(num.isfinite(weights[families == ifamily])))
 
+        if self.cutoff is not None:
+            weights[mean_ms / mean_ps > self.cutoff] = 0.0
+
         for weight, target in zip(weights, problem.waveform_targets):
             target.analyser_results['target_balancing'] = \
                 TargetBalancingAnalyserResult(weight=float(weight))
+
+        for itarget, target in enumerate(problem.waveform_targets):
+            logger.info((
+                'Balancing analysis for target "%s":\n'
+                '  m/p: %g\n'
+                '  weight: %g\n'
+                ) % (
+                    target.string_id(),
+                    mean_ms[itarget] / mean_ps[itarget],
+                    weights[itarget]))
 
 
 class TargetBalancingAnalyserResult(AnalyserResult):
@@ -116,12 +141,28 @@ class TargetBalancingAnalyserResult(AnalyserResult):
 
 class TargetBalancingAnalyserConfig(AnalyserConfig):
     """Configuration parameters of the target balancing."""
-    niterations = Int.T(default=1000,
-                        help='Number of random forward models for mean \
-                             phase amplitude estimation')
+    niterations = Int.T(
+        default=1000,
+        help='Number of random forward models for mean phase amplitude '
+             'estimation')
+
+    use_reference_magnitude = Bool.T(
+        default=False,
+        help='Fix magnitude of random sources to the magnitude of the '
+             'reference event.')
+
+    cutoff = Float.T(
+        optional=True,
+        help='Remove targets where ratio m/p > cutoff, where m is the misfit '
+             'between synthetics and observations and p is the misfit between '
+             'synthetics and zero-traces. Magnitude should be fixed to use '
+             'this.')
 
     def get_analyser(self):
-        return TargetBalancingAnalyser(niter=self.niterations)
+        return TargetBalancingAnalyser(
+            niter=self.niterations,
+            use_reference_magnitude=self.use_reference_magnitude,
+            cutoff=self.cutoff)
 
 
 __all__ = '''

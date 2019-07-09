@@ -118,9 +118,11 @@ var yaml_type_map = [
     ['!grond.DoubleDCProblem', Dummy],
     ['!grond.MultiRectangularProblem', Dummy],
     ['!grond.VolumePointProblem', Dummy],
+    ['!grond.VLVDProblem', Dummy],
     ['!pf.MTSource', Dummy],
     ['!pf.RectangularSource', Dummy],
     ['!pf.ExplosionSource', Dummy],
+    ['!pf.VLVDSource', Dummy],
     ['!pf.HalfSinusoidSTF', Dummy],
     ['!grond.PlotCollection', Dummy],
     ['!grond.PlotGroup', Dummy],
@@ -566,6 +568,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                         doc.name = 'parameter results';
                         doc.variant = 'default';
                         doc.section = 'run';
+                        doc.stats_path = get_path(problem_name) + '/stats.yaml';
                         doc.feather_icon = 'book';
                         doc.template = 'parameter-table';
 

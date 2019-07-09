@@ -51,7 +51,9 @@ def test_scenario():
             grond('report', *rundir_paths)
 
             grond(
-                'go', quick_config_path, '--parallel=2', '--force',
+                'go', quick_config_path,
+                '--parallel=2',
+                '--force',
                 *event_names)
             rundir_paths = common.get_rundir_paths(config_path, event_names)
             grond('report', '--parallel=2', *rundir_paths)

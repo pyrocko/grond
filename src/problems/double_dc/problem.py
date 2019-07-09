@@ -103,10 +103,13 @@ class DoubleDCProblem(Problem):
                 arr[ip] = source.stf2.duration if source.stf2 else 0.0
         return arr
 
-    def random_uniform(self, xbounds, rstate):
+    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
             x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
+
+        if fixed_magnitude is not None:
+            x[4] = fixed_magnitude
 
         return x.tolist()
 

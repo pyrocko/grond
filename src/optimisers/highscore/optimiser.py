@@ -15,10 +15,6 @@ from grond.problems.base import ModelHistory
 from grond.optimisers.base import Optimiser, OptimiserConfig, BadProblem, \
     OptimiserStatus
 
-import cProfile
-
-pr = cProfile.Profile()
-
 guts_prefix = 'grond'
 
 logger = logging.getLogger('grond.optimisers.highscore.optimiser')
@@ -517,7 +513,8 @@ class HighScoreOptimiser(Optimiser):
         for t in problem.targets:
             if t.can_bootstrap_residuals:
                 t.init_bootstrap_residuals(
-                    self.nbootstrap, rstate=self.get_rstate_bootstrap())
+                    self.nbootstrap, rstate=self.get_rstate_bootstrap(),
+                    nthreads=self._nthreads)
             else:
                 t.set_bootstrap_residuals(
                     num.zeros((self.nbootstrap, t.nmisfits)))
@@ -563,7 +560,8 @@ class HighScoreOptimiser(Optimiser):
                 [0.] + [t.nmisfits for t in problem.targets], dtype=num.int)
 
             for it, target in enumerate(problem.targets):
-                weights = target.get_correlated_weights()
+                weights = target.get_correlated_weights(
+                    nthreads=self._nthreads)
                 if weights is None:
                     continue
                 corr[misfit_idx[it]] = weights
