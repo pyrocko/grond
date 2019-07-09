@@ -23,6 +23,7 @@ class MultiRectangularProblemConfig(ProblemConfig):
     decimation_factor = Int.T(default=1)
     distance_min = Float.T(default=0.)
     nsources = Int.T(default=1)
+    nthreads = Int.T(default=4)
 
     def get_problem(self, event, target_groups, targets):
         base_source = gf.RectangularSource.from_pyrocko_event(
@@ -41,7 +42,8 @@ class MultiRectangularProblemConfig(ProblemConfig):
             target_groups=target_groups,
             targets=targets,
             ranges=self.ranges,
-            norm_exponent=self.norm_exponent)
+            norm_exponent=self.norm_exponent,
+            nthreads=self.nthreads)
 
         return problem
 
