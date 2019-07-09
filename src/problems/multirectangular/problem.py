@@ -118,7 +118,12 @@ class MultiRectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds, rstate):
+    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
+        if fixed_magnitude is not None:
+            raise GrondError(
+                'Setting fixed magnitude in random model generation not '
+                'supported for this type of problem.')
+        
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
             x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
