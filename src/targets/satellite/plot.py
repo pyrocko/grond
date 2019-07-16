@@ -114,8 +114,8 @@ edge marking the upper fault edge. Complete data extent is shown.
                 scale_x = {'scale': 1.}
                 scale_y = {'scale': 1.}
                 if not self.relative_coordinates:
-                    scale_x['offset'] = source.effective_lat
-                    scale_y['offset'] = source.effective_lon
+                    scale_x['offset'] = source.effective_lon
+                    scale_y['offset'] = source.effective_lat
                 ax.set_aspect(1./num.cos(source.effective_lat*d2r))
 
             scale_axes(ax.get_xaxis(), **scale_x)
