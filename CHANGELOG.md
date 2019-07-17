@@ -10,7 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `grond go` utilises `--threads` arguments for various tasks.
 
 ### Fixed
-- Improvements in documentation and examples
+- Improvements in documentation and examples.
+- `satellite.plot` degree axis offset and close-up scaling for point sources.
 
 ## [1.3.2] 2019-07-03
 
