@@ -736,7 +736,7 @@ def command_go(args):
                  'if set to more than one, --status=quiet is implied.')
         parser.add_option(
             '--threads', dest='nthreads', type=int, default=1,
-            help='set number of threads per process (default: 1).'
+            help='set number of threads per process (default: 1). '
                  'Set to 0 to use all available cores.')
 
     parser, options, args = cl_parse('go', args, setup)
