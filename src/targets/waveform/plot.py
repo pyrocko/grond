@@ -497,7 +497,7 @@ traces.''')
                 itarget, itarget_end = target_index[target]
                 assert itarget_end == itarget + 1
 
-                w = target.get_combined_weight()
+                w = target.get_analyser_weight() * target.get_manual_weight()
 
                 if target.misfit_config.domain == 'cc_max_norm':
                     tref = (
@@ -900,7 +900,7 @@ box, red).
             itarget, itarget_end = target_index[target]
             assert itarget_end == itarget + 1
 
-            w = target.get_combined_weight()
+            w = target.get_analyser_weight() * target.get_manual_weight()
 
             if target.misfit_config.domain == 'cc_max_norm':
                 tref = (

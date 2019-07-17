@@ -298,13 +298,19 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         plots.extend(plot.get_plot_classes())
         return plots
 
-    def get_combined_weight(self):
-        if self._combined_weight is None:
+    def get_manual_weight(self):
+        if self._manual_weight is None:
             w = self.manual_weight
+            self._manual_weight = num.array([w], dtype=num.float)
+        return self._manual_weight
+
+    def get_analyser_weight(self):
+        if self._analyser_weight is None:
+            w = 1.0
             for analyser in self.analyser_results.values():
                 w *= analyser.weight
-            self._combined_weight = num.array([w], dtype=num.float)
-        return self._combined_weight
+            self._analyser_weight = num.array([w], dtype=num.float)
+        return self._analyser_weight
 
     def get_taper_params(self, engine, source):
         store = engine.get_store(self.store_id)

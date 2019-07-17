@@ -149,7 +149,8 @@ class Problem(Object):
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
 
-        self._target_weights = None
+        self._manual_weights = None
+        self._analyser_weights = None
         self._engine = None
         self._family_mask = None
 
@@ -178,7 +179,7 @@ class Problem(Object):
 
     def copy(self):
         o = copy.copy(self)
-        o._target_weights = None
+        o._manual_weights = None
         return o
 
     def set_target_parameter_values(self, x):
@@ -358,12 +359,28 @@ class Problem(Object):
             return self.make_dependant(
                 xs, self.dependants[i-self.nparameters].name)
 
-    def get_target_weights(self):
-        if self._target_weights is None:
-            self._target_weights = num.concatenate(
-               [target.get_combined_weight() for target in self.targets])
+    def get_manual_weights(self):
+        if self._manual_weights is None:
+            self._manual_weights = num.concatenate(
+               [target.get_manual_weight() for target in self.targets])
 
-        return self._target_weights
+        return self._manual_weights
+    
+    def get_analyser_weights(self):
+        if self._analyser_weights is None:
+            wa=[]
+            for target in self.targets:
+                for imisfit in range(target.nmisfits):
+                    if hasattr(target, 'get_analyser_weight'):
+                        if not num.isnan(target.get_analyser_weight()):
+                            wa.append(target.get_analyser_weight())
+                        else:
+                            wa.append(num.array([1.0], dtype=num.float))
+                    else:
+                        wa.append(num.array([1.0], dtype=num.float))
+            self._analyser_weights = num.concatenate(wa)
+
+        return self._analyser_weights
 
     def get_target_residuals(self):
         pass
@@ -508,7 +525,7 @@ class Problem(Object):
         nmodels = misfits.shape[0]
         nmisfits = misfits.shape[1]  # noqa
 
-        mf = misfits[:, num.newaxis, :, :].copy()
+        mf = misfits[:, num.newaxis, :, :].copy(order='A')
 
         if num.any(extra_residuals):
             mf = mf + extra_residuals[num.newaxis, :, :, num.newaxis]
@@ -530,8 +547,12 @@ class Problem(Object):
                 norms[imodel, :, imisfit:jmisfit] = \
                     correlated_weights(corr_norms, corr_weight_mat)
 
-        # Apply normalization family weights (these weights depend on
-        # on just calculated correlated norms!)
+        # Apply analyser weights if exist # todo: use norm_function ?
+        weights_ana = self.get_analyser_weights()[num.newaxis, num.newaxis, :]
+        res *= weights_ana
+        norms *= weights_ana
+
+        # Apply normalization family weights 
         weights_fam = \
             self.inter_family_weights2(norms[:, 0, :])[:, num.newaxis, :]
 
@@ -543,14 +564,14 @@ class Problem(Object):
         res *= weights_fam
         norms *= weights_fam
 
-        weights_tar = self.get_target_weights()[num.newaxis, num.newaxis, :]
+        weights_man = self.get_manual_weights()[num.newaxis, num.newaxis, :]
         if num.any(extra_weights):
-            weights_tar = weights_tar * extra_weights[num.newaxis, :, :]
+            weights_man = weights_man * extra_weights[num.newaxis, :, :]
 
-        weights_tar = exp(weights_tar)
+        weights_man = exp(weights_man)
 
-        res = res * weights_tar
-        norms = norms * weights_tar
+        res = res * weights_man
+        norms = norms * weights_man
 
         if get_contributions:
             return res / num.nansum(norms, axis=2)[:, :, num.newaxis]

@@ -223,13 +223,11 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         return result
 
-    def get_combined_weight(self):
-        if self._combined_weight is None:
-            # invcov = self.scene.covariance.weight_matrix
-            # self._combined_weight = invcov * self.manual_weight
-            self._combined_weight = num.full(self.nmisfits, self.manual_weight)
+    def get_manual_weight(self):
+        if self._manual_weight is None:
+            self._manual_weight = num.full(self.nmisfits, self.manual_weight)
 
-        return self._combined_weight
+        return self._manual_weight
 
     def prepare_modelling(self, engine, source, targets):
         return [self]

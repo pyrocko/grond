@@ -84,11 +84,11 @@ class MisfitTarget(Object):
         self._ds = None
         self._result_mode = 'sparse'
 
-        self._combined_weight = None
+        self._analyser_weight = None
         self._target_parameters = None
         self._target_ranges = None
 
-        self._combined_weight = None
+        self._manual_weight = None
 
     @classmethod
     def get_plot_classes(cls):
@@ -142,10 +142,10 @@ class MisfitTarget(Object):
     def post_process(self, engine, source, statics):
         raise NotImplementedError()
 
-    def get_combined_weight(self):
-        if self._combined_weight is None:
-            self._combined_weight = num.ones(1, dtype=num.float)
-        return self._combined_weight
+    def get_manual_weight(self):
+        if self._manual_weight is None:
+            self._manual_weight = num.ones(1, dtype=num.float)
+        return self._manual_weight
 
     def get_correlated_weights(self, nthreads=0):
         pass

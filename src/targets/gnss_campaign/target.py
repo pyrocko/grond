@@ -240,12 +240,12 @@ class GNSSCampaignMisfitTarget(gf.GNSSCampaignTarget, MisfitTarget):
 
         return result
 
-    def get_combined_weight(self):
+    def get_manual_weight(self):
         """A given manual weight in the configuration is applied."""
-        if self._combined_weight is None:
-            self._combined_weight = num.full(self.nmisfits, self.manual_weight)
+        if self._manual_weight is None:
+            self._manual_weight = num.full(self.nmisfits, self.manual_weight)
 
-        return self._combined_weight
+        return self._manual_weight
 
     def init_bootstrap_residuals(self, nbootstraps, rstate=None, nthreads=0):
         logger.info('GNSS campaign %s, bootstrapping residuals'
