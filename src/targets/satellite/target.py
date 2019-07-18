@@ -211,7 +211,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         res = obs - stat_syn
 
         misfit_value = res
-        misfit_norm = obs
+        if self.misfit_config.optimise_orbital_ramp:
+            misfit_norm = obs - stat_level
+        else:
+            misfit_norm = obs
 
         mf = num.vstack([misfit_value, misfit_norm]).T
         result = SatelliteMisfitResult(

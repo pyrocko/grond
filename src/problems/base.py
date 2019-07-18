@@ -340,7 +340,7 @@ class Problem(Object):
             raise GrondError(
                 'Setting fixed magnitude in random model generation not '
                 'supported for this type of problem.')
-        
+
         x = rstate.uniform(0., 1., self.nparameters)
         x *= (xbounds[:, 1] - xbounds[:, 0])
         x += xbounds[:, 0]
@@ -365,7 +365,7 @@ class Problem(Object):
                [target.get_manual_weight() for target in self.targets])
 
         return self._manual_weights
-    
+
     def get_analyser_weights(self):
         if self._analyser_weights is None:
             wa=[]
@@ -547,12 +547,15 @@ class Problem(Object):
                 norms[imodel, :, imisfit:jmisfit] = \
                     correlated_weights(corr_norms, corr_weight_mat)
 
-        # Apply analyser weights if exist # todo: use norm_function ?
+        # Apply analyser weights and extra_weights if exist
         weights_ana = self.get_analyser_weights()[num.newaxis, num.newaxis, :]
+        if num.any(extra_weights):
+            weights_ana = weights_ana * extra_weights[num.newaxis, :, :]
+
         res *= weights_ana
         norms *= weights_ana
 
-        # Apply normalization family weights 
+        # Apply normalization family weights
         weights_fam = \
             self.inter_family_weights2(norms[:, 0, :])[:, num.newaxis, :]
 
@@ -565,9 +568,6 @@ class Problem(Object):
         norms *= weights_fam
 
         weights_man = self.get_manual_weights()[num.newaxis, num.newaxis, :]
-        if num.any(extra_weights):
-            weights_man = weights_man * extra_weights[num.newaxis, :, :]
-
         weights_man = exp(weights_man)
 
         res = res * weights_man
