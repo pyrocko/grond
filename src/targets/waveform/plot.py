@@ -212,7 +212,7 @@ class CheckWaveformsPlot(PlotConfig):
     n_random_synthetics = Int.T(
         default=10,
         help='Number of Synthetics to generate')
-    
+
     nsources = 2
 
     def make(self, environ):
@@ -874,7 +874,7 @@ box, red).
         xbest = history.get_best_model()
         misfits = history.misfits[history.get_sorted_misfits_idx(chain=0), ...]
 
-        ws = problem.get_target_weights()
+        ws = problem.get_analyser_weights()
 
         gcms = problem.combine_misfits(
             misfits[:1, :, :],
@@ -1281,7 +1281,7 @@ location of the source.
             target_index[target] = i, i+target.nmisfits
             i += target.nmisfits
 
-        ws = problem.get_target_weights()
+        ws = problem.get_analyser_weights()
 
         if history:
             misfits = history.misfits[history.get_sorted_misfits_idx(), ...]

@@ -372,10 +372,7 @@ class Problem(Object):
             for target in self.targets:
                 for imisfit in range(target.nmisfits):
                     if hasattr(target, 'get_analyser_weight'):
-                        if not num.isnan(target.get_analyser_weight()):
-                            wa.append(target.get_analyser_weight())
-                        else:
-                            wa.append(num.array([1.0], dtype=num.float))
+                        wa.append(target.get_analyser_weight())
                     else:
                         wa.append(num.array([1.0], dtype=num.float))
             self._analyser_weights = num.concatenate(wa)
@@ -550,7 +547,7 @@ class Problem(Object):
         # Apply analyser weights and extra_weights if exist
         weights_ana = self.get_analyser_weights()[num.newaxis, num.newaxis, :]
         if num.any(extra_weights):
-            weights_ana = weights_ana * extra_weights[num.newaxis, :, :]
+            weights_ana = weights_ana * extra_weights[num.newaxis, 0, :]
 
         res *= weights_ana
         norms *= weights_ana
