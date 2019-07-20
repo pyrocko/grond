@@ -544,10 +544,8 @@ class Problem(Object):
                 norms[imodel, :, imisfit:jmisfit] = \
                     correlated_weights(corr_norms, corr_weight_mat)
 
-        # Apply analyser weights and extra_weights if exist
+        # Apply analyser weights
         weights_ana = self.get_analyser_weights()[num.newaxis, num.newaxis, :]
-        if num.any(extra_weights):
-            weights_ana = weights_ana * extra_weights[num.newaxis, 0, :]
 
         res *= weights_ana
         norms *= weights_ana
@@ -564,7 +562,10 @@ class Problem(Object):
         res *= weights_fam
         norms *= weights_fam
 
+        # Apply manual weights and extra_weights (bootstrap_weights) if exist
         weights_man = self.get_manual_weights()[num.newaxis, num.newaxis, :]
+        if num.any(extra_weights):
+            weights_man = weights_man * extra_weights[num.newaxis, :, :]
         weights_man = exp(weights_man)
 
         res = res * weights_man
