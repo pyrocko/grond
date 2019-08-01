@@ -517,7 +517,7 @@ class Problem(Object):
         return self._family_mask
 
     def evaluate(self, x, mask=None, result_mode='full', targets=None,
-                 nthreads=0):
+                 nthreads=1):
         source = self.get_source(x)
         engine = self.get_engine()
 
@@ -577,7 +577,7 @@ class Problem(Object):
 
         return results
 
-    def misfits(self, x, mask=None, nthreads=0):
+    def misfits(self, x, mask=None, nthreads=1):
         results = self.evaluate(
             x, mask=mask, result_mode='sparse', nthreads=nthreads)
         misfits = num.full((self.nmisfits, 2), num.nan)
