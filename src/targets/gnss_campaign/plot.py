@@ -167,8 +167,7 @@ displacements derived from best model (red).
                 vertical=vertical,
                 labels=False)
 
-            if isinstance(problem, CMTProblem) \
-                    or isinstance(problem, VLVDProblem):
+            if isinstance(problem, CMTProblem):
                 from pyrocko import moment_tensor
                 from pyrocko.plot import gmtpy
 
@@ -197,7 +196,7 @@ displacements derived from best model (red).
                     t=60,
                     *m.jxyr)
 
-            elif isinstance(problem, VolumePointProblem):
+            elif isinstance(problem, VLVDProblem):
                 ev_lat, ev_lon = event.effective_latlon
                 dV = abs(source.volume_change)
                 sphere_radius = num.cbrt(dV / (4./3.*num.pi))
