@@ -17,7 +17,7 @@ class Optimiser(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
-        self._nthreads = 0
+        self._nthreads = 1
 
     def set_nthreads(self, nthreads):
         logger.debug('Setting nthreads to %d', nthreads)
