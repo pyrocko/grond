@@ -6,6 +6,7 @@ import time
 import copy
 import shutil
 import glob
+import math
 import os.path as op
 import numpy as num
 
@@ -562,10 +563,22 @@ class ParameterStats(Object):
         kwargs.update(zip(self.T.propnames, args))
         Object.__init__(self, **kwargs)
 
+    def get_values_dict(self):
+        return dict(
+            (self.name+'.' + k, getattr(self, k))
+            for k in self.T.propnames
+            if k != 'name')
+
 
 class ResultStats(Object):
     problem = Problem.T()
     parameter_stats_list = List.T(ParameterStats.T())
+
+    def get_values_dict(self):
+        d = {}
+        for ps in self.parameter_stats_list:
+            d.update(ps.get_values_dict())
+        return d
 
 
 def make_stats(problem, models, gms, pnames=None):
@@ -589,6 +602,15 @@ def make_stats(problem, models, gms, pnames=None):
         rs.parameter_stats_list.append(s)
 
     return rs
+
+
+def try_add_location_uncertainty(data, types):
+    vs = [data.get(k, None) for k in (
+        'north_shift.std', 'east_shift.std', 'depth.std')]
+
+    if None not in vs:
+        data['location_uncertainty'] = math.sqrt(sum(v**2 for v in vs))
+        types['location_uncertainty'] = float
 
 
 def format_stats(rs, fmt):
@@ -666,18 +688,31 @@ def export(
         env = Environment(rundir)
         info = env.get_run_info()
 
-        if selection and not selected(
-                selection,
-                data=dict(tags=info.tags),
-                types=dict(tags=(list, str))):
-
-            continue
-
         history = env.get_history(subset='harvest')
 
         problem = history.problem
         models = history.models
         misfits = history.get_primary_chain_misfits()
+
+        if selection:
+            rs = make_stats(
+                problem, models,
+                history.get_primary_chain_misfits())
+
+            data = dict(tags=info.tags)
+            types = dict(tags=(list, str))
+
+            for k, v in rs.get_values_dict().items():
+                data[k] = v
+                types[k] = float
+
+            try_add_location_uncertainty(data, types)
+
+            if not selected(selection, data=data, types=types):
+                continue
+
+        else:
+            rs = None
 
         if type == 'vector':
             pnames_take = pnames_clean or \
@@ -712,15 +747,16 @@ def export(
             dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
-            gms = misfits
-            isort = num.argsort(gms)
+            isort = num.argsort(misfits)
             for i in isort:
-                dump(models[i], gms[i], indices)
+                dump(models[i], misfits[i], indices)
 
         elif what == 'stats':
-            rs = make_stats(problem, models,
-                            history.get_primary_chain_misfits(),
-                            pnames_clean)
+            if not rs:
+                rs = make_stats(problem, models,
+                                history.get_primary_chain_misfits(),
+                                pnames_clean)
+
             if shortform:
                 print(' ', format_stats(rs, pnames), file=out)
             else:

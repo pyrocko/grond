@@ -390,11 +390,11 @@ def selected(expression, data, types):
         if key not in data:
             raise SelectionError(
                 'Invalid key in selection expression: '
-                '"%s", available: %s' % (
-                    key, ', '.join('"%s"' % s for s in data.keys())))
+                '"%s", available:\n  %s' % (
+                    key, '\n  '.join(sorted(data.keys()))))
 
         typ = types[key]
-        if len(typ) == 1:
+        if not isinstance(typ, tuple):
             if operator in selected_operators_1_1:
                 results.append(
                     selected_operators_1_1[operator](data, key, typ(value)))
@@ -408,7 +408,7 @@ def selected(expression, data, types):
                         operator,
                         key))
 
-        elif len(typ) == 2:
+        else:
             if operator in selected_operators_n_1:
                 results.append(
                     selected_operators_n_1[operator](data, key, typ[1](value)))
