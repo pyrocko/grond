@@ -807,10 +807,12 @@ def fits(env):
             if isinstance(result, WaveformMisfitResult) \
                     and result.tshift is not None:
 
-                scs.append(StationCorrection(
-                    codes=target.codes,
-                    delay=float(result.tshift),
-                    factor=1.0))
+                if target.get_combined_weight() > 0.0 \
+                        and result.tshift is not None:
+                    scs.append(StationCorrection(
+                        codes=target.codes,
+                        delay=float(result.tshift),
+                        factor=1.0))
 
     dump_station_corrections(scs, filename='%s/StationCorrections.yaml'
                              % env.get_rundir_path())
