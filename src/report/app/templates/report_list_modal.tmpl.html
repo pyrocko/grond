@@ -2,12 +2,24 @@
 <div class="modal" id="report-list-modal" tabindex="-1" role="dialog" aria-labelledby="ReportListLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content" ng-controller="ReportListController">
-      <div class="modal-header">
-        <h5 class="modal-title" id="ReportListLabel">Open</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
+      <div class="modal-header d-flex">
+        <h5 class="modal-title mr-auto" id="ReportListLabel">Open</h5>
+
+        <form class="form-inline">
+            <input
+                    class="form-control mr-2"
+                    style="width: 20em;"
+                    type="text"
+                    placeholder="Search"
+                    aria-label="Search"
+                    ng-model="list_search_keyword" />
+
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+        </form>
       </div>
+
       <div class="modal-body scrollable">
             <table class="table table-hover report-list">
                 <thead>
@@ -66,18 +78,19 @@
             </div>
         </div>
 
-        <div>
-            <button type="button" class="btn btn-secondary" ng-click="rl.reload()">
+        <form class="form-inline">
+
+            <button type="button" class="btn btn-secondary mr-2" ng-click="rl.reload()">
                 <span style="width: 1em; height: 1em; margin: 0.2em;" data-feather="refresh-cw"></span> Reload
             </button>
-            <button type="button" class="btn btn-secondary" ng-click="rl.selected_all()">
+            <button type="button" class="btn btn-secondary mr-2" ng-click="rl.selected_all()">
                Select all
             </button>
-            <button type="button" class="btn btn-secondary" ng-click="rl.selected_none()">
+            <button type="button" class="btn btn-secondary mr-2" ng-click="rl.selected_none()">
                Deselect all
             </button>
-            <button type="button" class="btn btn-primary ml-auto" data-dismiss="modal">Done</button>
-        </div>
+            <button type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
+        </form>
       </div>
     </div>
   </div>

@@ -336,7 +336,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
         return funcs;
     })
 
-    .controller('ReportListController', function($scope, YamlMultiDoc, ReportList) {
+    .controller('ReportListController', function($scope, $filter, YamlMultiDoc, ReportList) {
         var rl = ReportList;
         $scope.rl = rl;
         rl.reload();
@@ -415,7 +415,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 }
                 ordered_lines[order_skey] = lines;
             }
-            return ordered_lines[order_skey];
+            return $filter('filter')(ordered_lines[order_skey], $scope.list_search_keyword);
         };
 
     })
