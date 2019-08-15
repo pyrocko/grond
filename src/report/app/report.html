@@ -1,7 +1,7 @@
 <div>
     <script>$("#browser-warning").hide();</script>
 
-    <nav ng-controller="InfoController" class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
+    <nav class="navbar navbar-main navbar-expand navbar-dark fixed-top bg-dark shadow flex-fill">
         <a href="" class="navbar-brand">Grond Report</a>
         <input
                 class="form-control form-control-dark"
@@ -22,13 +22,15 @@
                 ng-click="open_modal()">
             Open
         </a>
-        <a
-                ng-if="have_archive()"
-                class="btn btn-primary ml-3"
-                href="grond-reports.tar.gz"
-                role="button">
-            Download .tar.gz
-        </a>
+        <div ng-controller="InfoController">
+            <a
+                    ng-if="have_archive()"
+                    class="btn btn-primary ml-3"
+                    href="grond-reports.tar.gz"
+                    role="button">
+                Download
+            </a>
+        </div>
     </nav>
 
     <nav style="top:3.5rem" class="navbar navbar-tabs navbar-expand fixed-top bg-dark shadow align-items-end p-0">
