@@ -554,7 +554,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 return;
             }
             if (!groups.hasOwnProperty(problem_name)) {
-                console.log('load', problem_name, get_path(problem_name));
+                /* console.log('load', problem_name, get_path(problem_name)); */
                 if ($scope.primary_problem === null) {
                     $scope.primary_problem = problem_name;
                 }
