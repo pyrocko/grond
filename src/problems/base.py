@@ -267,7 +267,7 @@ class Problem(Object):
 
     def get_gf_store(self, target):
         if self.get_engine() is None:
-            raise GrondError('Cannot get GF Store, modelling is not set up!')
+            raise GrondError('Cannot get GF Store, modelling is not set up.')
         return self.get_engine().get_store(target.store_id)
 
     def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
@@ -690,10 +690,10 @@ class ModelHistory(object):
 
         if not op.exists(rundir):
             raise ProblemDataNotAvailable(
-                'Directory %s does not exist!' % rundir)
+                'Directory does not exist: %s' % rundir)
         for f in _rundir_files:
             if not op.exists(op.join(rundir, f)):
-                raise ProblemDataNotAvailable('File %s not found!' % f)
+                raise ProblemDataNotAvailable('File not found: %s' % f)
 
     @classmethod
     def follow(cls, path, nchains=None, wait=20.):
