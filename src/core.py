@@ -16,7 +16,7 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound, InvalidObject
 from .problems.base import Problem, load_problem_info_and_data, \
-    load_problem_data
+    load_problem_data, ProblemDataNotAvailable
 
 from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
@@ -688,7 +688,12 @@ def export(
         env = Environment(rundir)
         info = env.get_run_info()
 
-        history = env.get_history(subset='harvest')
+        try:
+            history = env.get_history(subset='harvest')
+        except ProblemDataNotAvailable as e:
+            logger.error(
+                'Harvest not available (Did the run succeed?): %s' % str(e))
+            continue
 
         problem = history.problem
         models = history.models
