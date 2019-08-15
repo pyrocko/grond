@@ -343,7 +343,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
         var get_order_key_funcs = {
             'event': function(x) {
-                return x.get_event().name;
+                return x.get_event().name + '.' + x.problem_name;
             },
             'time': function(x) {
                 return x.get_event().time;
