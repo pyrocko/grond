@@ -1293,7 +1293,7 @@ Map showing the best source outlines (rectangular source) or centroid positions 
                                 float(icolor.max() - icolor.min())
                         alpha = int(num.round((alpha_i**3.0)*100)) #alpha^gamma
                         color_i = num.round(num.array(cmap.to_rgba(icolor[k])[0:3])*255)
-                        color = str(int(color_i[0]))+"/"+str(int(color_i[1]))+
+                        color = str(int(color_i[0]))+"/"+str(int(color_i[1]))+ \
                             "/"+str(int(color_i[2]))
                         if i==0:
                             m.gmt.psxy(
@@ -1364,7 +1364,7 @@ Map showing the best source outlines (rectangular source) or centroid positions 
                             float(icolor.max() - icolor.min())
                     alpha = int(num.round((alpha_i**3.0)*100)) #alpha^gamma
                     color_i = num.round(num.array(cmap.to_rgba(icolor[k])[0:3])*255)
-                    color = str(int(color_i[0]))+"/"+str(int(color_i[1]))+
+                    color = str(int(color_i[0]))+"/"+str(int(color_i[1]))+ \
                         "/"+str(int(color_i[2]))
                     if isinstance(problem, RectangularProblem):
                         m.gmt.psxy(
