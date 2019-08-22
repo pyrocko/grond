@@ -8,7 +8,7 @@ from matplotlib import cm, patches, colors as mcolors
 from pyrocko.guts import Tuple, Float, Int, String, List, Bool, StringChoice
 
 from pyrocko.plot import mpl_margins, mpl_color, mpl_init, mpl_graph_color
-from pyrocko.plot import beachball, hudson
+from pyrocko.plot import beachball, hudson, automap
 
 from grond.plot.config import PlotConfig
 from grond.plot.section import SectionPlotConfig, SectionPlot
@@ -16,9 +16,13 @@ from grond.plot.collection import PlotItem
 from grond import meta, core, stats
 from matplotlib import pyplot as plt
 
+from grond.problems import CMTProblem, RectangularProblem, MultiRectangularProblem
+from pyrocko import gmtpy, orthodrome as od
+
 logger = logging.getLogger('grond.problem.plot')
 
 guts_prefix = 'grond'
+km = 1e3
 
 
 def cluster_label(icluster, perc):
@@ -1078,9 +1082,311 @@ fitting solution.
             name='main')
         return [[item, fig]]
 
+class SourceLocationMap(PlotConfig):
+    ''' Plot showing best source positions and/or outlines.'''
+
+    name = 'source_location'
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(16., 13.),
+        help='width and length of the figure in cm')
+    dpi = Int.T(default=250)
+    font_size = Float.T(
+        default=10,
+        help='font size of all text')
+    show_topo = Bool.T(
+        default=True,
+        help='show topography')
+    show_grid = Bool.T(
+        default=False,
+        help='show the lat/lon grid')
+    show_rivers = Bool.T(
+        default=False,
+        help='show rivers on the map')
+    radius = Float.T(
+        optional=True,
+        help='radius of the map around campaign center lat/lon')
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+
+        environ.setup_modelling()
+
+        cm.create_group_automap(
+            self,
+            self.draw_map(environ),
+            title=u'Source Outline Map',
+            section='fits',
+            feather_icon='map',
+            description=u'''
+Map showing the best source outlines (rectangular source) or centroid positions
+ (CMT source) of all bootstrap chains on a geographical map.
+
+Colours give the relative misfits of the source models. Black colours give low
+ misfit, white colours high misfit.
+''')
+
+    def draw_map(self, environ):
+        item = PlotItem(name=self.name,
+                title=u'Source location map',
+                description=u'''
+Map showing the best source outlines (rectangular source) or centroid positions (CMT source).
+''')
+
+        history = environ.get_history(subset='harvest')
+        optimiser = environ.get_optimiser()
+        ds = environ.get_dataset()
+
+        environ.setup_modelling()
+        problem = history.problem
+
+        # if problem.gnss_targets is not None:
+        #     for target in gnss_targets:
+        #         target.set_dataset(ds)
+        # elif problem.satellite_targets is not None:
+        #     for target in satellite_targets:
+        #         target.set_dataset(ds)
+
+        gms = problem.combine_misfits(history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem))
+        isort = num.argsort(gms)
+        gms = gms[isort]
+        models = history.models[isort, :]
+        xbest = models[0, :]
+
+        nmodels = models.shape[0]
+        icolor = num.arange(nmodels)
+
+        if isinstance(problem, MultiRectangularProblem):
+            nsources = 2
+            sources = []
+            for i in range(nsources):
+                    source_i = problem.get_source(xbest, i)
+                    sources.append(source_i)
+            source = sources[0]
+            results = problem.evaluate(xbest, targets=sat_targets)
+        else:
+            source = problem.get_source(xbest)
+            results = problem.evaluate(xbest)
+
+        # distinguish between CMT and Rectangular Source
+        if isinstance(problem, MultiRectangularProblem) or isinstance(problem,
+                    RectangularProblem):
+            outlines_e0 = []
+            outlines_n0 = []
+            outlines_e1 = []
+            outlines_n1 = []
+        elif isinstance(problem, CMTProblem):
+            pass
+
+        centroids_xy = []
+        centroids_xy1 = []
+
+        for i in range(nsources):
+            for mods in models:
+                srcx = problem.get_source(mods,i)
+                if isinstance(problem, RectangularProblem):
+                    fe, fn = srcx.outline(cs='lonlat').T
+                    # centroids relative to reference location
+                    centroid =  num.array([srcx.east_shift \
+                             + num.cos(num.deg2rad(srcx.strike)) \
+                             * num.cos(num.deg2rad(srcx.dip)) * 0.5*srcx.width,
+                             srcx.north_shift - num.sin(num.deg2rad(srcx.strike)) \
+                             * num.cos(num.deg2rad(srcx.dip))* 0.5*srcx.width])#, # depth needed?
+                             #srcx.depth + num.sin(num.deg2rad(srcx.dip)) \
+                             #* 0.5*srcx.width])
+                elif isinstance(problem, CMTProblem):
+                    centroid = num.array([srcx.east_shift, srcx.north_shift])
+
+                if isinstance(problem, MultiRectangularProblem):
+                    if i==0:
+                        if num.shape(nucs_xy_xy)[0]==0:
+                            # centroids relative to reference location
+                            centroids_xy = centroid
+                            outlines_e0 = fe
+                            outlines_n0 = fn
+                        else:
+                            centroids_xy = num.vstack((centroids_xy, centroid))
+                            outlines_e0 = num.vstack((outlines_e0, fe))
+                            outlines_n0 = num.vstack((outlines_n0, fn))
+                    elif i==1:
+                        if num.shape(nucs_xy_xy1)[0]==0:
+                            centroids_xy1 = centroid
+                            outlines_e1 = fe
+                            outlines_n1 = fn
+                        else:
+                            centroids_xy1 = num.vstack((centroids_xy1, centroid))
+                            outlines_e1 = num.vstack((outlines_e1, fe))
+                            outlines_n1 = num.vstack((outlines_n1, fn))
+                else:
+                    if num.shape(centroids_xy)[0]==0:
+                        centroids_xy = centroid
+                        if isinstance(problem, RectangularProblem):
+                            outlines_e0 = fe
+                            outlines_n0 = fn
+                    else:
+                        centroids_xy = num.vstack((centroids_xy, centroid))
+                        if isinstance(problem, RectangularProblem):
+                            outlines_e0 = num.vstack((outlines_e0, fe))
+                            outlines_n0 = num.vstack((outlines_n0, fn))
+
+        #for ipar in range(problem.ncombined):
+            #checkpar = problem.combined[ipar]
+            #if checkpar.name=='depth':
+                #zpar1 = ipar
+                #src_z_pars1 = problem.combined[ipar]
+            #elif checkpar.name=='east_shift':
+                #epar1 = ipar
+                #src_e_pars1 = problem.combined[ipar]
+            #elif checkpar.name=='north_shift':
+                #npar1 = ipar
+                #src_n_pars1 = problem.combined[ipar]
+        if isinstance(problem, MultiRectangularProblem):
+            for i in range(nsources):
+                ref_pos = num.array([sources[i].lat, sources[i].lon])
+                if i==0:
+                    centroids_x = num.array([centroids_xy[l][0] for l in range(len(centroids_xy))])
+                    centroids_y = num.array([centroids_xy[l][1] for l in range(len(centroids_xy))])
+                elif i==1:
+                    centroids_x = num.array([centroids_xy1[l][0] for l in range(len(centroids_xy))])
+                    centroids_y = num.array([centroids_xy1[l][1] for l in range(len(centroids_xy))])
+                centroids_latlon = od.ne_to_latlon(ref_pos[0], ref_pos[1], centroids_y,
+                    centroids_x) # get geographical coordinates of centroids
+                ref_loc = ref_pos.reshape([2,1])
+                locations = num.hstack((centroids_latlon, ref_loc))
+                lat, lon = od.geographic_midpoint(locations[0], locations[1])
+
+                if self.radius is None:
+                        radius = od.distance_accurate50m_numpy(
+                                    lat[num.newaxis], lon[num.newaxis],
+                                    locations[0], locations[1]).max()
+                        radius *= 2 #1.1
+
+                if radius < 20.*km:
+                        logger.warn(
+                            'Radius of map defaulting to 20 km')
+                        radius = 20*km
+
+                print('Radius = ', radius)
+                m = automap.Map(
+                        width=self.size_cm[0],
+                        height=self.size_cm[1],
+                        lat=lat,
+                        lon=lon,
+                        radius=radius,
+                        show_topo=self.show_topo,
+                        show_grid=self.show_grid,
+                        show_rivers=self.show_rivers,
+                        color_wet=(216, 242, 254),
+                        color_dry=(238, 236, 230))
+
+                # add outlines/centroids to map
+                cmap = cm.ScalarMappable(
+                        norm=mcolors.PowerNorm(
+                            gamma=3.0,
+                            vmin=icolor.min(),
+                            vmax=icolor.max()),
+                            cmap=plt.get_cmap('Greys'))
+
+                for k in num.arange(nmodels):
+                        alpha_i = (icolor[k] - icolor.min()) / \
+                                float(icolor.max() - icolor.min())
+                        alpha = int(num.round((alpha_i**3.0)*100)) #alpha^gamma
+                        color_i = num.round(num.array(cmap.to_rgba(icolor[k])[0:3])*255)
+                        color = str(int(color_i[0]))+"/"+str(int(color_i[1]))+
+                            "/"+str(int(color_i[2]))
+                        if i==0:
+                            m.gmt.psxy(
+                                in_rows=num.array([outlines_e0[k],
+                                    outlines_n0[k]]).T,
+                                L='',
+                                G=color,
+                                t=alpha,
+                                *m.jxyr)
+                        elif i==1:
+                            m.gmt.psxy(
+                                in_rows=num.array([outlines_e1[k],
+                                    outlines_n1[k]]).T,
+                                L='',
+                                G=color,
+                                t=alpha,
+                                *m.jxyr)
+                yield (item, m)
+        else:
+            ref_pos = num.array([source.lat, source.lon])
+            centroids_x = num.array([centroids_xy[i][0] for i in range(len(centroids_xy))])
+            centroids_y = num.array([centroids_xy[i][1] for i in range(len(centroids_xy))])
+            centroids_latlon = od.ne_to_latlon(ref_pos[0], ref_pos[1], centroids_y,
+                centroids_x) # get geographical coordinates of centroids
+            ref_loc = ref_pos.reshape([2,1])
+            locations = num.hstack((centroids_latlon, ref_loc))
+            lat, lon = od.geographic_midpoint(locations[0], locations[1])
+
+            if self.radius is None:
+                    radius = od.distance_accurate50m_numpy(
+                                lat[num.newaxis], lon[num.newaxis],
+                                locations[0], locations[1]).max()
+                    radius *= 2 #1.1
+
+            if radius < 20.*km:
+                    logger.warn(
+                        'Radius of map defaulting to 20 km')
+                    radius = 20*km
+
+            print('Radius = ', radius)
+            m = automap.Map(
+                    width=self.size_cm[0],
+                    height=self.size_cm[1],
+                    lat=lat,
+                    lon=lon,
+                    radius=radius,
+                    show_topo=self.show_topo,
+                    show_grid=self.show_grid,
+                    show_rivers=self.show_rivers,
+                    color_wet=(216, 242, 254),
+                    color_dry=(238, 236, 230))
+
+            # add outlines/centroids to map
+            cmap = cm.ScalarMappable(
+                    norm=mcolors.PowerNorm(
+                        gamma=3.0,
+                        vmin=icolor.min(),
+                        vmax=icolor.max()),
+                        cmap=plt.get_cmap('Greys'))
+
+            if isinstance(problem, CMTProblem):
+                factor_symbl_size = 2.0
+                mag=6.4
+                ev_symb = 'c'+str((mag*factor_symbl_size)*8 / gmtpy.cm)+'p'
+
+            for k in num.arange(nmodels):
+                    alpha_i = (icolor[k] - icolor.min()) / \
+                            float(icolor.max() - icolor.min())
+                    alpha = int(num.round((alpha_i**3.0)*100)) #alpha^gamma
+                    color_i = num.round(num.array(cmap.to_rgba(icolor[k])[0:3])*255)
+                    color = str(int(color_i[0]))+"/"+str(int(color_i[1]))+
+                        "/"+str(int(color_i[2]))
+                    if isinstance(problem, RectangularProblem):
+                        m.gmt.psxy(
+                            in_rows=num.array([outlines_e0[k],
+                                outlines_n0[k]]).T,
+                            L='',
+                            G=color,
+                            t=alpha,
+                            *m.jxyr)
+                    elif isinstance(problem, CMTProblem):
+                        m.gmt.psxy(
+                            in_rows=[[centroids_latlon[1][k],
+                                centroids_latlon[0][k]]],
+                            S=ev_symb,
+                            G=gmtpy.color('tomato'),
+                            W='1p,darkred',
+                            *m.jxyr)
+            yield (item, m)
 
 def get_plot_classes():
     return [
         JointparPlot,
-        HistogramPlot
+        HistogramPlot,
+        SourceLocationMap
         ]
