@@ -1164,7 +1164,7 @@ Map showing the best source outlines (rectangular source) or centroid positions 
                     source_i = problem.get_source(xbest, i)
                     sources.append(source_i)
             source = sources[0]
-            results = problem.evaluate(xbest, targets=sat_targets)
+            results = problem.evaluate(xbest)
         else:
             source = problem.get_source(xbest)
             results = problem.evaluate(xbest)
@@ -1185,7 +1185,8 @@ Map showing the best source outlines (rectangular source) or centroid positions 
         for i in range(nsources):
             for mods in models:
                 srcx = problem.get_source(mods,i)
-                if isinstance(problem, RectangularProblem):
+                if isinstance(problem, RectangularProblem) or \
+                        isinstance(problem, MultiRectangularProblem):
                     fe, fn = srcx.outline(cs='lonlat').T
                     # centroids relative to reference location
                     centroid =  num.array([srcx.east_shift \
@@ -1200,7 +1201,7 @@ Map showing the best source outlines (rectangular source) or centroid positions 
 
                 if isinstance(problem, MultiRectangularProblem):
                     if i==0:
-                        if num.shape(nucs_xy_xy)[0]==0:
+                        if num.shape(centroids_xy)[0]==0:
                             # centroids relative to reference location
                             centroids_xy = centroid
                             outlines_e0 = fe
@@ -1210,7 +1211,7 @@ Map showing the best source outlines (rectangular source) or centroid positions 
                             outlines_e0 = num.vstack((outlines_e0, fe))
                             outlines_n0 = num.vstack((outlines_n0, fn))
                     elif i==1:
-                        if num.shape(nucs_xy_xy1)[0]==0:
+                        if num.shape(centroids_xy1)[0]==0:
                             centroids_xy1 = centroid
                             outlines_e1 = fe
                             outlines_n1 = fn

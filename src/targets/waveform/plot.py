@@ -1438,7 +1438,7 @@ box, red).
 
         xbest = models[0, :]
 
-        ws = problem.get_target_weights()
+        ws = problem.get_analyser_weights()
 
         gcms = problem.combine_misfits(
             misfits[:1, :, :],
@@ -1470,7 +1470,7 @@ box, red).
             itarget, itarget_end = target_index[target]
             assert itarget_end == itarget + 1
 
-            w = target.get_combined_weight()
+            w = target.get_analyser_weight() * target.get_manual_weight()
 
             if target.misfit_config.domain == 'cc_max_norm':
                 tref = (
