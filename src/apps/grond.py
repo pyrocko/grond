@@ -399,7 +399,7 @@ def command_scenario(args):
             '--lon', dest='lon', type=float, default=33.3,
             help='center latitude of the scenario (default: %default)')
         parser.add_option(
-            '--radius', dest='radius', type=float, default=200.,
+            '--radius', dest='radius', type=float, default=100.,
             help='radius of the the scenario in [km] (default: %default)')
         parser.add_option(
             '--gf-waveforms', dest='store_waveforms', type=str,
