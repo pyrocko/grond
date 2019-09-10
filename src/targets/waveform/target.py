@@ -145,6 +145,8 @@ class WaveformTargetGroup(TargetGroup):
                     codes=nslc,
                     lat=st.lat,
                     lon=st.lon,
+                    north_shift=st.north_shift,
+                    east_shift=st.east_shift,
                     depth=st.depth,
                     interpolation=self.interpolation,
                     store_id=self.store_id,
