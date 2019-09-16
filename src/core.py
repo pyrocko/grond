@@ -232,7 +232,8 @@ def check_problem(problem, **kwargs):
         for g in problem.target_groups:
             if g.checks:
                 for ch in g.checks:
-                    ch.check(problem, targets=g.target_groups.get_targets(),
+                    ch.check(problem, targets=g.get_targets(ds=kwargs.get('ds'),
+                             event=kwargs.get('event')),
                              pile=p)
 
         if problem.checks:
@@ -271,7 +272,7 @@ def check(
             logger.info(
                 'Number of targets (selected): %i' % len(problem.targets))
 
-            check_problem(problem, pile=ds.pile)
+            check_problem(problem, pile=ds.pile, ds=ds, event=event)
 
             results_list = []
             sources = []
@@ -486,7 +487,7 @@ def process_event(ievent, g_data_id):
         if synt:
             problem.base_source = problem.get_source(synt.get_x())
 
-        check_problem(problem, pile=ds.pile)
+        check_problem(problem, pile=ds.pile, ds=ds, event=event)
         rundir = expand_template(
             config.rundir_template,
             dict(problem_name=problem.name))
