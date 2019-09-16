@@ -52,7 +52,7 @@ subcommand_descriptions = {
     'plot': 'plot optimisation result',
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
-    'fits': 'characterise fits',
+    'fits': 'export station corrections and waveform target misfits from run directory',
     'tag': 'add user-defined label to run directories',
     'report': 'create result report',
     'diff': 'compare two configs or other normalized Grond YAML files',

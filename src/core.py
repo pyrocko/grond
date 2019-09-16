@@ -780,29 +780,31 @@ def fits(env):
     env.setup_modelling()
 
     problem = env.get_problem()
-
+    history = env.get_history()
     logger.info(
         'Number of targets (selected): %i' % len(problem.targets))
 
-    _, xs, misfits, _, _ = load_problem_info_and_data(
-        env.get_rundir_path(), subset='harvest')
+    #_, xs, misfits, _, _ = load_problem_info_and_data(
+    #    env.get_rundir_path(), subset='harvest')
 
-    gms = problem.combine_misfits(misfits)
-    ibest = num.argmin(gms)
-    xbest = xs[ibest, :]
-
+    #gms = problem.combine_misfits(misfits)
+    #ibest = num.argmin(gms)
+    #xbest = xs[ibest, :]
+    xbest = history.get_best_model()
+    ws = problem.get_target_weights()
     scs = []
     wftm = []
     for x in [xbest]:
         results = problem.evaluate(x)
 
-        for target, result in zip(problem.targets, results):
+        for target, result, w in zip(problem.targets, results, weights):
             if isinstance(result, WaveformMisfitResult):
 
                 wftm.append(WFTargetMisfit(
                     codes=target.codes,
                     misfit=float(result.misfits[0][0]),
-                    norm=result.misfits[0][1]))
+                    norm=result.misfits[0][1],
+		    weight=w))
 
             if isinstance(result, WaveformMisfitResult) \
                     and result.tshift is not None:

@@ -64,7 +64,7 @@ class WFTargetMisfit(Object):
     codes = Tuple.T(4, String.T())
     misfit = Float.T()
     norm = Float.T()
-
+    weight = Float.T(optional=True)
 
 def load_station_corrections(filename):
     scs = load_all(filename=filename)
