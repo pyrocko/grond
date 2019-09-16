@@ -48,10 +48,12 @@ class SequencePlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
+        optimiser = environ.get_optimiser()
+
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
-            self.draw_figures(history),
+            self.draw_figures(history, optimiser),
             title=u'Sequence Plots',
             section='optimiser',
             description=u'''
@@ -68,7 +70,7 @@ corresponding misfit values.
 ''',
             feather_icon='fast-forward')
 
-    def draw_figures(self, history):
+    def draw_figures(self, history, optimiser):
         misfit_cutoff = self.misfit_cutoff
         sort_by = self.sort_by
 
@@ -83,9 +85,9 @@ corresponding misfit values.
         imodels = num.arange(history.nmodels)
         bounds = problem.get_combined_bounds()
 
-        xref = problem.get_reference_model(expand=True)
+        xref = problem.get_reference_model()
 
-        gms = problem.combine_misfits(history.misfits)
+        gms = history.get_primary_chain_misfits()
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
 
         isort = num.argsort(gms)[::-1]
@@ -278,11 +280,15 @@ class ContributionsPlot(PlotConfig):
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
         history = environ.get_history()
+        optimiser = environ.get_optimiser()
         dataset = environ.get_dataset()
+
+        environ.setup_modelling()
+
         mpl_init(fontsize=self.font_size)
         cm.create_group_mpl(
             self,
-            self.draw_figures(dataset, history),
+            self.draw_figures(dataset, history, optimiser),
             title=u'Target Contributions',
             section='solution',
             feather_icon='thermometer',
@@ -301,7 +307,7 @@ target is much larger than those of all others, the weighting should be
 modified.
 ''')
 
-    def draw_figures(self, dataset, history):
+    def draw_figures(self, dataset, history, optimiser):
 
         fontsize = self.font_size
 
@@ -325,16 +331,16 @@ modified.
 
         imodels = num.arange(history.nmodels)
 
-        gms = problem.combine_misfits(history.misfits)**problem.norm_exponent
+        gms = history.get_sorted_primary_misfits()[::-1]
+        isort = history.get_sorted_misfits_idx(chain=0)[::-1]
 
-        isort = num.argsort(gms)[::-1]
-
-        gms = gms[isort]
-
+        gms **= problem.norm_exponent
         gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
 
         gcms = problem.combine_misfits(
-            history.misfits, get_contributions=True)
+            history.misfits,
+            extra_correlated_weights=optimiser.get_correlated_weights(problem),
+            get_contributions=True)
 
         gcms = gcms[isort, :]
         nmisfits = gcms.shape[1]  # noqa
@@ -346,18 +352,18 @@ modified.
         # Squash matrix and sum large targets.nmisifts, eg SatelliteTarget
         plot_target_labels = []
         idx = 0
+        idx_cum = 0
         for itarget, target in enumerate(problem.targets):
             target_gcms = gcms[:, idx:idx+target.nmisfits]
             if target.plot_misfits_cumulative:
-                cum_gcms[:, itarget] = target_gcms.sum(axis=1)
+                cum_gcms[:, idx_cum] = target_gcms.sum(axis=1)
                 plot_target_labels.append(target.string_id())
+                idx_cum += 1
             else:
-                cum_gcms[:, itarget:itarget+target.nmisfits] = target_gcms
+                cum_gcms[:, idx_cum:idx_cum+target.nmisfits] = target_gcms
                 plot_target_labels.extend(target.misfits_string_ids())
-
+                idx_cum += target.nmisfits
             idx += target.nmisfits
-
-        # num.testing.assert_equal(cum_gcms.sum(axis=1), gcms.sum(axis=1))
 
         jsort = num.argsort(cum_gcms[-1, :])[::-1]
 
@@ -478,6 +484,7 @@ class BootstrapPlot(PlotConfig):
 
     name = 'bootstrap'
     size_cm = Tuple.T(2, Float.T(), default=(21., 14.9))
+    show_ticks = Bool.T(default=False)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -515,21 +522,25 @@ functions of the bootstrap start to disagree.
 
         fig = plt.figure()
 
-        problem = history.problem
-        gms = problem.combine_misfits(history.misfits)
-
         imodels = num.arange(history.nmodels)
+        gms = history.bootstrap_misfits[:, 0]
 
+        gms_softclip = num.where(gms > 1.0,
+                                 0.1 * num.log10(gms) + 1.0,
+                                 gms)
         axes = fig.add_subplot(1, 1, 1)
 
-        gms_softclip = num.where(gms > 1.0, 0.1 * num.log10(gms) + 1.0, gms)
-
         ibests = []
-        for ibootstrap in range(optimiser.nbootstrap):
+        for ibootstrap in range(history.nchains):
+            # if ibootstrap ==0:
+            #    global, no-bootstrapping misfits, chain
+            #    gms = history.bootstrap_misfits[:, ibootstrap]
+            #    gms_softclip = num.where(gms > 1.0,
+            #                            0.1 * num.log10(gms) + 1.0,
+            #                            gms)
+
             bms = history.bootstrap_misfits[:, ibootstrap]
-
             isort_bms = num.argsort(bms)[::-1]
-
             ibests.append(isort_bms[-1])
 
             bms_softclip = num.where(
@@ -542,9 +553,8 @@ functions of the bootstrap start to disagree.
 
         axes.plot(iorder[ibests], gms_softclip[ibests], 'x', color='black')
 
-        m = num.median(gms[ibests])
-        s = num.std(gms[ibests])
-
+        m = num.median(gms_softclip[ibests])
+        s = num.std(gms_softclip[ibests])
         axes.axhline(m + s, color='black', alpha=0.5)
         axes.axhline(m, color='black')
         axes.axhline(m - s, color='black', alpha=0.5)

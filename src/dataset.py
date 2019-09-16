@@ -136,7 +136,14 @@ class Dataset(object):
 
                 sx = fs.load_xml(filename=stationxml_filename)
                 ev = self.get_event()
-                for station in sx.get_pyrocko_stations(time=ev.time):
+                stations = sx.get_pyrocko_stations(time=ev.time)
+                if len(stations) == 0:
+                    logger.warning(
+                        'No stations found for time %s in file "%s".' % (
+                            util.time_to_str(ev.time), stationxml_filename))
+
+                for station in stations:
+                    logger.debug('Adding station: %s.%s.%s' % station.nsl())
                     channels = station.get_channels()
                     if len(channels) == 1 and channels[0].name.endswith('Z'):
                         logger.warning(
@@ -157,8 +164,9 @@ class Dataset(object):
             try:
                 events = model.load_events(filename)
                 self.events.extend(events)
-                logger.info('Loading events from %s: %s', filename,
-                            ', '.join([e.name for e in events]))
+                logger.info(
+                    'Loading events from %s: %i events found.' %
+                    (filename, len(events)))
             except Exception as e:
                 logger.warning('Could not load events from %s!', filename)
                 raise e
@@ -1009,11 +1017,13 @@ class DatasetConfig(HasPaths):
 
     kite_scene_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of directories for the InSAR scenes.')
 
     gnss_campaign_paths = List.T(
         Path.T(),
-        optional=True)
+        optional=True,
+        help='List of directories for the GNSS campaign data.')
 
     def __init__(self, *args, **kwargs):
         HasPaths.__init__(self, *args, **kwargs)
@@ -1055,7 +1065,7 @@ class DatasetConfig(HasPaths):
 
             events.extend(ev)
 
-        event_names = [ev.name for ev in events]
+        event_names = [ev_.name for ev_ in events]
         event_names.sort()
         return event_names
 

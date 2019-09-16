@@ -6,6 +6,7 @@ import time
 import copy
 import shutil
 import glob
+import math
 import os.path as op
 import numpy as num
 
@@ -15,13 +16,11 @@ from pyrocko import parimap, model, marker as pmarker
 
 from .dataset import NotFound, InvalidObject
 from .problems.base import Problem, load_problem_info_and_data, \
-    load_problem_data, load_optimiser_info
+    load_problem_data, ProblemDataNotAvailable
 
 from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
-from .meta import expand_template, GrondError
-from .config import read_config
-from . import stats
+from .meta import expand_template, GrondError, selected
 from .environment import Environment
 from .monitor import GrondMonitor
 
@@ -79,46 +78,29 @@ def sarr(a):
     return ' '.join('%15g' % x for x in a)
 
 
-def forward(rundir_or_config_path, event_names):
-
-    if not event_names:
-        return
-
-    if op.isdir(rundir_or_config_path):
-        rundir = rundir_or_config_path
-        config = read_config(op.join(rundir, 'config.yaml'))
-
-        problem, xs, misfits, _ = load_problem_info_and_data(
-            rundir, subset='harvest')
-
-        gms = problem.combine_misfits(misfits)
-        ibest = num.argmin(gms)
-        xbest = xs[ibest, :]
-
-        ds = config.get_dataset(problem.base_source.name)
-        problem.set_engine(config.engine_config.get_engine())
-
-        for target in problem.targets:
-            target.set_dataset(ds)
-
-        payload = [(problem, xbest)]
+def forward(env):
+    payload = []
+    if env.have_rundir():
+        env.setup_modelling()
+        history = env.get_history(subset='harvest')
+        xbest = history.get_best_model()
+        problem = env.get_problem()
+        ds = env.get_dataset()
+        payload.append((ds, problem, xbest))
 
     else:
-        config = read_config(rundir_or_config_path)
-
-        payload = []
-        for event_name in event_names:
-            ds = config.get_dataset(event_name)
-            event = ds.get_event()
-            problem = config.get_problem(event)
-            xref = problem.preconstrain(
-                problem.pack(problem.base_source))
-            payload.append((problem, xref))
+        for event_name in env.get_selected_event_names():
+            env.set_current_event_name(event_name)
+            env.setup_modelling()
+            problem = env.get_problem()
+            ds = env.get_dataset()
+            xref = problem.preconstrain(problem.get_reference_model())
+            payload.append((ds, problem, xref))
 
     all_trs = []
     events = []
-    for (problem, x) in payload:
-        ds.empty_cache()
+    stations = {}
+    for (ds, problem, x) in payload:
         results = problem.evaluate(x)
 
         event = problem.get_source(x).pyrocko_event()
@@ -131,16 +113,20 @@ def forward(rundir_or_config_path, event_names):
                 all_trs.append(result.filtered_obs)
                 all_trs.append(result.filtered_syn)
 
+        for station in ds.get_stations():
+            stations[station.nsl()] = station
+
     markers = []
     for ev in events:
         markers.append(pmarker.EventMarker(ev))
 
-    trace.snuffle(all_trs, markers=markers, stations=ds.get_stations())
+    trace.snuffle(all_trs, markers=markers, stations=list(stations.values()))
 
 
 def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     env = Environment([rundir])
+    optimiser = env.get_optimiser()
     nchains = env.get_optimiser().nchains
 
     if problem is None:
@@ -152,7 +138,6 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     logger.info('Harvesting problem "%s"...' % problem.name)
 
-    optimiser = load_optimiser_info(rundir)
     dumpdir = op.join(rundir, 'harvest')
     if op.exists(dumpdir):
         if force:
@@ -164,7 +149,7 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     ibests_list = []
     ibests = []
-    gms = problem.combine_misfits(misfits)
+    gms = bootstrap_misfits[:, 0]
     isort = num.argsort(gms)
 
     ibests_list.append(isort[:nbest])
@@ -291,7 +276,7 @@ def check(
             results_list = []
             sources = []
             if n_random_synthetics == 0:
-                x = problem.get_reference_model()
+                x = problem.preconstrain(problem.get_reference_model())
                 sources.append(problem.base_source)
                 results = problem.evaluate(x)
                 results_list.append(results)
@@ -456,10 +441,10 @@ g_state = {}
 
 def go(environment,
        force=False, preserve=False,
-       nparallel=1, status='state'):
+       nparallel=1, status='state', nthreads=0):
 
     g_data = (environment, force, preserve,
-              status, nparallel)
+              status, nparallel, nthreads)
     g_state[id(g_data)] = g_data
 
     nevents = environment.nevents_selected
@@ -483,7 +468,7 @@ def go(environment,
 
 def process_event(ievent, g_data_id):
 
-    environment, force, preserve, status, nparallel = \
+    environment, force, preserve, status, nparallel, nthreads = \
         g_state[g_data_id]
     monitor = None
     event_name = environment.get_selected_event_names()[ievent]
@@ -538,6 +523,7 @@ def process_event(ievent, g_data_id):
 
         optimiser = config.optimiser_config.get_optimiser()
         optimiser.init_bootstraps(problem)
+        optimiser.set_nthreads(nthreads)
         problem.dump_problem_info(rundir)
 
         if status == 'state':
@@ -601,14 +587,25 @@ class ParameterStats(Object):
         kwargs.update(zip(self.T.propnames, args))
         Object.__init__(self, **kwargs)
 
+    def get_values_dict(self):
+        return dict(
+            (self.name+'.' + k, getattr(self, k))
+            for k in self.T.propnames
+            if k != 'name')
+
 
 class ResultStats(Object):
     problem = Problem.T()
     parameter_stats_list = List.T(ParameterStats.T())
 
+    def get_values_dict(self):
+        d = {}
+        for ps in self.parameter_stats_list:
+            d.update(ps.get_values_dict())
+        return d
 
-def make_stats(problem, xs, misfits, pnames=None):
-    gms = problem.combine_misfits(misfits)
+
+def make_stats(problem, models, gms, pnames=None):
     ibest = num.argmin(gms)
     rs = ResultStats(problem=problem)
     if pnames is None:
@@ -616,7 +613,7 @@ def make_stats(problem, xs, misfits, pnames=None):
 
     for pname in pnames:
         iparam = problem.name_to_index(pname)
-        vs = problem.extract(xs, iparam)
+        vs = problem.extract(models, iparam)
         mi, p5, p16, median, p84, p95, ma = map(float, num.percentile(
             vs, [0., 5., 16., 50., 84., 95., 100.]))
 
@@ -629,6 +626,15 @@ def make_stats(problem, xs, misfits, pnames=None):
         rs.parameter_stats_list.append(s)
 
     return rs
+
+
+def try_add_location_uncertainty(data, types):
+    vs = [data.get(k, None) for k in (
+        'north_shift.std', 'east_shift.std', 'depth.std')]
+
+    if None not in vs:
+        data['location_uncertainty'] = math.sqrt(sum(v**2 for v in vs))
+        types['location_uncertainty'] = float
 
 
 def format_stats(rs, fmt):
@@ -646,7 +652,9 @@ def format_stats(rs, fmt):
     return ' '.join('%16.7g' % v for v in values)
 
 
-def export(what, rundirs, type=None, pnames=None, filename=None):
+def export(
+        what, rundirs, type=None, pnames=None, filename=None, selection=None):
+
     if pnames is not None:
         pnames_clean = [pname.split('.')[0] for pname in pnames]
         shortform = all(len(pname.split('.')) == 2 for pname in pnames)
@@ -701,9 +709,39 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
 
     header = None
     for rundir in rundirs:
-        problem, xs, misfits, bootstrap_misfits, _ = \
-            load_problem_info_and_data(
-                rundir, subset='harvest')
+        env = Environment(rundir)
+        info = env.get_run_info()
+
+        try:
+            history = env.get_history(subset='harvest')
+        except ProblemDataNotAvailable as e:
+            logger.error(
+                'Harvest not available (Did the run succeed?): %s' % str(e))
+            continue
+
+        problem = history.problem
+        models = history.models
+        misfits = history.get_primary_chain_misfits()
+
+        if selection:
+            rs = make_stats(
+                problem, models,
+                history.get_primary_chain_misfits())
+
+            data = dict(tags=info.tags)
+            types = dict(tags=(list, str))
+
+            for k, v in rs.get_values_dict().items():
+                data[k] = v
+                types[k] = float
+
+            try_add_location_uncertainty(data, types)
+
+            if not selected(selection, data=data, types=types):
+                continue
+
+        else:
+            rs = None
 
         if type == 'vector':
             pnames_take = pnames_clean or \
@@ -728,21 +766,26 @@ def export(what, rundirs, type=None, pnames=None, filename=None):
             indices = None
 
         if what == 'best':
-            x_best, gm_best = stats.get_best_x_and_gm(problem, xs, misfits)
+            x_best = history.get_best_model()
+            gm_best = history.get_best_misfit()
             dump(x_best, gm_best, indices)
 
         elif what == 'mean':
-            x_mean, gm_mean = stats.get_mean_x_and_gm(problem, xs, misfits)
+            x_mean = history.get_mean_model()
+            gm_mean = history.get_mean_misfit(chain=0)
             dump(x_mean, gm_mean, indices)
 
         elif what == 'ensemble':
-            gms = problem.combine_misfits(misfits)
-            isort = num.argsort(gms)
+            isort = num.argsort(misfits)
             for i in isort:
-                dump(xs[i], gms[i], indices)
+                dump(models[i], misfits[i], indices)
 
         elif what == 'stats':
-            rs = make_stats(problem, xs, misfits, pnames_clean)
+            if not rs:
+                rs = make_stats(problem, models,
+                                history.get_primary_chain_misfits(),
+                                pnames_clean)
+
             if shortform:
                 print(' ', format_stats(rs, pnames), file=out)
             else:

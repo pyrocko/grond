@@ -34,7 +34,8 @@ Usually raw, unrestituted waveforms are loaded into Grond, together with Station
         List of directories with raw waveform data.
 
     ``stations_stationxml_paths``
-        List of files with station coordinates in StationXML format.
+        List of files with station coordinates in `StationXML <https://www.fdsn.org/xml/station/>`_ format.
+        Inventory datasets have to be converted to StationXML. Use ObsPy's ``Inventory`` for conversion: ``inventory.write('out-stationxml.xml', format='stationxml')``.
 
     ``stations_path``
         List of files with station coordinates in Pyrocko format.
@@ -49,7 +50,7 @@ Usually raw, unrestituted waveforms are loaded into Grond, together with Station
         List of StationXML response files for restitution of the raw waveform data.
 
     ``responses_sacpz_path``
-        List of SACPZ response files for restitution of the raw waveform data.
+        Path to SACPZ response files for restitution of the raw waveform data.
 
     ``station_corrections_path``
         File containing station correction informations. See :download:`example station corrections <station_corrections.yaml>`.
@@ -70,7 +71,7 @@ Usually raw, unrestituted waveforms are loaded into Grond, together with Station
         List of text files with blacklisted stations in NSLC pattern.
 
     ``whitelist``
-        List of stations/components to be **included** according to their STA, NET.STA, NET.STA.LOC, or NET.STA.LOC.CHA codes
+        List of stations/components to be **included** according to their ``STA``, ``NET.STA``, ``NET.STA.LOC``, or ``NET.STA.LOC.CHA`` codes
 
         Note: when whitelisting on channel level, both, the raw and the processed channel codes have to be listed.
 

@@ -46,7 +46,7 @@ class SatelliteTargetDisplacement(PlotConfig):
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
-        history = environ.get_history()
+        history = environ.get_history(subset='harvest')
         optimiser = environ.get_optimiser()
         ds = environ.get_dataset()
 
@@ -81,14 +81,9 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)
-        gms = gms[isort]
-        models = history.models[isort, :]
-        xbest = models[0, :]
-
-        source = problem.get_source(xbest)
-        results = problem.evaluate(xbest, targets=sat_targets)
+        source = history.get_best_source()
+        best_model = history.get_best_model()
+        results = problem.evaluate(best_model, targets=sat_targets)
 
         def initAxes(ax, scene, title, last_axes=False):
             ax.set_title(title)
@@ -119,8 +114,8 @@ edge marking the upper fault edge. Complete data extent is shown.
                 scale_x = {'scale': 1.}
                 scale_y = {'scale': 1.}
                 if not self.relative_coordinates:
-                    scale_x['offset'] = source.effective_lat
-                    scale_y['offset'] = source.effective_lon
+                    scale_x['offset'] = source.effective_lon
+                    scale_y['offset'] = source.effective_lat
                 ax.set_aspect(1./num.cos(source.effective_lat*d2r))
 
             scale_axes(ax.get_xaxis(), **scale_x)
@@ -230,7 +225,7 @@ edge marking the upper fault edge. Complete data extent is shown.
             fig.set_size_inches(*self.size_inch)
             gs = gridspec.GridSpec(
                 2, 3,
-                wspace=.05, hspace=.2,
+                wspace=.15, hspace=.2,
                 left=.1, right=.975, top=.95,
                 height_ratios=[12, 1])
 
@@ -337,10 +332,8 @@ data and (right) the model residual.
                                         + max(abs(fe-off_e))**2)
                 fault_size *= self.map_scale
                 if fault_size == 0.0:
-                    if scene.frame.isMeter():
-                        fault_size = 1000.0
-                    elif scene.frame.isDegree():
-                        fault_size = 1.0
+                    extent = (scene.frame.N[-1] + scene.frame.E[-1]) / 2
+                    fault_size = extent * .25
 
                 for ax in axes:
                     ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)
@@ -368,7 +361,7 @@ class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
-        history = environ.get_history()
+        history = environ.get_history(subset='harvest')
         optimiser = environ.get_optimiser()
         ds = environ.get_dataset()
 

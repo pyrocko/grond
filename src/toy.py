@@ -1,11 +1,10 @@
 
 import numpy as num
 
-from pyrocko.guts import Object, Float, Dict, List, String
+from pyrocko.guts import Object, Float, Dict, List, String, Int
 from pyrocko import gf
 from grond import Problem, Parameter, MisfitTarget
 from grond.optimisers.highscore.plot import HighScoreOptimiserPlot
-from grond.targets import MisfitResult
 
 guts_prefix = 'grond.toy'
 
@@ -56,6 +55,7 @@ class ToyTarget(MisfitTarget):
     east = Float.T()
     depth = Float.T()
     obs_distance = Float.T()
+    nmisfits = Int.T(default=1)
 
 
 class ToySource(Object):

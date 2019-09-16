@@ -29,6 +29,8 @@ rundir_template: 'runs/${problem_name}.grun'
 # -----------------------------------------------------------------------------
 
 dataset_config: !grond.DatasetConfig
+  # More information on the data configuration at
+  # https://pyrocko.org/grond/docs/current/config/dataset/index.html
 
   # List of files with station coordinates.
   stations_stationxml_paths: 
@@ -56,6 +58,11 @@ dataset_config: !grond.DatasetConfig
   - 'data/events/${event_name}/waveforms/stations.geofon.xml'
   - 'data/events/${event_name}/waveforms/stations.iris.xml'
 
+  # Apply correction factors from station corrections.
+  apply_correction_factors: true
+
+  # Extend incomplete seismic traces
+  extend_incomplete: false
 
 # -----------------------------------------------------------------------------
 # Configuration section for the observational data fitting
@@ -111,7 +118,14 @@ target_groups:
     # How to fit the data (available: 'time_domain', 'frequency_domain',
     # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
     domain: 'time_domain'
+
+    # If non-zero, allow synthetic and observed traces to be shifted
+    # against each other by up to +/- the given value [s].
     tautoshift_max: 4.0
+
+    # If non-zero, a penalty misfit is added for non-zero shift values.
+    # The penalty value is computed as
+    # autoshift_penalty_max * normalization_factor * tautoshift**2 / tautoshift_max**2
     autoshift_penalty_max: 0.05
     
     # For L1 norm: 1, L2 norm: 2, etc.
@@ -172,7 +186,14 @@ target_groups:
     # How to fit the data (available: 'time_domain', 'frequency_domain',
     # 'log_frequency_domain', 'absolute', 'envelope', 'cc_max_norm')
     domain: 'time_domain'
+
+    # If non-zero, allow synthetic and observed traces to be shifted
+    # against each other by up to +/- the given value [s].
     tautoshift_max: 4.0
+
+    # If non-zero, a penalty misfit is added for non-zero shift values.
+    # The penalty value is computed as
+    # autoshift_penalty_max * normalization_factor * tautoshift**2 / tautoshift_max**2
     autoshift_penalty_max: 0.05
     
     # For L1 norm: 1, L2 norm: 2, etc.

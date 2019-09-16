@@ -223,7 +223,7 @@ class CheckWaveformsPlot(PlotConfig):
         results_list = []
         sources = []
         if self.n_random_synthetics == 0:
-            x = problem.get_reference_model()
+            x = problem.preconstrain(problem.get_reference_model())
             sources.append(problem.base_source)
             results = problem.evaluate(x)
             results_list.append(results)
@@ -386,9 +386,11 @@ class FitsWaveformEnsemblePlot(PlotConfig):
         environ.setup_modelling()
         ds = environ.get_dataset()
         history = environ.get_history(subset='harvest')
+        optimiser = environ.get_optimiser()
+
         cm.create_group_mpl(
             self,
-            self.draw_figures(ds, history),
+            self.draw_figures(ds, history, optimiser),
             title=u'Waveform fits for the ensemble',
             section='fits',
             feather_icon='activity',
@@ -423,7 +425,7 @@ residuals for time domain comparisons (red filled), spectra of observed and
 synthetic traces for amplitude spectrum comparisons, or cross correlation
 traces.''')
 
-    def draw_figures(self, ds, history):
+    def draw_figures(self, ds, history, optimiser):
 
         color_parameter = self.color_parameter
         misfit_cutoff = self.misfit_cutoff
@@ -444,10 +446,8 @@ traces.''')
             target_index[target] = i, i+target.nmisfits
             i += target.nmisfits
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)[::-1]
-        gms = gms[isort]
-        models = history.models[isort, :]
+        gms = history.get_sorted_primary_misfits()[::-1]
+        models = history.get_sorted_primary_models()[::-1]
 
         if misfit_cutoff is not None:
             ibest = gms < misfit_cutoff
@@ -485,8 +485,11 @@ traces.''')
             dtraces.append([])
 
             for target, result in zip(problem.targets, results):
+                w = target.get_combined_weight()
+
                 if isinstance(result, gf.SeismosizerError) or \
-                        not isinstance(target, WaveformMisfitTarget):
+                        not isinstance(target, WaveformMisfitTarget) or \
+                        not num.all(num.isfinite(w)):
 
                     dtraces[-1].extend([None] * target.nmisfits)
                     continue
@@ -494,7 +497,6 @@ traces.''')
                 itarget, itarget_end = target_index[target]
                 assert itarget_end == itarget + 1
 
-                w = target.get_combined_weight()
 
                 if target.misfit_config.domain == 'cc_max_norm':
                     tref = (
@@ -803,10 +805,14 @@ class FitsWaveformPlot(PlotConfig):
         mpl_init(fontsize=self.font_size)
         environ.setup_modelling()
         ds = environ.get_dataset()
+        optimiser = environ.get_optimiser()
+
+        environ.setup_modelling()
+
         history = environ.get_history(subset='harvest')
         cm.create_group_mpl(
             self,
-            self.draw_figures(ds, history),
+            self.draw_figures(ds, history, optimiser),
             title=u'Waveform fits for best model',
             section='fits',
             feather_icon='activity',
@@ -845,7 +851,7 @@ relative misfit contribution to the global misfit of the optimisation (bottom
 box, red).
 ''')
 
-    def draw_figures(self, ds, history):
+    def draw_figures(self, ds, history, optimiser):
 
         fontsize = self.font_size
         fontsize_title = self.font_size_title
@@ -864,18 +870,15 @@ box, red).
             target_index[target] = i, i+target.nmisfits
             i += target.nmisfits
 
-        gms = problem.combine_misfits(history.misfits)
-        isort = num.argsort(gms)
-        gms = gms[isort]
-        models = history.models[isort, :]
-        misfits = history.misfits[isort, :]
-
-        xbest = models[0, :]
+        xbest = history.get_best_model()
+        misfits = history.misfits[history.get_sorted_misfits_idx(chain=0), ...]
 
         ws = problem.get_target_weights()
 
         gcms = problem.combine_misfits(
-            misfits[:1, :, :], get_contributions=True)[0, :]
+            misfits[:1, :, :],
+            extra_correlated_weights=optimiser.get_correlated_weights(problem),
+            get_contributions=True)[0, :]
 
         w_max = num.nanmax(ws)
         gcm_max = num.nanmax(gcms)
@@ -1280,10 +1283,7 @@ location of the source.
         ws = problem.get_target_weights()
 
         if history:
-            gms = problem.combine_misfits(history.misfits)
-            isort = num.argsort(gms)
-            gms = gms[isort]
-            misfits = history.misfits[isort, :]
+            misfits = history.misfits[history.get_sorted_misfits_idx(), ...]
             gcms = problem.combine_misfits(
                 misfits[:1, :, :], get_contributions=True)[0, :]
 

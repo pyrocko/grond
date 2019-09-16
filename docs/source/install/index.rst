@@ -57,7 +57,7 @@ installed with Anaconda's pip into the Anaconda environment.
 .. code-block :: sh
 
     conda install -c pyrocko pyrocko
-    pip install git@https://github.com/pyrocko/grond.git
+    pip install git+https://github.com/pyrocko/grond.git
 
 
 Installation with pip
@@ -70,9 +70,9 @@ resolve its dependencies automatically, therefore you have to install
 
 .. code-block :: sh
 
-    pip install git@https://github.com/pyrocko/grond.git
+    pip install git+https://github.com/pyrocko/grond.git
 
 
-.. _kite: https://pyrocko.org/docs/kite/current/
+.. _kite: https://pyrocko.org/kite/
 .. _pyrocko: https://pyrocko.org/docs/current/install/
 .. _Installation with pip: https://pyrocko.org/docs/current/install/packages/pip.html

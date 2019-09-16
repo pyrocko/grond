@@ -1,8 +1,62 @@
 # Changelog
 
-All notable changes to Grond will be documented in this file.
+All notable changes to Grond are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## Unreleased
+
+### Added
+- `grond go` utilises `--threads` arguments for various tasks.
+
+### Fixed
+- Improvements in documentation and examples.
+- `satellite.plot` degree axis offset and close-up scaling for point sources.
+
+## [1.3.2] 2019-07-03
+
+### Added
+- Can now run target balancing with a fixed magnitude (reference event) for
+  automatic removal of stations providing unreasonably large misfits
+  (`use_reference_magnitude` and `cutoff` in `TargetBalancingAnalyserConfig`).
+- Add possibility to export only results from runs matching given criteria.
+  At the moment, it is possible to select by rundir tag (`grond export
+  --selection`).
+
+### Fixed
+- Corrected time window calculation in `NoiseAnalyser`
+- Plots not using `harvest` subset.
+
+## [1.3.1] 2019-06-08
+
+### Added
+- Allow controlling number of threads in `grond report` with `--threads`
+
+### Changed
+- Default number of threads used in `grond go` and `grond report` is now 1.
+  Setting both together, `--parallel` and `--threads,` to values higher than 1
+  may currently cause hangs.
+- Improved control on threading utilization.
+
+### Fixed
+- Repaired `grond report` and `grond plot location_mt` which were broken in
+  v1.3.0.
+
+
+## [1.3.0] 2019-06-04
+
+### Added
+- Added Covariance weighting from `SatelliteTarget` and `GNSSTarget`.
+- Added new Volume source (VLVD).
+- Added SVG as `grond plot` export format.
+
+### Changed
+- Consistent utilisation of `ModelHistory` for plots and results.
+- `MTLocationPlot` supports Gamma scaling (misfit^gamma).
+- `SatelliteTarget` speeds up bootstrapping by multi-threading.
+- `Envronment` can be initialised from `ProblemConfig`.
+- Improved: `grondown` downloading seismic wave forms.
+
 
 ## [1.2.0] 2019-02-19
 

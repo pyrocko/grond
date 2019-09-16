@@ -320,6 +320,111 @@ def nslcs_to_patterns(l):
     return [nslc_to_pattern(s) for s in l]
 
 
+class SelectionError(GrondError):
+    pass
+
+
+# --select="magnitude_min:5 tag_contains:a,b "
+
+g_conditions = {}
+
+selected_operators_1_1 = {
+    'min': lambda data, key, value: data[key] >= value,
+    'max': lambda data, key, value: data[key] <= value,
+    'is': lambda data, key, value: data[key] == value}
+
+selected_operators_1_n = {
+    'in': lambda data, key, values:
+        data[key] in values}
+
+selected_operators_n_1 = {}
+
+selected_operators_n_n = {
+    'contains': lambda data, key, values:
+        any(d in values for d in data[key])}
+
+
+selected_operators = set()
+
+for s in (selected_operators_1_1, selected_operators_1_n,
+          selected_operators_n_1, selected_operators_n_n):
+    for k in s:
+        selected_operators.add(k)
+
+
+def _parse_selected_expression(expression):
+    for condition in expression.split():
+        condition = condition.strip()
+        if condition not in g_conditions:
+            try:
+                argument, value = condition.split(':', 1)
+            except ValueError:
+                raise SelectionError(
+                    'Invalid condition in selection expression: '
+                    '"%s", must be "ARGUMENT:VALUE"' % condition)
+
+            argument = argument.strip()
+
+            try:
+                key, operator = argument.rsplit('_', 1)
+            except ValueError:
+                raise SelectionError(
+                    'Invalid argument in selection expression: '
+                    '"%s", must be "KEY_OPERATOR"' % argument)
+
+            if operator not in selected_operators:
+                raise SelectionError(
+                    'Invalid operator in selection expression: '
+                    '"%s", available: %s' % (
+                        operator, ', '.join('"%s"' % s for s in sorted(
+                            list(selected_operators)))))
+
+            g_conditions[condition] = key, operator, value
+
+        yield g_conditions[condition]
+
+
+def selected(expression, data, types):
+    results = []
+    for (key, operator, value) in _parse_selected_expression(expression):
+        if key not in data:
+            raise SelectionError(
+                'Invalid key in selection expression: '
+                '"%s", available:\n  %s' % (
+                    key, '\n  '.join(sorted(data.keys()))))
+
+        typ = types[key]
+        if not isinstance(typ, tuple):
+            if operator in selected_operators_1_1:
+                results.append(
+                    selected_operators_1_1[operator](data, key, typ(value)))
+            elif operator in selected_operators_1_n:
+                values = list(typ(v) for v in value.split(','))
+                results.append(
+                    selected_operators_1_n[operator](data, key, values))
+            else:
+                raise SelectionError(
+                    'Cannot use operator "%s" with argument "%s".' % (
+                        operator,
+                        key))
+
+        else:
+            if operator in selected_operators_n_1:
+                results.append(
+                    selected_operators_n_1[operator](data, key, typ[1](value)))
+            elif operator in selected_operators_n_n:
+                values = typ[0](typ[1](v) for v in value.split(','))
+                results.append(
+                    selected_operators_n_n[operator](data, key, values))
+            else:
+                raise SelectionError(
+                    'Cannot use operator "%s" with argument "%s".' % (
+                        operator,
+                        key))
+
+    return all(results)
+
+
 __all__ = '''
     Forbidden
     GrondError
