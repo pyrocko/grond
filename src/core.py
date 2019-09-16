@@ -797,7 +797,7 @@ def fits(env):
     for x in [xbest]:
         results = problem.evaluate(x)
 
-        for target, result, w in zip(problem.targets, results, weights):
+        for target, result, w in zip(problem.targets, results, ws):
             if isinstance(result, WaveformMisfitResult):
 
                 wftm.append(WFTargetMisfit(
