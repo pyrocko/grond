@@ -4,6 +4,7 @@ import shutil
 import os.path as op
 
 from pyrocko import gf, scenario, util
+from pyrocko.gui import marker as pmarker
 import math
 
 import grond
@@ -95,7 +96,12 @@ class GrondScenario(object):
                                for obs in self.observations],
             source_generator=self.problem.get_scenario_source_generator())
 
-    def create_scenario(self, interactive=True, gf_store_superdirs=None):
+    def create_scenario(
+            self,
+            interactive=True,
+            gf_store_superdirs=None,
+            make_map=True):
+
         logger.info('Creating scenario...')
 
         scenario = self.get_scenario()
@@ -128,10 +134,17 @@ class GrondScenario(object):
 
         scenario.dump(filename=op.join(data_dir, 'scenario.yml'))
         scenario.dump_data(path=data_dir)
-        scenario.make_map(op.join(self.project_dir, 'scenario_map.pdf'))
+        if make_map:
+            scenario.make_map(op.join(self.project_dir, 'scenario_map.pdf'))
 
         shutil.move(op.join(data_dir, 'sources.yml'),
                     op.join(data_dir, 'scenario_sources.yml'))
+
+        markers = scenario.get_onsets()
+        marker_path = op.join(data_dir, 'picks', 'picks.markers')
+        if markers:
+            util.ensuredirs(marker_path)
+            pmarker.save_markers(markers, marker_path)
 
     def get_grond_config(self):
         engine_config = grond.EngineConfig(
@@ -163,13 +176,21 @@ class GrondScenario(object):
         util.ensuredirs(config_path)
         grond.write_config(self.get_grond_config(), config_path)
 
-    def build(self, force=False, interactive=False, gf_store_superdirs=None):
+    def build(
+            self,
+            force=False,
+            interactive=False,
+            gf_store_superdirs=None,
+            make_map=True):
+
         logger.info('Building scenario...')
 
         self.create_project_dir(force)
 
         self.create_scenario(
-            interactive=interactive, gf_store_superdirs=gf_store_superdirs)
+            interactive=interactive,
+            gf_store_superdirs=gf_store_superdirs,
+            make_map=make_map)
 
         self.create_grond_files()
 
@@ -212,6 +233,7 @@ class WaveformObservation(Observation):
             station_generator=scenario.targets.RandomStationGenerator(
                 nstations=self.nstations),
             store_id=self.store_id,
+            tabulated_phases_from_store=True,
             seismogram_quantity='displacement')
 
     def get_grond_target_group(self):

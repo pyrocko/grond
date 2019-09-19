@@ -134,6 +134,7 @@ setup(
         'grond.targets.waveform_oac',
         'grond.targets.satellite',
         'grond.targets.gnss_campaign',
+        'grond.targets.phase_pick',
         'grond.problems',
         'grond.problems.cmt',
         'grond.problems.double_dc',

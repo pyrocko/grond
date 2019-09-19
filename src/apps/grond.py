@@ -418,6 +418,12 @@ def command_scenario(args):
             '--gf-store-superdirs',
             dest='gf_store_superdirs',
             help='Comma-separated list of directories containing GF stores')
+        parser.add_option(
+            '--no-map',
+            dest='make_map',
+            default=True,
+            action='store_false',
+            help='suppress generation of map')
 
     parser, options, args = cl_parse('scenario', args, setup)
 
@@ -468,7 +474,8 @@ def command_scenario(args):
         scenario.build(
             force=options.force,
             interactive=True,
-            gf_store_superdirs=gf_store_superdirs)
+            gf_store_superdirs=gf_store_superdirs,
+            make_map=options.make_map)
 
         logger.info(CLIHints('scenario',
                              config=scenario.get_grond_config_path(),
