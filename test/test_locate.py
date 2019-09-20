@@ -70,7 +70,7 @@ pick_phasename: 'any_S'
             # mod_conf.set_elements(
             #     'optimiser_config.nbootstrap', 5)
 
-            mod_conf.optimiser_config.sampler_phases[-1].niterations = 15000
+            mod_conf.optimiser_config.sampler_phases[-1].niterations = 3000
 
             mod_conf.set_basepath(conf.get_basepath())
             config.write_config(mod_conf, quick_config_path)
@@ -80,4 +80,4 @@ pick_phasename: 'any_S'
 
             grond('go', quick_config_path, *event_names)
             rundir_paths = common.get_rundir_paths(config_path, event_names)
-            grond('report', *rundir_paths)
+            # grond('report', *rundir_paths)
