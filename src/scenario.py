@@ -234,6 +234,7 @@ class WaveformObservation(Observation):
                 nstations=self.nstations),
             store_id=self.store_id,
             tabulated_phases_from_store=True,
+            tabulated_phases_noise_scale=0.3,
             seismogram_quantity='displacement')
 
     def get_grond_target_group(self):
