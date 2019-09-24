@@ -43,6 +43,12 @@ class GNSSTargetMisfitPlot(PlotConfig):
     radius = Float.T(
         optional=True,
         help='radius of the map around campaign center lat/lon')
+    topo_resolution_min = Float.T(
+        default=40.,
+        help='minimum resolution of topography [dpi]')
+    topo_resolution_max = Float.T(
+        default=200.,
+        help='maximum resolution of topography [dpi]')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -100,14 +106,16 @@ displacements derived from best model (red).
 
             lat, lon = od.geographic_midpoint_locations(locations)
 
-            if self.radius is None:
+            radius = self.radius
+
+            if radius is None:
                 coords = num.array([loc.effective_latlon for loc in locations])
                 radius = od.distance_accurate50m_numpy(
                             lat[num.newaxis], lon[num.newaxis],
                             coords[:, 0].max(), coords[:, 1]).max()
                 radius *= 1.1
 
-            if radius < 30.*km:
+            if radius < 30.*km and isinstance(problem, RectangularProblem):
                 logger.warn(
                     'Radius of GNSS campaign %s too small, defaulting'
                     ' to 30 km' % campaign.name)
@@ -135,6 +143,8 @@ displacements derived from best model (red).
                 radius=radius,
                 show_topo=self.show_topo,
                 show_grid=self.show_grid,
+                topo_resolution_min=self.topo_resolution_min,
+                topo_resolution_max=self.topo_resolution_max,
                 show_rivers=self.show_rivers,
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
@@ -151,7 +161,7 @@ displacements derived from best model (red).
                 campaign,
                 psxy_style={
                     'G': 'black',
-                    'W': '0.8p,black',
+                    'W': '0.9p,black',
                 },
                 offset_scale=offset_scale,
                 vertical=vertical)
@@ -160,7 +170,7 @@ displacements derived from best model (red).
                 model_camp,
                 psxy_style={
                     'G': 'red',
-                    'W': '0.8p,red',
+                    'W': '0.9p,red',
                     't': 30,
                 },
                 offset_scale=offset_scale,
