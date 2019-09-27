@@ -17,7 +17,7 @@ Next, get Grond's source code using :program:`git clone`:
 
 .. code-block :: sh
 
-    git clone https://github.com/pyrocko/grond.git
+    git clone https://git.pyrocko.org/pyrocko/grond.git
     cd grond
 
 Finally, decide if you want to install Grond system-wide or just for a single
@@ -57,7 +57,7 @@ installed with Anaconda's pip into the Anaconda environment.
 .. code-block :: sh
 
     conda install -c pyrocko pyrocko
-    pip install git+https://github.com/pyrocko/grond.git
+    pip install git+https://git.pyrocko.org/pyrocko/grond.git
 
 
 Installation with pip
@@ -70,7 +70,7 @@ resolve its dependencies automatically, therefore you have to install
 
 .. code-block :: sh
 
-    pip install git+https://github.com/pyrocko/grond.git
+    pip install git+https://git.pyrocko.org/pyrocko/grond.git
 
 
 .. _kite: https://pyrocko.org/kite/
