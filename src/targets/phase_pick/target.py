@@ -122,6 +122,7 @@ class PhasePickTarget(gf.Location, MisfitTarget):
     def __init__(self, **kwargs):
         gf.Location.__init__(self, **kwargs)
         MisfitTarget.__init__(self, **kwargs)
+        self._tobs_cache = {}
 
     @classmethod
     def get_plot_classes(cls):
@@ -133,6 +134,10 @@ class PhasePickTarget(gf.Location, MisfitTarget):
     def string_id(self):
         return '.'.join(x for x in (self.path,) + self.codes)
 
+    def set_dataset(self, ds):
+        MisfitTarget.set_dataset(self, ds)
+        self._tobs_cache = {}
+
     def get_plain_targets(self, engine, source):
         return self.prepare_modelling(engine, source, None)
 
@@ -140,21 +145,27 @@ class PhasePickTarget(gf.Location, MisfitTarget):
         return []
 
     def get_times(self, engine, source):
-        tobs = None
         tsyn = None
-        ds = self.get_dataset()
+
+        k = source.name
+        if k not in self._tobs_cache:
+            ds = self.get_dataset()
+            tobs = None
+            marker = ds.get_pick(
+                source.name,
+                self.codes[:3],
+                self.pick_phasename)
+
+            if marker:
+                self._tobs_cache[k] = marker.tmin
+            else:
+                self._tobs_cache[k] = None
+
+        tobs = self._tobs_cache[k]
 
         store = engine.get_store(self.store_id)
         tsyn = source.time + store.t(
             self.pick_synthetic_traveltime, source, self)
-
-        marker = ds.get_pick(
-            source.name,
-            self.codes[:3],
-            self.pick_phasename)
-
-        if marker:
-            tobs = marker.tmin
 
         return tobs, tsyn
 
@@ -164,7 +175,10 @@ class PhasePickTarget(gf.Location, MisfitTarget):
         ds = self.get_dataset()  # noqa
 
         tobs, tsyn = self.get_times(engine, source)
-        misfit = abs(tobs - tsyn)
+        if None not in (tobs, tsyn):
+            misfit = abs(tobs - tsyn)
+        else:
+            misfit = None
 
         norm = 1.0
         result = PhasePickResult(
