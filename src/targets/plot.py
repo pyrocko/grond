@@ -110,8 +110,9 @@ class StationDistributionPlot(PlotConfig):
         # Legend
         entries = 4
         valid_marker = num.argmax(valid)
+        ecl = stations.get_edgecolor()
         fc = tuple(stations.get_facecolor()[valid_marker])
-        ec = tuple(stations.get_edgecolor()[valid_marker])
+        ec = tuple(ecl[min(valid_marker, len(ecl)-1)])
 
         def get_min_precision(values):
             sig_prec = num.floor(
