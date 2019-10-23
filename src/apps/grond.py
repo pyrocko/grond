@@ -789,19 +789,30 @@ def command_harvest(args):
         parser.add_option(
             '--neach', dest='neach', type=int, default=10,
             help='take NEACH best samples from each chain (default: %default)')
+        #parser.add_option(
+        #    '--weed', dest='weed', type=int, default=0,
+        #    help='weed out bootstrap samples with bad global performance. '
+        #         '0: no weeding (default), '
+        #         '1: only bootstrap chains where all NEACH best samples '
+        #         'global misfit is less than the global average misfit of all '
+        #         'NEACH best in all chains plus one standard deviation are '
+        #         'included in the harvest ensemble, '
+        #         '2: same as 1 but additionally individual samples are '
+        #         'removed if their global misfit is greater than the global '
+        #         'average misfit of all NEACH best in all chains, '
+        #         '3: harvesting is done on the global chain only, bootstrap '
+        #         'chains are excluded')
         parser.add_option(
-            '--weed', dest='weed', type=int, default=0,
-            help='weed out bootstrap samples with bad global performance. '
-                 '0: no weeding (default), '
-                 '1: only bootstrap chains where all NEACH best samples '
-                 'global misfit is less than the global average misfit of all '
-                 'NEACH best in all chains plus one standard deviation are '
-                 'included in the harvest ensemble, '
-                 '2: same as 1 but additionally individual samples are '
-                 'removed if their global misfit is greater than the global '
-                 'average misfit of all NEACH best in all chains, '
-                 '3: harvesting is done on the global chain only, bootstrap '
-                 'chains are excluded')
+                '--weed_bootstrap_chains', dest='weed_bootstrap_chains', type=int,
+                default=0,
+                help='weed out bootstrap chains with a bad global performance. '
+                'argument is percentage of bootstrap chains to be removed. '
+                'quality of bootstrap chain is global misfit of best model of the '
+                'bootstrap chain.'
+                'set to 100 to only return global NEACH best models.')
+        parser.add_option(
+                '--weed_models', dest='weed_models', default=0, type=int,
+                help='removes WEED_MODELS percent of all NEACH * n_bootstrap models')
 
     parser, options, args = cl_parse('harvest', args, setup)
     if len(args) != 1:
@@ -812,7 +823,8 @@ def command_harvest(args):
         run_path,
         force=options.force,
         nbest=options.neach,
-        weed=options.weed)
+        weed_bootstrap_chains=options.weed_bootstrap_chains,
+        weed_models=options.weed_models)
 
 
 def command_cluster(args):

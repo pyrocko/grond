@@ -123,7 +123,7 @@ def forward(env):
     trace.snuffle(all_trs, markers=markers, stations=list(stations.values()))
 
 
-def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
+def harvest(rundir, problem=None, nbest=10, force=False, weed_bootstrap_chains=0, weed_models=0):
 
     env = Environment([rundir])
     optimiser = env.get_optimiser()
@@ -154,35 +154,117 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     ibests_list.append(isort[:nbest])
 
-    if weed != 3:
+    print(bootstrap_misfits.shape)
+    print(optimiser.nbootstrap)
+
+    if weed_bootstrap_chains == 100:
+        # return global models only, like weed=3 in current version
+        ibests = num.concatenate(ibests_list)
+        for i in ibests:
+            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+        logger.info('Done harvesting problem "%s".' % problem.name)
+
+
+    elif weed_bootstrap_chains == 0 and weed_models == 0:
+        # return nbest of all chains and of global chain 
+        # like weed = 0 in current version
         for ibootstrap in range(optimiser.nbootstrap):
             bms = bootstrap_misfits[:, ibootstrap]
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
 
-        if weed:
-            mean_gm_best = num.median(gms[ibests])
-            std_gm_best = num.std(gms[ibests])
-            ibad = set()
+        ibests = num.concatenate(ibests_list)
+        for i in ibests:
+            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+        logger.info('Done harvesting problem "%s".' % problem.name)
 
-            for ibootstrap, ibest in enumerate(ibests):
-                if gms[ibest] > mean_gm_best + std_gm_best:
-                    ibad.add(ibootstrap)
 
-            ibests_list = [
-                ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
-                if ibootstrap not in ibad]
+    if weed_bootstrap_chains > 0 and weed_bootstrap_chains < 100:
+        # remove the chains where best model of chain is among x percent of 
+        # worst solutions
+        for ibootstrap in range(optimiser.nbootstrap):
+            bms = bootstrap_misfits[:, ibootstrap]
+            isort = num.argsort(bms)
+            ibests_list.append(isort[:nbest])
+            ibests.append(isort[0])
+        
+        # remove last x percent of ibest_list and ibests
+        print(ibests)
+        print(gms[ibests])
+        igmssort = num.argsort(gms[ibests])
+        print(igmssort)
+        p = round(optimiser.nbootstrap*weed_bootstrap_chains/100)
+        print(p)
+        print(igmssort[:-p])
+        #ibests = num.asarray(ibests)
+        #ibests = ibests[igmssort[:-p]]
+        ibests_list = num.asarray(ibests_list)
+        ibests_list = ibests_list[igmssort[:-p]]
+        
+        ibests = num.concatenate(ibests_list)
+        
+        for i in ibests:
+            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
-    ibests = num.concatenate(ibests_list)
+        logger.info('Done harvesting problem "%s".' % problem.name)
 
-    if weed == 2:
-        ibests = ibests[gms[ibests] < mean_gm_best]
 
-    for i in ibests:
-        problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
-    logger.info('Done harvesting problem "%s".' % problem.name)
+    if weed_models > 0 and weed_models < 100:
+        # remove worst x percent of all models. all models = nbest*n_chains + global nbest
+        for ibootstrap in range(optimiser.nbootstrap):
+            bms = bootstrap_misfits[:, ibootstrap]
+            isort = num.argsort(bms)
+            ibests_list.append(isort[:nbest])
+            #ibests.append(isort[0])
+        
+        ibests = num.concatenate(ibests_list)
+        igmssort = num.argsort(gms[ibests])
+        print(igmssort)
+        p = round(optimiser.nbootstrap*weed_models/100)
+        print(p)
+        print(igmssort[:-p])
+        ibests = num.asarray(ibests)
+        ibests = ibests[igmssort[:-p]]
+        
+        for i in ibests:
+            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+
+        logger.info('Done harvesting problem "%s".' % problem.name)
+
+
+
+
+    #if weed != 3:
+    #    for ibootstrap in range(optimiser.nbootstrap):
+    #        bms = bootstrap_misfits[:, ibootstrap]
+    #        isort = num.argsort(bms)
+    #        ibests_list.append(isort[:nbest])
+    #        ibests.append(isort[0])
+
+    #    if weed:
+    #        mean_gm_best = num.median(gms[ibests])
+    #        std_gm_best = num.std(gms[ibests])
+    #        ibad = set()
+
+    #        for ibootstrap, ibest in enumerate(ibests):
+    #            if gms[ibest] > mean_gm_best + std_gm_best:
+    #                ibad.add(ibootstrap)
+
+    #        ibests_list = [
+    #            ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
+    #            if ibootstrap not in ibad]
+
+    #ibests = num.concatenate(ibests_list)
+
+    #if weed == 2:
+    #    ibests = ibests[gms[ibests] < mean_gm_best]
+
+    #for i in ibests:
+    #    problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+
+    #logger.info('Done harvesting problem "%s".' % problem.name)
 
 
 def cluster(rundir, clustering, metric):
