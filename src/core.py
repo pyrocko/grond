@@ -154,85 +154,37 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed_bootstrap_chains=0
 
     ibests_list.append(isort[:nbest])
 
-    print(bootstrap_misfits.shape)
-    print(optimiser.nbootstrap)
-
     if weed_bootstrap_chains == 100:
-        # return global models only, like weed=3 in current version
         ibests = num.concatenate(ibests_list)
-        for i in ibests:
-            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
-        logger.info('Done harvesting problem "%s".' % problem.name)
-
-
-    elif weed_bootstrap_chains == 0 and weed_models == 0:
-        # return nbest of all chains and of global chain 
-        # like weed = 0 in current version
+    
+    else:
         for ibootstrap in range(optimiser.nbootstrap):
             bms = bootstrap_misfits[:, ibootstrap]
             isort = num.argsort(bms)
             ibests_list.append(isort[:nbest])
             ibests.append(isort[0])
 
+    if weed_bootstrap_chains == 0 and weed_models == 0:
         ibests = num.concatenate(ibests_list)
-        for i in ibests:
-            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
-        logger.info('Done harvesting problem "%s".' % problem.name)
-
 
     if weed_bootstrap_chains > 0 and weed_bootstrap_chains < 100:
-        # remove the chains where best model of chain is among x percent of 
-        # worst solutions
-        for ibootstrap in range(optimiser.nbootstrap):
-            bms = bootstrap_misfits[:, ibootstrap]
-            isort = num.argsort(bms)
-            ibests_list.append(isort[:nbest])
-            ibests.append(isort[0])
-        
-        # remove last x percent of ibest_list and ibests
-        print(ibests)
-        print(gms[ibests])
         igmssort = num.argsort(gms[ibests])
-        print(igmssort)
         p = round(optimiser.nbootstrap*weed_bootstrap_chains/100)
-        print(p)
-        print(igmssort[:-p])
-        #ibests = num.asarray(ibests)
-        #ibests = ibests[igmssort[:-p]]
         ibests_list = num.asarray(ibests_list)
         ibests_list = ibests_list[igmssort[:-p]]
-        
         ibests = num.concatenate(ibests_list)
         
-        for i in ibests:
-            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
-
-        logger.info('Done harvesting problem "%s".' % problem.name)
-
-
-
     if weed_models > 0 and weed_models < 100:
-        # remove worst x percent of all models. all models = nbest*n_chains + global nbest
-        for ibootstrap in range(optimiser.nbootstrap):
-            bms = bootstrap_misfits[:, ibootstrap]
-            isort = num.argsort(bms)
-            ibests_list.append(isort[:nbest])
-            #ibests.append(isort[0])
-        
         ibests = num.concatenate(ibests_list)
         igmssort = num.argsort(gms[ibests])
-        print(igmssort)
         p = round(optimiser.nbootstrap*weed_models/100)
-        print(p)
-        print(igmssort[:-p])
         ibests = num.asarray(ibests)
         ibests = ibests[igmssort[:-p]]
         
-        for i in ibests:
-            problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+    for i in ibests:
+        problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
-        logger.info('Done harvesting problem "%s".' % problem.name)
-
+    logger.info('Done harvesting problem "%s".' % problem.name)
 
 
 
