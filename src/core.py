@@ -170,17 +170,22 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed_bootstrap_chains=0
     if weed_bootstrap_chains > 0 and weed_bootstrap_chains < 100:
         igmssort = num.argsort(gms[ibests])
         p = round(optimiser.nbootstrap*weed_bootstrap_chains/100)
-        ibests_list = num.asarray(ibests_list)
-        ibests_list = ibests_list[igmssort[:-p]]
-        ibests = num.concatenate(ibests_list)
-        
+        iglob_list = ibests_list[0]
+        ibsbests_list = num.asarray(ibests_list[1:])
+        ibsbests_list = ibsbests_list[igmssort[:-p]]
+        ibests = num.concatenate(ibsbests_list)
+        ibests = num.insert(ibests, 0, iglob_list)
+
     if weed_models > 0 and weed_models < 100:
         ibests = num.concatenate(ibests_list)
-        igmssort = num.argsort(gms[ibests])
-        p = round(optimiser.nbootstrap*weed_models/100)
-        ibests = num.asarray(ibests)
-        ibests = ibests[igmssort[:-p]]
-        
+        iglobbests = ibests[:10]
+        ibsbests = ibests[10:]
+        igmssort = num.argsort(gms[ibsbests])
+        p = round((optimiser.nbootstrap*nbest)*weed_models/100)
+        ibsbests = num.asarray(ibsbests)
+        ibsbests = ibsbests[igmssort[:-p]]
+        ibests = num.insert(iglobbests, 0, ibsbests)
+
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
 
