@@ -190,38 +190,6 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed_bootstrap_chains=0
     logger.info('Done harvesting problem "%s".' % problem.name)
 
 
-
-    #if weed != 3:
-    #    for ibootstrap in range(optimiser.nbootstrap):
-    #        bms = bootstrap_misfits[:, ibootstrap]
-    #        isort = num.argsort(bms)
-    #        ibests_list.append(isort[:nbest])
-    #        ibests.append(isort[0])
-
-    #    if weed:
-    #        mean_gm_best = num.median(gms[ibests])
-    #        std_gm_best = num.std(gms[ibests])
-    #        ibad = set()
-
-    #        for ibootstrap, ibest in enumerate(ibests):
-    #            if gms[ibest] > mean_gm_best + std_gm_best:
-    #                ibad.add(ibootstrap)
-
-    #        ibests_list = [
-    #            ibests_ for (ibootstrap, ibests_) in enumerate(ibests_list)
-    #            if ibootstrap not in ibad]
-
-    #ibests = num.concatenate(ibests_list)
-
-    #if weed == 2:
-    #    ibests = ibests[gms[ibests] < mean_gm_best]
-
-    #for i in ibests:
-    #    problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
-
-    #logger.info('Done harvesting problem "%s".' % problem.name)
-
-
 def cluster(rundir, clustering, metric):
     env = Environment([rundir])
     history = env.get_history(subset='harvest')
