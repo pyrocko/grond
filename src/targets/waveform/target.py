@@ -207,6 +207,8 @@ class WaveformTargetGroup(TargetGroup):
                 else:
                     store_id = self.store_id
 
+                logger.debug('Selecting waveforms for %s.%s.%s.%s' % nslc)
+
                 target = WaveformMisfitTarget(
                     quantity='displacement',
                     codes=nslc,

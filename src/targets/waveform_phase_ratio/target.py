@@ -11,6 +11,9 @@ from . import measure as fm
 from grond import dataset
 from grond.meta import has_get_plot_classes
 
+from ..waveform.target import StoreIDSelector, StoreIDSelectorError,\
+        Crust2StoreIDSelector, StationDictStoreIDSelector
+
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform_phase_ratio.target')
 
@@ -43,6 +46,9 @@ class PhaseRatioTargetGroup(TargetGroup):
     measure_b = fm.FeatureMeasure.T()
     interpolation = gf.InterpolationMethod.T()
     store_id = gf.StringID.T(optional=True)
+    store_id_selector = StoreIDSelector.T(
+            optional=True,
+            help='select GF store based on event-station geometry.')
 
     fit_log_ratio = Bool.T(
         default=True,
@@ -65,6 +71,12 @@ class PhaseRatioTargetGroup(TargetGroup):
                     if ds.is_blacklisted((st.nsl() + (cha,))):
                         blacklisted = True
 
+            if self.store_id_selector:
+                store_id = self.store_id_selector.get_store_id(
+                    event, st, cha)
+            else:
+                store_id = self.store_id
+
             target = PhaseRatioTarget(
                 codes=st.nsl(),
                 lat=st.lat,
@@ -73,7 +85,7 @@ class PhaseRatioTargetGroup(TargetGroup):
                 east_shift=st.east_shift,
                 depth=st.depth,
                 interpolation=self.interpolation,
-                store_id=self.store_id,
+                store_id=store_id,
                 measure_a=self.measure_a,
                 measure_b=self.measure_b,
                 manual_weight=self.weight,
