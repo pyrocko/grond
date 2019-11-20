@@ -1,9 +1,9 @@
 Rectangular source plane from InSAR and GNSS observations
 =========================================================
 
-This example will demonstrate a joint inversion of a finite rectangular fault plane for the 2019 Ridgecrest Earthquake. We will jointly invert InSAR and GNSS data using Grond. Unwrapped InSAR surface displacement data from the `Advanced Rapid Imaging and Analysis (ARIA) Project for Natural Hazards. <https://aria.jpl.nasa.gov/>`_ by JPL/NASA. The coseismic GNSS displacements are delivered by `Nevada Geodetic Laboratory <http://geodesy.unr.edu/index.php>`_.
+This example will demonstrate a joint inversion of a finite rectangular fault plane for the 2019 Ridgecrest Earthquake. We will jointly invert InSAR and GNSS data using Grond. Unwrapped InSAR surface displacement data from the `Advanced Rapid Imaging and Analysis (ARIA) Project for Natural Hazards <https://aria.jpl.nasa.gov/>`_ by JPL/NASA. The coseismic GNSS displacements are delivered by `Nevada Geodetic Laboratory <http://geodesy.unr.edu/index.php>`_.
 
-This tutorial will guide through the conversion of ARIA data products and preparation of the unwrapped InSAR surface displacements in Kite. The GNSS data will be imported and pre-selected.
+This tutorial will guide through the preparation of the unwrapped InSAR surface displacements in Kite. The GNSS displacement data will be imported into Pyrocko and significant stations are pre-selected.
 
 This is an advanced example to demonstrate a geodetic joint inversion. If you haven't worked with Grond earthquake inversions before, we recommend to exercise a single dataset example first.
 
@@ -24,12 +24,12 @@ The project folder now contains a configuration file for Grond and some utility 
 
 .. code-block :: sh
     
-    grond-joint-geodetic        # project folder
-    ├── bin                        # directory with scripts
-    │   ├── download_gf_stores.sh  # download pre-calculated Green's functions
-    │   ├── download_data.sh      # a simple event-based waveform downloader
-    └── config                     # directory for configuration files
-        └── insar_rectangular.gronf       # Grond configuration file for this exercise
+    grond-joint-geodetic             # project folder
+    ├── bin                          # directory with scripts
+    │   ├── download_gf_stores.sh    # download pre-calculated Green's functions
+    │   ├── download_data.sh         # a simple event-based waveform downloader
+    └── config                       # directory for configuration files
+        └── insar_rectangular.gronf  # Grond configuration file for this exercise
 
 Green's function download
 -------------------------
@@ -47,7 +47,7 @@ When the command succeeds, you should have a new subdirectory :file:`gf_stores` 
     gf_stores
     └── crust2_ib_static/... # Green's function store
 
-It contains a Pyrocko Green's function store, named ``crust2_ib_static``, which has been created using the `Fomosto <https://pyrocko.org/docs/current/apps/fomosto/index.html>`_ tool of `Pyrocko <http://pyrocko.org/>`_ and the modelling code `PSGRN/PSCMP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-psgrn-pscmp-backend>`_. The Green's functions in this store have been calculated for a regional `CRUST2 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model for source depths between 0 and 30 km in 500 m steps, and horizontal extent from 0 - 300 km in 500 m steps.
+It contains a Pyrocko Green's function store, named ``crust2_ib_static``, which has been created using the `Fomosto <https://pyrocko.org/docs/current/apps/fomosto/index.html>`_ tool of `Pyrocko <http://pyrocko.org/>`_ and the static modelling code `PSGRN/PSCMP <https://pyrocko.org/docs/current/apps/fomosto/backends.html#the-psgrn-pscmp-backend>`_. The Green's functions in this store have been calculated for a regional `CRUST2 <https://igppweb.ucsd.edu/~gabi/crust2.html>`_ earth model for source depths between 0 and 30 km in 500 m steps, and horizontal extent from 0 - 300 km in 500 m steps.
 
 InSAR and GNSS data download
 ----------------------------
@@ -58,14 +58,14 @@ The example includes a script to download unwrapped InSAR and GNSS data from Pyr
     
     bin/download_data.sh
 
-This will the InSAR scenes and GNSS data to :file:`data/events/2019-ridgecrest`. Surface displacement is held in Kite container format and the Pyrocko GNSS containers.
+This will download the InSAR scenes and GNSS data to :file:`data/events/2019-ridgecrest`. InSAR surface displacements are held in Kite container format, GNSS data is stored in Pyrocko containers.
 
 Unwrapped InSAR displacement preparation with Kite
 --------------------------------------------------
 
-The downloaded InSAR data has to be prepared for the inversion with the Kite tool. To install the software, follow the `install instructions <https://pyrocko.org/docs/kite/current/installation.html>`_.
+The downloaded InSAR data has to be prepared for the inversion with the `Kite tool <https://pyrocko.org/docs/kite/>`_ . To install the software, follow the `install instructions <https://pyrocko.org/docs/kite/current/installation.html>`_.
 
-Once the software is installed we need to parametrize the two scenes:
+Once Kite is installed we need to parametrize the two scenes:
 
     1. The data sub-sampling quadtree: This efficiently reduces the resolution of the scene, yet conserves the important data information. A reduced number of samples will benefit the forward-modelling computing cost.
 
@@ -75,13 +75,7 @@ Once the software is installed we need to parametrize the two scenes:
 .. note ::
     The scenes come pre-configured. The following steps of defining the quadtree and calculating the covariance matrix are optional.
 
-
-We start by parametrizing the quadtree: find a good parameters for the sub-sampling quadtree by tuning four parameters:
-
-    1. ``epsilon``, the variance threshold in each quadtree's tile.
-    2. ``nan_fraction``, percentage of allowed NaN pixels per tile.
-    3. ``tile_size_min``, minimum size of the tiles.
-    4. ``tile_size_max``, maximum size of the tiles.
+Load the InSAR data into spool:
 
 .. code-block :: sh
 
@@ -89,7 +83,13 @@ We start by parametrizing the quadtree: find a good parameters for the sub-sampl
 
     spool data/events/2019-ridgecrest/insar/descending
 
-Now we can parametrize the quadtree visually:
+
+We need to parametrize the quadtree: find a good parameters for the sub-sampling quadtree by tuning four parameters:
+
+    1. ``epsilon``, the variance threshold in each quadtree's tile.
+    2. ``nan_fraction``, percentage of allowed NaN pixels per tile.
+    3. ``tile_size_min``, minimum size of the tiles.
+    4. ``tile_size_max``, maximum size of the tiles.
 
 .. figure:: ../../images/example_spool-ridgecrest-quadtree.png
     :name: Fig. 1 Example InSAR quadtree
@@ -98,15 +98,15 @@ Now we can parametrize the quadtree visually:
     
     **Figure 1**: Parametrizing the quadtree. This efficiently sub-samples the high-resolution Sentinel-1 surface displacement data. (command :command:`spool`; `Kite <https://pyrocko.org/docs/kite/>`_ toolbox).
 
-.. note ::
+.. tip ::
     
     Delete unnecessary tiles of the quadtree by right-clicking, and delete with :kbd:`Del`.
 
 Once you are done, click on the next tab :guilabel:`Scene.covariance`. Now we will define a window for the data's noise. The window's data will be use for calculating the spatial covariance of the scene (see `details <https://pyrocko.org/kite/docs/current/examples/covariance.html>`_).
 
-Use a spatial window far away from the earthquake signal to capture only the noise, yet the bigger the window is, the better the data covariance estimation.
+Use a spatial window far away from the earthquake signal to capture only the noise. The bigger the window is, the better the data covariance estimation.
 
-On the left hand side of the GUI you find parameters to tune the spatial covariance analysis. We now can fit an analytical model to the empirical covariance: :math:`\exp(d)` and :math:`\exp + \sin`. For more details on the method, see `Kite's documentation <https://pyrocko.org/docs/kite/current>`_.
+On the left hand side of the GUI you find parameters to tune the spatial covariance analysis. We now can fit an analytical model to the empirical covariance: :math:`\exp(d)` or :math:`\exp + \sin`. For more details on the method, see `Kite's documentation <https://pyrocko.org/docs/kite/current>`_.
 
 .. figure:: ../../images/example_spool-ridgecrest-covariance.png
     :name: Fig. 2 Example InSAR covariance
@@ -166,14 +166,22 @@ During the optimisation a status monitor will show the optimisation's progress.
 Depending on the configured number of iterations and the computer's hardware the optimisation will run several minutes to hours.
 
 
-Optimisation report
--------------------
+Optimisation result report
+--------------------------
 
 Once the optimisation is finished we can generate and open the final report with:
 
 .. code-block :: sh
 
     grond report -so runs/rectangular_2019ridgecrest.grun
+
+
+.. figure:: ../../images/example_spool-ridgecrest-result.png
+    :name: Fig. 3 2019 Ridgecrest model result
+    :width: 80%
+    :align: center
+    
+    **Figure 3**: Surface displacements from the ascending track. (Left) the observed InSAR data, (center) the modelled surface displacements, and (right) the residual displacement. More information and statistics are accessible in the complete inversion report.
 
 
 Example report
