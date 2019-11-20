@@ -1,0 +1,202 @@
+%YAML 1.1
+# Example: Inversion of planar rectangular source model from InSAR observations.
+--- !grond.Config
+
+# All file paths referenced below are treated relative to the location of this
+# configuration file, here we may give a common prefix. E.g. setting it to '..'
+# if the configuration file is in the sub-directory '${project_root}/config'
+# allows us to give the paths below relative to '${project_root}'.
+path_prefix: '..'
+
+# Path, where to store output (run directories). The placeholder
+# '${problem_name}' will be expanded to a name configured below in
+# problem_config.name_template and will typically include a config identifier
+# and the event name.
+rundir_template: runs/${problem_name}.grun
+
+# If given, restrict to processing of listed events
+#event_names:
+#- 'gfz2018pmjk'
+
+
+# -----------------------------------------------------------------------------
+# Configuration section for dataset (input data)
+#
+# The placeholder '${event_name}' will be expanded to the current event. This
+# enables us to use the same configuration for multiple events. The available 
+# events are detected by looking into possible expansions of
+# dataset_config.events_path
+# -----------------------------------------------------------------------------
+
+dataset_config: !grond.DatasetConfig
+  
+  # File with hypocenter information and possibly reference solution
+  events_path: 'data/events/${event_name}/event.txt'
+
+  # List of directories for the InSAR scenes
+  kite_scene_paths: ['data/events/${event_name}/insar']
+
+# -----------------------------------------------------------------------------
+# Configuration section for the observational data fitting
+#
+# This defines the objective function to be minimized in the optimisation. It
+# can be composed of one or more contributions, each represented by a
+# !grond.*TargetGroup section.
+# -----------------------------------------------------------------------------
+
+target_groups:
+- !grond.SatelliteTargetGroup
+
+  # Normalisation family (see the Grond documentation for how it works).
+  # Use distinct normalisation families when mixing misfit contributors with
+  # different magnitude scaling, like e.g. cross-correlation based misfit and 
+  # time-domain Lx norm.
+  normalisation_family: 'static'
+
+  # Just a name used to identify targets from this group. Use dot-separated path
+  # notation to group related contributors
+  path: 'insar'
+
+  # How to weight contributions from this group in the global misfit
+  weight: 1.0
+
+  # Selector for kite scene ids, '*all' is a wildcard and load all scenes present
+  kite_scenes: ['*all']
+
+  # Subsection on how to fit the traces
+  misfit_config: !grond.SatelliteMisfitConfig
+
+    # Optimise a planar orbital ramp
+    optimise_orbital_ramp: false
+
+    # Parameters for the orbital ramp
+    ranges:
+
+      # Vertical offset in [m]
+      offset: -0.5 .. 0.5
+
+      # Ranges for the East-West and North-South inclination of the ramp
+      ramp_east: -1e-4 .. 1e-4
+      ramp_north: -1e-4 .. 1e-4
+
+  # How to interpolate the Green's functions (available choices:
+  # 'nearest_neighbor', 'multilinear'). Choices other than 'nearest_neighbor'
+  # may require dense GF stores to avoid aliasing artifacts in the forward 
+  # modelling.
+  interpolation: multilinear
+
+  # Name of the GF Store to use
+  store_id: crust2_ib_static
+
+
+# -----------------------------------------------------------------------------
+# Definition of the problem to be solved
+#
+# In this section the source model to be fitted is chosen, the parameter space
+# defined, and how to combine the misfit contributions defined in the
+# target_groups section above.
+# 
+# The marker !grond.RectangularProblemConfig selects a finite rectancular
+# source model. 
+# -----------------------------------------------------------------------------
+problem_config: !grond.RectangularProblemConfig
+
+  # Name used to identify the output
+  name_template: rect_2009LaAquila
+
+  # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
+  norm_exponent: 2
+
+  # Definition of model parameter space to be searched in the optimisation
+  ranges:
+
+    # Scaling ranges in [m]
+    depth: 2500 .. 7000
+    east_shift: 0 .. 20000
+    north_shift: 0 .. 20000
+    length: 5000 .. 10000
+    width: 2000 .. 10000
+    slip: .2 .. 2
+
+    # Orientation ranges in [deg]
+    dip: 10 .. 50
+    rake: 120 .. 360
+    strike: 220 .. 360
+
+  # The number of subsources used in the modelling is dependent on the spatial
+  # spacing of the Green's function in the GF Store. The decimation_factor
+  # parameter allows to decrease the resolution of the discretised source model
+  # (use fewer sub-sources) for speedy computation with inaccurate results (for
+  # testing purposes). Higher value means faster computation and less accurate
+  # result.
+  decimation_factor: 1
+
+  # Clearance distance around stations (no models with origin closer than this
+  # distance to any station are produced by the sampler)
+  distance_min: 0.0
+
+# -----------------------------------------------------------------------------
+# Configuration of pre-optimisation analysis phases. 
+# determined during this phase.
+# -----------------------------------------------------------------------------
+#
+analyser_configs:
+
+# DOES NOT APPLY FOR INSAR! Balancing weights are determined with this analyser
+- !grond.TargetBalancingAnalyserConfig
+  niterations: 1000
+
+# -----------------------------------------------------------------------------
+# Configuration of the optimisation procedure
+# -----------------------------------------------------------------------------
+optimiser_config: !grond.HighScoreOptimiserConfig
+  # Number of bootstrap realisations to be tracked simultaneously in the
+  # optimisation
+  nbootstrap: 25
+
+  # Stages of the sampler then narrow down to the interesting regions
+  # (!grond.DirectedSamplerPhase).
+  sampler_phases:
+
+  # Start with uniform sampling of the model space
+  - !grond.UniformSamplerPhase
+    # Number of iterations
+    niterations: 10000
+
+    # How often we shall try to find a valid sample
+    ntries_preconstrain_limit: 1000
+
+  # Narrow down to the interesting regions
+  - !grond.DirectedSamplerPhase
+    # Number of iterations
+    niterations: 40000
+
+    # How often we shall try to find a valid sample
+    ntries_preconstrain_limit: 1000
+
+    # Multiplicator for width of sampler distribution at start of this phase
+    scatter_scale_begin: 2.0
+
+    # Multiplicator for width of sampler distribution at end of this phase
+    scatter_scale_end: 0.5
+
+    starting_point: excentricity_compensated
+    sampler_distribution: normal
+    standard_deviation_estimator: median_density_single_chain
+    ntries_sample_limit: 2000
+
+  # This parameter determines the length of the chains
+  chain_length_factor: 8.0
+
+# -----------------------------------------------------------------------------
+# Configuration section for synthetic seismogram engine
+#
+# Configures where to look for GF stores.
+# -----------------------------------------------------------------------------
+engine_config: !grond.EngineConfig
+
+  # Whether to use GF store directories listed in ~/.pyrocko/config.pf
+  gf_stores_from_pyrocko_config: false
+
+  # List of directories with GF stores
+  gf_store_superdirs: ['gf_stores']

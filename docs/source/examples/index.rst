@@ -9,3 +9,4 @@ Here we walk through hands-on data inversions with Grond. The examples provide d
    waveform_regional/index
    waveform_wphase/index
    satellite_insar/index
+   satellite_insar_gnss/index
