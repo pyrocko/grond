@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - `grond go` utilises `--threads` arguments for various tasks.
+- InSAR plots improved, now plotting 'best' and 'mean' // Improvements
 
 ### Fixed
 - Improvements in documentation and examples.

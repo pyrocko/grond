@@ -114,7 +114,7 @@ class RectangularProblem(Problem):
         # source = self.get_source(x)
         # if any(self.distance_min > source.distance_to(t)
         #        for t in self.targets):
-            # raise Forbidden()
+        # raise Forbidden()
         return x
 
     @classmethod
