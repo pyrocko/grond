@@ -6,8 +6,9 @@ from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
 from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from matplotlib import patches
-from pyrocko.guts import Tuple, Float, String, Int, Bool
+from pyrocko.guts import Tuple, Float, String, Int, Bool, StringChoice
 
 logger = logging.getLogger('grond.targets.satellite.plot')
 
@@ -16,14 +17,15 @@ d2r = num.pi/180.
 guts_prefix = 'grond'
 
 
-def scale_axes(axis, scale, offset=0.):
+def scale_axes(axis, scale, offset=0., suffix=''):
     from matplotlib.ticker import ScalarFormatter
 
     class FormatScaled(ScalarFormatter):
 
         @staticmethod
         def __call__(value, pos):
-            return '{:,.1f}'.format((offset + value) * scale).replace(',', ' ')
+            return '{:,.1f}{:}'.format((offset + value) * scale, suffix)\
+                .replace(',', ' ')
 
     axis.set_major_formatter(FormatScaled())
 
@@ -43,6 +45,10 @@ class SatelliteTargetDisplacement(PlotConfig):
     relative_coordinates = Bool.T(
         default=False,
         help='Show relative coordinates, initial location centered at 0N, 0E')
+    fit = StringChoice.T(
+        default='best', choices=['best', 'mean'],
+        help='Show the \'best\' or \'mean\' fits and source model from the'
+             ' ensamble.')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -81,9 +87,14 @@ edge marking the upper fault edge. Complete data extent is shown.
         for target in sat_targets:
             target.set_dataset(ds)
 
-        source = history.get_best_source()
-        best_model = history.get_best_model()
-        results = problem.evaluate(best_model, targets=sat_targets)
+        if self.fit == 'best':
+            source = history.get_best_source()
+            model = history.get_best_model()
+        elif self.fit == 'mean':
+            source = history.get_mean_source()
+            model = history.get_mean_model()
+
+        results = problem.evaluate(model, targets=sat_targets)
 
         def initAxes(ax, scene, title, last_axes=False):
             ax.set_title(title)
@@ -91,8 +102,8 @@ edge marking the upper fault edge. Complete data extent is shown.
 
             if scene.frame.isMeter():
                 ax.set_xlabel('Easting [km]')
-                scale_x = {'scale': 1./km}
-                scale_y = {'scale': 1./km}
+                scale_x = dict(scale=1./km)
+                scale_y = dict(scale=1./km)
                 if not self.relative_coordinates:
                     import utm
                     utm_E, utm_N, utm_zone, utm_zone_letter =\
@@ -110,13 +121,18 @@ edge marking the upper fault edge. Complete data extent is shown.
                 ax.set_aspect('equal')
 
             elif scene.frame.isDegree():
-                ax.set_xlabel('Lon [°]')
-                scale_x = {'scale': 1.}
-                scale_y = {'scale': 1.}
+
+                scale_x = dict(scale=1., suffix='°')
+                scale_y = dict(scale=1., suffix='°')
                 if not self.relative_coordinates:
                     scale_x['offset'] = source.effective_lon
                     scale_y['offset'] = source.effective_lat
                 ax.set_aspect(1./num.cos(source.effective_lat*d2r))
+
+            nticks_lon = 4 if abs(scene.frame.llLon) >= 100 else 5
+
+            ax.xaxis.set_major_locator(MaxNLocator(nticks_lon))
+            ax.yaxis.set_major_locator(MaxNLocator(5))
 
             scale_axes(ax.get_xaxis(), **scale_x)
             scale_axes(ax.get_yaxis(), **scale_y)
@@ -282,9 +298,7 @@ data and (right) the model residual.
             ax.text(.025, .025, 'Scene ID: %s' % scene.meta.scene_id,
                     fontsize=8, alpha=.7,
                     va='bottom', transform=ax.transAxes)
-            if scene.frame.isDegree():
-                ax.set_ylabel('Lat [°]')
-            elif scene.frame.isMeter():
+            if scene.frame.isMeter():
                 ax.set_ylabel('Northing [km]')
 
             ax = axes[1]
@@ -341,7 +355,7 @@ data and (right) the model residual.
 
             cax = fig.add_subplot(gs[1, :])
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
-                                use_gridspec=True)
+                                aspect=20, use_gridspec=True)
 
             cbar.set_label('LOS Displacement [m]')
 
