@@ -4,7 +4,9 @@ import logging
 
 import glob
 import os.path as op
+
 from distutils.dir_util import copy_tree
+import distutils.errors
 
 logger = logging.getLogger('grond.init')
 km = 1e3
@@ -84,8 +86,11 @@ class GrondInit(object):
             pass
         example_dir = self.abbrv_to_example_dir(abbrv)
 
-        logger.info('Initialising example "%s" in "%s".' % (abbrv, path))
-        copy_tree(example_dir, path)
+        logger.info('Initialising example "%s" in "%s".', abbrv, path)
+        try:
+            copy_tree(example_dir, path)
+        except distutils.errors.DistutilsFileError:
+            logger.error('Could not find example %s!', abbrv)
 
     def abbrv_to_filename(self, abbrv):
         ext = '.gronf'
