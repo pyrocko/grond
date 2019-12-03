@@ -90,7 +90,7 @@ Start Kite's :program:`spool` GUI with:
     :width: 100%
     :align: center
     
-    **Figure 1**: Parametrizing the quadtree. This efficiently sub-samples the high-resolution surface displacement data. (command :command:`spool`; `Kite <https://pyrocko.org/docs/kite/>`_ toolbox).
+    **Figure 1**: Parametrizing the quadtree. This efficiently sub-samples the high-resolution surface displacement data. (command :command:`spool`; `Kite`_ toolbox).
 
 .. note ::
     

@@ -33,8 +33,11 @@ dataset_config: !grond.DatasetConfig
   # File with hypocenter information and possibly reference solution
   events_path: 'data/events/${event_name}/event.txt'
 
-  # List of directories for the InSAR scenes
+  # List of directories with kite InSAR scenes
   kite_scene_paths: ['data/events/${event_name}/insar']
+
+  # List of directories with pyrocko GNSS campaigns
+  gnss_campaign_paths: ['data/events/${event_name}/gnss']
 
 # -----------------------------------------------------------------------------
 # Configuration section for the observational data fitting
@@ -67,17 +70,17 @@ target_groups:
   misfit_config: !grond.SatelliteMisfitConfig
 
     # Optimise a planar orbital ramp
-    optimise_orbital_ramp: false
+    optimise_orbital_ramp: true
 
     # Parameters for the orbital ramp
     ranges:
 
       # Vertical offset in [m]
-      offset: -0.5 .. 0.5
+      offset: -0.1 .. 0.1
 
       # Ranges for the East-West and North-South inclination of the ramp
-      ramp_east: -1e-4 .. 1e-4
-      ramp_north: -1e-4 .. 1e-4
+      ramp_east: -1e-5 .. 1e-5
+      ramp_north: -1e-5 .. 1e-5
 
   # How to interpolate the Green's functions (available choices:
   # 'nearest_neighbor', 'multilinear'). Choices other than 'nearest_neighbor'
@@ -86,6 +89,24 @@ target_groups:
   interpolation: multilinear
 
   # Name of the GF Store to use
+  store_id: crust2_ib_static
+
+# Target: GNSS target configuration.
+- !grond.GNSSCampaignTargetGroup
+  normalisation_family: 'static'
+  path: all
+  # Manual weight for the GNSS target
+  weight: 1.
+
+  # The campaigns are identified by their campaign_name.
+  # Campaigns can be explicitly selected, or the wildcard *all can be used.
+  gnss_campaigns: ['*all']
+  misfit_config: !grond.GNSSCampaignMisfitConfig {}
+
+  # GF Interpolation
+  interpolation: multilinear
+
+  # GF Store ID
   store_id: crust2_ib_static
 
 
@@ -102,7 +123,7 @@ target_groups:
 problem_config: !grond.RectangularProblemConfig
 
   # Name used to identify the output
-  name_template: rect_2009LaAquila
+  name_template: rectangular_2019-ridgecrest
 
   # How to combine the target misfits. For L1 norm: 1, L2 norm: 2, etc.
   norm_exponent: 2
@@ -111,17 +132,17 @@ problem_config: !grond.RectangularProblemConfig
   ranges:
 
     # Scaling ranges in [m]
-    depth: 2500 .. 7000
-    east_shift: 0 .. 20000
-    north_shift: 0 .. 20000
-    length: 5000 .. 10000
+    depth: 500 .. 12000
+    east_shift: -10000 .. 10000
+    north_shift: -10000 .. 10000
+    length: 35000 .. 70000
     width: 2000 .. 10000
-    slip: .2 .. 2
+    slip: 2. .. 6.5
 
     # Orientation ranges in [deg]
-    dip: 10 .. 50
-    rake: 120 .. 360
-    strike: 220 .. 360
+    dip: 60 .. 120
+    rake: 120 .. 200
+    strike: 120 .. 160
 
   # The number of subsources used in the modelling is dependent on the spatial
   # spacing of the Green's function in the GF Store. The decimation_factor
@@ -129,7 +150,7 @@ problem_config: !grond.RectangularProblemConfig
   # (use fewer sub-sources) for speedy computation with inaccurate results (for
   # testing purposes). Higher value means faster computation and less accurate
   # result.
-  decimation_factor: 1
+  decimation_factor: 24
 
   # Clearance distance around stations (no models with origin closer than this
   # distance to any station are produced by the sampler)
@@ -161,7 +182,7 @@ optimiser_config: !grond.HighScoreOptimiserConfig
   # Start with uniform sampling of the model space
   - !grond.UniformSamplerPhase
     # Number of iterations
-    niterations: 10000
+    niterations: 4000
 
     # How often we shall try to find a valid sample
     ntries_preconstrain_limit: 1000
@@ -169,16 +190,16 @@ optimiser_config: !grond.HighScoreOptimiserConfig
   # Narrow down to the interesting regions
   - !grond.DirectedSamplerPhase
     # Number of iterations
-    niterations: 40000
+    niterations: 50000
 
     # How often we shall try to find a valid sample
     ntries_preconstrain_limit: 1000
 
     # Multiplicator for width of sampler distribution at start of this phase
-    scatter_scale_begin: 2.0
+    scatter_scale_begin: 1.5
 
     # Multiplicator for width of sampler distribution at end of this phase
-    scatter_scale_end: 0.5
+    scatter_scale_end: 0.25
 
     starting_point: excentricity_compensated
     sampler_distribution: normal
