@@ -355,7 +355,7 @@ data and (right) the model residual.
 
             cax = fig.add_subplot(gs[1, :])
             cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
-                                aspect=20, use_gridspec=True)
+                                use_gridspec=True)
 
             cbar.set_label('LOS Displacement [m]')
 
