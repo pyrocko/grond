@@ -64,6 +64,7 @@ class JointparPlot(PlotConfig):
     nsubplots = Int.T(default=6)
     show_ticks = Bool.T(default=False)
     show_reference = Bool.T(default=True)
+    show_axes = Bool.T(default=False)
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -229,64 +230,69 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
                 xmin, xmax = fixlim(*xpar.scaled(bounds[jpar]))
                 ymin, ymax = fixlim(*ypar.scaled(bounds[ipar]))
 
-                if ix == 0 or jselected + 1 == iselected:
-                    for (xpos, xoff, x) in [
-                            (0.0, 10., xmin),
-                            (1.0, -10., xmax)]:
+                if not self.show_axes:
+                    if ix == 0 or jselected + 1 == iselected:
+                        for (xpos, xoff, x) in [
+                                (0.0, 10., xmin),
+                                (1.0, -10., xmax)]:
 
-                        axes.annotate(
-                            '%.3g%s' % (x, xpar.get_unit_suffix()),
-                            xy=(xpos, 1.05),
-                            xycoords='axes fraction',
-                            xytext=(xoff, 5.),
-                            textcoords='offset points',
-                            verticalalignment='bottom',
-                            horizontalalignment='left',
-                            rotation=45.)
+                            axes.annotate(
+                                '%.3g%s' % (x, xpar.get_unit_suffix()),
+                                xy=(xpos, 1.05),
+                                xycoords='axes fraction',
+                                xytext=(xoff, 5.),
+                                textcoords='offset points',
+                                verticalalignment='bottom',
+                                horizontalalignment='left',
+                                rotation=45.)
 
-                if iy == nsubplots - 1 or jselected + 1 == iselected:
-                    for (ypos, yoff, y) in [
-                            (0., 10., ymin),
-                            (1.0, -10., ymax)]:
+                    if iy == nsubplots - 1 or jselected + 1 == iselected:
+                        for (ypos, yoff, y) in [
+                                (0., 10., ymin),
+                                (1.0, -10., ymax)]:
 
-                        axes.annotate(
-                            '%.3g%s' % (y, ypar.get_unit_suffix()),
-                            xy=(1.0, ypos),
-                            xycoords='axes fraction',
-                            xytext=(5., yoff),
-                            textcoords='offset points',
-                            verticalalignment='bottom',
-                            horizontalalignment='left',
-                            rotation=45.)
+                            axes.annotate(
+                                '%.3g%s' % (y, ypar.get_unit_suffix()),
+                                xy=(1.0, ypos),
+                                xycoords='axes fraction',
+                                xytext=(5., yoff),
+                                textcoords='offset points',
+                                verticalalignment='bottom',
+                                horizontalalignment='left',
+                                rotation=45.)
 
                 axes.set_xlim(xmin, xmax)
                 axes.set_ylim(ymin, ymax)
 
-                if not self.show_ticks:
-                    axes.get_xaxis().set_ticks([])
-                    axes.get_yaxis().set_ticks([])
+                if not self.show_axes:
+                    if not self.show_ticks:
+                        axes.get_xaxis().set_ticks([])
+                        axes.get_yaxis().set_ticks([])
+                    else:
+                        axes.tick_params(length=4, which='both')
+                        axes.get_yaxis().set_ticklabels([])
+                        axes.get_xaxis().set_ticklabels([])
+
+                    if iselected == nselected - 1 or ix == nsubplots - 1:
+                        axes.annotate(
+                            xpar.get_label(with_unit=False),
+                            xy=(0.5, -0.05),
+                            xycoords='axes fraction',
+                            verticalalignment='top',
+                            horizontalalignment='right',
+                            rotation=45.)
+
+                    if iy == 0:
+                        axes.annotate(
+                            ypar.get_label(with_unit=False),
+                            xy=(-0.05, 0.5),
+                            xycoords='axes fraction',
+                            verticalalignment='top',
+                            horizontalalignment='right',
+                            rotation=45.)
                 else:
-                    axes.tick_params(length=4, which='both')
-                    axes.get_yaxis().set_ticklabels([])
-                    axes.get_xaxis().set_ticklabels([])
-
-                if iselected == nselected - 1 or ix == nsubplots - 1:
-                    axes.annotate(
-                        xpar.get_label(with_unit=False),
-                        xy=(0.5, -0.05),
-                        xycoords='axes fraction',
-                        verticalalignment='top',
-                        horizontalalignment='right',
-                        rotation=45.)
-
-                if iy == 0:
-                    axes.annotate(
-                        ypar.get_label(with_unit=False),
-                        xy=(-0.05, 0.5),
-                        xycoords='axes fraction',
-                        verticalalignment='top',
-                        horizontalalignment='right',
-                        rotation=45.)
+                    axes.set_xlabel(xpar.get_label())
+                    axes.set_ylabel(ypar.get_label())
 
                 fx = problem.extract(models, jpar)
                 fy = problem.extract(models, ipar)
@@ -311,6 +317,7 @@ parameter bounds and shows the model space of the optimsation. %s''' % sref)
                             num.arctan2(evecs[1][0], evecs[0][0])))
 
                     ell.set_facecolor('none')
+                    ell.set_edgecolor(mpl_color('aluminium5'))
                     axes.add_artist(ell)
 
                 if self.show_reference:
