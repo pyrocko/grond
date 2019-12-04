@@ -20,6 +20,10 @@ class MTType(StringChoice):
     choices = ['full', 'deviatoric', 'dc']
 
 
+class MTRandomType(StringChoice):
+    choices = ['uniform', 'use_bounds']
+
+
 class STFType(StringChoice):
     choices = ['HalfSinusoidSTF', 'ResonatorSTF']
 
@@ -29,7 +33,7 @@ class STFType(StringChoice):
 
     @classmethod
     def base_stf(cls, name):
-        return cls.cls[name]()
+        return cls.cls[name](anchor=-1.0, exponent=2)
 
 
 class CMTProblemConfig(ProblemConfig):
@@ -37,6 +41,7 @@ class CMTProblemConfig(ProblemConfig):
     ranges = Dict.T(String.T(), gf.Range.T())
     distance_min = Float.T(default=0.0)
     mt_type = MTType.T(default='full')
+    mt_random = MTRandomType.T(default='uniform')
     stf_type = STFType.T(default='HalfSinusoidSTF')
     nthreads = Int.T(default=1)
 
@@ -63,6 +68,7 @@ class CMTProblemConfig(ProblemConfig):
             ranges=self.ranges,
             distance_min=self.distance_min,
             mt_type=self.mt_type,
+            mt_random=self.mt_random,
             stf_type=self.stf_type,
             norm_exponent=self.norm_exponent,
             nthreads=self.nthreads)
@@ -105,6 +111,7 @@ class CMTProblem(Problem):
 
     distance_min = Float.T(default=0.0)
     mt_type = MTType.T(default='full')
+    mt_random = MTRandomType.T(default='uniform')
     stf_type = STFType.T(default='HalfSinusoidSTF')
 
     def __init__(self, **kwargs):
@@ -207,7 +214,8 @@ class CMTProblem(Problem):
         if fixed_magnitude is not None:
             x[4] = fixed_magnitude
 
-        x[5:11] = mtm.random_m6(x=rstate.random_sample(6))
+        if self.mt_random == 'uniform':
+            x[5:11] = mtm.random_m6(x=rstate.random_sample(6))
 
         return x.tolist()
 
