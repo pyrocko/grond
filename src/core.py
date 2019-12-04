@@ -434,13 +434,22 @@ def go(environment,
     g_state[id(g_data)] = g_data
 
     nevents = environment.nevents_selected
-    for x in parimap.parimap(
+    erroneous = []
+    for name, err in parimap.parimap(
             process_event,
             range(environment.nevents_selected),
             [id(g_data)] * nevents,
             nprocs=nparallel):
 
-        pass
+        if err:
+            erroneous.append((name, err))
+
+    if erroneous:
+        info = '\n'.join(
+            '  %s: %s' % (name, str(err)) for (name, err) in erroneous)
+
+        raise GrondError('%i run%s terminated with an error:\n%s' % (
+            len(erroneous), 's' if len(erroneous) != 1 else '', info))
 
 
 def process_event(ievent, g_data_id):
@@ -512,6 +521,7 @@ def process_event(ievent, g_data_id):
     if synt and synt.inject_solution:
         xs_inject = synt.get_x()[num.newaxis, :]
 
+    err = None
     try:
         if xs_inject is not None:
             from .optimisers import highscore
@@ -530,20 +540,26 @@ def process_event(ievent, g_data_id):
 
     except BadProblem as e:
         logger.error(str(e))
+        err = e
 
     except GrondError as e:
         logger.error(str(e))
+        err = e
 
     finally:
         if monitor:
             monitor.terminate()
 
-    tstop = time.time()
-    logger.info(
-        'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
+    if not err:
+        tstop = time.time()
+        logger.info(
+            'Stop %i / %i (%g min)' % (
+                ievent+1, nevents, (tstop - tstart)/60.))
 
-    logger.info(
-        'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
+        logger.info(
+            'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
+
+    return problem.name, err
 
 
 class ParameterStats(Object):

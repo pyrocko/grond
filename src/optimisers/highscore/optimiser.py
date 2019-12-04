@@ -239,6 +239,10 @@ class DirectedSamplerPhase(SamplerPhase):
             for ipar in range(npar):
                 ntries = 0
                 while True:
+                    if xbounds[ipar, 0] == xbounds[ipar, 1]:
+                        v = xbounds[ipar, 0]
+                        break
+
                     if sx[ipar] > 0.:
                         v = rstate.normal(
                             xchoice[ipar],
@@ -643,7 +647,7 @@ class HighScoreOptimiser(Optimiser):
                     isbad_mask != isbad_mask_new):
 
                 errmess = [
-                    'problem %s: inconsistency in data availability'
+                    'Problem "%s": inconsistency in data availability'
                     ' at iteration %i' %
                     (problem.name, iiter)]
 
@@ -660,8 +664,12 @@ class HighScoreOptimiser(Optimiser):
 
             if num.all(isbad_mask):
                 raise BadProblem(
-                    'Problem %s: all target misfit values are NaN.'
+                    'Problem "%s": all target misfit values are NaN.'
                     % problem.name)
+
+            if num.all(num.isnan(bootstrap_misfits)):
+                raise BadProblem(
+                    'Problem "%s": all misfits are NaN.' % problem.name)
 
             history.append(
                 sample.model, misfits,
