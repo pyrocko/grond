@@ -86,7 +86,7 @@ class GrondMonitor(threading.Thread):
         self._tm = None
 
     def run(self):
-        logger.info('Waiting to follow environment %s...' % self.rundir)
+        logger.info('Waiting to follow environment %s...', self.rundir)
         env = Environment.discover(self.rundir)
         if env is None:
             logger.error('Could not attach to Grond environment.')

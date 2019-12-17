@@ -11,7 +11,7 @@ import os
 import numpy as num
 from contextlib import contextmanager
 
-from pyrocko.guts import Object, String, Float, List
+from pyrocko.guts import Object, String, Float, List, clone
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
@@ -488,7 +488,23 @@ def go(environment,
        nparallel=1, status='state', nthreads=0):
 
     g_data = (environment, force, preserve,
-              status, nparallel, nthreads)
+              status, nparallel, nthreads, False)
+    g_state[id(g_data)] = g_data
+
+    nevents = environment.nevents_selected
+    for x in parimap.parimap(
+            process_event,
+            range(environment.nevents_selected),
+            [id(g_data)] * nevents,
+            nprocs=nparallel):
+
+        pass
+
+
+def continue_run(environment, force=False, preserve=False,
+                 nparallel=1, status='state', nthreads=0):
+    g_data = (environment, force, preserve,
+              status, nparallel, nthreads, True)
     g_state[id(g_data)] = g_data
 
     nevents = environment.nevents_selected
@@ -503,12 +519,12 @@ def go(environment,
 
 def process_event(ievent, g_data_id):
 
-    environment, force, preserve, status, nparallel, nthreads = \
+    env, force, preserve, status, nparallel, nthreads, continue_run = \
         g_state[g_data_id]
 
-    config = environment.get_config()
-    event_name = environment.get_selected_event_names()[ievent]
-    nevents = environment.nevents_selected
+    config = env.get_config()
+    event_name = env.get_selected_event_names()[ievent]
+    nevents = env.nevents_selected
     tstart = time.time()
 
     ds = config.get_dataset(event_name)
@@ -524,31 +540,46 @@ def process_event(ievent, g_data_id):
     rundir = expand_template(
         config.rundir_template,
         dict(problem_name=problem.name))
-    environment.set_rundir_path(rundir)
+    env.set_rundir_path(rundir)
+    nold_rundirs = len(glob.glob(rundir + '*'))
 
-    if op.exists(rundir):
+    if op.exists(rundir) and not continue_run:
         if preserve:
-            nold_rundirs = len(glob.glob(rundir + '*'))
-            shutil.move(rundir, rundir+'-old-%d' % (nold_rundirs))
+            shutil.move(rundir, rundir+'-old-%d' % nold_rundirs)
         elif force:
             shutil.rmtree(rundir)
         else:
-            logger.warn('Skipping problem "%s": rundir already exists: %s' %
-                        (problem.name, rundir))
+            logger.warn('Skipping problem "%s": rundir already exists: %s',
+                        problem.name, rundir)
             return
 
+    if op.exists(rundir) and continue_run:
+        logger.info(
+            'Continuing event %i / %i', ievent + 1, nevents)
+
+        env_old = Environment(rundir)
+
+        history = env_old.get_history()
+        targets = env_old.get_problem().targets
+        for target in targets:
+            target.set_dataset(ds)
+
+        problem.targets = targets
+
+        if preserve:
+            shutil.copytree(rundir, rundir+'-old-%d' % nold_rundirs)
+
+    elif not op.exists(rundir) and continue_run:
+        logger.warn('Cannot find rundir %s to continue...', rundir)
+        return
+
+    else:
+        logger.info(
+            'Starting event %i / %i', ievent+1, nevents)
+        history = None
+
     util.ensuredir(rundir)
-
-    logger.info(
-        'Starting event %i / %i' % (ievent+1, nevents))
-
-    logger.info('Rundir: %s' % rundir)
-
-    logger.info('Analysing problem "%s".' % problem.name)
-
-    for analyser_conf in config.analyser_configs:
-        analyser = analyser_conf.get_analyser()
-        analyser.analyse(problem, ds)
+    logger.info('Rundir: %s', rundir)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -558,7 +589,13 @@ def process_event(ievent, g_data_id):
     optimiser = config.optimiser_config.get_optimiser()
     optimiser.set_nthreads(nthreads)
 
-    optimiser.init_bootstraps(problem)
+    if not continue_run:
+        logger.info('Analysing problem "%s".', problem.name)
+        for analyser_conf in config.analyser_configs:
+            analyser = analyser_conf.get_analyser()
+            analyser.analyse(problem, ds)
+        optimiser.init_bootstraps(problem)
+
     problem.dump_problem_info(rundir)
 
     monitor = None
@@ -599,10 +636,10 @@ def process_event(ievent, g_data_id):
 
     tstop = time.time()
     logger.info(
-        'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
+        'Stop %i / %i (%g min)', ievent+1, nevents, (tstop - tstart)/60.)
 
     logger.info(
-        'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
+        'Done with problem "%s", rundir is "%s".', problem.name, rundir)
 
 
 class ParameterStats(Object):
@@ -854,6 +891,7 @@ __all__ = '''
     harvest
     cluster
     go
+    continue_run
     get_event_names
     check
     export
