@@ -606,19 +606,26 @@ class HighScoreOptimiser(Optimiser):
 
             self._tlog_last = t
 
-    def optimise(self, problem, rundir=None):
+    def optimise(self, problem, rundir=None, history=None):
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
-        history = ModelHistory(problem,
-                               nchains=self.nchains,
-                               path=rundir, mode='w')
+        if not history:
+            history = ModelHistory(problem,
+                                   nchains=self.nchains,
+                                   path=rundir, mode='w')
+
         chains = self.chains(problem, history)
+
+        if history.mode == 'r':
+            logger.info('Seeking to end of run...')
+            history.mode = 'w'
+            chains.goto()
 
         niter = self.niterations
         isbad_mask = None
         self._tlog_last = 0
-        for iiter in range(niter):
+        for iiter in range(history.nmodels, niter):
             iphase, phase, iiter_phase = self.get_sampler_phase(iiter)
             self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
