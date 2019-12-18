@@ -618,8 +618,11 @@ class HighScoreOptimiser(Optimiser):
         chains = self.chains(problem, history)
 
         if history.mode == 'r':
-            logger.info('Seeking to end of run...')
+            if history.nmodels == self.niterations:
+                return
+            logger.info('Continuing run at %d iterations...', history.nmodels)
             history.mode = 'w'
+
             chains.goto()
 
         niter = self.niterations

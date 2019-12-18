@@ -10,7 +10,7 @@ import math
 import os.path as op
 import numpy as num
 
-from pyrocko.guts import Object, String, Float, List
+from pyrocko.guts import Object, String, Float, List, clone
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
@@ -497,7 +497,7 @@ def process_event(ievent, g_data_id):
 
     if op.exists(rundir) and continue_run:
         logger.info(
-            'Continue event %i / %i' % (ievent+1, nevents))
+            'Continuing event %i / %i', ievent + 1, nevents)
 
         env_old = Environment(rundir)
 
@@ -509,7 +509,7 @@ def process_event(ievent, g_data_id):
         problem.targets = targets
 
         if preserve:
-            shutil.copytree(rundir, rundir+'-continue-bak-%d' % nold_rundirs)
+            shutil.copytree(rundir, rundir+'-old-%d' % nold_rundirs)
 
     elif not op.exists(rundir) and continue_run:
         logger.warn('Cannot find rundir %s to continue...', rundir)
@@ -517,11 +517,11 @@ def process_event(ievent, g_data_id):
 
     else:
         logger.info(
-            'Starting event %i / %i' % (ievent+1, nevents))
+            'Starting event %i / %i', ievent+1, nevents)
         history = None
 
     util.ensuredir(rundir)
-    logger.info('Rundir: %s' % rundir)
+    logger.info('Rundir: %s', rundir)
 
     basepath = config.get_basepath()
     config.change_basepath(rundir)
@@ -532,11 +532,11 @@ def process_event(ievent, g_data_id):
     optimiser.set_nthreads(nthreads)
 
     if not continue_run:
-        logger.info('Analysing problem "%s".' % problem.name)
+        logger.info('Analysing problem "%s".', problem.name)
         for analyser_conf in config.analyser_configs:
             analyser = analyser_conf.get_analyser()
             analyser.analyse(problem, ds)
-        optimiser.init_bootsraps(problem)
+        optimiser.init_bootstraps(problem)
 
     problem.dump_problem_info(rundir)
 
@@ -578,10 +578,10 @@ def process_event(ievent, g_data_id):
 
     tstop = time.time()
     logger.info(
-        'Stop %i / %i (%g min)' % (ievent+1, nevents, (tstop - tstart)/60.))
+        'Stop %i / %i (%g min)', ievent+1, nevents, (tstop - tstart)/60.)
 
     logger.info(
-        'Done with problem "%s", rundir is "%s".' % (problem.name, rundir))
+        'Done with problem "%s", rundir is "%s".', problem.name, rundir)
 
 
 class ParameterStats(Object):
