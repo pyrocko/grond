@@ -87,6 +87,15 @@ class PhasePickTargetGroup(TargetGroup):
                 log_exclude(target, 'depth > depth_max')
                 continue
 
+            marker = ds.get_pick(
+                event.name,
+                target.codes[:3],
+                target.pick_phasename)
+
+            if not marker:
+                log_exclude(target, 'no pick available')
+                continue
+
             target.set_dataset(ds)
             targets.append(target)
 
