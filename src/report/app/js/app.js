@@ -541,15 +541,17 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
                 YamlDoc.query(
                     get_path(problem_name) + '/stats.yaml',
                     function(doc) {
-                        doc.title = 'Parameter Results';
-                        doc.name = 'parameter results';
-                        doc.variant = 'default';
-                        doc.section = 'run';
-                        doc.stats_path = get_path(problem_name) + '/stats.yaml';
-                        doc.feather_icon = 'book';
-                        doc.template = 'parameter-table';
+                        if (doc) {
+                            doc.title = 'Parameter Results';
+                            doc.name = 'parameter results';
+                            doc.variant = 'default';
+                            doc.section = 'run';
+                            doc.stats_path = get_path(problem_name) + '/stats.yaml';
+                            doc.feather_icon = 'book';
+                            doc.template = 'parameter-table';
 
-                        insert_group(problem_name, doc);
+                            insert_group(problem_name, doc);
+                        }
                     },
                     {schema: report_schema});
 
@@ -747,7 +749,11 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
         };
 
         $scope.doc_matches_keyword = function(doc) {
-            return ($filter('filter')(doc.items, $scope.keyword)).length > 0;
+            if (doc) {
+                return ($filter('filter')(doc.items, $scope.keyword)).length > 0;
+            } else {
+                return false;
+            }
         };
     })
 
