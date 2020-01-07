@@ -114,9 +114,10 @@ class SamplerPhase(Object):
         Object.__init__(self, *args, **kwargs)
         self._rstate = None
 
-    def get_rstate(self):
+    def get_rstate(self, problem):
         if self._rstate is None:
-            self._rstate = num.random.RandomState(self.seed)
+            self._rstate = problem.get_rstate_manager().get_rstate(
+                self.__class__.__name__, self.seed)
 
         return self._rstate
 
@@ -154,7 +155,8 @@ class UniformSamplerPhase(SamplerPhase):
 
     def get_raw_sample(self, problem, iiter, chains):
         xbounds = problem.get_parameter_bounds()
-        return Sample(model=problem.random_uniform(xbounds, self.get_rstate()))
+        return Sample(
+            model=problem.random_uniform(xbounds, self.get_rstate(problem)))
 
 
 class DirectedSamplerPhase(SamplerPhase):
@@ -200,7 +202,7 @@ class DirectedSamplerPhase(SamplerPhase):
             return s or 1.0
 
     def get_raw_sample(self, problem, iiter, chains):
-        rstate = self.get_rstate()
+        rstate = self.get_rstate(problem)
         factor = self.get_scatter_scale_factor(iiter)
         npar = problem.nparameters
         pnames = problem.parameter_names
@@ -476,10 +478,10 @@ class HighScoreOptimiser(Optimiser):
         self._status_chains = None
         self._rstate_bootstrap = None
 
-    def get_rstate_bootstrap(self):
+    def get_rstate_bootstrap(self, problem):
         if self._rstate_bootstrap is None:
-            self._rstate_bootstrap = num.random.RandomState(
-                self.bootstrap_seed)
+            self._rstate_bootstrap = problem.get_rstate_manager().get_rstate(
+                'bootstraps', self.bootstrap_seed)
 
         return self._rstate_bootstrap
 
@@ -496,7 +498,7 @@ class HighScoreOptimiser(Optimiser):
         ws = make_bayesian_weights(
             self.nbootstrap,
             nmisfits=nmisfits_w,
-            rstate=self.get_rstate_bootstrap())
+            rstate=self.get_rstate_bootstrap(problem))
 
         imf = 0
         for t in problem.targets:
@@ -513,7 +515,7 @@ class HighScoreOptimiser(Optimiser):
         for t in problem.targets:
             if t.can_bootstrap_residuals:
                 t.init_bootstrap_residuals(
-                    self.nbootstrap, rstate=self.get_rstate_bootstrap(),
+                    self.nbootstrap, rstate=self.get_rstate_bootstrap(problem),
                     nthreads=self._nthreads)
             else:
                 t.set_bootstrap_residuals(
@@ -611,9 +613,10 @@ class HighScoreOptimiser(Optimiser):
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
 
         if not history:
-            history = ModelHistory(problem,
-                                   nchains=self.nchains,
-                                   path=rundir, mode='w')
+            history = ModelHistory(
+                problem,
+                nchains=self.nchains,
+                path=rundir, mode='w')
 
         chains = self.chains(problem, history)
 

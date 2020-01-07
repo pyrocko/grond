@@ -10,6 +10,10 @@ class Analyser(object):
     def analyse(self, problem, ds):
         pass
 
+    def get_rstate(self, problem):
+        return problem.get_rstate_manager().get_rstate(
+            self.__class__.__name__)
+
 
 class AnalyserConfig(Object):
 

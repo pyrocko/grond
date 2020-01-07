@@ -12,6 +12,7 @@ import logging
 import os.path as op
 import os
 import time
+import struct
 
 from pyrocko import gf, util, guts
 from pyrocko.guts import Object, String, List, Dict, Int
@@ -34,7 +35,7 @@ g_rstate = num.random.RandomState()
 
 
 def nextpow2(i):
-    return 2**int(math.ceil(math.log(i)/math.log(2.)))
+    return 2**int(math.ceil(math.log(i) / math.log(2.)))
 
 
 def correlated_weights(values, weight_matrix):
@@ -97,6 +98,7 @@ class Problem(Object):
         self._target_weights = None
         self._engine = None
         self._family_mask = None
+        self._rstate_manager = None
 
         if hasattr(self, 'problem_waveform_parameters') and self.has_waveforms:
             self.problem_parameters =\
@@ -128,7 +130,7 @@ class Problem(Object):
     def set_target_parameter_values(self, x):
         nprob = len(self.problem_parameters)
         for target in self.targets:
-            target.set_parameter_values(x[nprob:nprob+target.nparameters])
+            target.set_parameter_values(x[nprob:nprob + target.nparameters])
             nprob += target.nparameters
 
     def get_parameter_dict(self, model, group=None):
@@ -144,6 +146,11 @@ class Problem(Object):
             if p.name in d.keys():
                 arr[ip] = d[p.name]
         return arr
+
+    def get_rstate_manager(self):
+        if self._rstate_manager is None:
+            self._rstate_manager = RandomStateManager()
+        return self._rstate_manager
 
     def dump_problem_info(self, dirname):
         fn = op.join(dirname, 'problem.yaml')
@@ -173,6 +180,9 @@ class Problem(Object):
             fn = op.join(dirname, 'choices')
             with open(fn, 'ab') as f:
                 num.array(sampler_context, dtype='<i8').tofile(f)
+
+        fn = op.join(dirname, 'rstate')
+        self.get_rstate_manager().save_state(fn)
 
     def name_to_index(self, name):
         pnames = [p.name for p in self.combined]
@@ -292,12 +302,12 @@ class Problem(Object):
             return xs[:, i]
         else:
             return self.make_dependant(
-                xs, self.dependants[i-self.nparameters].name)
+                xs, self.dependants[i - self.nparameters].name)
 
     def get_target_weights(self):
         if self._target_weights is None:
             self._target_weights = num.concatenate(
-               [target.get_combined_weight() for target in self.targets])
+                [target.get_combined_weight() for target in self.targets])
 
         return self._target_weights
 
@@ -385,7 +395,6 @@ class Problem(Object):
             extra_residuals=None,
             extra_correlated_weights=dict(),
             get_contributions=False):
-
         '''
         Combine misfit contributions (residuals) to global or bootstrap misfits
 
@@ -566,7 +575,7 @@ class Problem(Object):
                 result = target.finalize_modelling(
                     engine, source,
                     t2m_map[target],
-                    modelling_results[imt:imt+nmt_this])
+                    modelling_results[imt:imt + nmt_this])
 
                 imt += nmt_this
             else:
@@ -585,7 +594,7 @@ class Problem(Object):
         imisfit = 0
         for target, result in zip(self.targets, results):
             if isinstance(result, MisfitResult):
-                misfits[imisfit:imisfit+target.nmisfits, :] = result.misfits
+                misfits[imisfit:imisfit + target.nmisfits, :] = result.misfits
 
             imisfit += target.nmisfits
 
@@ -798,20 +807,21 @@ class ModelHistory(object):
         if nmodels_capacity_want != self.nmodels_capacity:
             self.nmodels_capacity = nmodels_capacity_want
 
-        self._models_buffer[nmodels:nmodels+n, :] = models
-        self._misfits_buffer[nmodels:nmodels+n, :, :] = misfits
+        self._models_buffer[nmodels:nmodels + n, :] = models
+        self._misfits_buffer[nmodels:nmodels + n, :, :] = misfits
 
-        self.models = self._models_buffer[:nmodels+n, :]
-        self.misfits = self._misfits_buffer[:nmodels+n, :, :]
+        self.models = self._models_buffer[:nmodels + n, :]
+        self.misfits = self._misfits_buffer[:nmodels + n, :, :]
 
         if bootstrap_misfits is not None:
-            self._bootstraps_buffer[nmodels:nmodels+n, :] = bootstrap_misfits
-            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+n, :]
+            self._bootstraps_buffer[nmodels:nmodels + n, :] = bootstrap_misfits
+            self.bootstrap_misfits = self._bootstraps_buffer[:nmodels + n, :]
 
         if sampler_contexts is not None:
-            self._sample_contexts_buffer[nmodels:nmodels+n, :] \
+            self._sample_contexts_buffer[nmodels:nmodels + n, :] \
                 = sampler_contexts
-            self.sampler_contexts = self._sample_contexts_buffer[:nmodels+n, :]
+            self.sampler_contexts = self._sample_contexts_buffer[
+                :nmodels + n, :]
 
         if self.path and self.mode == 'w':
             for i in range(n):
@@ -823,7 +833,6 @@ class ModelHistory(object):
                     if sampler_contexts is not None else None)
 
         self._sorted_misfit_idx.clear()
-
         self.emit('extend', nmodels, n, models, misfits, sampler_contexts)
 
     def append(
@@ -1025,6 +1034,57 @@ class ModelHistory(object):
         return self.get_chain_misfits(chain=0)
 
 
+class RandomStateManager(object):
+
+    MAX_LEN = 64
+    save_struct = struct.Struct('%ds7s2496sqqd' % MAX_LEN)
+
+    def __init__(self):
+        self.rstates = {}
+
+    def get_rstate(self, name, seed=None):
+        assert len(name) <= self.MAX_LEN
+
+        if name not in self.rstates:
+            self.rstates[name] = num.random.RandomState(seed)
+        print('get', name, self.rstates, self)
+        return self.rstates[name]
+
+    @property
+    def nstates(self):
+        return len(self.rstates)
+
+    def save_state(self, fname):
+        print('save', self.rstates, self)
+
+        with open(fname, 'wb') as f:
+
+            for name, rstate in self.rstates.items():
+                s, arr, pos, has_gauss, chached_gauss = rstate.get_state()
+                f.write(
+                    self.save_struct.pack(
+                        name.encode(), s.encode(), arr.tobytes(),
+                        pos, has_gauss, chached_gauss))
+
+    def load_state(self, fname):
+        with open(fname, 'rb') as f:
+            while True:
+                buff = f.read(self.save_struct.size)
+                if not buff:
+                    break
+
+                name, s, arr, pos, has_gauss, chached_gauss = \
+                    self.save_struct.unpack(buff)
+
+                name = name.replace(b'\x00', b'').decode()
+                s = s.replace(b'\x00', b'').decode()
+                arr = num.frombuffer(arr, dtype=num.uint32)
+
+                rstate = num.random.RandomState()
+                rstate.set_state((s, arr, pos, has_gauss, chached_gauss))
+                self.rstates[name] = rstate
+
+
 def get_nmodels(dirname, problem):
     fn = op.join(dirname, 'models')
     with open(fn, 'r') as f:
@@ -1075,8 +1135,8 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
         with open(fn, 'r') as f:
             f.seek(nmodels_skip * problem.nparameters * 8)
             models = num.fromfile(
-                    f, dtype='<f8',
-                    count=nmodels * problem.nparameters)\
+                f, dtype='<f8',
+                count=nmodels * problem.nparameters)\
                 .astype(num.float)
 
         models = models.reshape((nmodels, problem.nparameters))
@@ -1085,8 +1145,8 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
         with open(fn, 'r') as f:
             f.seek(nmodels_skip * problem.nmisfits * 2 * 8)
             misfits = num.fromfile(
-                    f, dtype='<f8',
-                    count=nmodels*problem.nmisfits*2)\
+                f, dtype='<f8',
+                count=nmodels * problem.nmisfits * 2)\
                 .astype(num.float)
         misfits = misfits.reshape((nmodels, problem.nmisfits, 2))
 
@@ -1096,8 +1156,8 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
             with open(fn, 'r') as f:
                 f.seek(nmodels_skip * nchains * 8)
                 chains = num.fromfile(
-                        f, dtype='<f8',
-                        count=nmodels*nchains)\
+                    f, dtype='<f8',
+                    count=nmodels * nchains)\
                     .astype(num.float)
 
             chains = chains.reshape((nmodels, nchains))
@@ -1108,10 +1168,14 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
             with open(fn, 'r') as f:
                 f.seek(nmodels_skip * 4 * 8)
                 sampler_contexts = num.fromfile(
-                        f, dtype='<i8',
-                        count=nmodels*4).astype(num.int)
+                    f, dtype='<i8',
+                    count=nmodels * 4).astype(num.int)
 
             sampler_contexts = sampler_contexts.reshape((nmodels, 4))
+
+        fn = op.join(dirname, 'rstate')
+        if op.exists(fn):
+            problem.get_rstate_manager().load_state(fn)
 
     except OSError as e:
         logger.debug(str(e))

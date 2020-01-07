@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - `grond go` utilises `--threads` arguments for various tasks.
 - InSAR plots improved, now plotting 'best' and 'mean' // Improvements
+- `grond continue` subcommand to continue aborted and re-configured runs
+
+### Changed
+- `RandomStateManager` is now centrally attached to `Problem`.
 
 ### Fixed
 - Improvements in documentation and examples.

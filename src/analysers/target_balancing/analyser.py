@@ -69,7 +69,7 @@ class TargetBalancingAnalyser(Analyser):
         xbounds = wproblem.get_parameter_bounds()
 
         misfits = num.zeros((self.niter, wproblem.ntargets, 2))
-        rstate = num.random.RandomState(123)
+        rstate = self.get_rstate(problem, seed=123)
 
         isbad_mask = None
 
