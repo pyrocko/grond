@@ -2,7 +2,8 @@ import numpy as num
 import logging
 
 from pyrocko import gf, util
-from pyrocko.guts import String, Float, Dict, Int
+from pyrocko.gf import tractions as tr
+from pyrocko.guts import String, Float, Dict, Int, Bool
 
 from grond.meta import expand_template, Parameter, has_get_plot_classes, \
     GrondError
@@ -10,6 +11,7 @@ from grond.meta import expand_template, Parameter, has_get_plot_classes, \
 from ..base import Problem, ProblemConfig
 
 guts_prefix = 'grond'
+
 logger = logging.getLogger('grond.problems.dynamic_rupture.problem')
 km = 1e3
 d2r = 180./num.pi
@@ -26,6 +28,17 @@ class DynamicRuptureProblemConfig(ProblemConfig):
     nx = Int.T(default=10)
     ny = Int.T(default=10)
 
+    pure_shear = Bool.T(
+        default=True)
+
+    tractions = tr.TractionField.T(
+        default=tr.TractionComposition(
+            components=[
+                tr.HomogeneousTractions(),
+                tr.RectangularTaper()
+            ]),
+        help='Traction field the rupture plane is exposed to.')
+
     def get_problem(self, event, target_groups, targets):
         if self.decimation_factor != 1:
             logger.warn(
@@ -41,7 +54,8 @@ class DynamicRuptureProblemConfig(ProblemConfig):
             magnitude=None,
             decimation_factor=self.decimation_factor,
             nthreads=self.nthreads,
-            pure_shear=True)
+            tractions=self.tractions,
+            pure_shear=self.pure_shear)
 
         subs = dict(
             event_name=event.name,
@@ -100,17 +114,7 @@ class DynamicRuptureProblem(Problem):
              for k in self.base_source.keys()
              if k in d}
 
-        traction_strike = num.cos(d['rake']*d2r)
-        traction_dip = -num.sin(d['rake']*d2r)
-        p['tractions'] = (traction_strike, traction_dip, 0.)
-
-        source = self.base_source.clone(**p)
-
-        return source
-
-    def make_dependant(self, xs, pname):
-        # add rake
-        return super().make_dependant(xs, pname)
+        return self.base_source.clone(**p)
 
     def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
         if fixed_magnitude is not None:
@@ -133,7 +137,9 @@ class DynamicRuptureProblem(Problem):
 
     @classmethod
     def get_plot_classes(cls):
+        from . import plot
         plots = super(DynamicRuptureProblem, cls).get_plot_classes()
+        plots.extend([plot.DynamicRuptureSlipMap])
         return plots
 
 

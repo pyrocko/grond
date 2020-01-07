@@ -37,20 +37,34 @@ With the following few commands, we will let Grond
 *Note: precomputed Green's functions (GF) needed to run this example will be
 downloaded from the internet.*
 
-**Check the data setup and configuration**
+**Checking data setup and configuration**
 
 .. code-block :: sh
 
     cd my_first_project
     grond check config/scenario.gronf
 
-**Start the optimisation**
+**Starting optimisation**
 
 .. code-block :: sh
 
     grond go config/scenario.gronf
 
-**Plot the results in a report**
+.. note ::
+
+    Interrupted or prolonged optimisation can be continued with:
+
+    .. code-block :: sh
+
+        grond go config/scenario.gronf
+
+**Continuing an aborted/modified optimisation**
+
+.. code-block :: sh
+
+    grond continue config/scenario.gronf
+
+**Plotting the results in a report**
 
 .. code-block :: sh
 

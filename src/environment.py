@@ -6,7 +6,7 @@ import os
 from grond.config import read_config, write_config
 from grond import meta, run_info
 from grond.problems.base import load_optimiser_info, load_problem_info, \
-    ModelHistory
+    ModelHistory, RandomStateManager
 
 op = os.path
 
@@ -265,14 +265,14 @@ class Environment(object):
 
     def get_history(self, subset=None):
         if subset not in self._histories:
-            self._histories[subset] = \
+            history = \
                 ModelHistory(
                     self.get_problem(),
                     nchains=self.get_optimiser().nchains,
                     path=meta.xjoin(self.get_rundir_path(), subset))
 
-            self._histories[subset].ensure_bootstrap_misfits(
-                self.get_optimiser())
+            history.ensure_bootstrap_misfits(self.get_optimiser())
+            self._histories[subset] = history
 
         return self._histories[subset]
 

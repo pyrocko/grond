@@ -46,7 +46,8 @@ subcommand_descriptions = {
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimisation',
-    'continue': 'continue a Grond optimisation.',
+    'continue': 'continue a Grond optimisation in case of an'
+                ' interruption or more iterations are needed',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
     'cluster': 'run cluster analysis on result ensemble',
@@ -372,14 +373,15 @@ def command_scenario(args):
             },
             default='waveforms',
             help='forward modelling targets for the scenario. Select from:'
-                 ' waveforms, gnss and insar. '
-                 '(default: --targets=%default,'
-                 ' multiple selection by --targets=waveforms,gnss,insar)')
+                 ' waveforms, gnss and insar. Multiple selection by '
+                 '--targets=waveforms,gnss,insar'
+                 '(default: --targets=%default)')
         parser.add_option(
             '--problem', dest='problem', default='cmt',
-            type='choice', choices=['cmt', 'rectangular'],
-            help='problem to generate: \'dc\' (double couple)'
-                 ' or \'rectangular\' (rectangular finite fault)'
+            type='choice', choices=['cmt', 'rectangular', 'dynamic_rupture'],
+            help='problem to generate: \'dc\' (double couple), '
+                 '\'rectangular\' (rectangular finite fault) or '
+                 '\'dynamic_rupture\' for a dynamic rupture scenario.'
                  ' (default: \'%default\')')
         parser.add_option(
             '--magnitude-range', dest='magnitude_range', type=str,
@@ -497,15 +499,16 @@ def command_scenario(args):
                 store_id=options.store_statics)
             scenario.add_observation(obs)
 
+        src_args = dict(
+            nevents=options.nevents,
+            magnitude_min=options.magnitude_range[0],
+            magnitude_max=options.magnitude_range[1])
         if options.problem == 'cmt':
-            problem = grond_scenario.DCSourceProblem(
-                nevents=options.nevents,
-                radius=options.source_radius*km,
-                magnitude_min=options.magnitude_range[0],
-                magnitude_max=options.magnitude_range[1])
+            problem = grond_scenario.DCSourceProblem(**src_args)
         elif options.problem == 'rectangular':
-            problem = grond_scenario.RectangularSourceProblem(
-                nevents=options.nevents)
+            problem = grond_scenario.RectangularSourceProblem(**src_args)
+        elif options.problem == 'dynamic_rupture':
+            problem = grond_scenario.PseudoDynamicRuptureProblem(**src_args)
         scenario.set_problem(problem)
 
         scenario.build(

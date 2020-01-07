@@ -16,3 +16,10 @@ except ImportError:
     warnings.warn(
         'could not import pyrocko.gf.VLVDSource. Update pyrocko to enable'
         ' inversion of VLVDProblem.', ImportWarning)
+
+try:
+    from .dynamic_rupture import *  # noqa
+except ImportError:
+    warnings.warn(
+        'could not import pyrocko.gf.PseudoDynamicRuptureSource.'
+        'Update pyrocko to enable inversion of DynamicRupture.', ImportWarning)

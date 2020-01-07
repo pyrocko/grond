@@ -53,6 +53,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Satellite Plots: added cyclic radians plots.
 - Option to switch between showing filtered or processed waveforms in
   `grond forward`.
+- Added optional keyword for `Parameters`, defaults to `optional=True`
+- `RectangularSource` now has a `velocity` parameter
+- `grond continue` subcommand to continue aborted and re-configured runs
+
+### Changed
+- `RandomStateManager` is now centrally attached to `Problem`.
+- `ModelHistory` loading from memmap.
 
 ### Fixed
 - Fix search in HTML report.

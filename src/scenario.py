@@ -423,3 +423,37 @@ class RectangularSourceProblem(SourceProblem):
                 nucleation_y=gf.Range(-1., 1.),
                 time=gf.Range(-5.0, 5.0, relative='add'))
             )
+
+
+class PseudoDynamicRuptureProblem(SourceProblem):
+
+    def get_scenario_source_generator(self):
+        return scenario.sources.PseudoDynamicRuptureGenerator(
+            magnitude_min=self.magnitude_min,
+            magnitude_max=self.magnitude_max,
+            depth_min=5*km,
+            depth_max=15*km,
+            nx=8,
+            ny=5,
+            nevents=self.nevents)
+
+    def get_grond_problem_config(self):
+        return grond.DynamicRuptureProblemConfig(
+            name_template='dynamic_rupture_${event_name}',
+            decimation_factor=6,
+            nx=8,
+            ny=5,
+            ranges=dict(
+                north_shift=gf.Range(-15*km, 15*km),
+                east_shift=gf.Range(-15*km, 15*km),
+                depth=gf.Range(5*km, 15*km),
+                length=gf.Range(20*km, 40*km),
+                width=gf.Range(5*km, 10*km),
+                dip=gf.Range(0, 90),
+                strike=gf.Range(0, 180),
+                rake=gf.Range(0, 90),
+                slip=gf.Range(.5, 10),
+                nucleation_x=gf.Range(-1., 1.),
+                nucleation_y=gf.Range(-1., 1.),
+                time=gf.Range(-5.0, 5.0, relative='add'))
+            )
