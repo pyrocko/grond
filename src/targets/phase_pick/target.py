@@ -103,7 +103,8 @@ class PhasePickTargetGroup(TargetGroup):
 
 
 class PhasePickResult(MisfitResult):
-    pass
+    tobs = Float.T(optional=True)
+    tsyn = Float.T(optional=True)
 
 
 @has_get_plot_classes
@@ -191,6 +192,8 @@ class PhasePickTarget(gf.Location, MisfitTarget):
 
         norm = 1.0
         result = PhasePickResult(
+            tobs=tobs,
+            tsyn=tsyn,
             misfits=num.array([[misfit, norm]], dtype=num.float))
 
         return result
