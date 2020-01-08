@@ -144,7 +144,11 @@ class MisfitTarget(Object):
 
     def get_combined_weight(self):
         if self._combined_weight is None:
-            self._combined_weight = num.ones(1, dtype=num.float)
+            w = self.manual_weight
+            for analyser in self.analyser_results.values():
+                w *= analyser.weight
+            self._combined_weight = num.array([w], dtype=num.float)
+
         return self._combined_weight
 
     def get_correlated_weights(self, nthreads=0):
