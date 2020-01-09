@@ -46,7 +46,8 @@ subcommand_descriptions = {
     'events': 'print available event names for given configuration',
     'check': 'check data and configuration',
     'go': 'run Grond optimisation',
-    'continue': 'continue a Grond optimisation.',
+    'continue': 'continue a Grond optimisation in case of an'
+                ' interruption or more iterations are needed',
     'forward': 'run forward modelling',
     'harvest': 'manually run harvesting',
     'cluster': 'run cluster analysis on result ensemble',

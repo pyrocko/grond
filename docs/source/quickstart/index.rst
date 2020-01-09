@@ -50,6 +50,14 @@ downloaded from the internet.*
 
     grond go config/scenario.gronf
 
+.. note ::
+
+    Interrupted or prolonged optimisation can be continued with:
+
+    .. code-block :: sh
+
+        grond go config/scenario.gronf
+
 **Plot the results in a report**
 
 .. code-block :: sh

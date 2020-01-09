@@ -232,13 +232,13 @@ Before running the optimisation, you may want to check your dataset and configur
 
 ::
 
-	grond check <configfile> <eventname>
+	grond check <configfile> [eventname]
 
 Now, you may start the optimization for a given event using
 
 ::
 	
-	grond go <configfile> <eventname>
+	grond go <configfile> [eventname]
 
 During the optimisation, results are aggregated in an output directory, referred to as `<rundir>` in the configuration and documentation.
 
@@ -254,6 +254,7 @@ During the optimisation, results are aggregated in an output directory, referred
     │   ├── laquila2009_joint.grun
     │   │   ├── ... # some bookkeeping yaml-files
     │   │   ├── optimiser.yaml
+    │   │   ├── rstate
     │   │   ├── models
     │   │   ├── misfits
     │   │   └── harvest
@@ -266,6 +267,14 @@ During the optimisation, results are aggregated in an output directory, referred
 
 
 You find detailed information on the misfit configuration and model space sampling in the section :doc:`/config/optimisers/index`.
+
+.. note ::
+
+    An interrupted optimisation can be prolonged and continued with:
+
+    ::
+            
+        grond continue <configfile> [eventname]
 
 
 Results and visualisation
@@ -318,6 +327,16 @@ The results can be exported in various ways by running the subcommand
 	grond export <what> <rundir>
 
 See the command reference of :option:`grond export` for more details.
+
+
+.. tip::
+
+    An existing grond optimisation can be extended, e.g. by adding iterations to reach a better convergence. Add iterations
+    or a ``SamplerPhase`` in the corresponding configuration file (for details, please check the sections :doc:`/config/optimisers/index` and :doc:`/config/index`) and use:
+
+    ::
+            
+        grond continue <configfile> [eventname]
 
 
 Terminology
