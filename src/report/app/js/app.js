@@ -293,6 +293,15 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             return selected_problem_names;
         };
 
+        funcs.set_selected = function(problem_names) {
+            selected_problem_names.length = 0;
+            for (var i=0; i<problem_names.length; i++) {
+                selected_problem_names.push(problem_names[i]);
+            }
+            selected_problem_names.sort()
+        };
+
+
         funcs.is_selected = function(problem_name) {
             return includes(selected_problem_names, problem_name);
         };
@@ -422,6 +431,15 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             return $filter('filter')(ordered_lines[order_skey], $scope.list_search_keyword);
         };
 
+        $scope.select_all_filtered = function() {
+            var lines = $scope.get_ordered_report_entries();
+            var problem_names = [];
+            for (var i=0; i<lines.length; i++) {
+                problem_names.push(
+                    lines[i].report_entry.problem_name);
+            }
+            rl.set_selected(problem_names);
+        };
     })
 
     .controller('ReportController', function(
