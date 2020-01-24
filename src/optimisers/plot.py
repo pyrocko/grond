@@ -567,6 +567,870 @@ functions of the bootstrap start to disagree.
 
         return [(PlotItem(name='main'), fig)]
 
+class ChainStatsPlot(PlotConfig):
+    '''
+    Shows model parameter statistics of chains evolving through the optimisation,
+    with mean models ans standard deviation of the highscore models.
+    '''
+
+    name = 'chainstats'
+    size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
+    misfit_cutoff = Float.T(optional=True)
+    ibootstrap = Int.T(optional=True)
+    sort_by = StringChoice.T(
+        choices=['iteration', 'misfit'],
+        default='iteration')
+    subplot_layout = Tuple.T(2, Int.T(), default=(1, 1))
+    marker_size = Float.T(default=1.5)
+    show_reference = Bool.T(default=True)
+    
+
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimiser = environ.get_optimiser()
+
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history, optimiser),
+            title=u'Chain Statistic Evolution Plots',
+            section='optimiser',
+            description=u'''
+Evolution of Chain statistics plots show mean and standard deviation for all
+chains per parameter for a decimated number evol all parameters of the optimisation.
+
+''',
+            feather_icon='fast-forward')
+
+    def draw_figures(self, history, optimiser):
+        
+        
+        def colum_array(data):
+            arr = num.full(len(row_names), fill_value=num.nan)
+            arr[:data.size] = data
+            return arr
+        
+        misfit_cutoff = self.misfit_cutoff
+        sort_by = self.sort_by
+
+        problem = history.problem
+        models = history.models
+        chains = optimiser.chains(problem, history)
+        chains.load()
+        
+        row_names = [p.name_nogroups for p in problem.parameters]
+        row_names.append('Misfit')
+
+        bs_means_hist = chains.bs_means_history
+        bs_stds_hist = chains.bs_stds_history
+
+        glob_mean = colum_array(chains.mean_model(ichain=0))
+        glob_mean[-1] = num.mean(chains.misfits(ichain=0))
+
+        glob_std = colum_array(chains.standard_deviation_models(
+            ichain=0, estimator='standard_deviation_single_chain'))
+        glob_std[-1] = num.std(chains.misfits(ichain=0))
+
+        glob_best = colum_array(chains.best_model(ichain=0))
+        glob_best[-1] = chains.best_model_misfit()
+        
+        npar = problem.nparameters
+        ndep = problem.ndependants
+        fontsize = self.font_size
+        nfx, nfy = self.subplot_layout
+
+        imodels = num.arange(history.nmodels)
+        bounds = problem.get_combined_bounds()
+
+        xref = problem.get_reference_model()
+
+        gms = history.get_primary_chain_misfits()
+        gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
+
+        isort = num.argsort(gms)[::-1]
+
+        if sort_by == 'iteration':
+            imodels = imodels[isort]
+        elif sort_by == 'misfit':
+            imodels = num.arange(imodels.size)
+        else:
+            assert False
+
+        gms = gms[isort]
+        gms_softclip = gms_softclip[isort]
+        models = models[isort, :]
+
+        iorder = num.empty_like(isort)
+        iorder = num.arange(iorder.size)
+
+        if misfit_cutoff is None:
+            ibest = num.ones(gms.size, dtype=num.bool)
+        else:
+            ibest = gms < misfit_cutoff
+
+        def config_axes(axes, nfx, nfy, impl, iplot, nplots):
+            if (impl - 1) % nfx != nfx - 1:
+                axes.get_yaxis().tick_left()
+
+            if (impl - 1) >= (nfx * (nfy - 1)) or iplot >= nplots - nfx:
+                axes.set_xlabel('Iteration')
+                if not (impl - 1) // nfx == 0:
+                    axes.get_xaxis().tick_bottom()
+            elif (impl - 1) // nfx == 0:
+                axes.get_xaxis().tick_top()
+                axes.set_xticklabels([])
+            else:
+                axes.get_xaxis().set_visible(False)
+
+        # nfz = (npar + ndep + 1 - 1) / (nfx*nfy) + 1
+        cmap = cm.YlOrRd
+        cmap = cm.jet
+        msize = self.marker_size
+        axes = None
+        fig = None
+        item_fig = None
+        nfigs = 0
+        alpha = 0.5
+        for ipar in range(npar):
+            impl = ipar % (nfx * nfy) + 1
+
+            if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
+                fig = plt.figure(figsize=self.size_inch)
+                labelpos = mpl_margins(
+                    fig, nw=nfx, nh=nfy,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
+                    wspace=7., hspace=2., units=fontsize)
+
+                item = PlotItem(name='fig_%i' % (nfigs+1))
+                item.attributes['parameters'] = []
+                item_fig = (item, fig)
+
+            par = problem.parameters[ipar]
+
+            item_fig[0].attributes['parameters'].append(par.name)
+
+            axes = fig.add_subplot(nfy, nfx, impl)
+            labelpos(axes, 2.5, 2.0)
+
+            axes.set_ylabel(par.get_label())
+            axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+            config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
+
+            axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
+            axes.set_xlim(0, history.nmodels)
+            
+            n_decim = int(chains.history.nmodels / chains.decimation)
+            iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
+            
+            # prepares stds for filled plotting
+            bs_stds_plot_vec = num.zeros((2*len(iter_decim), chains.nchains))
+            bs_stds_plot_vec[:len(iter_decim), :] = \
+                    par.scaled(bs_stds_hist[ipar, :, :]).T + \
+                    par.scaled(bs_means_hist[ipar, :, :]).T
+            bs_stds_plot_vec[len(iter_decim):, :] = \
+                    num.flipud(par.scaled(bs_means_hist[ipar, :, :]).T - \
+                               par.scaled(bs_stds_hist[ipar, :, :]).T)
+                                           
+            iter_plot_vec = num.zeros((2*len(iter_decim), chains.nchains))
+            iter_plot_vec[:len(iter_decim), :] = \
+                    num.repeat([iter_decim], chains.nchains, axis=0).T
+            iter_plot_vec[len(iter_decim):, :] = \
+                                    num.flipud(num.repeat([iter_decim], 
+                                               chains.nchains, axis=0).T)
+                                           
+            axes.fill(iter_plot_vec , bs_stds_plot_vec, alpha = 0.2)
+            axes.plot(num.repeat([iter_decim], chains.nchains, axis=0).T, 
+                      par.scaled(bs_means_hist[ipar, :, :]).T, linewidth=0.6)
+          
+            if self.show_reference:
+                axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
+
+        for idep in range(ndep):
+            # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
+            impl = (npar + idep) % (nfx * nfy) + 1
+
+            if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
+                fig = plt.figure(figsize=self.size_inch)
+                labelpos = mpl_margins(
+                    fig, nw=nfx, nh=nfy,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
+                    wspace=7., hspace=2., units=fontsize)
+
+                item = PlotItem(name='fig_%i' % (nfigs+1))
+                item.attributes['parameters'] = []
+
+                item_fig = (item, fig)
+
+            par = problem.dependants[idep]
+            item_fig[0].attributes['parameters'].append(par.name)
+
+            axes = fig.add_subplot(nfy, nfx, impl)
+            labelpos(axes, 2.5, 2.0)
+
+            axes.set_ylabel(par.get_label())
+            axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+            config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
+
+            axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
+            axes.set_xlim(0, history.nmodels)
+
+            ys = problem.make_dependant(models[ibest, :], par.name)
+            axes.scatter(
+                imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
+                edgecolors='none', cmap=cmap, alpha=alpha, rasterized=True)
+
+            if self.show_reference:
+                y = problem.make_dependant(xref, par.name)
+                axes.axhline(par.scaled(y), color='black', alpha=0.3)
+
+        impl = (npar + ndep) % (nfx * nfy) + 1
+        if impl == 1:
+            if item_fig:
+                yield item_fig
+                nfigs += 1
+
+            fig = plt.figure(figsize=self.size_inch)
+            labelpos = mpl_margins(
+                fig, nw=nfx, nh=nfy,
+                left=7.,
+                right=2.,
+                top=1.,
+                bottom=5.,
+                wspace=7., hspace=2., units=fontsize)
+
+            item = PlotItem(name='fig_%i' % (nfigs+1))
+            item.attributes['parameters'] = []
+
+            item_fig = (item, fig)
+
+        axes = fig.add_subplot(nfy, nfx, impl)
+        labelpos(axes, 2.5, 2.0)
+
+        config_axes(axes, nfx, nfy, impl, npar + ndep, npar + ndep + 1)
+
+        axes.set_ylim(0., 1.5)
+        axes.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4])
+        axes.set_yticklabels(
+            ['0.0', '0.2', '0.4', '0.6', '0.8', '1', '10', '100'])
+
+        axes.scatter(
+            imodels[ibest], gms_softclip[ibest], c=iorder[ibest],
+            s=msize, edgecolors='none', cmap=cmap, alpha=alpha)
+
+        axes.axhspan(1.0, 1.5, color=(0.8, 0.8, 0.8), alpha=0.2)
+        axes.axhline(1.0, color=(0.5, 0.5, 0.5), zorder=2)
+
+        axes.set_xlim(0, history.nmodels)
+        axes.set_xlabel('Iteration')
+
+        axes.set_ylabel('Misfit')
+
+        yield item_fig
+        nfigs += 1
+
+
+class ChainStatsSortPlot(PlotConfig):
+    '''
+    Shows model parameter statistics of chains evolving through the optimisation,
+    with mean models ans standard deviation of the highscore models.
+    '''
+
+    name = 'chainstats_minmax'
+    size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
+    misfit_cutoff = Float.T(optional=True)
+    ibootstrap = Int.T(optional=True)
+    sort_by = StringChoice.T(
+        choices=['iteration', 'misfit'],
+        default='iteration')
+    subplot_layout = Tuple.T(2, Int.T(), default=(1, 1))
+    marker_size = Float.T(default=1.5)
+    show_reference = Bool.T(default=True)
+    
+
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimiser = environ.get_optimiser()
+
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history, optimiser),
+            title=u'Chain Statistic Evolution Plots',
+            section='optimiser',
+            description=u'''
+Evolution of Chain statistics plots show mean and standard deviation for all
+chains per parameter for a decimated number evol all parameters of the optimisation.
+
+''',
+            feather_icon='fast-forward')
+
+    def draw_figures(self, history, optimiser):
+        
+        
+        def colum_array(data):
+            arr = num.full(len(row_names), fill_value=num.nan)
+            arr[:data.size] = data
+            return arr
+        
+        misfit_cutoff = self.misfit_cutoff
+        sort_by = self.sort_by
+
+        problem = history.problem
+        models = history.models
+        chains = optimiser.chains(problem, history)
+        chains.load()
+        
+        row_names = [p.name_nogroups for p in problem.parameters]
+        row_names.append('Misfit')
+
+        bs_means_hist = chains.bs_means_history
+        bs_stds_hist = chains.bs_stds_history
+
+        
+        glob_mean = colum_array(chains.mean_model(ichain=0))
+        glob_mean[-1] = num.mean(chains.misfits(ichain=0))
+
+        glob_std = colum_array(chains.standard_deviation_models(
+            ichain=0, estimator='standard_deviation_single_chain'))
+        glob_std[-1] = num.std(chains.misfits(ichain=0))
+
+        glob_best = colum_array(chains.best_model(ichain=0))
+        glob_best[-1] = chains.best_model_misfit()
+        
+        npar = problem.nparameters
+        ndep = problem.ndependants
+        fontsize = self.font_size
+        nfx, nfy = self.subplot_layout
+
+        imodels = num.arange(history.nmodels)
+        bounds = problem.get_combined_bounds()
+
+        xref = problem.get_reference_model()
+
+        gms = history.get_primary_chain_misfits()
+        gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
+
+        isort = num.argsort(gms)[::-1]
+
+        if sort_by == 'iteration':
+            imodels = imodels[isort]
+        elif sort_by == 'misfit':
+            imodels = num.arange(imodels.size)
+        else:
+            assert False
+
+        gms = gms[isort]
+        gms_softclip = gms_softclip[isort]
+        models = models[isort, :]
+
+        iorder = num.empty_like(isort)
+        iorder = num.arange(iorder.size)
+
+        if misfit_cutoff is None:
+            ibest = num.ones(gms.size, dtype=num.bool)
+        else:
+            ibest = gms < misfit_cutoff
+
+        def config_axes(axes, nfx, nfy, impl, iplot, nplots):
+            if (impl - 1) % nfx != nfx - 1:
+                axes.get_yaxis().tick_left()
+
+            if (impl - 1) >= (nfx * (nfy - 1)) or iplot >= nplots - nfx:
+                axes.set_xlabel('Iteration')
+                if not (impl - 1) // nfx == 0:
+                    axes.get_xaxis().tick_bottom()
+            elif (impl - 1) // nfx == 0:
+                axes.get_xaxis().tick_top()
+                axes.set_xticklabels([])
+            else:
+                axes.get_xaxis().set_visible(False)
+
+        # nfz = (npar + ndep + 1 - 1) / (nfx*nfy) + 1
+        cmap = cm.YlOrRd
+        cmap = cm.jet
+        msize = self.marker_size
+        axes = None
+        fig = None
+        item_fig = None
+        nfigs = 0
+        alpha = 0.5
+        for ipar in range(npar):
+            impl = ipar % (nfx * nfy) + 1
+
+            if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
+                fig = plt.figure(figsize=self.size_inch)
+                labelpos = mpl_margins(
+                    fig, nw=nfx, nh=nfy,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
+                    wspace=7., hspace=2., units=fontsize)
+
+                item = PlotItem(name='fig_%i' % (nfigs+1))
+                item.attributes['parameters'] = []
+                item_fig = (item, fig)
+
+            par = problem.parameters[ipar]
+
+            item_fig[0].attributes['parameters'].append(par.name)
+
+            axes = fig.add_subplot(nfy, nfx, impl)
+            labelpos(axes, 2.5, 2.0)
+
+            axes.set_ylabel(par.get_label())
+            axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+            config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
+
+            axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
+            axes.set_xlim(0, history.nmodels)
+            
+            n_decim = int(chains.history.nmodels / chains.decimation)
+            iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
+            
+            ibs_mean_min = num.argmin(bs_means_hist[ipar, :, -1])
+            ibs_mean_max = num.argmax(bs_means_hist[ipar, :, -1])
+            print(ibs_mean_min, ibs_mean_max)
+            # prepares stds for filled plotting
+            bs_stds_plot_vec = num.zeros((2*len(iter_decim), 2))
+            bs_stds_plot_vec[:len(iter_decim), :] = \
+                    par.scaled(bs_stds_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T + \
+                    par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T
+            bs_stds_plot_vec[len(iter_decim):, :] = \
+                    num.flipud(par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T - \
+                               par.scaled(bs_stds_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T)
+                                           
+            iter_plot_vec = num.zeros((2*len(iter_decim), 2))
+            iter_plot_vec[:len(iter_decim), :] = \
+                    num.repeat([iter_decim], 2, axis=0).T
+            iter_plot_vec[len(iter_decim):, :] = \
+                                    num.flipud(num.repeat([iter_decim], 
+                                               2, axis=0).T)
+                                           
+            axes.fill(iter_plot_vec , bs_stds_plot_vec, alpha = 0.2)
+            axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
+                      par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T, linewidth=0.6)
+          
+            if self.show_reference:
+                axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
+
+        for idep in range(ndep):
+            # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
+            impl = (npar + idep) % (nfx * nfy) + 1
+
+            if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
+                fig = plt.figure(figsize=self.size_inch)
+                labelpos = mpl_margins(
+                    fig, nw=nfx, nh=nfy,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
+                    wspace=7., hspace=2., units=fontsize)
+
+                item = PlotItem(name='fig_%i' % (nfigs+1))
+                item.attributes['parameters'] = []
+
+                item_fig = (item, fig)
+
+            par = problem.dependants[idep]
+            item_fig[0].attributes['parameters'].append(par.name)
+
+            axes = fig.add_subplot(nfy, nfx, impl)
+            labelpos(axes, 2.5, 2.0)
+
+            axes.set_ylabel(par.get_label())
+            axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+            config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
+
+            axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
+            axes.set_xlim(0, history.nmodels)
+
+            ys = problem.make_dependant(models[ibest, :], par.name)
+            axes.scatter(
+                imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
+                edgecolors='none', cmap=cmap, alpha=alpha, rasterized=True)
+
+            if self.show_reference:
+                y = problem.make_dependant(xref, par.name)
+                axes.axhline(par.scaled(y), color='black', alpha=0.3)
+
+        impl = (npar + ndep) % (nfx * nfy) + 1
+        if impl == 1:
+            if item_fig:
+                yield item_fig
+                nfigs += 1
+
+            fig = plt.figure(figsize=self.size_inch)
+            labelpos = mpl_margins(
+                fig, nw=nfx, nh=nfy,
+                left=7.,
+                right=2.,
+                top=1.,
+                bottom=5.,
+                wspace=7., hspace=2., units=fontsize)
+
+            item = PlotItem(name='fig_%i' % (nfigs+1))
+            item.attributes['parameters'] = []
+
+            item_fig = (item, fig)
+
+        axes = fig.add_subplot(nfy, nfx, impl)
+        labelpos(axes, 2.5, 2.0)
+
+        config_axes(axes, nfx, nfy, impl, npar + ndep, npar + ndep + 1)
+
+        axes.set_ylim(0., 1.5)
+        axes.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4])
+        axes.set_yticklabels(
+            ['0.0', '0.2', '0.4', '0.6', '0.8', '1', '10', '100'])
+
+        axes.scatter(
+            imodels[ibest], gms_softclip[ibest], c=iorder[ibest],
+            s=msize, edgecolors='none', cmap=cmap, alpha=alpha)
+
+        axes.axhspan(1.0, 1.5, color=(0.8, 0.8, 0.8), alpha=0.2)
+        axes.axhline(1.0, color=(0.5, 0.5, 0.5), zorder=2)
+
+        axes.set_xlim(0, history.nmodels)
+        axes.set_xlabel('Iteration')
+
+        axes.set_ylabel('Misfit')
+
+        yield item_fig
+        nfigs += 1
+
+class ChainVariationPlot(PlotConfig):
+    '''
+    Shows model parameter statistics of chains evolving through the optimisation,
+    with mean models ans standard deviation of the highscore models.
+    '''
+
+    name = 'chainvariation'
+    size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
+    misfit_cutoff = Float.T(optional=True)
+    ibootstrap = Int.T(optional=True)
+    sort_by = StringChoice.T(
+        choices=['iteration', 'misfit'],
+        default='iteration')
+    subplot_layout = Tuple.T(2, Int.T(), default=(1, 1))
+    marker_size = Float.T(default=1.5)
+    show_reference = Bool.T(default=True)
+    
+
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history()
+        optimiser = environ.get_optimiser()
+
+        mpl_init(fontsize=self.font_size)
+        cm.create_group_mpl(
+            self,
+            self.draw_figures(history, optimiser),
+            title=u'Chain Parameter Variation',
+            section='optimiser',
+            description=u'''
+Shows the changes in chain statistics (changes in the coefficient of variation 
+through the optimization. Convergence means changegs become small towards the
+end of the routine.
+
+''',
+            feather_icon='fast-forward')
+
+    def draw_figures(self, history, optimiser):
+        
+        
+        def colum_array(data):
+            arr = num.full(len(row_names), fill_value=num.nan)
+            arr[:data.size] = data
+            return arr
+        
+        misfit_cutoff = self.misfit_cutoff
+        sort_by = self.sort_by
+
+        problem = history.problem
+        models = history.models
+        chains = optimiser.chains(problem, history)
+        chains.load()
+        
+        row_names = [p.name_nogroups for p in problem.parameters]
+        row_names.append('Misfit')
+
+        bs_means_hist = chains.bs_means_history
+        bs_stds_hist = chains.bs_stds_history
+        print(int(history.nmodels/chains.decimation/2.), chains.decimation)
+        print(num.shape(bs_stds_hist))
+
+        bs_stds_scale = bs_stds_hist[:, :, int(history.nmodels/chains.decimation/2.)]
+        print(bs_stds_scale, chains.decimation)
+        print(num.shape(bs_stds_hist), num.shape(bs_means_hist))
+        bs_coeffvaria = num.abs(num.divide(bs_stds_hist, bs_means_hist))
+        print(num.shape(bs_coeffvaria))
+        bs_variation = num.gradient(bs_coeffvaria, axis=2)
+        bs_stds_grad = num.gradient(bs_stds_hist, axis=2) / \
+                                    bs_stds_scale[:, :, num.newaxis]
+        
+        glob_mean = colum_array(chains.mean_model(ichain=0))
+        glob_mean[-1] = num.mean(chains.misfits(ichain=0))
+
+        glob_std = colum_array(chains.standard_deviation_models(
+            ichain=0, estimator='standard_deviation_single_chain'))
+        glob_std[-1] = num.std(chains.misfits(ichain=0))
+
+        glob_best = colum_array(chains.best_model(ichain=0))
+        glob_best[-1] = chains.best_model_misfit()
+        
+        npar = problem.nparameters
+        ndep = problem.ndependants
+        fontsize = self.font_size
+        nfx, nfy = self.subplot_layout
+
+        imodels = num.arange(history.nmodels)
+        bounds = problem.get_combined_bounds()
+
+        xref = problem.get_reference_model()
+
+        gms = history.get_primary_chain_misfits()
+        gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
+
+        isort = num.argsort(gms)[::-1]
+
+        if sort_by == 'iteration':
+            imodels = imodels[isort]
+        elif sort_by == 'misfit':
+            imodels = num.arange(imodels.size)
+        else:
+            assert False
+
+        gms = gms[isort]
+        gms_softclip = gms_softclip[isort]
+        models = models[isort, :]
+
+        iorder = num.empty_like(isort)
+        iorder = num.arange(iorder.size)
+
+        if misfit_cutoff is None:
+            ibest = num.ones(gms.size, dtype=num.bool)
+        else:
+            ibest = gms < misfit_cutoff
+
+        def config_axes(axes, nfx, nfy, impl, iplot, nplots):
+            if (impl - 1) % nfx != nfx - 1:
+                axes.get_yaxis().tick_left()
+
+            if (impl - 1) >= (nfx * (nfy - 1)) or iplot >= nplots - nfx:
+                axes.set_xlabel('Iteration')
+                if not (impl - 1) // nfx == 0:
+                    axes.get_xaxis().tick_bottom()
+            elif (impl - 1) // nfx == 0:
+                axes.get_xaxis().tick_top()
+                axes.set_xticklabels([])
+            else:
+                axes.get_xaxis().set_visible(False)
+
+        # nfz = (npar + ndep + 1 - 1) / (nfx*nfy) + 1
+        cmap = cm.YlOrRd
+        cmap = cm.jet
+        msize = self.marker_size
+        axes = None
+        fig = None
+        item_fig = None
+        nfigs = 0
+        alpha = 0.5
+        for ipar in range(npar):
+            impl = ipar % (nfx * nfy) + 1
+
+            if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
+                fig = plt.figure(figsize=self.size_inch)
+                labelpos = mpl_margins(
+                    fig, nw=nfx, nh=nfy,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
+                    wspace=7., hspace=2., units=fontsize)
+
+                item = PlotItem(name='fig_%i' % (nfigs+1))
+                item.attributes['parameters'] = []
+                item_fig = (item, fig)
+
+            par = problem.parameters[ipar]
+
+            item_fig[0].attributes['parameters'].append(par.name)
+
+            axes = fig.add_subplot(nfy, nfx, impl)
+            labelpos(axes, 2.5, 2.0)
+
+            axes.set_ylabel(par.get_label())
+            axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+            config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
+
+            axes.set_ylim([-0.1, 0.1])
+            axes.set_xlim(0, history.nmodels)
+            
+            n_decim = int(chains.history.nmodels / chains.decimation)
+            iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
+            
+            ibs_mean_min = num.argmin(bs_means_hist[ipar, :, -1])
+            ibs_mean_max = num.argmax(bs_means_hist[ipar, :, -1])
+            print(ibs_mean_min, ibs_mean_max)
+            # prepares stds for filled plotting
+            bs_cvar_plot_vec = num.zeros((len(iter_decim)))
+            #bs_stds_plot_vec[:len(iter_decim), :] = \
+            #        par.scaled(bs_stds_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T + \
+            #       par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T
+            #bs_stds_plot_vec[len(iter_decim):, :] = \
+            #        num.flipud(par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T - \
+            #                   par.scaled(bs_stds_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T)
+                                           
+            iter_plot_vec = num.zeros((2*len(iter_decim), 2))
+            iter_plot_vec[:len(iter_decim), :] = \
+                    num.repeat([iter_decim], 2, axis=0).T
+            iter_plot_vec[len(iter_decim):, :] = \
+                                    num.flipud(num.repeat([iter_decim], 
+                                               2, axis=0).T)
+            print(num.shape(bs_variation))                               
+            #axes.fill(iter_plot_vec , bs_stds_plot_vec, alpha = 0.2)
+            #axes.plot(num.repeat([iter_decim], chains.nchains, axis=0).T, 
+            #          bs_stds_grad[ipar, :, :].T, linewidth=0.6)
+
+            axes.plot(num.repeat([iter_decim], chains.nchains, axis=0).T, 
+                      bs_variation[ipar, :, :].T, 
+                      color = [0.7, 0.7, 0.7],
+                      linewidth=0.6)
+            axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
+                      bs_variation[ipar, [ibs_mean_min, ibs_mean_max], :].T, linewidth=0.6)
+
+            #if self.show_reference:
+            #    axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
+
+        for idep in range(ndep):
+            # ifz, ify, ifx = num.unravel_index(ipar, (nfz, nfy, nfx))
+            impl = (npar + idep) % (nfx * nfy) + 1
+
+            if impl == 1:
+                if item_fig:
+                    yield item_fig
+                    nfigs += 1
+
+                fig = plt.figure(figsize=self.size_inch)
+                labelpos = mpl_margins(
+                    fig, nw=nfx, nh=nfy,
+                    left=7.,
+                    right=2.,
+                    top=1.,
+                    bottom=5.,
+                    wspace=7., hspace=2., units=fontsize)
+
+                item = PlotItem(name='fig_%i' % (nfigs+1))
+                item.attributes['parameters'] = []
+
+                item_fig = (item, fig)
+
+            par = problem.dependants[idep]
+            item_fig[0].attributes['parameters'].append(par.name)
+
+            axes = fig.add_subplot(nfy, nfx, impl)
+            labelpos(axes, 2.5, 2.0)
+
+            axes.set_ylabel(par.get_label())
+            axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
+
+            config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
+
+            axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
+            axes.set_xlim(0, history.nmodels)
+
+            ys = problem.make_dependant(models[ibest, :], par.name)
+            axes.scatter(
+                imodels[ibest], par.scaled(ys), s=msize, c=iorder[ibest],
+                edgecolors='none', cmap=cmap, alpha=alpha, rasterized=True)
+
+            if self.show_reference:
+                y = problem.make_dependant(xref, par.name)
+                axes.axhline(par.scaled(y), color='black', alpha=0.3)
+
+        impl = (npar + ndep) % (nfx * nfy) + 1
+        if impl == 1:
+            if item_fig:
+                yield item_fig
+                nfigs += 1
+
+            fig = plt.figure(figsize=self.size_inch)
+            labelpos = mpl_margins(
+                fig, nw=nfx, nh=nfy,
+                left=7.,
+                right=2.,
+                top=1.,
+                bottom=5.,
+                wspace=7., hspace=2., units=fontsize)
+
+            item = PlotItem(name='fig_%i' % (nfigs+1))
+            item.attributes['parameters'] = []
+
+            item_fig = (item, fig)
+
+        axes = fig.add_subplot(nfy, nfx, impl)
+        labelpos(axes, 2.5, 2.0)
+
+        config_axes(axes, nfx, nfy, impl, npar + ndep, npar + ndep + 1)
+
+        axes.set_ylim(0., 1.5)
+        axes.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4])
+        axes.set_yticklabels(
+            ['0.0', '0.2', '0.4', '0.6', '0.8', '1', '10', '100'])
+
+        axes.scatter(
+            imodels[ibest], gms_softclip[ibest], c=iorder[ibest],
+            s=msize, edgecolors='none', cmap=cmap, alpha=alpha)
+
+        axes.axhspan(1.0, 1.5, color=(0.8, 0.8, 0.8), alpha=0.2)
+        axes.axhline(1.0, color=(0.5, 0.5, 0.5), zorder=2)
+
+        axes.set_xlim(0, history.nmodels)
+        axes.set_xlabel('Iteration')
+
+        axes.set_ylabel('Misfit')
+
+        yield item_fig
+        nfigs += 1
 
 def get_plot_classes():
-    return [SequencePlot, ContributionsPlot, BootstrapPlot]
+    return [SequencePlot, ContributionsPlot, BootstrapPlot, ChainStatsPlot, 
+            ChainStatsSortPlot, ChainVariationPlot]

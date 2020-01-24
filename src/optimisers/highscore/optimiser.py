@@ -23,16 +23,35 @@ logger = logging.getLogger('grond.optimisers.highscore.optimiser')
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
-
-def excentricity_compensated_probabilities(xs, sbx, factor):
+def model_distances_sqr(xs, sbx, factor):
+    '''
+    Distribution of models in model space.
+    '''
     inonflat = num.where(sbx != 0.0)[0]
     scale = num.zeros_like(sbx)
     scale[inonflat] = 1.0 / (sbx[inonflat] * (factor if factor != 0. else 1.0))
     distances_sqr_all = num.sum(
         ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
          scale[num.newaxis, num.newaxis, :])**2, axis=2)
+    distances_sqr_all = num.sum(
+        ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
+         scale[num.newaxis, num.newaxis, :])**2, axis=2)
+    distances_sqr_all = num.sum(
+        ((xs[num.newaxis, :, :] - xs[:, num.newaxis, :]) *
+         scale[num.newaxis, num.newaxis, :])**2, axis=2)
+        
+    neighbours = num.sort(num.sum(distances_sqr_all < 1., axis=1))
+    distances_sqr_stats = [neighbours[0], neighbours[-1], 
+                           num.median(neighbours), num.std(neighbours)] 
+    #print(num.shape(distances_sqr_all))
+    #print(neighbours)
+    #print(num.sort(distances_sqr_all))
+    return distances_sqr_all, distances_sqr_stats
+
+def excentricity_compensated_probabilities(xs, sbx, factor):
+    
+    distances_sqr_all, _ = model_distances_sqr(xs, sbx, factor)
     probabilities = 1.0 / num.sum(distances_sqr_all < 1.0, axis=1)
-    # print(num.sort(num.sum(distances_sqr_all < 1.0, axis=1)))
     probabilities /= num.sum(probabilities)
     return probabilities
 
@@ -41,7 +60,9 @@ def excentricity_compensated_choice(xs, sbx, factor, rstate):
     probabilities = excentricity_compensated_probabilities(
         xs, sbx, factor)
     r = rstate.random_sample()
+    #print('cumsum',num.cumsum(probabilities))
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
+    print('ichoice', ichoice)
     ichoice = min(ichoice, xs.shape[0]-1)
     return ichoice
 
@@ -51,6 +72,7 @@ def local_std(xs):
     dssbx = num.diff(ssbx, axis=0)
     mdssbx = num.median(dssbx, axis=0)
     return mdssbx * dssbx.shape[0] / 2.6
+
 
 
 class SamplerDistributionChoice(StringChoice):
@@ -85,6 +107,7 @@ class Sample(Object):
     ichain_base = Int.T(optional=True)
     ilink_base = Int.T(optional=True)
     imodel_base = Int.T(optional=True)
+    #chain_par_std = Array.T(shape=(None,), dtype=num.float, serialize_as='list')
 
     def preconstrain(self, problem):
         self.model = problem.preconstrain(self.model)
@@ -95,7 +118,8 @@ class Sample(Object):
             fnone(self.iphase),
             fnone(self.ichain_base),
             fnone(self.ilink_base),
-            fnone(self.imodel_base))
+            fnone(self.imodel_base)
+            )
 
         return i
 
@@ -200,6 +224,7 @@ class DirectedSamplerPhase(SamplerPhase):
             return s or 1.0
 
     def get_raw_sample(self, problem, iiter, chains):
+        print('raw iiter', iiter)
         rstate = self.get_rstate()
         factor = self.get_scatter_scale_factor(iiter)
         npar = problem.nparameters
@@ -215,7 +240,7 @@ class DirectedSamplerPhase(SamplerPhase):
                 models,
                 chains.standard_deviation_models(
                     ichain_choice, self.standard_deviation_estimator),
-                2., rstate)
+                .5, rstate)
 
             xchoice = chains.model(ichain_choice, ilink_choice)
 
@@ -226,6 +251,9 @@ class DirectedSamplerPhase(SamplerPhase):
         elif self.starting_point == 'mean':
             xchoice = chains.mean_model(ichain_choice)
 
+        elif self.starting_point == 'median':
+            xchoice = chains.median_model(ichain_choice)
+            
         else:
             assert False, 'invalid starting_point choice: %s' % (
                 self.starting_point)
@@ -332,6 +360,8 @@ class Chains(object):
     def __init__(
             self, problem, history, nchains, nlinks_cap):
 
+        history.add_listener(self)
+
         self.problem = problem
         self.history = history
         self.nchains = nchains
@@ -342,12 +372,27 @@ class Chains(object):
             (self.nchains, nlinks_cap), dtype=num.int)
         self.nlinks = 0
         self.nread = 0
+        self.npar = problem.nparameters
 
         self.accept_sum = num.zeros(self.nchains, dtype=num.int)
         self._acceptance_history = num.zeros(
             (self.nchains, 1024), dtype=num.bool)
+        
+        # for history statistics decimation for digestable output
+        if self.history.nmodels < 600:
+            self.decimation = 2.
+        else:
+            self.decimation = self.history.nmodels/200.
+        print('test', int(num.ceil(self.history.nmodels /self.decimation)))
+        self._bs_means_history = num.zeros(
+            (self.npar, 
+             self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
+        
+        self._bs_stds_history = num.zeros(
+            (self.npar, 
+             self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
 
-        history.add_listener(self)
+        #history.add_listener(self)
 
     def goto(self, n=None):
         if n is None:
@@ -364,15 +409,20 @@ class Chains(object):
             self.chains_m[:, self.nlinks] = gbms
             self.chains_i[:, self.nlinks] = nread
             nbootstrap = self.chains_m.shape[0]
+            npar = self.mean_model(ichain=0).shape[0]
 
             self.nlinks += 1
             chains_m = self.chains_m
             chains_i = self.chains_i
 
+            chain_mean_models = num.zeros((npar, nbootstrap))
+            chain_std_models = num.zeros((npar, nbootstrap))
             for ichain in range(nbootstrap):
                 isort = num.argsort(chains_m[ichain, :self.nlinks])
                 chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
+                chain_mean_models[:, ichain] = self.mean_model(ichain=ichain)
+                chain_std_models[:, ichain] = self.standard_deviation_models(ichain=ichain, estimator = 'standard_deviation_single_chain')
 
             if self.nlinks == self.nlinks_cap:
                 accept = (chains_i[:, self.nlinks_cap-1] != nread) \
@@ -382,6 +432,11 @@ class Chains(object):
                 accept = num.ones(self.nchains, dtype=num.bool)
 
             self._append_acceptance(accept)
+            if ((num.mod(self.nread, self.decimation) == 0) | (self.nread==n)):
+                print('nread', self.nread)
+                self._append_bs_means(chain_mean_models)
+                self._append_bs_stds(chain_std_models)
+
             self.accept_sum += accept
             self.nread += 1
 
@@ -415,11 +470,48 @@ class Chains(object):
 
     def mean_model(self, ichain=None):
         xs = self.models(ichain)
+        #print('xs', num.shape(num.mean(xs, axis=0)))
         return num.mean(xs, axis=0)
+    
+    def median_model(self, ichain=None):
+        xs = self.models(ichain)
+        return num.median(xs, axis=0)
 
     def best_model(self, ichain=0):
         xs = self.models(ichain)
         return xs[0]
+
+    def uniqueness(self):
+        '''ratio of unique models in
+           selected parts of the chains.'''
+        models = self.models()
+        if self.nlinks >= self.nlinks_cap:
+            ix_highscorer = num.argsort(self.misfits, axis=1)
+            #print('erwachsen')
+            unique = num.unique(models[ix_highscorer])
+            nunique = unique.size
+            uniqueness = nunique / (self.nlinks_cap * (self.nbootstrap + 1))
+        else:
+            #print('uniform', models)
+            unique = num.unique(models) 
+            nunique = unique.size
+            uniqueness = nunique / models.size
+        return uniqueness
+    
+
+    
+    def stats_model_distances(self, ichain=0):
+        '''
+        Model distances within the chain
+        '''
+        factor = 1.
+        estimator = 'median_density_single_chain'
+        #scale = self.standard_deviation_models(
+        #            ichain, estimator)
+        #dists, dists_stats = model_distances_sqr(self.models(),
+        #                                 scale, factor)
+        dists_stats = [0., 0., 0., 0.]
+        return dists_stats
 
     def best_model_misfit(self, ichain=0):
         return self.chains_m[ichain, 0]
@@ -436,6 +528,7 @@ class Chains(object):
             return num.std(xs, axis=0)
         else:
             assert False, 'invalid standard_deviation_estimator choice'
+            
 
     def covariance_models(self, ichain):
         xs = self.models(ichain)
@@ -453,6 +546,26 @@ class Chains(object):
                 self._acceptance_history
             self._acceptance_history = new_buf
         self._acceptance_history[:, self.nread] = acceptance
+        
+    @property
+    def bs_means_history(self):
+        nmeans_chains = num.floor(self.nread/self.decimation)+1
+        return self._bs_means_history[:, :, :int(num.floor(self.nread/self.decimation))]
+
+    def _append_bs_means(self, bs_means):
+        nmeans_chains = num.floor(self.nread/self.decimation)+1
+
+        self._bs_means_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_means.flatten(),                                                              (self.npar, self.nchains))
+
+    @property
+    def bs_stds_history(self):
+        nstds_chains = num.floor(self.nread/self.decimation)+1
+        return self._bs_stds_history[:, :, :int(num.floor(self.nread/self.decimation))]
+
+    def _append_bs_stds(self, bs_stds):
+        nstd_chains = num.floor(self.nread/self.decimation)+1
+
+        self._bs_stds_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_stds.flatten(),                                                              (self.npar, self.nchains))
 
 
 @has_get_plot_classes
@@ -619,6 +732,7 @@ class HighScoreOptimiser(Optimiser):
         isbad_mask = None
         self._tlog_last = 0
         for iiter in range(niter):
+            print('iiter', iiter)
             iphase, phase, iiter_phase = self.get_sampler_phase(iiter)
             self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
@@ -680,7 +794,8 @@ class HighScoreOptimiser(Optimiser):
 
         chains = self._status_chains
         problem = history.problem
-
+        
+        
         row_names = [p.name_nogroups for p in problem.parameters]
         row_names.append('Misfit')
 
@@ -694,6 +809,8 @@ class HighScoreOptimiser(Optimiser):
         bs_mean = colum_array(chains.mean_model(ichain=None))
         bs_std = colum_array(chains.standard_deviation_models(
             ichain=None, estimator='standard_deviation_all_chains'))
+        
+        #bs_cvar = bs_std / bs_mean
 
         glob_mean = colum_array(chains.mean_model(ichain=0))
         glob_mean[-1] = num.mean(chains.misfits(ichain=0))
@@ -704,13 +821,29 @@ class HighScoreOptimiser(Optimiser):
 
         glob_best = colum_array(chains.best_model(ichain=0))
         glob_best[-1] = chains.best_model_misfit()
+        
+        
 
         glob_misfits = chains.misfits(ichain=0)
+        
+        print('ichoice re', num.shape(history.sampler_contexts[:,:]), history.sampler_contexts[-2:,:])
+        print('nmodels', history.nmodels)
+        current_chain = history.sampler_contexts[-1, 1]
 
+        
+        if phase.__class__.__name__=='DirectedSamplerPhase':
+            print(phase.__class__.__name__)
+            current_chain = history.sampler_contexts[-1, 2]
+            print('current chain', current_chain)
+            dist_stats = chains.stats_model_distances(ichain=current_chain)
+        elif phase.__class__.__name__=='UniformSamplerPhase':
+            print(phase.__class__.__name__)
+            dist_stats=[0.,0.,0.,0.]
+        
         acceptance_latest = chains.acceptance_history[
             :, -min(chains.acceptance_history.shape[1], self.ACCEPTANCE_AVG_LEN):]  # noqa
         acceptance_avg = acceptance_latest.mean(axis=1)
-
+                
         def spark_plot(data, bins):
             hist, _ = num.histogram(data, bins)
             hist_max = num.max(hist)
@@ -730,7 +863,11 @@ class HighScoreOptimiser(Optimiser):
                 u'Optimiser phase: {phase}, exploring {nchains} BS chains\n'  # noqa
                 u'Global chain misfit distribution: \u2080{mf_dist}\xb9\n'
                 u'Acceptance rate distribution:     \u2080{acceptance}'
-                u'\u2081\u2080\u2080\ufe6a (Median {acceptance_med:.1f}%)'
+                u'\u2081\u2080\u2080\ufe6a (Median {acceptance_med:.1f}%;'
+                u' Model uniqueness {uniqueness:.2f})\n'
+                u'Sample neighbours - # min {dist_stats[0]:.2f},'
+                u' # max {dist_stats[1]:.2f}, # median {dist_stats[2]:.2f},'
+                u' std {dist_stats[3]:.2f}'
                 .format(
                     phase=phase.__class__.__name__,
                     nchains=chains.nchains,
@@ -739,7 +876,9 @@ class HighScoreOptimiser(Optimiser):
                     acceptance=spark_plot(
                         acceptance_avg,
                         num.linspace(0., 1., 25)),
-                    acceptance_med=num.median(acceptance_avg) * 100.
+                    acceptance_med=num.median(acceptance_avg) * 100.,
+                    uniqueness=chains.uniqueness(),
+                    dist_stats=chains.stats_model_distances(ichain=current_chain)
                     ))
 
     def get_movie_maker(

@@ -94,13 +94,13 @@ class GrondMonitor(threading.Thread):
 
         self.environment = env
         self.history = self.environment.get_history()
-
+        self.history.update()
         optimiser_fn = op.join(self.rundir, 'optimiser.yaml')
         self.optimiser = guts.load(filename=optimiser_fn)
 
         self.problem = self.history.problem
         self.niter = self.optimiser.niterations
-
+        
         self.starttime = time.time()
         self.last_update = self.starttime
 
