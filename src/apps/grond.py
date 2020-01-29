@@ -402,6 +402,15 @@ def command_scenario(args):
             '--radius', dest='radius', type=float, default=100.,
             help='radius of the the scenario in [km] (default: %default)')
         parser.add_option(
+            '--stations-paths', dest='stations_paths', type=str, default=None,
+            help='paths to a Pyrocko station file, seperated by \',\''
+                 '(default: %default)')
+        parser.add_option(
+            '--stationxml-path', dest='stationxml_paths', type=str,
+            default=None,
+            help='patsh to a Pyrocko station file, seperated by \',\''
+                 '(default: %default)')
+        parser.add_option(
             '--gf-waveforms', dest='store_waveforms', type=str,
             default=STORE_WAVEFORMS,
             help='Green\'s function store for waveform modelling, '
@@ -445,9 +454,17 @@ def command_scenario(args):
             radius=options.radius*km)
 
         if 'waveforms' in options.targets:
+            if options.stationxml_paths:
+                options.stationxml_paths = options.stationxml_paths.split(',')
+
+            if options.stations_paths:
+                options.stations_paths = options.stations_paths.split(',')
+
             obs = grond_scenario.WaveformObservation(
                 nstations=options.nstations,
-                store_id=options.store_waveforms)
+                store_id=options.store_waveforms,
+                stations_paths=options.stations_paths,
+                stationxml_paths=options.stationxml_paths)
             scenario.add_observation(obs)
 
         if 'insar' in options.targets:

@@ -216,9 +216,12 @@ class WaveformObservation(Observation):
 
     name = 'seismic waveforms'
 
-    def __init__(self, store_id=DEFAULT_WAVEFORM_STORE, nstations=25):
+    def __init__(self, store_id=DEFAULT_WAVEFORM_STORE, nstations=25,
+                 stationxml_paths=None, stations_paths=None):
         self.nstations = nstations
         self.store_id = store_id
+        self.stationxml_paths = stationxml_paths
+        self.stations_paths = stations_paths
 
     def update_dataset_config(self, dataset_config, data_dir):
         ds = dataset_config
@@ -229,9 +232,15 @@ class WaveformObservation(Observation):
         return ds
 
     def get_scenario_target_generator(self):
+        if self.stationxml_paths or self.stations_paths:
+            station_generator = scenario.station.ImportStationGenerator(
+                stations_paths=self.stations_paths,
+                stations_stationxml_paths=self.stationxml_paths)
+        else:
+            station_generator = scenario.station.RandomStationGenerator(
+                    nstations=self.nstations)
         return scenario.targets.WaveformGenerator(
-            station_generator=scenario.targets.RandomStationGenerator(
-                nstations=self.nstations),
+            station_generator=station_generator,
             store_id=self.store_id,
             tabulated_phases_from_store=True,
             tabulated_phases_noise_scale=0.3,
