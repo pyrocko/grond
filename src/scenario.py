@@ -330,9 +330,11 @@ class GNSSCampaignObservation(Observation):
 
 class SourceProblem(object):
 
-    def __init__(self, magnitude_min=6., magnitude_max=7., nevents=1):
+    def __init__(self, magnitude_min=6., magnitude_max=7., radius=10,
+                 nevents=1):
         self.magnitude_min = magnitude_min
         self.magnitude_max = magnitude_max
+        self.radius = radius
         self.nevents = nevents
 
     def get_scenario_source_generator(self):
@@ -348,6 +350,7 @@ class DCSourceProblem(SourceProblem):
         return scenario.sources.DCSourceGenerator(
             magnitude_min=self.magnitude_min,
             magnitude_max=self.magnitude_max,
+            radius=self.radius*km,
             depth_min=5*km,
             depth_max=20*km,
             nevents=self.nevents)
