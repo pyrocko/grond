@@ -330,7 +330,7 @@ class GNSSCampaignObservation(Observation):
 
 class SourceProblem(object):
 
-    def __init__(self, magnitude_min=6., magnitude_max=7., radius=10,
+    def __init__(self, magnitude_min=6., magnitude_max=7., radius=10.,
                  nevents=1):
         self.magnitude_min = magnitude_min
         self.magnitude_max = magnitude_max
@@ -385,6 +385,7 @@ class RectangularSourceProblem(SourceProblem):
             magnitude_max=self.magnitude_max,
             depth_min=5*km,
             depth_max=15*km,
+            radius=self.radius*km,
             nevents=self.nevents)
 
     def get_grond_problem_config(self):
