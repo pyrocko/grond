@@ -308,9 +308,8 @@ class Dataset(object):
                               ' please install from https://pyrocko.org.')
         logger.debug('Loading kite scene from "%s"...' % filename)
 
-        scene = Scene()
+        scene = Scene.load(filename)
         scene._log.setLevel(logger.level)
-        scene.load(filename)
 
         try:
             self.get_kite_scene(scene.meta.scene_id)
