@@ -102,6 +102,14 @@ class Problem(Object):
             self.problem_parameters =\
                 self.problem_parameters + self.problem_waveform_parameters
 
+        unused_parameters = []
+        for p in self.problem_parameters:
+            if p._name not in self.ranges.keys():
+                unused_parameters.append(p)
+
+        for p in unused_parameters:
+            self.problem_parameters.remove(p)
+
         self.check()
 
     @classmethod

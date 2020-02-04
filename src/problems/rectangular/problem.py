@@ -4,8 +4,7 @@ import logging
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 
-from grond.meta import expand_template, Parameter, has_get_plot_classes, \
-    GrondError
+from grond.meta import expand_template, Parameter, has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
 
@@ -52,10 +51,6 @@ class RectangularProblemConfig(ProblemConfig):
 
 @has_get_plot_classes
 class RectangularProblem(Problem):
-    # nucleation_x
-    # nucleation_y
-    # time
-    # stf
 
     problem_parameters = [
         Parameter('east_shift', 'm', label='Easting', **as_km),
@@ -67,12 +62,13 @@ class RectangularProblem(Problem):
         Parameter('strike', 'deg', label='Strike'),
         Parameter('dip', 'deg', label='Dip'),
         Parameter('rake', 'deg', label='Rake')
-        ]
+    ]
 
     problem_waveform_parameters = [
         Parameter('nucleation_x', 'offset', label='Nucleation X'),
         Parameter('nucleation_y', 'offset', label='Nucleation Y'),
         Parameter('time', 's', label='Time'),
+        Parameter('velocity', 'm/s', label='Rupture Velocity')
     ]
 
     dependants = []
@@ -98,12 +94,7 @@ class RectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
-        if fixed_magnitude is not None:
-            raise GrondError(
-                'Setting fixed magnitude in random model generation not '
-                'supported for this type of problem.')
-
+    def random_uniform(self, xbounds, rstate):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
             x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
@@ -114,7 +105,7 @@ class RectangularProblem(Problem):
         # source = self.get_source(x)
         # if any(self.distance_min > source.distance_to(t)
         #        for t in self.targets):
-        # raise Forbidden()
+        #    raise Forbidden()
         return x
 
     @classmethod
