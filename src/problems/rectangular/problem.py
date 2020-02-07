@@ -68,7 +68,7 @@ class RectangularProblem(Problem):
         Parameter('nucleation_x', 'offset', label='Nucleation X'),
         Parameter('nucleation_y', 'offset', label='Nucleation Y'),
         Parameter('time', 's', label='Time'),
-        Parameter('velocity', 'm/s', label='Rupture Velocity')
+        Parameter('velocity', 'm/s', label='Rupture Velocity', optional=True)
     ]
 
     dependants = []
@@ -94,7 +94,7 @@ class RectangularProblem(Problem):
 
         return source
 
-    def random_uniform(self, xbounds, rstate):
+    def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
         x = num.zeros(self.nparameters)
         for i in range(self.nparameters):
             x[i] = rstate.uniform(xbounds[i, 0], xbounds[i, 1])
