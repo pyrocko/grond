@@ -104,7 +104,7 @@ class Problem(Object):
 
         unused_parameters = []
         for p in self.problem_parameters:
-            if p._name not in self.ranges.keys():
+            if p.optional and p._name not in self.ranges.keys():
                 unused_parameters.append(p)
 
         for p in unused_parameters:
