@@ -569,8 +569,11 @@ functions of the bootstrap start to disagree.
 
 class ChainStatsPlot(PlotConfig):
     '''
-    Shows model parameter statistics of chains evolving through the optimisation,
-    with mean models ans standard deviation of the highscore models.
+    Shows the history of model parameter statistics in the
+    individual bootstrap chains during the optimisation by
+    drawing the mean models (solid colored lines) and standard 
+    deviations (filled, transparent areas) of each chain's
+    highscore list.
     '''
 
     name = 'chainstats'
@@ -598,8 +601,11 @@ class ChainStatsPlot(PlotConfig):
             title=u'Chain Statistic Evolution Plots',
             section='optimiser',
             description=u'''
-Evolution of Chain statistics plots show mean and standard deviation for all
-chains per parameter for a decimated number evol all parameters of the optimisation.
+    History of model parameter statistics in the
+    individual bootstrap chains during the optimisation by
+    drawing the mean models (solid colored lines) and standard 
+    deviations (filled, transparent areas) of each chain's
+    highscore list.
 
 ''',
             feather_icon='fast-forward')
@@ -618,11 +624,14 @@ chains per parameter for a decimated number evol all parameters of the optimisat
         problem = history.problem
         models = history.models
         chains = optimiser.chains(problem, history)
+
+        print('load history for plotting:')
         chains.load()
-        
+
         row_names = [p.name_nogroups for p in problem.parameters]
         row_names.append('Misfit')
 
+        bs_best_models_hist = chains.bs_best_models_history
         bs_means_hist = chains.bs_means_history
         bs_stds_hist = chains.bs_stds_history
 
@@ -732,6 +741,18 @@ chains per parameter for a decimated number evol all parameters of the optimisat
             n_decim = int(chains.history.nmodels / chains.decimation)
             iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
             
+            # pick the end members of par distributions (mean models of chains)
+            # at the end of the optimization run
+            ibs_mean_min = num.argmin(bs_means_hist[ipar, :, -1])
+            ibs_mean_max = num.argmax(bs_means_hist[ipar, :, -1])
+            # convergence criteria: 4 x std of bounding bs chains is less than their mean distance
+            sep_fact = 4
+            conv_crit_vec = 0.5 * sep_fact * (bs_stds_hist[ipar, ibs_mean_min, :] + bs_stds_hist[ipar, ibs_mean_max, :]) / \
+                num.abs(bs_means_hist[ipar, ibs_mean_max, :] - bs_means_hist[ipar, ibs_mean_min, :])
+            conv_crit_vec = num.where(conv_crit_vec >= 1, num.nan, 1.)
+            print('min, max',ibs_mean_min, ibs_mean_max)
+            
+            
             # prepares stds for filled plotting
             bs_stds_plot_vec = num.zeros((2*len(iter_decim), chains.nchains))
             bs_stds_plot_vec[:len(iter_decim), :] = \
@@ -751,6 +772,10 @@ chains per parameter for a decimated number evol all parameters of the optimisat
             axes.fill(iter_plot_vec , bs_stds_plot_vec, alpha = 0.2)
             axes.plot(num.repeat([iter_decim], chains.nchains, axis=0).T, 
                       par.scaled(bs_means_hist[ipar, :, :]).T, linewidth=0.6)
+            
+            
+            axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
+                      par.scaled(conv_crit_vec * bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T, linewidth=2.6, color='k')
           
             if self.show_reference:
                 axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
@@ -849,8 +874,20 @@ chains per parameter for a decimated number evol all parameters of the optimisat
 
 class ChainStatsSortPlot(PlotConfig):
     '''
-    Shows model parameter statistics of chains evolving through the optimisation,
-    with mean models ans standard deviation of the highscore models.
+    Shows the history of two bootstrap chains that evolve 
+    to contain the minimum and maximum model parameters of
+    the optimisation. Visualised are the mean models (solid
+    line), the best models (thick solif line) and the 
+    standard deviation (filled, transparent area) of the 
+    minimum (blue) and maximum (red) parameter chain.
+    The corresponding chains are different for different 
+    parameters. Additionally the total model uniqueness 
+    is shown (0 - all chains share the same models in their
+    highscore list, 1 all models in all chain highscores are
+    different and therefore unique). The uniqueness is 
+    visualised with a gray thick line that starts at the bottom
+    of the model parameter plot, a relative zero) and 
+    increases towards the top of the plot, a relative 1.
     '''
 
     name = 'chainstats_minmax'
@@ -878,8 +915,20 @@ class ChainStatsSortPlot(PlotConfig):
             title=u'Chain Statistic Evolution Plots',
             section='optimiser',
             description=u'''
-Evolution of Chain statistics plots show mean and standard deviation for all
-chains per parameter for a decimated number evol all parameters of the optimisation.
+Shows the history of two bootstrap chains that evolve 
+    to contain the minimum and maximum model parameters of
+    the optimisation. Visualised are the mean models (solid
+    line), the best models (thick solif line) and the 
+    standard deviation (filled, transparent area) of the 
+    minimum (blue) and maximum (red) parameter chain.
+    The corresponding chains are different for different 
+    parameters. Additionally the total model uniqueness 
+    is shown (0 - all chains share the same models in their
+    highscore list, 1 all models in all chain highscores are
+    different and therefore unique). The uniqueness is 
+    visualised with a gray thick line that starts at the bottom
+    of the model parameter plot, a relative zero) and 
+    increases towards the top of the plot, a relative 1.
 
 ''',
             feather_icon='fast-forward')
@@ -898,14 +947,17 @@ chains per parameter for a decimated number evol all parameters of the optimisat
         problem = history.problem
         models = history.models
         chains = optimiser.chains(problem, history)
+        print('load history for plotting:')
         chains.load()
         
         row_names = [p.name_nogroups for p in problem.parameters]
         row_names.append('Misfit')
 
+        bs_best_models_hist = chains.bs_best_models_history
+        
         bs_means_hist = chains.bs_means_history
         bs_stds_hist = chains.bs_stds_history
-
+        uniqueness_hist = chains.uniqueness_history
         
         glob_mean = colum_array(chains.mean_model(ichain=0))
         glob_mean[-1] = num.mean(chains.misfits(ichain=0))
@@ -1006,25 +1058,53 @@ chains per parameter for a decimated number evol all parameters of the optimisat
             axes.get_yaxis().set_major_locator(plt.MaxNLocator(4))
 
             config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
-
+            print('par',fixlim(*par.scaled(bounds[ipar])))
+            
+            uniqueness_hist_scaled = par.scaled(bounds[ipar])[0] + \
+                uniqueness_hist * (par.scaled(bounds[ipar])[1] -\
+                    par.scaled(bounds[ipar])[0])
+            
             axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
             axes.set_xlim(0, history.nmodels)
             
             n_decim = int(chains.history.nmodels / chains.decimation)
             iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
             
+            # pick the end members of par distributions (mean models of chains)
+            # at the end of the optimization run
             ibs_mean_min = num.argmin(bs_means_hist[ipar, :, -1])
             ibs_mean_max = num.argmax(bs_means_hist[ipar, :, -1])
-            print(ibs_mean_min, ibs_mean_max)
+            
+            # pick the end members of par distributions (best models of chains)
+            # at the end of the optimization run
+            ibs_best_min = num.argmin(bs_means_hist[ipar, :, -1])
+            ibs_best_max = num.argmax(bs_means_hist[ipar, :, -1])
+            
+            # convergence criteria: 4 x std of bounding bs chains is less than their mean distance
+            sep_fact = 4
+            conv_crit_vec_m = 0.5 * sep_fact * (bs_stds_hist[ipar, ibs_mean_min, :] + bs_stds_hist[ipar, ibs_mean_max, :]) / \
+                num.abs(bs_means_hist[ipar, ibs_mean_max, :] - bs_means_hist[ipar, ibs_mean_min, :])
+            conv_crit_vec_m = num.where(conv_crit_vec_m >= 1, num.nan, 1.)
+            
+            conv_crit_vec_b = 0.5 * sep_fact * (bs_stds_hist[ipar, ibs_best_min, :] + bs_stds_hist[ipar, ibs_best_max, :]) / \
+                num.abs(bs_best_models_hist[ipar, ibs_best_max, :] - bs_best_models_hist[ipar, ibs_best_min, :])
+            conv_crit_vec_b = num.where(conv_crit_vec_b >= 1, num.nan, 1.)
+            print('min, max',ibs_best_min, ibs_best_max)
+            
             # prepares stds for filled plotting
             bs_stds_plot_vec = num.zeros((2*len(iter_decim), 2))
+            
             bs_stds_plot_vec[:len(iter_decim), :] = \
                     par.scaled(bs_stds_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T + \
                     par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T
+
+            #print(bs_stds_plot_vec[1:20])
+            #print(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], 1:20])
+            
             bs_stds_plot_vec[len(iter_decim):, :] = \
                     num.flipud(par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T - \
                                par.scaled(bs_stds_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T)
-                                           
+            
             iter_plot_vec = num.zeros((2*len(iter_decim), 2))
             iter_plot_vec[:len(iter_decim), :] = \
                     num.repeat([iter_decim], 2, axis=0).T
@@ -1035,7 +1115,19 @@ chains per parameter for a decimated number evol all parameters of the optimisat
             axes.fill(iter_plot_vec , bs_stds_plot_vec, alpha = 0.2)
             axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
                       par.scaled(bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T, linewidth=0.6)
+            
+            axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
+                      par.scaled(bs_best_models_hist[ipar, [ibs_best_min, ibs_best_max], :]).T, linewidth=0.6)
           
+            axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
+                      par.scaled(conv_crit_vec_m * bs_means_hist[ipar, [ibs_mean_min, ibs_mean_max], :]).T, linewidth=2.6, color='m')
+         
+            axes.plot(num.repeat([iter_decim], 2, axis=0).T, 
+                      par.scaled(conv_crit_vec_b * bs_best_models_hist[ipar, [ibs_best_min, ibs_best_max], :]).T, linewidth=2.6, color='c')
+            
+            axes.plot(iter_decim, uniqueness_hist_scaled, 
+                      linewidth=1.6, color='gray')
+            
             if self.show_reference:
                 axes.axhline(par.scaled(xref[ipar]), color='black', alpha=0.3)
 

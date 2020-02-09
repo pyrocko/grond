@@ -382,8 +382,15 @@ class Chains(object):
         if self.history.nmodels < 600:
             self.decimation = 2.
         else:
-            self.decimation = self.history.nmodels/200.
-        print('test', int(num.ceil(self.history.nmodels /self.decimation)))
+            self.decimation = int(self.history.nmodels/200.)
+        #print('test', int(num.ceil(self.history.nmodels /self.decimation)))
+        
+        self._uniqueness_history = num.zeros( int(num.ceil(self.history.nmodels /self.decimation)))
+        
+        self._bs_best_models_history = num.zeros(
+            (self.npar, 
+             self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
+            
         self._bs_means_history = num.zeros(
             (self.npar, 
              self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
@@ -395,8 +402,11 @@ class Chains(object):
         #history.add_listener(self)
 
     def goto(self, n=None):
+        
+        
         if n is None:
             n = self.history.nmodels
+            playback = True
 
         n = min(self.history.nmodels, n)
 
@@ -411,18 +421,22 @@ class Chains(object):
             nbootstrap = self.chains_m.shape[0]
             npar = self.mean_model(ichain=0).shape[0]
 
+  
             self.nlinks += 1
             chains_m = self.chains_m
             chains_i = self.chains_i
 
+            chain_best_models = num.zeros((npar, nbootstrap))
             chain_mean_models = num.zeros((npar, nbootstrap))
             chain_std_models = num.zeros((npar, nbootstrap))
             for ichain in range(nbootstrap):
                 isort = num.argsort(chains_m[ichain, :self.nlinks])
                 chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
+                chain_best_models[:, ichain] = self.best_model(ichain=ichain)
                 chain_mean_models[:, ichain] = self.mean_model(ichain=ichain)
-                chain_std_models[:, ichain] = self.standard_deviation_models(ichain=ichain, estimator = 'standard_deviation_single_chain')
+                chain_std_models[:, ichain] = self.standard_deviation_models(
+                    ichain=ichain, estimator = 'standard_deviation_single_chain')
 
             if self.nlinks == self.nlinks_cap:
                 accept = (chains_i[:, self.nlinks_cap-1] != nread) \
@@ -432,10 +446,13 @@ class Chains(object):
                 accept = num.ones(self.nchains, dtype=num.bool)
 
             self._append_acceptance(accept)
-            if ((num.mod(self.nread, self.decimation) == 0) | (self.nread==n)):
-                print('nread', self.nread)
-                self._append_bs_means(chain_mean_models)
-                self._append_bs_stds(chain_std_models)
+            if playback:
+                if ((num.mod(self.nread, self.decimation) == 0) | (self.nread==n)):
+                    print('read history', str(int(100*self.nread/n)),'%')
+                    self._append_uniqueness(self.uniqueness())
+                    self._append_bs_best_models(chain_best_models)
+                    self._append_bs_means(chain_mean_models)
+                    self._append_bs_stds(chain_std_models)
 
             self.accept_sum += accept
             self.nread += 1
@@ -483,7 +500,10 @@ class Chains(object):
 
     def uniqueness(self):
         '''ratio of unique models in
-           selected parts of the chains.'''
+           selected parts of the chains.
+           A model is unique when it
+           differs in at least one
+           parameter from others.'''
         models = self.models()
         if self.nlinks >= self.nlinks_cap:
             ix_highscorer = num.argsort(self.misfits, axis=1)
@@ -497,8 +517,6 @@ class Chains(object):
             nunique = unique.size
             uniqueness = nunique / models.size
         return uniqueness
-    
-
     
     def stats_model_distances(self, ichain=0):
         '''
@@ -546,6 +564,23 @@ class Chains(object):
                 self._acceptance_history
             self._acceptance_history = new_buf
         self._acceptance_history[:, self.nread] = acceptance
+    
+    @property
+    def uniqueness_history(self):
+        return self._uniqueness_history[:int(num.floor(self.nread/self.decimation))]
+
+    def _append_uniqueness(self, uniqueness):
+        self._uniqueness_history[int(num.floor(self.nread/self.decimation))] = self.uniqueness()
+            
+    @property
+    def bs_best_models_history(self):
+        nbests_chains = num.floor(self.nread/self.decimation)+1
+        return self._bs_best_models_history[:, :, :int(num.floor(self.nread/self.decimation))]
+
+    def _append_bs_best_models(self, bs_best_models):
+        nbests_chains = num.floor(self.nread/self.decimation)+1
+
+        self._bs_best_models_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_best_models.flatten(),                                                              (self.npar, self.nchains))
         
     @property
     def bs_means_history(self):
@@ -564,7 +599,6 @@ class Chains(object):
 
     def _append_bs_stds(self, bs_stds):
         nstd_chains = num.floor(self.nread/self.decimation)+1
-
         self._bs_stds_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_stds.flatten(),                                                              (self.npar, self.nchains))
 
 
@@ -732,7 +766,6 @@ class HighScoreOptimiser(Optimiser):
         isbad_mask = None
         self._tlog_last = 0
         for iiter in range(niter):
-            print('iiter', iiter)
             iphase, phase, iiter_phase = self.get_sampler_phase(iiter)
             self.log_progress(problem, iiter, niter, phase, iiter_phase)
 
@@ -806,6 +839,7 @@ class HighScoreOptimiser(Optimiser):
 
         phase = self.get_sampler_phase(history.nmodels-1)[1]
 
+        bs_bests = colum_array(chains.best_model(ichain=None))
         bs_mean = colum_array(chains.mean_model(ichain=None))
         bs_std = colum_array(chains.standard_deviation_models(
             ichain=None, estimator='standard_deviation_all_chains'))
@@ -826,19 +860,18 @@ class HighScoreOptimiser(Optimiser):
 
         glob_misfits = chains.misfits(ichain=0)
         
-        print('ichoice re', num.shape(history.sampler_contexts[:,:]), history.sampler_contexts[-2:,:])
-        print('nmodels', history.nmodels)
+
         current_chain = history.sampler_contexts[-1, 1]
 
         
-        if phase.__class__.__name__=='DirectedSamplerPhase':
-            print(phase.__class__.__name__)
-            current_chain = history.sampler_contexts[-1, 2]
-            print('current chain', current_chain)
-            dist_stats = chains.stats_model_distances(ichain=current_chain)
-        elif phase.__class__.__name__=='UniformSamplerPhase':
-            print(phase.__class__.__name__)
-            dist_stats=[0.,0.,0.,0.]
+        #if phase.__class__.__name__=='DirectedSamplerPhase':
+            #print(phase.__class__.__name__)
+            #current_chain = history.sampler_contexts[-1, 2]
+            #print('current chain', current_chain)
+            #dist_stats = chains.stats_model_distances(ichain=current_chain)
+        #elif phase.__class__.__name__=='UniformSamplerPhase':
+            #print(phase.__class__.__name__)
+            #dist_stats=[0.,0.,0.,0.]
         
         acceptance_latest = chains.acceptance_history[
             :, -min(chains.acceptance_history.shape[1], self.ACCEPTANCE_AVG_LEN):]  # noqa
