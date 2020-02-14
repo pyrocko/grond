@@ -675,6 +675,7 @@ class ModelHistory(object):
         self.bootstrap_misfits = None
 
         self.sampler_contexts = None
+        self.nsampler_context = 5
 
         self.nmodels_capacity = self.nmodels_capacity_min
         self.listeners = []
@@ -750,7 +751,7 @@ class ModelHistory(object):
                 (nmodels_capacity_new, self.problem.nmisfits, 2),
                 dtype=num.float)
             sample_contexts_buffer = num.zeros(
-                (nmodels_capacity_new, 4),
+                (nmodels_capacity_new, self.nsampler_context),
                 dtype=num.int)
             sample_contexts_buffer.fill(-1)
 
@@ -809,7 +810,8 @@ class ModelHistory(object):
             self.bootstrap_misfits = self._bootstraps_buffer[:nmodels+n, :]
 
         if sampler_contexts is not None:
-            self._sample_contexts_buffer[nmodels:nmodels+n, :] \
+            nsampler_context = sampler_contexts.shape[1]
+            self._sample_contexts_buffer[nmodels:nmodels+n, :nsampler_context] \
                 = sampler_contexts
             self.sampler_contexts = self._sample_contexts_buffer[:nmodels+n, :]
 
@@ -1062,8 +1064,8 @@ def get_nmodels(dirname, problem):
 
 def load_problem_info_and_data(dirname, subset=None, nchains=None):
     problem = load_problem_info(dirname)
-    models, misfits, bootstraps, sampler_contexts = load_problem_data(
-        xjoin(dirname, subset), problem, nchains=nchains)
+    models, misfits, bootstraps, sampler_contexts = load_problem_data(xjoin(dirname, subset), problem, nchains=nchains)
+    
     return problem, models, misfits, bootstraps, sampler_contexts
 
 
@@ -1128,14 +1130,36 @@ def load_problem_data(dirname, problem, nmodels_skip=0, nchains=None):
         sampler_contexts = None
         fn = op.join(dirname, 'choices')
         if op.exists(fn):
+            #check if old or new run output
+            # with 4 or 5 integers per model stored, 
+            # respectively.
+            # file contains either 4 * 8 bit integers
+            filesize = os.stat(fn).st_size
+            
+            nsampler_context = int(filesize/nmodels/8)
             with open(fn, 'r') as f:
-                f.seek(nmodels_skip * 4 * 8)
+                f.seek(nmodels_skip * nsampler_context * 8)
                 sampler_contexts = num.fromfile(
-                        f, dtype='<i8',
-                        count=nmodels*4).astype(num.int)
+                            f, dtype='<i8',
+                count=nmodels*nsampler_context).astype(num.int)
+                sampler_contexts = sampler_contexts.reshape((nmodels, nsampler_context))
+                #if nsampler_context == 5:
+                    #f.seek(nmodels_skip * 5 * 8)
+                    #sampler_contexts = num.fromfile(
+                            #f, dtype='<i8',
+                            #count=nmodels*5).astype(num.int)
+                    #sampler_contexts = \
+                            #sampler_contexts.reshape((nmodels, 5))
 
-            sampler_contexts = sampler_contexts.reshape((nmodels, 4))
+                #elif nsampler_context == 4:
+                    #f.seek(nmodels_skip * 4 * 8)
+                    #sampler_contexts = num.fromfile(
+                            #f, dtype='<i8',
+                            #count=nmodels*4).astype(num.int)   
+                    #sampler_contexts = \
+                            #sampler_contexts.reshape((nmodels, 4))
 
+            
     except OSError as e:
         logger.debug(str(e))
         raise ProblemDataNotAvailable(

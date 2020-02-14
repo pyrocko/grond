@@ -62,7 +62,7 @@ def excentricity_compensated_choice(xs, sbx, factor, rstate):
     r = rstate.random_sample()
     #print('cumsum',num.cumsum(probabilities))
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
-    print('ichoice', ichoice)
+    #print('ichoice', ichoice)
     ichoice = min(ichoice, xs.shape[0]-1)
     return ichoice
 
@@ -107,18 +107,21 @@ class Sample(Object):
     ichain_base = Int.T(optional=True)
     ilink_base = Int.T(optional=True)
     imodel_base = Int.T(optional=True)
-    #chain_par_std = Array.T(shape=(None,), dtype=num.float, serialize_as='list')
+    
 
     def preconstrain(self, problem):
         self.model = problem.preconstrain(self.model)
 
-    def pack_context(self):
-        i = num.zeros(4, dtype=num.int)
+    def pack_context(self, uniqueness):
+        i = num.zeros(5, dtype=num.int)
+    
+        uniqueness = int(uniqueness*100)
         i[:] = (
             fnone(self.iphase),
             fnone(self.ichain_base),
             fnone(self.ilink_base),
-            fnone(self.imodel_base)
+            fnone(self.imodel_base),
+            fnone(uniqueness)
             )
 
         return i
@@ -224,7 +227,7 @@ class DirectedSamplerPhase(SamplerPhase):
             return s or 1.0
 
     def get_raw_sample(self, problem, iiter, chains):
-        print('raw iiter', iiter)
+        #print('raw iiter', iiter)
         rstate = self.get_rstate()
         factor = self.get_scatter_scale_factor(iiter)
         npar = problem.nparameters
@@ -360,7 +363,7 @@ class Chains(object):
     def __init__(
             self, problem, history, nchains, nlinks_cap):
 
-        history.add_listener(self)
+        #history.add_listener(self)
 
         self.problem = problem
         self.history = history
@@ -378,52 +381,50 @@ class Chains(object):
         self._acceptance_history = num.zeros(
             (self.nchains, 1024), dtype=num.bool)
         
-        # for history statistics decimation for digestable output
-        if self.history.nmodels < 600:
-            self.decimation = 2.
-        else:
-            self.decimation = int(self.history.nmodels/200.)
-        #print('test', int(num.ceil(self.history.nmodels /self.decimation)))
+        self._uniqueness_history = num.zeros((self.history.nmodels))
         
-        self._uniqueness_history = num.zeros( int(num.ceil(self.history.nmodels /self.decimation)))
-        
-        self._bs_best_models_history = num.zeros(
-            (self.npar, 
-             self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
-            
-        self._bs_means_history = num.zeros(
-            (self.npar, 
-             self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
-        
-        self._bs_stds_history = num.zeros(
-            (self.npar, 
-             self.nchains, int(num.ceil(self.history.nmodels /self.decimation))))
-
-        #history.add_listener(self)
+        history.add_listener(self)
 
     def goto(self, n=None):
         
+
+        self._uniqueness_history = num.zeros((self.history.nmodels))
+        
+        self._bs_best_models_history = num.zeros(
+            (self.npar, self.nchains, self.history.nmodels ))
+
+        self._bs_means_history = num.zeros(
+            (self.npar, self.nchains, self.history.nmodels ))
+            
+        self._bs_stds_history = num.zeros(
+                (self.npar, self.nchains, self.history.nmodels ))
+
         
         if n is None:
             n = self.history.nmodels
-            playback = True
 
         n = min(self.history.nmodels, n)
 
         assert self.nread <= n
-
+        
+       
         while self.nread < n:
+            
             nread = self.nread
+            # bootstrap misfit last model
             gbms = self.history.bootstrap_misfits[nread, :]
-
+            #print('gbms', gbms.shape)
             self.chains_m[:, self.nlinks] = gbms
             self.chains_i[:, self.nlinks] = nread
+            
             nbootstrap = self.chains_m.shape[0]
+            #print('Nboot', nbootstrap)
             npar = self.mean_model(ichain=0).shape[0]
 
   
             self.nlinks += 1
             chains_m = self.chains_m
+            #print('chain misfit',chains_m.shape)
             chains_i = self.chains_i
 
             chain_best_models = num.zeros((npar, nbootstrap))
@@ -446,18 +447,17 @@ class Chains(object):
                 accept = num.ones(self.nchains, dtype=num.bool)
 
             self._append_acceptance(accept)
-            if playback:
-                if ((num.mod(self.nread, self.decimation) == 0) | (self.nread==n)):
-                    print('read history', str(int(100*self.nread/n)),'%')
-                    self._append_uniqueness(self.uniqueness())
-                    self._append_bs_best_models(chain_best_models)
-                    self._append_bs_means(chain_mean_models)
-                    self._append_bs_stds(chain_std_models)
+            self._append_uniqueness(self.uniqueness())
+            self._append_bs_best_models(chain_best_models)
+            self._append_bs_means(chain_mean_models)
+            self._append_bs_stds(chain_std_models)
 
             self.accept_sum += accept
             self.nread += 1
 
     def load(self):
+        #n=self.history.nmodels
+        #print('nnn',n)
         return self.goto()
 
     def extend(self, ioffset, n, models, misfits, sampler_contexts):
@@ -470,6 +470,7 @@ class Chains(object):
             return self.chains_i[:, :self.nlinks].ravel()
 
     def models(self, ichain=None):
+        #print('drawn models', ichain, self.history.models[self.indices(ichain), :].shape)
         return self.history.models[self.indices(ichain), :]
 
     def model(self, ichain, ilink):
@@ -487,7 +488,6 @@ class Chains(object):
 
     def mean_model(self, ichain=None):
         xs = self.models(ichain)
-        #print('xs', num.shape(num.mean(xs, axis=0)))
         return num.mean(xs, axis=0)
     
     def median_model(self, ichain=None):
@@ -505,17 +505,13 @@ class Chains(object):
            differs in at least one
            parameter from others.'''
         models = self.models()
-        if self.nlinks >= self.nlinks_cap:
-            ix_highscorer = num.argsort(self.misfits, axis=1)
-            #print('erwachsen')
-            unique = num.unique(models[ix_highscorer])
-            nunique = unique.size
-            uniqueness = nunique / (self.nlinks_cap * (self.nbootstrap + 1))
-        else:
-            #print('uniform', models)
+        if models is not None:
             unique = num.unique(models) 
             nunique = unique.size
             uniqueness = nunique / models.size
+        else: 
+            uniqueness = 0.
+            
         return uniqueness
     
     def stats_model_distances(self, ichain=0):
@@ -567,39 +563,39 @@ class Chains(object):
     
     @property
     def uniqueness_history(self):
-        return self._uniqueness_history[:int(num.floor(self.nread/self.decimation))]
-
-    def _append_uniqueness(self, uniqueness):
-        self._uniqueness_history[int(num.floor(self.nread/self.decimation))] = self.uniqueness()
+        return self._uniqueness_history[:self.nread]
             
+    def _append_uniqueness(self, uniqueness):
+        self._uniqueness_history[self.nread] = uniqueness
+        
     @property
     def bs_best_models_history(self):
-        nbests_chains = num.floor(self.nread/self.decimation)+1
-        return self._bs_best_models_history[:, :, :int(num.floor(self.nread/self.decimation))]
+        nbests_chains = self.nread+1
+        return self._bs_best_models_history[:, :, :self.nread]
 
     def _append_bs_best_models(self, bs_best_models):
-        nbests_chains = num.floor(self.nread/self.decimation)+1
-
-        self._bs_best_models_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_best_models.flatten(),                                                              (self.npar, self.nchains))
+        nbests_chains = self.nread+1
+        
+        self._bs_best_models_history[:, :, self.nread] = num.reshape(bs_best_models.flatten(),                                                              (self.npar, self.nchains))
         
     @property
     def bs_means_history(self):
-        nmeans_chains = num.floor(self.nread/self.decimation)+1
-        return self._bs_means_history[:, :, :int(num.floor(self.nread/self.decimation))]
+        nmeans_chains = self.nread+1
+        return self._bs_means_history[:, :, :self.nread]
 
     def _append_bs_means(self, bs_means):
-        nmeans_chains = num.floor(self.nread/self.decimation)+1
+        nmeans_chains = self.nread+1
 
-        self._bs_means_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_means.flatten(),                                                              (self.npar, self.nchains))
+        self._bs_means_history[:, :, self.nread] = num.reshape(bs_means.flatten(),                                                              (self.npar, self.nchains))
 
     @property
     def bs_stds_history(self):
-        nstds_chains = num.floor(self.nread/self.decimation)+1
-        return self._bs_stds_history[:, :, :int(num.floor(self.nread/self.decimation))]
+        nstds_chains = self.nread+1
+        return self._bs_stds_history[:, :, :self.nread]
 
     def _append_bs_stds(self, bs_stds):
-        nstd_chains = num.floor(self.nread/self.decimation)+1
-        self._bs_stds_history[:, :, int(num.floor(self.nread/self.decimation))] = num.reshape(bs_stds.flatten(),                                                              (self.npar, self.nchains))
+        nstd_chains = self.nread+1
+        self._bs_stds_history[:, :, self.nread] = num.reshape(bs_stds.flatten(),                                                              (self.npar, self.nchains))
 
 
 @has_get_plot_classes
@@ -756,12 +752,22 @@ class HighScoreOptimiser(Optimiser):
     def optimise(self, problem, rundir=None):
         if rundir is not None:
             self.dump(filename=op.join(rundir, 'optimiser.yaml'))
-
+            
+      
+        
         history = ModelHistory(problem,
                                nchains=self.nchains,
                                path=rundir, mode='w')
+        
+        
         chains = self.chains(problem, history)
+        
+        if self._status_chains is None:
+            self._status_chains = self.chains(history.problem, history)
 
+       
+        
+        
         niter = self.niterations
         isbad_mask = None
         self._tlog_last = 0
@@ -810,10 +816,18 @@ class HighScoreOptimiser(Optimiser):
                     'Problem %s: all target misfit values are NaN.'
                     % problem.name)
 
+            self._status_chains.goto(history.nmodels)
+
+            if iiter > 0:
+                uniqueness = self._status_chains.uniqueness()
+            else:
+                uniqueness = -1
+            
             history.append(
                 sample.model, misfits,
                 bootstrap_misfits,
-                sample.pack_context())
+                sample.pack_context(uniqueness))
+
 
     @property
     def niterations(self):
