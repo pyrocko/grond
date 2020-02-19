@@ -299,20 +299,18 @@ characteristics of the optimisation algorithm.
         problem = environ.get_problem()
         history = environ.get_history()
         chains = optimiser.chains(problem, history)
-        
+
         import time
         tt = time.time()
-        
+
         chains.load()
 
-     
         acceptance = chains.acceptance_history
         uniqueness = history.sampler_contexts[:, 4]
-        if uniqueness[-1]== -1:
-            uniqueness = chains.uniqueness_history *100.
-        
+        if uniqueness[-1] == -1:
+            uniqueness = chains.uniqueness_history * 100.
         print(uniqueness)
-        #print('sma',history.sampler_contexts[:, 4])
+        # print('sma',history.sampler_contexts[:, 4])
 
         nmodels_rate = history.nmodels - (nwindow - 1)
         if nmodels_rate < 1:
