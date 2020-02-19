@@ -600,7 +600,7 @@ class ChainStatsPlot(PlotConfig):
             self.draw_figures(history, optimiser),
             title=u'Chain Statistic Evolution Plots',
             section='optimiser',
-            description=str(self.__class__.__doc__)
+            description=str(self.__class__.__doc__),
             feather_icon='fast-forward')
 
     def draw_figures(self, history, optimiser):
@@ -615,17 +615,16 @@ class ChainStatsPlot(PlotConfig):
 
         problem = history.problem
         models = history.models
-        chains = optimiser.chains(problem, history)
+        nmodels = history.nmodels
 
-        print('load history for plotting:')
-        chains.load()
+        chains = optimiser.chains(problem, history)
+        chains.load(calculate_chain_stats=True)
 
         row_names = [p.name_nogroups for p in problem.parameters]
         row_names.append('Misfit')
 
-        bs_best_models_hist = chains.bs_best_models_history
-        bs_means_hist = chains.bs_means_history
-        bs_stds_hist = chains.bs_stds_history
+        chains_mean_hist = chains.chains_mean_history
+        chains_std_hist = chains.chains_std_history
 
         glob_mean = colum_array(chains.mean_model(ichain=0))
         glob_mean[-1] = num.mean(chains.misfits(ichain=0))
@@ -642,8 +641,8 @@ class ChainStatsPlot(PlotConfig):
         fontsize = self.font_size
         nfx, nfy = self.subplot_layout
 
-        imodels = num.arange(history.nmodels)
-        iimodels = num.arange(history.nmodels)
+        imodels = num.arange(nmodels)
+        iimodels = num.arange(nmodels)
 
         bounds = problem.get_combined_bounds()
 
@@ -654,19 +653,16 @@ class ChainStatsPlot(PlotConfig):
 
         isort = num.argsort(gms)[::-1]
 
-        if sort_by == 'iteration':
-            imodels = imodels[isort]
-        elif sort_by == 'misfit':
-            imodels = num.arange(imodels.size)
-        else:
-            assert False
-
         gms = gms[isort]
         gms_softclip = gms_softclip[isort]
         models = models[isort, :]
 
-        iorder = num.empty_like(isort)
-        iorder = num.arange(iorder.size)
+        if sort_by == 'iteration':
+            imodels = imodels[isort]
+        elif sort_by == 'misfit':
+            imodels = num.arange(imodels.size)
+
+        iorder = num.arange(isort.size)
 
         if misfit_cutoff is None:
             ibest = num.ones(gms.size, dtype=num.bool)
@@ -730,49 +726,51 @@ class ChainStatsPlot(PlotConfig):
             config_axes(axes, nfx, nfy, impl, ipar, npar + ndep + 1)
 
             axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
-            axes.set_xlim(0, history.nmodels)
+            axes.set_xlim(0, nmodels)
             print('imodels', imodels)
-            # n_decim = int(chains.history.nmodels / chains.decimation)
+            # n_decim = int(chains.nmodels / chains.decimation)
             # iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
 
             # pick the end members of par distributions (mean models of chains)
             # at the end of the optimization run
-            ibs_min = num.argmin(bs_means_hist[ipar, :, -1])
-            ibs_max = num.argmax(bs_means_hist[ipar, :, -1])
+            ibs_min = num.argmin(chains_mean_hist[ipar, :, -1])
+            ibs_max = num.argmax(chains_mean_hist[ipar, :, -1])
             # convergence criteria:
             # 4 x std of bounding bs chains is less than their mean distance
             sep_fact = 4.
             conv_crit_vec = 0.5 * sep_fact * \
-                (bs_stds_hist[ipar, ibs_min, :]
-                 + bs_stds_hist[ipar, ibs_max, :]) / \
-                num.abs(bs_means_hist[ipar, ibs_max, :]
-                        - bs_means_hist[ipar, ibs_min, :])
+                (chains_std_hist[ipar, ibs_min, :]
+                 + chains_std_hist[ipar, ibs_max, :]) / \
+                num.abs(chains_mean_hist[ipar, ibs_max, :]
+                        - chains_mean_hist[ipar, ibs_min, :])
             conv_crit_vec = num.where(conv_crit_vec >= 1, num.nan, 1.)
             print('ibs_min, ibs_max', ibs_min, ibs_max)
 
             # prepares stds for filled plotting
-            bs_stds_plot_vec = num.zeros((2*len(iimodels), chains.nchains))
-            bs_stds_plot_vec[:len(iimodels), :] = \
-                par.scaled(bs_stds_hist[ipar, :, :]).T + \
-                par.scaled(bs_means_hist[ipar, :, :]).T
-            bs_stds_plot_vec[len(iimodels):, :] = \
-                num.flipud(par.scaled(bs_means_hist[ipar, :, :]).T -
-                           par.scaled(bs_stds_hist[ipar, :, :]).T)
+            bs_stds_plot_vec = num.zeros((2*nmodels, chains.nchains))
 
-            iter_plot_vec = num.zeros((2*len(iimodels), chains.nchains))
-            iter_plot_vec[:len(iimodels), :] = \
-                num.repeat([iimodels], chains.nchains, axis=0).T
-            iter_plot_vec[len(iimodels):, :] = \
-                num.flipud(num.repeat([iimodels], chains.nchains, axis=0).T)
+            bs_stds_plot_vec[:nmodels, :] = \
+                par.scaled(chains_std_hist[ipar, :, :]).T + \
+                par.scaled(chains_mean_hist[ipar, :, :]).T
+            bs_stds_plot_vec[nmodels:, :] = \
+                num.flipud(par.scaled(chains_mean_hist[ipar, :, :]).T -
+                           par.scaled(chains_std_hist[ipar, :, :]).T)
+
+            iter_plot_vec = num.zeros((2*nmodels, chains.nchains))
+            iter_plot_vec[:nmodels, :] = \
+                num.repeat(iimodels, chains.nchains, axis=0).T
+            iter_plot_vec[nmodels:, :] = \
+                num.flipud(num.repeat(iimodels, chains.nchains, axis=0).T)
 
             axes.fill(iter_plot_vec, bs_stds_plot_vec, alpha=.2)
-            axes.plot(num.repeat([iimodels], chains.nchains, axis=0).T,
-                      par.scaled(bs_means_hist[ipar, :, :]).T, linewidth=0.6)
+            axes.plot(num.repeat(iimodels, chains.nchains, axis=0).T,
+                      par.scaled(chains_mean_hist[ipar, :, :]).T,
+                      linewidth=0.6)
 
-            axes.plot(num.repeat([iimodels], 2, axis=0).T,
+            axes.plot(num.repeat(iimodels, 2, axis=0).T,
                       par.scaled(
                         conv_crit_vec
-                        * bs_means_hist[ipar, [ibs_min, ibs_max], :]).T,
+                        * chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T,
                       linewidth=2.6, color='k')
 
             if self.show_reference:
@@ -813,7 +811,7 @@ class ChainStatsPlot(PlotConfig):
             config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
 
             axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
-            axes.set_xlim(0, history.nmodels)
+            axes.set_xlim(0, nmodels)
 
             ys = problem.make_dependant(models[ibest, :], par.name)
             axes.scatter(
@@ -887,8 +885,9 @@ class ChainStatsSortPlot(PlotConfig):
     of the model parameter plot, a relative zero) and
     increases towards the top of the plot, a relative 1.
     '''
-
     name = 'chainstats_minmax'
+    report_plot = False
+
     size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)
@@ -925,17 +924,19 @@ class ChainStatsSortPlot(PlotConfig):
 
         problem = history.problem
         models = history.models
+        nmodels = history.nmodels
+
         chains = optimiser.chains(problem, history)
 
-        chains.load()
+        chains.load(calculate_chain_stats=True)
 
         row_names = [p.name_nogroups for p in problem.parameters]
         row_names.append('Misfit')
 
-        bs_best_models_hist = chains.bs_best_models_history
+        chains_best_models_hist = chains.chains_best_model_history
 
-        bs_means_hist = chains.bs_means_history
-        bs_stds_hist = chains.bs_stds_history
+        chains_mean_hist = chains.chains_mean_history
+        chains_std_hist = chains.chains_std_history
         uniqueness_hist = chains.uniqueness_history
 
         glob_mean = colum_array(chains.mean_model(ichain=0))
@@ -953,8 +954,8 @@ class ChainStatsSortPlot(PlotConfig):
         fontsize = self.font_size
         nfx, nfy = self.subplot_layout
 
-        imodels = num.arange(history.nmodels)
-        iimodels = num.arange(history.nmodels)
+        imodels = num.arange(nmodels)
+        iimodels = num.arange(nmodels)
 
         bounds = problem.get_combined_bounds()
 
@@ -964,17 +965,14 @@ class ChainStatsSortPlot(PlotConfig):
         gms_softclip = num.where(gms > 1.0, 0.2 * num.log10(gms) + 1.0, gms)
 
         isort = num.argsort(gms)[::-1]
+        gms = gms[isort]
+        gms_softclip = gms_softclip[isort]
+        models = models[isort, :]
 
         if sort_by == 'iteration':
             imodels = imodels[isort]
         elif sort_by == 'misfit':
             imodels = num.arange(imodels.size)
-        else:
-            assert False
-
-        gms = gms[isort]
-        gms_softclip = gms_softclip[isort]
-        models = models[isort, :]
 
         iorder = num.empty_like(isort)
         iorder = num.arange(iorder.size)
@@ -1046,64 +1044,64 @@ class ChainStatsSortPlot(PlotConfig):
                                    - par.scaled(bounds[ipar])[0])
 
             axes.set_ylim(*fixlim(*par.scaled(bounds[ipar])))
-            axes.set_xlim(0, history.nmodels)
+            axes.set_xlim(0, nmodels)
 
-            # n_decim = int(chains.history.nmodels / chains.decimation)
+            # n_decim = int(chains.nmodels / chains.decimation)
             # iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
 
             # pick the end members of par distributions (mean models of chains)
             # at the end of the optimization run
-            ibs_min = num.argmin(bs_means_hist[ipar, :, -1])
-            ibs_max = num.argmax(bs_means_hist[ipar, :, -1])
+            ibs_min = num.argmin(chains_mean_hist[ipar, :, -1])
+            ibs_max = num.argmax(chains_mean_hist[ipar, :, -1])
 
             # pick the end members of par distributions (best models of chains)
             # at the end of the optimization run
-            ibs_best_min = num.argmin(bs_means_hist[ipar, :, -1])
-            ibs_best_max = num.argmax(bs_means_hist[ipar, :, -1])
+            ibs_best_min = num.argmin(chains_mean_hist[ipar, :, -1])
+            ibs_best_max = num.argmax(chains_mean_hist[ipar, :, -1])
 
             # convergence criteria:
             # 4 x std of bounding bs chains is less than their mean distance
             sep_fact = 4.
             conv_crit_vec_m = 0.5 * sep_fact * \
-                (bs_stds_hist[ipar, ibs_min, :]
-                 + bs_stds_hist[ipar, ibs_max, :]) / \
+                (chains_std_hist[ipar, ibs_min, :]
+                 + chains_std_hist[ipar, ibs_max, :]) / \
                 num.abs(
-                    bs_means_hist[ipar, ibs_max, :]
-                    - bs_means_hist[ipar, ibs_min, :])
+                    chains_mean_hist[ipar, ibs_max, :]
+                    - chains_mean_hist[ipar, ibs_min, :])
             conv_crit_vec_m = num.where(conv_crit_vec_m >= 1, num.nan, 1.)
 
             conv_crit_vec_b = 0.5 * sep_fact * \
-                (bs_stds_hist[ipar, ibs_best_min, :]
-                 + bs_stds_hist[ipar, ibs_best_max, :]) / \
-                num.abs(bs_best_models_hist[ipar, ibs_best_max, :]
-                        - bs_best_models_hist[ipar, ibs_best_min, :])
+                (chains_std_hist[ipar, ibs_best_min, :]
+                 + chains_std_hist[ipar, ibs_best_max, :]) / \
+                num.abs(chains_best_models_hist[ipar, ibs_best_max, :]
+                        - chains_best_models_hist[ipar, ibs_best_min, :])
             conv_crit_vec_b = num.where(conv_crit_vec_b >= 1, num.nan, 1.)
 
             # prepares stds for filled plotting
             bs_stds_plot_vec = num.zeros((2*len(iimodels), 2))
             # print(bs_stds_plot_vec)
             bs_stds_plot_vec[:len(iimodels), :] = \
-                par.scaled(bs_stds_hist[ipar, [ibs_min, ibs_max], :]).T + \
-                par.scaled(bs_means_hist[ipar, [ibs_min, ibs_max], :]).T
+                par.scaled(chains_std_hist[ipar, [ibs_min, ibs_max], :]).T + \
+                par.scaled(chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T
 
             # print(bs_stds_plot_vec[1:20])
-            # print(bs_means_hist[ipar, [ibs_min, ibs_max], 1:20])
+            # print(chains_mean_hist[ipar, [ibs_min, ibs_max], 1:20])
 
             bs_stds_plot_vec[len(iimodels):, :] = \
                 num.flipud(
-                    par.scaled(bs_means_hist[ipar, [ibs_min, ibs_max], :]).T -
-                    par.scaled(bs_stds_hist[ipar, [ibs_min, ibs_max], :]).T)
+                    par.scaled(chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T -
+                    par.scaled(chains_std_hist[ipar, [ibs_min, ibs_max], :]).T)
 
-            iter_plot_vec = num.zeros((2*len(iimodels), 2))
-            iter_plot_vec[:len(iimodels), :] = \
-                num.repeat([iimodels], 2, axis=0).T
-            iter_plot_vec[len(iimodels):, :] = \
-                num.flipud(num.repeat([iimodels], 2, axis=0).T)
-            # print(  bs_means_hist)
+            iter_plot_vec = num.zeros((2*nmodels, 2))
+            iter_plot_vec[:nmodels, :] = \
+                num.repeat(iimodels, 2, axis=0).T
+            iter_plot_vec[nmodels:, :] = \
+                num.flipud(num.repeat(iimodels, 2, axis=0).T)
+            # print(  chains_mean_hist)
             axes.fill(iter_plot_vec, bs_stds_plot_vec, alpha=.2)
             # axes.plot(
-            #    num.repeat([iimodels], 2, axis=0).T,
-            #    par.scaled(bs_means_hist[ipar, [ibs_min, ibs_max], :]).T,
+            #    num.repeat(iimodels, 2, axis=0).T,
+            #    par.scaled(chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T,
             #    linewidth=0.6)
             axes.scatter(
                 imodels[ibest], par.scaled(models[ibest, ipar]), s=msize,
@@ -1111,35 +1109,35 @@ class ChainStatsSortPlot(PlotConfig):
                 rasterized=True)
             axes.plot(
                 iimodels,
-                par.scaled(bs_means_hist[ipar, ibs_max, :]).T,
+                par.scaled(chains_mean_hist[ipar, ibs_max, :]).T,
                 '--r', linewidth=0.6)
             axes.plot(
                 iimodels,
-                par.scaled(bs_means_hist[ipar, ibs_min, :]).T,
+                par.scaled(chains_mean_hist[ipar, ibs_min, :]).T,
                 '--b', linewidth=0.6)
 
             axes.plot(
                 iimodels,
-                par.scaled(bs_best_models_hist[ipar, ibs_best_max, :]).T,
+                par.scaled(chains_best_models_hist[ipar, ibs_best_max, :]).T,
                 'r', linewidth=1.)
 
             axes.plot(
                 iimodels,
-                par.scaled(bs_best_models_hist[ipar, ibs_best_min, :]).T,
+                par.scaled(chains_best_models_hist[ipar, ibs_best_min, :]).T,
                 'b', linewidth=1.)
 
             axes.plot(
-                num.repeat([iimodels], 2, axis=0).T,
+                num.repeat(iimodels, 2, axis=0).T,
                 par.scaled(
                     conv_crit_vec_m
-                    * bs_means_hist[ipar, [ibs_min, ibs_max], :]).T,
+                    * chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T,
                 linewidth=2.6, color='m')
 
             axes.plot(
-                num.repeat([iimodels], 2, axis=0).T,
+                num.repeat(iimodels, 2, axis=0).T,
                 par.scaled(
                     conv_crit_vec_b
-                    * bs_best_models_hist[
+                    * chains_best_models_hist[
                         ipar, [ibs_best_min, ibs_best_max], :]).T,
                 linewidth=2.6, color='c')
 
@@ -1185,7 +1183,7 @@ class ChainStatsSortPlot(PlotConfig):
             config_axes(axes, nfx, nfy, impl, npar + idep, npar + ndep + 1)
 
             axes.set_ylim(*fixlim(*par.scaled(bounds[npar + idep])))
-            axes.set_xlim(0, history.nmodels)
+            axes.set_xlim(0, nmodels)
 
             ys = problem.make_dependant(models[ibest, :], par.name)
             axes.scatter(
@@ -1244,11 +1242,13 @@ class ChainStatsSortPlot(PlotConfig):
 
 class ChainVariationPlot(PlotConfig):
     '''
-    Shows model parameter statistics of chains evolving through the optimisation,
+    Shows model parameter statistics of chains
+    evolving through the optimisation,
     with mean models ans standard deviation of the highscore models.
     '''
-
     name = 'chainvariation'
+    report_plot = False
+
     size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)
@@ -1270,12 +1270,7 @@ class ChainVariationPlot(PlotConfig):
             self.draw_figures(history, optimiser),
             title=u'Chain Parameter Variation',
             section='optimiser',
-            description=u'''
-Shows the changes in chain statistics (changes in the coefficient of variation 
-through the optimization. Convergence means changegs become small towards the
-end of the routine.
-
-''',
+            description=self.__class__.__doc__,
             feather_icon='fast-forward')
 
     def draw_figures(self, history, optimiser):
@@ -1290,24 +1285,25 @@ end of the routine.
 
         problem = history.problem
         models = history.models
+        nmodels = history.nmodels
         chains = optimiser.chains(problem, history)
-        chains.load()
+        chains.load(calculate_chain_stats=True)
 
         row_names = [p.name_nogroups for p in problem.parameters]
         row_names.append('Misfit')
 
-        bs_means_hist = chains.bs_means_history
-        bs_stds_hist = chains.bs_stds_history
+        chains_mean_hist = chains.chains_mean_history
+        chains_std_hist = chains.chains_std_history
 
         bs_stds_scale = \
-            bs_stds_hist[:, :, int(history.nmodels/chains.decimation/2.)]
+            chains_std_hist[:, :, int(nmodels/chains.decimation/2.)]
 
-        bs_coeffvaria = num.abs(num.divide(bs_stds_hist, bs_means_hist))
+        bs_coeffvaria = num.abs(num.divide(chains_std_hist, chains_mean_hist))
 
         bs_variation = num.abs(num.gradient(bs_coeffvaria, axis=2))
         bs_mean_variation = num.mean(bs_variation, axis=1)
 
-        bs_stds_grad = num.gradient(bs_stds_hist, axis=2) / \
+        bs_stds_grad = num.gradient(chains_std_hist, axis=2) / \
             bs_stds_scale[:, :, num.newaxis]
 
         glob_mean = colum_array(chains.mean_model(ichain=0))
@@ -1341,8 +1337,6 @@ end of the routine.
             imodels = imodels[isort]
         elif sort_by == 'misfit':
             imodels = num.arange(imodels.size)
-        else:
-            assert False
 
         gms = gms[isort]
         gms_softclip = gms_softclip[isort]
@@ -1418,8 +1412,8 @@ end of the routine.
             # n_decim = int(chains.history.nmodels / chains.decimation)
             # iter_decim = (num.arange(0, n_decim) + 1) * chains.decimation
 
-            ibs_min = num.argmin(bs_means_hist[ipar, :, -1])
-            ibs_max = num.argmax(bs_means_hist[ipar, :, -1])
+            ibs_min = num.argmin(chains_mean_hist[ipar, :, -1])
+            ibs_max = num.argmax(chains_mean_hist[ipar, :, -1])
 
             # make variation relative to the first nstart values
             # ... to find something like a percent threshold as convergence
@@ -1433,32 +1427,32 @@ end of the routine.
             # prepares stds for filled plotting
             bs_cvar_plot_vec = num.zeros((len(iimodels)))
             # bs_stds_plot_vec[:len(iimodels), :] = \
-            #        par.scaled(bs_stds_hist[ipar, [ibs_min, ibs_max], :]).T + \
-            #       par.scaled(bs_means_hist[ipar, [ibs_min, ibs_max], :]).T
+            #        par.scaled(chains_std_hist[ipar, [ibs_min, ibs_max], :]).T + \
+            #       par.scaled(chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T
             # bs_stds_plot_vec[len(iimodels):, :] = \
-            #        num.flipud(par.scaled(bs_means_hist[ipar, [ibs_min, ibs_max], :]).T - \
-            #                   par.scaled(bs_stds_hist[ipar, [ibs_min, ibs_max], :]).T)
+            #        num.flipud(par.scaled(chains_mean_hist[ipar, [ibs_min, ibs_max], :]).T - \
+            #                   par.scaled(chains_std_hist[ipar, [ibs_min, ibs_max], :]).T)
 
             iter_plot_vec = num.zeros((2*len(iimodels), 2))
             iter_plot_vec[:len(iimodels), :] = \
-                num.repeat([iimodels], 2, axis=0).T
+                num.repeat(iimodels, 2, axis=0).T
             iter_plot_vec[len(iimodels):, :] = \
-                num.flipud(num.repeat([iimodels], 2, axis=0).T)
+                num.flipud(num.repeat(iimodels, 2, axis=0).T)
             print(num.shape(bs_mean_variation))
             # axes.fill(iter_plot_vec , bs_stds_plot_vec, alpha = 0.2)
-            # axes.plot(num.repeat([iimodels], chains.nchains, axis=0).T,
+            # axes.plot(num.repeat(iimodels, chains.nchains, axis=0).T,
             #          bs_stds_grad[ipar, :, :].T, linewidth=0.6)
 
             bs_relative_var_hist_scaled = par.scaled(bounds[ipar])[0] \
                 + bs_relative_mean_variation \
                 * (par.scaled(bounds[ipar])[1] - par.scaled(bounds[ipar])[0])
 
-            axes.plot(num.repeat([iimodels], chains.nchains, axis=0).T,
+            axes.plot(num.repeat(iimodels, chains.nchains, axis=0).T,
                       bs_variation[ipar, :, :].T,
                       color = [0.7, 0.7, 0.7],
                       linewidth=0.6)
             axes.plot(
-                num.repeat([iimodels], 2, axis=0).T,
+                num.repeat(iimodels, 2, axis=0).T,
                 bs_variation[ipar, [ibs_min, ibs_max], :].T, linewidth=.6)
 
             axes.plot(
@@ -1560,5 +1554,5 @@ end of the routine.
 
 
 def get_plot_classes():
-    return [SequencePlot, ContributionsPlot, BootstrapPlot, ChainStatsPlot, 
+    return [SequencePlot, ContributionsPlot, BootstrapPlot, ChainStatsPlot,
             ChainStatsSortPlot, ChainVariationPlot]

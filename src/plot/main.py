@@ -20,7 +20,7 @@ def get_all_plot_classes():
     return sorted(list(plot_classes), key=lambda plot: plot.name)
 
 
-def get_plot_config_collection(env=None, plot_names=None):
+def get_plot_config_collection(env=None, plot_names=None, report_only=False):
 
     if env is None:
         plot_classes = get_all_plot_classes()
@@ -29,6 +29,9 @@ def get_plot_config_collection(env=None, plot_names=None):
 
     plots = []
     for plot_class in plot_classes:
+        if not plot_class.report_plot and report_only:
+            continue
+
         if plot_names is None or plot_class.name in plot_names:
             plots.append(plot_class())
 
@@ -48,10 +51,12 @@ def make_plots(
         plot_config_collection=None,
         plot_names=None,
         plots_path=None,
+        report_only=False,
         show=False):
 
     if plot_config_collection is None:
-        plot_config_collection = get_plot_config_collection(env, plot_names)
+        plot_config_collection = get_plot_config_collection(
+            env, plot_names, report_only)
 
     if plots_path is None:
         plots_path = env.get_plots_path()

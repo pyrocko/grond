@@ -221,7 +221,7 @@ class DirectedSamplerPhase(SamplerPhase):
             return s or 1.0
 
     def get_raw_sample(self, problem, iiter, chains):
-        #print('raw iiter', iiter)
+        # print('raw iiter', iiter)
         rstate = self.get_rstate()
         factor = self.get_scatter_scale_factor(iiter)
         npar = problem.nparameters
@@ -357,8 +357,6 @@ class Chains(object):
     def __init__(
             self, problem, history, nchains, nlinks_cap):
 
-        #history.add_listener(self)
-
         self.problem = problem
         self.history = history
         self.nchains = nchains
@@ -375,21 +373,29 @@ class Chains(object):
         self._acceptance_history = num.zeros(
             (self.nchains, 1024), dtype=num.bool)
 
-        self._uniqueness_history = num.zeros((self.history.nmodels))
+        self._uniqueness_history = num.zeros(1024, dtype=num.float)
+
+        self._has_chain_stats = False
+        self.chains_best_model_history = None
+        self.chains_mean_history = None
+        self.chains_std_history = None
 
         history.add_listener(self)
 
-    def goto(self, n=None):
-        self._uniqueness_history = num.zeros((self.history.nmodels))
+    def goto(self, n=None, calculate_chain_stats=False):
 
-        self._bs_best_models_history = num.zeros(
-            (self.npar, self.nchains, self.history.nmodels))
+        if calculate_chain_stats and not self._has_chain_stats:
+            assert n is not None, \
+                'chain statistics can only be calculated on finished runs'
+            logger.info('calculating chain statistics')
 
-        self._bs_means_history = num.zeros(
-            (self.npar, self.nchains, self.history.nmodels))
+            history_shape = (self.npar, self.nchains, n)
+            self.chains_best_model_history = num.zeros(history_shape)
+            self.chains_mean_history = num.zeros(history_shape)
+            self.chains_std_history = num.zeros(history_shape)
 
-        self._bs_stds_history = num.zeros(
-                (self.npar, self.nchains, self.history.nmodels))
+            self._has_chain_stats = True
+            self.read = 0  # force analysis
 
         if n is None:
             n = self.history.nmodels
@@ -397,36 +403,31 @@ class Chains(object):
         n = min(self.history.nmodels, n)
 
         assert self.nread <= n
-
         while self.nread < n:
             nread = self.nread
-            # bootstrap misfit last model
+
             gbms = self.history.bootstrap_misfits[nread, :]
-            # print('gbms', gbms.shape)
             self.chains_m[:, self.nlinks] = gbms
             self.chains_i[:, self.nlinks] = nread
 
-            nbootstrap = self.chains_m.shape[0]
-            # print('Nboot', nbootstrap)
-            npar = self.mean_model(ichain=0).shape[0]
-
             self.nlinks += 1
             chains_m = self.chains_m
-            # print('chain misfit',chains_m.shape)
             chains_i = self.chains_i
 
-            chain_best_models = num.zeros((npar, nbootstrap))
-            chain_mean_models = num.zeros((npar, nbootstrap))
-            chain_std_models = num.zeros((npar, nbootstrap))
-            for ichain in range(nbootstrap):
+            for ichain in range(self.nchains):
                 isort = num.argsort(chains_m[ichain, :self.nlinks])
                 chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
-                chain_best_models[:, ichain] = self.best_model(ichain=ichain)
-                chain_mean_models[:, ichain] = self.mean_model(ichain=ichain)
-                chain_std_models[:, ichain] = self.standard_deviation_models(
-                    ichain=ichain, estimator='standard_deviation_single_chain')
+                if calculate_chain_stats:
+                    idx = (slice(None), ichain, nread)
+
+                    self.chains_best_model_history[idx] = self.best_model(ichain)  # noqa
+                    self.chains_mean_history[idx] = self.mean_model(ichain)
+                    self.chains_std_history[idx] = \
+                        self.standard_deviation_models(
+                            ichain=ichain,
+                            estimator='standard_deviation_single_chain')
 
             if self.nlinks == self.nlinks_cap:
                 accept = (chains_i[:, self.nlinks_cap-1] != nread) \
@@ -437,9 +438,6 @@ class Chains(object):
 
             self._append_acceptance(accept)
             self._append_uniqueness(self.uniqueness())
-            self._append_bs_best_models(chain_best_models)
-            self._append_bs_means(chain_mean_models)
-            self._append_bs_stds(chain_std_models)
 
             self.accept_sum += accept
             self.nread += 1
@@ -457,7 +455,6 @@ class Chains(object):
             return self.chains_i[:, :self.nlinks].ravel()
 
     def models(self, ichain=None):
-        # print('drawn models', ichain, self.history.models[self.indices(ichain), :].shape)
         return self.history.models[self.indices(ichain), :]
 
     def model(self, ichain, ilink):
@@ -491,15 +488,13 @@ class Chains(object):
            A model is unique when it
            differs in at least one
            parameter from others.'''
-        models = self.models()
-        if models is not None:
-            unique = num.unique(models)
-            nunique = unique.size
-            uniqueness = nunique / models.size
-        else:
-            uniqueness = 0.
 
-        return uniqueness
+        models = self.models()
+        if models is None:
+            return 0.
+
+        unique = num.unique(models)
+        return unique.size / models.size
 
     def stats_model_distances(self, ichain=0):
         ''' Model distances within the chain
@@ -538,11 +533,12 @@ class Chains(object):
         return self._acceptance_history[:, :self.nread]
 
     def _append_acceptance(self, acceptance):
-        if self.nread >= self._acceptance_history.shape[1]:
+        arr_cap = self._acceptance_history.shape[1]
+        if self.nread >= arr_cap:
             new_buf = num.zeros(
                 (self.nchains, nextpow2(self.nread+1)), dtype=num.bool)
-            new_buf[:, :self._acceptance_history.shape[1]] = \
-                self._acceptance_history
+            new_buf[:, :arr_cap] = self._acceptance_history
+
             self._acceptance_history = new_buf
         self._acceptance_history[:, self.nread] = acceptance
 
@@ -551,37 +547,14 @@ class Chains(object):
         return self._uniqueness_history[:self.nread]
 
     def _append_uniqueness(self, uniqueness):
-        self._uniqueness_history[self.nread] = uniqueness
+        arr_cap = self._uniqueness_history.size
+        if self.nread >= arr_cap:
+            new_buf = num.zeros(nextpow2(self.nread+1), dtype=num.float)
+            new_buf[:arr_cap] = self._uniqueness_history_history
 
-    @property
-    def bs_best_models_history(self):
-        nbests_chains = self.nread+1
-        return self._bs_best_models_history[:, :, :self.nread]
+            self._uniqueness_history = new_buf
 
-    def _append_bs_best_models(self, bs_best_models):
-        nbests_chains = self.nread+1
-        self._bs_best_models_history[:, :, self.nread] = \
-            num.reshape(bs_best_models, (self.npar, self.nchains))
-
-    @property
-    def bs_means_history(self):
-        nmeans_chains = self.nread+1
-        return self._bs_means_history[:, :, :self.nread]
-
-    def _append_bs_means(self, bs_means):
-        nmeans_chains = self.nread+1
-        self._bs_means_history[:, :, self.nread] = \
-            num.reshape(bs_means, (self.npar, self.nchains))
-
-    @property
-    def bs_stds_history(self):
-        nstds_chains = self.nread+1
-        return self._bs_stds_history[:, :, :self.nread]
-
-    def _append_bs_stds(self, bs_stds):
-        nstd_chains = self.nread+1
-        self._bs_stds_history[:, :, self.nread] = \
-            num.reshape(bs_stds, (self.npar, self.nchains))
+        self._acceptance_history[self.nread] = uniqueness
 
 
 @has_get_plot_classes
@@ -835,7 +808,6 @@ class HighScoreOptimiser(Optimiser):
         bs_mean = colum_array(chains.mean_model(ichain=None))
         bs_std = colum_array(chains.standard_deviation_models(
             ichain=None, estimator='standard_deviation_all_chains'))
-        #bs_cvar = bs_std / bs_mean
 
         glob_mean = colum_array(chains.mean_model(ichain=0))
         glob_mean[-1] = num.mean(chains.misfits(ichain=0))

@@ -127,6 +127,8 @@ class HTML(PlotFormat):
 
 class PlotConfig(Object):
     name = 'undefined'
+    report_plot = True
+
     variant = String.T(
         default='default',
         help='Variant of the plot (if applicable)')
