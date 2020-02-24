@@ -385,17 +385,18 @@ class Chains(object):
     def goto(self, n=None, calculate_chain_stats=False):
 
         if calculate_chain_stats and not self._has_chain_stats:
-            assert n is not None, \
+            assert n is None, \
                 'chain statistics can only be calculated on finished runs'
             logger.info('calculating chain statistics')
 
-            history_shape = (self.npar, self.nchains, n)
+            n = self.history.nmodels
+            history_shape = (n, self.nchains, self.npar)
             self.chains_best_model_history = num.zeros(history_shape)
             self.chains_mean_history = num.zeros(history_shape)
             self.chains_std_history = num.zeros(history_shape)
 
             self._has_chain_stats = True
-            self.read = 0  # force analysis
+            self.nread = 0  # force analysis
 
         if n is None:
             n = self.history.nmodels
@@ -419,16 +420,6 @@ class Chains(object):
                 chains_m[ichain, :self.nlinks] = chains_m[ichain, isort]
                 chains_i[ichain, :self.nlinks] = chains_i[ichain, isort]
 
-                if calculate_chain_stats:
-                    idx = (slice(None), ichain, nread)
-
-                    self.chains_best_model_history[idx] = self.best_model(ichain)  # noqa
-                    self.chains_mean_history[idx] = self.mean_model(ichain)
-                    self.chains_std_history[idx] = \
-                        self.standard_deviation_models(
-                            ichain=ichain,
-                            estimator='standard_deviation_single_chain')
-
             if self.nlinks == self.nlinks_cap:
                 accept = (chains_i[:, self.nlinks_cap-1] != nread) \
                     .astype(num.bool)
@@ -436,14 +427,26 @@ class Chains(object):
             else:
                 accept = num.ones(self.nchains, dtype=num.bool)
 
+            if calculate_chain_stats:
+                idx = (nread, slice(None), slice(None))
+                self.chains_std_history[idx] = \
+                    self.standard_deviation_models(
+                        ichain=None,
+                        estimator='standard_deviation_single_chain')
+                self.chains_best_model_history[idx] = self.best_models()
+                self.chains_mean_history[idx] = self.mean_models()
+
             self._append_acceptance(accept)
             self._append_uniqueness(self.uniqueness())
 
             self.accept_sum += accept
             self.nread += 1
 
-    def load(self):
-        return self.goto()
+    def load(self, calculate_chain_stats=False):
+        t0 = time.time()
+        self.goto(None, calculate_chain_stats)
+        logger.debug('loaded chains in %.2f s (calculate_chain_stats=%s)',
+                     time.time() - t0, calculate_chain_stats)
 
     def extend(self, ioffset, n, models, misfits, sampler_contexts):
         self.goto(ioffset + n)
@@ -474,6 +477,11 @@ class Chains(object):
         xs = self.models(ichain)
         return num.mean(xs, axis=0)
 
+    def mean_models(self):
+        xs = self.models() \
+            .reshape((self.nlinks, self.nchains, self.npar))
+        return num.mean(xs, axis=0)
+
     def median_model(self, ichain=None):
         xs = self.models(ichain)
         return num.median(xs, axis=0)
@@ -481,6 +489,11 @@ class Chains(object):
     def best_model(self, ichain=0):
         xs = self.models(ichain)
         return xs[0]
+
+    def best_models(self):
+        xs = self.models() \
+            .reshape((self.nlinks, self.nchains, self.npar))
+        return xs[0, :, :]
 
     def uniqueness(self):
         ''' Ratio of unique models in
@@ -493,8 +506,9 @@ class Chains(object):
         if models is None:
             return 0.
 
-        unique = num.unique(models)
-        return unique.size / models.size
+        indices = self.indices()
+        unique = num.unique(indices)
+        return unique.size / indices.size
 
     def stats_model_distances(self, ichain=0):
         ''' Model distances within the chain
@@ -550,11 +564,11 @@ class Chains(object):
         arr_cap = self._uniqueness_history.size
         if self.nread >= arr_cap:
             new_buf = num.zeros(nextpow2(self.nread+1), dtype=num.float)
-            new_buf[:arr_cap] = self._uniqueness_history_history
+            new_buf[:arr_cap] = self._uniqueness_history
 
             self._uniqueness_history = new_buf
 
-        self._acceptance_history[self.nread] = uniqueness
+        self._uniqueness_history[self.nread] = uniqueness
 
 
 @has_get_plot_classes

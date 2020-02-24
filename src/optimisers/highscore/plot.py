@@ -300,24 +300,16 @@ characteristics of the optimisation algorithm.
         history = environ.get_history()
         chains = optimiser.chains(problem, history)
 
-        import time
-        tt = time.time()
-
         chains.load()
 
         acceptance = chains.acceptance_history
-        uniqueness = history.sampler_contexts[:, 4]
-        if uniqueness[-1] == -1:
-            uniqueness = chains.uniqueness_history * 100.
-        print(uniqueness)
-        # print('sma',history.sampler_contexts[:, 4])
+        uniqueness = chains.uniqueness_history * 100.
 
         nmodels_rate = history.nmodels - (nwindow - 1)
         if nmodels_rate < 1:
             logger.warning(
                 'Cannot create plot acceptance: insufficient number of tested '
                 'models.')
-
             return
 
         acceptance_rate = num.zeros((history.nchains, nmodels_rate))
@@ -356,7 +348,6 @@ characteristics of the optimisation algorithm.
             color=mpl_color('skyblue2'),
             label='Popularity of Accepted Models',
             alpha=0.3)
-        
 
         if show_raw_acceptance_rates:
             for ichain in range(chains.nchains):
@@ -418,7 +409,7 @@ represent different sampler phases.
         nwindow2 = max(1, int(history.nmodels / (self.size_inch[1] * 100)))
         nmodels_rate2 = history.nmodels - (nwindow2 - 1)
         acceptance_rate2 = num.zeros((history.nchains, nmodels_rate2))
-        
+
         for ichain in range(history.nchains):
             acceptance_rate2[ichain, :] = trace.moving_sum(
                 acceptance[ichain, :], nwindow2, mode='valid') \
@@ -444,21 +435,22 @@ represent different sampler phases.
             axesright = axes.twinx()
 
             axesright.plot(
-                imodels, 
-                history.sampler_contexts[:, 4], 
-                linewidth=2.3, 
+                imodels,
+                history.sampler_contexts[:, 4],
+                linewidth=2.3,
                 color=mpl_color('skyblue3'),
                 label='Model uniqueness')
             axesright.plot(
-                imodels, 
-                uniqueness, 
+                imodels,
+                uniqueness,
                 linewidth=2.3,
                 color=mpl_color('skyblue3'),
                 label='Model Uniqueness')
-            axesright.set_ylabel('Model Uniqueness [%]', color=mpl_color('skyblue3'))
+            axesright.set_ylabel(
+                'Model Uniqueness [%]',
+                color=mpl_color('skyblue3'))
             axesright.set_ylim([0, 100])
             axesright.tick_params(axis='y', labelcolor=mpl_color('skyblue3'))
-
 
         axes.set_xlabel('Iteration')
         axes.set_ylabel('Bootstrap Chain')
@@ -467,8 +459,6 @@ represent different sampler phases.
         axes.set_ylim(0, history.nchains - 1)
 
         axes.xaxis.grid(alpha=.4)
-        
-
 
         yield (
             PlotItem(
@@ -481,7 +471,6 @@ Black dots mark the base chains used when sampling new models (directed sampler
 phases only).
 ''' % nwindow2),
             fig)
-
 
 
 __all__ = [
