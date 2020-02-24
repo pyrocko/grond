@@ -24,6 +24,7 @@ subcommands.
     events
     check
     go
+    continue
     forward
     harvest
     plot

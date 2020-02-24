@@ -8,7 +8,7 @@ SPHINXPROJ    = grond
 SOURCEDIR     = source
 BUILDDIR      = build
 
-GRONDCOMMANDS = scenario init events check go forward harvest plot movie \
+GRONDCOMMANDS = scenario init events check go continue forward harvest plot movie \
    export report diff qc-polarization upgrade-config version 
 
 # Put it first so that "make" without argument is like "make help".
