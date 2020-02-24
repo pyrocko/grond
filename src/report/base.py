@@ -118,7 +118,8 @@ def copytree(src, dst):
 
 
 def report(env, report_config=None, update_without_plotting=False,
-           make_index=True, make_archive=True, nthreads=0):
+           make_index=True, make_archive=True, nthreads=0,
+           report_plots_only=True):
 
     if report_config is None:
         report_config = ReportConfig()
@@ -190,7 +191,8 @@ def report(env, report_config=None, update_without_plotting=False,
             plot.make_plots(
                 env,
                 plots_path=op.join(entry_path, 'plots'),
-                plot_config_collection=pcc)
+                plot_config_collection=pcc,
+                report_plots_only=report_plots_only)
 
         try:
             run_info = env.get_run_info()
@@ -214,7 +216,7 @@ def report(env, report_config=None, update_without_plotting=False,
         fn = op.join(entry_path, 'index.yaml')
         guts.dump(rie, filename=fn)
 
-    except Exception as e:
+    except BaseException as e:
         logger.warn(
             'Failed to create report entry, removing incomplete subdirectory: '
             '%s' % entry_path)

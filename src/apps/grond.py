@@ -1087,7 +1087,9 @@ def command_tag(args):
         die('Errors occurred, see log messages above.')
 
 
-def make_report(env_args, event_name, conf, update_without_plotting, nthreads):
+def make_report(
+        env_args, event_name, conf, update_without_plotting, nthreads,
+        report_plots_only):
     from grond.environment import Environment
     from grond.report import report
     try:
@@ -1100,7 +1102,8 @@ def make_report(env_args, event_name, conf, update_without_plotting, nthreads):
             update_without_plotting=update_without_plotting,
             make_index=False,
             make_archive=False,
-            nthreads=nthreads)
+            nthreads=nthreads,
+            report_plots_only=report_plots_only)
 
         return True
 
@@ -1185,6 +1188,11 @@ def command_report(args):
             help='set number of threads per process (default: 1).'
                  'Set to 0 to use all available cores.')
         parser.add_option(
+            '--all-plots',
+            dest='all_plots',
+            action='store_true',
+            help='In-depth statistic plots will be included in the report.')
+        parser.add_option(
             '--no-archive',
             dest='no_archive',
             action='store_true',
@@ -1239,7 +1247,7 @@ def command_report(args):
         for rundir in rundirs:
             payload.append((
                 [rundir], None, conf, options.update_without_plotting,
-                options.nthreads))
+                options.nthreads, not options.all_plots))
 
     elif args:
         try:
@@ -1247,7 +1255,7 @@ def command_report(args):
             for event_name in env.get_selected_event_names():
                 payload.append((
                     args, event_name, conf, options.update_without_plotting,
-                    options.nthreads))
+                    options.nthreads, not options.all_plots))
 
         except grond.GrondError as e:
             die(str(e))

@@ -577,8 +577,9 @@ class ChainStatsPlot(PlotConfig):
     deviations (filled, transparent areas) of each chain's
     highscore list.
     '''
-
     name = 'chainstats'
+    report_plot = False
+
     size_cm = Tuple.T(2, Float.T(), default=(14., 6.))
     misfit_cutoff = Float.T(optional=True)
     ibootstrap = Int.T(optional=True)

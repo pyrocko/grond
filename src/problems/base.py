@@ -1030,23 +1030,14 @@ class ModelHistory(object):
         ''' A parameter that gives the '''
         chains_coeff_variation = []
         for chain in num.arange(self.nchains):
-            models = get_sorted_models(self, chain = chain)
+            models = get_sorted_models(self, chain=chain)
             mcov = num.matrix(num.cov(models.T))
             mstd = num.matrix(num.sqrt(num.diag(models_cov)))
-            #models_mean = num.mean(models, axis=0)
+            # models_mean = num.mean(models, axis=0)
             norm_mstd = (mstd.T * mstd)**2
-            multivar_coeff_variation = num.sqrt((mstd.T * mcov * mstd / norm_mstd))
+            multivar_coeff_variation = num.sqrt((
+                mstd.T * mcov * mstd / norm_mstd))
             chains_coeff_variation.append(multivar_coeff_variation)
-
-    #def has_converged(self, threshold = ):
-        '''
-        Analyses the coefficients of variations
-        (
-        and 
-        decides if a sufficient convergence is reached.
-
-        '''
-    #    coeff_varia = get_coeff_variation(self)
 
 
 def get_nmodels(dirname, problem):
@@ -1063,7 +1054,8 @@ def get_nmodels(dirname, problem):
 
 def load_problem_info_and_data(dirname, subset=None, nchains=None):
     problem = load_problem_info(dirname)
-    models, misfits, bootstraps, sampler_contexts = load_problem_data(xjoin(dirname, subset), problem, nchains=nchains)
+    models, misfits, bootstraps, sampler_contexts = \
+        load_problem_data(xjoin(dirname, subset), problem, nchains=nchains)
 
     return problem, models, misfits, bootstraps, sampler_contexts
 
