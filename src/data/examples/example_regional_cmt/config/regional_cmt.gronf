@@ -140,6 +140,11 @@ target_groups:
   # Name of the GF Store to use
   store_id: 'crust2_j3'
 
+  # Instead of defining a GF store, the Crust2StoreIDSelector can be used 
+  # to automatically pick the CRUST 2.0 model based on the event location.
+  # store_id_selector: !grond.Crust2StoreIDSelector
+  #   template: crust2_${id}
+
 
 - !grond.WaveformTargetGroup
 

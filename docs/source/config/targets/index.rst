@@ -40,6 +40,11 @@ Parameters valid for all types of ``MisfitTargets`` are:
   ``store_id``
       Name of the GF Store to use.
 
+  ``store_id_selector``
+      GF Store selectors can be used to select different stores, based on station location, source location or other characteristics. The Crust2StoreIDSelector can be used to pick CRUST 2.0 models based on the event location. 
+      A manual station to store ID mapping can be achieved using the StationDictStoreIDSelector with keys NET.STAT.
+
+
 
 Waveform targets
 ----------------
@@ -68,6 +73,9 @@ See the :doc:`dataset configuration <../dataset/index>` for loading waveforms an
         autoshift_penalty_max: 0.0
       interpolation: multilinear
       store_id: crust2_ib
+            
+      # store_id_selector: !grond.Crust2StoreIDSelector
+      #   template: crust2_${id}
 
 
 .. glossary ::
