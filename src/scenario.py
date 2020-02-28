@@ -87,7 +87,7 @@ class GrondScenario(object):
     def get_scenario(self):
         if self.rebuild:
             scenario_file = op.join(self.project_dir, 'data', 'scenario',
-                                    'scenario.yml')
+                                     'scenario.yml')
             sc = guts.load(filename=scenario_file)
             return sc
 
@@ -120,6 +120,11 @@ class GrondScenario(object):
         self.create_project_dir(force)
         util.ensuredir(self.get_gf_stores_dir())
 
+        data_dir = op.join(self.project_dir, self.data_dir)
+        util.ensuredir(data_dir)
+
+        scenario.dump(filename=op.join(data_dir, 'scenario.yml'))
+
         if gf_store_superdirs is None:
             engine1 = gf.LocalEngine(
                 use_config=True,
@@ -142,10 +147,6 @@ class GrondScenario(object):
 
         scenario.init_modelling(engine=engine2)
 
-        data_dir = op.join(self.project_dir, self.data_dir)
-        util.ensuredir(data_dir)
-
-        scenario.dump(filename=op.join(data_dir, 'scenario.yml'))
         scenario.dump_data(path=data_dir)
         if make_map:
             scenario.make_map(op.join(self.project_dir, 'scenario_map.pdf'))
