@@ -34,6 +34,7 @@ class GrondScenario(object):
         self.observations = observations
 
         self.rebuild = False
+        self._scenario = None
 
     def get_gf_stores_dir(self):
         return op.join(self.project_dir, 'gf_stores')
@@ -53,7 +54,8 @@ class GrondScenario(object):
 
     @property
     def stores_wanted(self):
-        return set([obs.store_id for obs in self.observations])
+        target_generators = self.get_scenario().target_generators
+        return set([t.store_id for t in target_generators])
 
     def symlink_gfstores(self, engine):
         logger.info('Symlinking Green\'s function stores...')
@@ -85,27 +87,29 @@ class GrondScenario(object):
         self.config_fn = filename
 
     def get_scenario(self):
-        if self.rebuild:
-            scenario_file = op.join(self.project_dir, 'data', 'scenario',
-                                     'scenario.yml')
-            sc = guts.load(filename=scenario_file)
-            return sc
+        if not self._scenario:
+            if self.rebuild:
+                scenario_file = op.join(self.project_dir, 'data', 'scenario',
+                                        'scenario.yml')
+                self._scenario = guts.load(filename=scenario_file)
 
-        if not self.observations:
-            raise AttributeError('No observations set,'
-                                 ' use .add_observation(Observation)'
-                                 ' to add one!')
-        if not self.problem:
-            raise AttributeError('No Source Problem set'
-                                 ' use .set_problem(Problem) to set one.')
+            else:
+                if not self.observations:
+                    raise AttributeError('No observations set,'
+                                         ' use .add_observation(Observation)')
+                if not self.problem:
+                    raise AttributeError('No Source Problem set,'
+                                         ' use .set_problem(Problem).')
 
-        return scenario.ScenarioGenerator(
-            center_lat=self.center_lat,
-            center_lon=self.center_lon,
-            radius=self.radius,
-            target_generators=[obs.get_scenario_target_generator()
-                               for obs in self.observations],
-            source_generator=self.problem.get_scenario_source_generator())
+                self._scenario = scenario.ScenarioGenerator(
+                    center_lat=self.center_lat,
+                    center_lon=self.center_lon,
+                    radius=self.radius,
+                    target_generators=[obs.get_scenario_target_generator()
+                                       for obs in self.observations],
+                    source_generator= self.problem.get_scenario_source_generator())  # noqa
+
+        return self._scenario
 
     def create_scenario(
             self,
@@ -138,7 +142,6 @@ class GrondScenario(object):
 
         scenario.ensure_gfstores(
             interactive=interactive)
-
         self.symlink_gfstores(engine1)
 
         engine2 = gf.LocalEngine(
