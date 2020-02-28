@@ -436,6 +436,10 @@ def command_scenario(args):
             default=True,
             action='store_false',
             help='suppress generation of map')
+        parser.add_option(
+            '--rebuild',
+            dest='rebuild', action='store_true', default=False,
+            help='Rebuild a manually configured grond scenario')
 
     parser, options, args = cl_parse('scenario', args, setup)
 
@@ -450,11 +454,16 @@ def command_scenario(args):
         sys.exit(1)
 
     from grond import scenario as grond_scenario
+
     try:
         scenario = grond_scenario.GrondScenario(
             project_dir,
             center_lat=options.lat, center_lon=options.lon,
             radius=options.radius*km)
+
+        scenario.rebuild = options.rebuild
+        if options.rebuild:
+            options.force = True
 
         if 'waveforms' in options.targets:
             if options.stationxml_paths:

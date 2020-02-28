@@ -3,7 +3,7 @@ import os
 import shutil
 import os.path as op
 
-from pyrocko import gf, scenario, util
+from pyrocko import gf, scenario, util, guts
 from pyrocko.gui import marker as pmarker
 import math
 
@@ -32,6 +32,8 @@ class GrondScenario(object):
 
         self.problem = problem
         self.observations = observations
+
+        self.rebuild = False
 
     def get_gf_stores_dir(self):
         return op.join(self.project_dir, 'gf_stores')
@@ -79,7 +81,15 @@ class GrondScenario(object):
             obs.update_dataset_config(dataset_config, self.data_dir)
         return dataset_config
 
+    def set_config(self, filename):
+        self.config_fn = filename
+
     def get_scenario(self):
+        if self.rebuild:
+            scenario_file = op.join(self.project_dir, 'data', 'scenario.yml')
+            sc = guts.load(filename=scenario_file)
+            return sc
+
         if not self.observations:
             raise AttributeError('No observations set,'
                                  ' use .add_observation(Observation)'
