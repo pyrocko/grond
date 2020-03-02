@@ -10,8 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `grond go` utilises `--threads` arguments for various tasks.
 - InSAR plots improved, now plotting 'best' and 'mean' // Improvements
 - `grond continue` subcommand to continue aborted and re-configured runs
+- Added optional keyword for `Parameters`, defaults to `optional=True`
+
 
 ### Changed
+- `RectangularSource` now has a `velocity` parameter
 - `RandomStateManager` is now centrally attached to `Problem`.
 
 ### Fixed
@@ -85,7 +88,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Transparent event loading and checking.
 - Noise analyser: target groups are now handled independently. Each group now
   uses its own threshold in weeding mode.
-- Improved error handling (`grond check`, instrument responses, 
+- Improved error handling (`grond check`, instrument responses,
 - Only exclude waveform targets when `distance_min` constraint is given in
   `problem_config`.
 - Improved method chapter in documentation.
@@ -114,7 +117,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - New problem config sections in `grond init`.
 
 ### Changed
-- Documentation of problems configurations are now centralised at 
+- Documentation of problems configurations are now centralised at
   `src/data/snippets`.
 - Output of `grond init list`.
 
@@ -150,7 +153,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   multiple misfits.
 - Optimiser can now be configured to yield exactly reproducible results by
   providing seed values for all random number generators involved.
-- Plots `sequence` and `fits_waveform`: layout as single plot figures by 
+- Plots `sequence` and `fits_waveform`: layout as single plot figures by
   default.
 
 ### Fixed

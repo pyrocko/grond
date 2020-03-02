@@ -4,7 +4,7 @@ import re
 import numpy as num
 import os.path as op
 from string import Template
-from pyrocko.guts import Object, String, Float, Unicode, StringPattern
+from pyrocko.guts import Object, String, Float, Unicode, StringPattern, Bool
 from pyrocko import util
 
 guts_prefix = 'grond'
@@ -161,6 +161,7 @@ class Parameter(Object):
     scale_factor = Float.T(default=1., optional=True)
     scale_unit = Unicode.T(optional=True)
     label = Unicode.T(optional=True)
+    optional = Bool.T(default=True, optional=True)
 
     def __init__(self, *args, **kwargs):
         if len(args) >= 1:

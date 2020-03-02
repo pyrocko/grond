@@ -53,7 +53,7 @@ problem configurations:
     defines the norm of combining several `normalization_family` in the global misfit. This integer value is 1 or larger. Please find here more information on the global `misfit calculation in Grond`_.
 
   ``ranges``
-    defines the bounds of individual and specific source model parameters. See the details for the source ranges of different problems in the sections below.
+    defines the bounds of individual and specific source model parameters. See the details for the source ranges of different problems in the sections below. Ranges are optional, if a parameter range is not given, the parameter will be fixed to a default value.
 
 An example for the configuration of a rectangular fault problem is given here:
 
@@ -253,6 +253,10 @@ For the source parameter configuration, please note that the last three paramete
 
     ``nucleation_y``
       relative along-dip position of the rupture nucleation point on the fault to the centre location. This parameter may range from -1 to 1. With 0 being in the centre, -1 being at the top fault edge, 1 at the bottom fault edge, and 0.5 is half-way between centroid and bottom fault edge.
+
+    ``velocity``
+      speed of rupture front m/s. this parameter is optional, default is 3500 m/s.
+
 
 
 .. _volume_point:

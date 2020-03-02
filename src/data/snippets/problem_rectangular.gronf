@@ -49,3 +49,4 @@ problem_config: !grond.RectangularProblemConfig
     time: '-15. .. 10. | add'
     nucleation_x: '-1. .. 1.'
     nucleation_y: '-1. .. 1.'
+    velocity: '1700. .. 3800.'
