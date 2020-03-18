@@ -145,6 +145,7 @@ setup(
         'grond.problems.cmt',
         'grond.problems.double_dc',
         'grond.problems.rectangular',
+        'grond.problems.dynamic_rupture',
         'grond.problems.volume_point',
         'grond.problems.vlvd',
         'grond.optimisers',

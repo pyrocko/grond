@@ -140,10 +140,9 @@ class Problem(Object):
             nprob += target.nparameters
 
     def get_parameter_dict(self, model, group=None):
-        params = []
-        for ip, p in enumerate(self.parameters):
-            if group in p.groups or group is None:
-                params.append((p.name, model[ip]))
+        params = [(p.name, model[ip])
+                  for ip, p in enumerate(self.parameters)
+                  if group in p.groups or group is None]
         return ADict(params)
 
     def get_parameter_array(self, d):
