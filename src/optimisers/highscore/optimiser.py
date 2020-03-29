@@ -37,9 +37,21 @@ def excentricity_compensated_probabilities(xs, sbx, factor):
     return probabilities
 
 
-def excentricity_compensated_choice(xs, sbx, factor, rstate):
+def boltzmann_probabilities(misfits, boltzmann_kt):
+    probabilities = num.exp(-misfits/boltzmann_kt)
+    probabilities /= num.sum(probabilities)
+    return probabilities
+
+
+def excentricity_compensated_choice(
+        xs, misfits, sbx, factor, rstate, boltzmann_kt):
+
     probabilities = excentricity_compensated_probabilities(
         xs, sbx, factor)
+    probabilities *= boltzmann_probabilities(misfits, boltzmann_kt)
+
+    probabilities /= num.sum(probabilities)
+
     r = rstate.random_sample()
     ichoice = num.searchsorted(num.cumsum(probabilities), r)
     ichoice = min(ichoice, xs.shape[0]-1)
@@ -65,7 +77,7 @@ class StandardDeviationEstimatorChoice(StringChoice):
 
 
 class SamplerStartingPointChoice(StringChoice):
-    choices = ['excentricity_compensated', 'random', 'mean']
+    choices = ['excentricity_compensated', 'random', 'mean', 'boltzmann']
 
 
 class BootstrapTypeChoice(StringChoice):
@@ -166,12 +178,21 @@ class DirectedSamplerPhase(SamplerPhase):
         help='Scaling factor at beginning of the phase.')
     scatter_scale_end = Float.T(
         optional=True,
-        help='Scaling factor at the end of the directed phase.')
+        help='Scaling factor at the end of the phase.')
     starting_point = SamplerStartingPointChoice.T(
         default='excentricity_compensated',
-        help='Tunes to the center value of the sampler distribution.'
-             'May increase the likelihood to draw a highscore member model'
-             ' off-center to the mean value')
+        help='Tunes how the breeding model is chosen. With ``"random"`` a '
+             'random model from the selected chain is selected. When set to '
+             '``"excentricity_compensated"``, the probability of choosing a '
+             'model is inversely proportional to the number of models in the '
+             'neighbourhood of the candidate. With ``"mean"`` the a weighted '
+             'average model is computed.')
+
+    boltzmann_kt = Float.T(
+        default=100.,
+        help='Exponential decay constant for '
+             '``starting_point == "boltzmann"``. '
+             'If unset, a value of 1.0 is used.')
 
     sampler_distribution = SamplerDistributionChoice.T(
         default='normal',
@@ -211,20 +232,27 @@ class DirectedSamplerPhase(SamplerPhase):
 
         if self.starting_point == 'excentricity_compensated':
             models = chains.models(ichain_choice)
+            misfits = chains.misfits(ichain_choice)
             ilink_choice = excentricity_compensated_choice(
                 models,
+                misfits,
                 chains.standard_deviation_models(
                     ichain_choice, self.standard_deviation_estimator),
-                2., rstate)
+                2., rstate, self.boltzmann_kt)
 
             xchoice = chains.model(ichain_choice, ilink_choice)
 
         elif self.starting_point == 'random':
-            ilink_choice = rstate.randint(0, chains.nlinks)
+            misfits = chains.misfits(ichain_choice)
+            probabilities = boltzmann_probabilities(misfits, self.boltzmann_kt)
+            r = rstate.random_sample()
+            ilink_choice = num.searchsorted(num.cumsum(probabilities), r)
+            ilink_choice = min(ilink_choice, probabilities.shape[0]-1)
             xchoice = chains.model(ichain_choice, ilink_choice)
 
         elif self.starting_point == 'mean':
-            xchoice = chains.mean_model(ichain_choice)
+            xchoice = chains.mean_model(
+                ichain_choice, boltzmann_kt=self.boltzmann_kt)
 
         else:
             assert False, 'invalid starting_point choice: %s' % (
@@ -413,9 +441,18 @@ class Chains(object):
         assert ilink < self.nlinks
         return self.chains_m[ichain, ilink]
 
-    def mean_model(self, ichain=None):
-        xs = self.models(ichain)
-        return num.mean(xs, axis=0)
+    def mean_model(self, ichain=None, boltzmann_kt=None):
+        if boltzmann_kt is not None:
+            assert ichain is not None
+            probabilities = \
+                boltzmann_probabilities(self.misfits(ichain), boltzmann_kt)
+
+            xs = self.models(ichain)
+            return num.sum(xs * probabilities[:, num.newaxis])
+
+        else:
+            xs = self.models(ichain)
+            return num.mean(xs, axis=0)
 
     def best_model(self, ichain=0):
         xs = self.models(ichain)
