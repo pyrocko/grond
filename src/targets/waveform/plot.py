@@ -497,7 +497,6 @@ traces.''')
                 itarget, itarget_end = target_index[target]
                 assert itarget_end == itarget + 1
 
-
                 if target.misfit_config.domain == 'cc_max_norm':
                     tref = (
                         result.filtered_obs.tmin + result.filtered_obs.tmax) \
