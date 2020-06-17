@@ -387,11 +387,17 @@ if __name__ == '__main__':
         magnitude = None
         depth = None
         mt = None
+        event = None
         if len(args) == 9:
             time = util.str_to_time(args[0] + ' ' + args[1])
             lat = float(args[2])
             lon = float(args[3])
             depth = float(args[4])*km
+            event = model.Event(
+                time=time,
+                lat=lat,
+                lon=lon,
+                depth=depth)
             iarg = 5
 
         elif len(args) == 6:
@@ -399,7 +405,6 @@ if __name__ == '__main__':
                 sname_or_date = None
                 lat = float(args[0])
                 lon = float(args[1])
-                event = None
                 time = None
             else:
                 sname_or_date = args[0] + ' ' + args[1]
