@@ -10,7 +10,7 @@ from pyrocko.guts import (Object, String, Float, Bool, Int, StringChoice,
 from pyrocko.guts_array import Array
 
 from grond.dataset import NotFound
-from grond.meta import GrondError, nslcs_to_patterns
+from grond.meta import GrondError, store_t, nslcs_to_patterns
 
 from ..base import (MisfitConfig, MisfitTarget, MisfitResult, TargetGroup)
 from grond.meta import has_get_plot_classes
@@ -404,8 +404,8 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
     def get_taper_params(self, engine, source):
         store = engine.get_store(self.store_id)
         config = self.misfit_config
-        tmin_fit = source.time + store.t(config.tmin, source, self)
-        tmax_fit = source.time + store.t(config.tmax, source, self)
+        tmin_fit = source.time + store_t(store, config.tmin, source, self)
+        tmax_fit = source.time + store_t(store, config.tmax, source, self)
         if config.fmin > 0.0:
             tfade = 1.0/config.fmin
         else:

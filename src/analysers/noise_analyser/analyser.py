@@ -7,6 +7,7 @@ from pyrocko.guts import Int, Bool, Float, String, StringChoice
 from pyrocko.gf.meta import OutOfBounds
 from ..base import Analyser, AnalyserConfig, AnalyserResult
 from grond.dataset import NotFound
+from grond.meta import store_t
 
 logger = logging.getLogger('grond.analysers.NoiseAnalyser')
 
@@ -35,9 +36,7 @@ def get_phase_arrival_time(engine, source, target, wavename):
     scalar, float of the arrival time of the wave
     """
     store = engine.get_store(target.store_id)
-    dist = target.distance_to(source)
-    depth = source.depth
-    return store.t(wavename, (depth, dist)) + source.time
+    return store_t(store, wavename, source, target) + source.time
 
 
 def seismic_noise_variance(traces, engine, source, targets,

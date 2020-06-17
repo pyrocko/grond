@@ -8,6 +8,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 from pyrocko import gf, orthodrome as od, plot, model, trace
 from grond import dataset
+from grond.meta import store_t
 
 km = 1000.
 
@@ -71,7 +72,7 @@ def polarization(
             continue
 
         if nsl_to_time is None:
-            tp = event.time + store.t(timing, source, station)
+            tp = event.time + store_t(store, timing, source, station)
 
         else:
             if nsl not in nsl_to_time:

@@ -2,6 +2,7 @@ import numpy as num
 from pyrocko import gf, trace
 from pyrocko.guts import Object, Float, StringChoice, List, String
 from pyrocko.gui import marker
+from grond.meta import store_t
 
 
 guts_prefix = 'grond'
@@ -131,8 +132,10 @@ class FeatureMeasure(Object):
 
             store = engine.get_store(target.store_id)
 
-            tmin = source.time + store.t(self.timing_tmin, source, target)
-            tmax = source.time + store.t(self.timing_tmax, source, target)
+            tmin = source.time + store_t(
+                store, self.timing_tmin, source, target)
+            tmax = source.time + store_t(
+                store, self.timing_tmax, source, target)
 
             if self.fmin is not None and self.fmax is not None:
                 freqlimits = [

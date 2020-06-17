@@ -5,7 +5,7 @@ import numpy as num
 import os.path as op
 from string import Template
 from pyrocko.guts import Object, String, Float, Unicode, StringPattern, Bool
-from pyrocko import util
+from pyrocko import util, gf
 
 guts_prefix = 'grond'
 
@@ -134,6 +134,35 @@ class Forbidden(Exception):
 
 class GrondError(Exception):
     pass
+
+
+class PhaseMissContext(Object):
+    store_id = gf.StringID.T()
+    timing = gf.Timing.T()
+    source = gf.Source.T()
+    target = gf.Target.T()
+
+
+class PhaseMissError(GrondError):
+    def __init__(self, store_id, timing, source, target):
+        GrondError.__init__(self)
+        self._context = PhaseMissContext(
+            store_id=store_id,
+            timing=timing,
+            source=source,
+            target=target)
+
+    def __str__(self):
+        return 'Phase not available for given geometry. Context:\n%s' \
+            % self._context
+
+
+def store_t(store, tdef, source, target):
+    tt = store.t(tdef, source, target)
+    if tt is None:
+        raise PhaseMissError(store.config.id, tdef, source, target)
+
+    return tt
 
 
 def expand_template(template, d):
@@ -431,6 +460,9 @@ def selected(expression, data, types):
 __all__ = '''
     Forbidden
     GrondError
+    PhaseMissContext
+    PhaseMissError
+    store_t
     Path
     HasPaths
     Parameter
