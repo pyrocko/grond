@@ -7,11 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
+- Possibility to filter runs in report open dialog.
 - `grond go` utilises `--threads` arguments for various tasks.
 - InSAR plots improved, now plotting 'best' and 'mean' // Improvements
+- In `grond export`, it is now possible to suppress exporting events with
+  combined location uncertainty below a given threshold.
+- Support offset coordinates in station and event inputs.
 
 ### Fixed
-- Improvements in documentation and examples.
+- Fix search in HTML report.
+- Fixes various plotting issues.
+- Improvements in documentation, examples and defaults.
+- Improvents to error and log messages.
 - `satellite.plot` degree axis offset and close-up scaling for point sources.
 
 ## [1.3.2] 2019-07-03
