@@ -7,8 +7,9 @@ import copy
 import shutil
 import glob
 import math
-import os.path as op
+import os
 import numpy as num
+from contextlib import contextmanager
 
 from pyrocko.guts import Object, String, Float, List
 from pyrocko import gf, trace, guts, util, weeding
@@ -26,6 +27,7 @@ from .monitor import GrondMonitor
 
 logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
+op = os.path
 
 
 class RingBuffer(num.ndarray):
@@ -48,6 +50,19 @@ def mahalanobis_distance(xs, mx, cov):
     icov = num.linalg.inv(cov[imask, :][:, imask])
     temp = xs[:, imask] - mx[imask]
     return num.sqrt(num.sum(temp * num.dot(icov, temp.T).T, axis=1))
+
+
+@contextmanager
+def lock_rundir(rundir):
+    statefn = op.join(rundir, '.running')
+    if op.exists(statefn):
+        raise EnvironmentError('file %s already exists!' % statefn)
+    try:
+        with open(statefn, 'w') as f:
+            f.write('')
+        yield True
+    finally:
+        os.remove(statefn)
 
 
 class DirectoryAlreadyExists(Exception):
@@ -504,8 +519,6 @@ def process_event(ievent, g_data_id):
     problem.dump_problem_info(rundir)
 
     monitor = None
-    if status == 'state':
-        monitor = GrondMonitor.watch(rundir)
 
     xs_inject = None
     synt = ds.synthetic_test
@@ -522,9 +535,12 @@ def process_event(ievent, g_data_id):
             optimiser.sampler_phases[0:0] = [
                 highscore.InjectionSamplerPhase(xs_inject=xs_inject)]
 
-        optimiser.optimise(
-            problem,
-            rundir=rundir)
+        with lock_rundir(rundir):
+            if status == 'state':
+                monitor = GrondMonitor.watch(rundir)
+            optimiser.optimise(
+                problem,
+                rundir=rundir)
 
         harvest(rundir, problem, force=True)
 

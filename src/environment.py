@@ -2,6 +2,7 @@ import time
 import logging
 import shutil
 import os
+from contextlib import contextmanager
 
 from grond.config import read_config, write_config
 from grond import meta, run_info
@@ -77,14 +78,15 @@ class Environment(object):
         self.reset()
 
     @classmethod
-    def discover(cls, rundir, wait=20.):
-        start_watch = time.time()
-        while (time.time() - start_watch) < wait:
+    def discover(cls, rundir):
+        running_fn = op.join(rundir, '.running')
+        while op.exists(running_fn):
             try:
                 cls.verify_rundir(rundir)
                 return cls([rundir])
             except GrondEnvironmentError:
                 time.sleep(.25)
+        raise GrondEnvironmentError('could not discover rundir')
 
     @staticmethod
     def verify_rundir(rundir_path):
@@ -322,6 +324,9 @@ class Environment(object):
 
     def get_config_path(self):
         return self._config_path
+
+    def is_running(self):
+        return op.exists(self.get_rundir_path, '.running')
 
 
 __all__ = [
