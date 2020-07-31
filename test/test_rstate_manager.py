@@ -11,7 +11,7 @@ def test_get_state():
     assert rs is rs1
     assert rstate.nstates == 1
 
-    rs2 = rstate.get_rstate('test2')
+    rs2 = rstate.get_rstate('test2')  # noqa
     assert rstate.nstates == 2
 
 

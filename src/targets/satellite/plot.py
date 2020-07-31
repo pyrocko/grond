@@ -234,8 +234,8 @@ edge marking the upper fault edge. Complete data extent is shown.
             arr = num.full_like(scene.displacement, fill_value=num.nan)
             qt = scene.quadtree
 
-            for syn_v, leaf in zip(displacements, qt.leaves):
-                arr[leaf._slice_rows, leaf._slice_cols] = syn_v
+            for syn_v, l in zip(displacements, qt.leaves):
+                arr[l._slice_rows, l._slice_cols] = syn_v
 
             arr[scene.displacement_mask] = num.nan
 
@@ -316,11 +316,11 @@ edge marking the upper fault edge. Complete data extent is shown.
                 off_e = source.effective_lon - target.scene.frame.llLon
 
             turE, turN, tllE, tllN = zip(
-                *[(leaf.gridE.max()-off_e,
-                   leaf.gridN.max()-off_n,
-                   leaf.gridE.min()-off_e,
-                   leaf.gridN.min()-off_n)
-                  for leaf in target.scene.quadtree.leaves])
+                *[(leave.gridE.max()-off_e,
+                   leave.gridN.max()-off_n,
+                   leave.gridE.min()-off_e,
+                   leave.gridN.min()-off_n)
+                  for leave in target.scene.quadtree.leaves])
 
             turE, turN = map(max, (turE, turN))
             tllE, tllN = map(min, (tllE, tllN))
@@ -463,8 +463,6 @@ data and (right) the model residual.
 
             if self.map_limits is not None:
                 xmin, xmax, ymin, ymax = self.map_limits
-                assert xmin < xmax, 'bad map_limits xmin > xmax'
-                assert ymin < ymax, 'bad map_limits ymin > ymax'
 
                 for ax in axes:
                     ax.set_xlim(

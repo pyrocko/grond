@@ -205,6 +205,22 @@ class CMTProblem(Problem):
 
         return x
 
+    def event_to_x(self, event):
+        bs = self.base_source
+        source = bs.__class__.from_pyrocko_event(event)
+
+        if source.stf is None:
+            rstatem = self.get_rstate_manager()
+            rstate = rstatem.get_rstate(name='event2x')
+
+            source.stf = bs.stf
+            source.stf.duration = rstate.uniform(
+                low=self.ranges['time'].start,
+                high=self.ranges['time'].stop,
+                size=1)
+
+        return self.source_to_x(source)
+
     def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
 
         x = num.zeros(self.nparameters)
@@ -218,7 +234,7 @@ class CMTProblem(Problem):
 
         return x.tolist()
 
-    def preconstrain(self, x):
+    def preconstrain(self, x, optimizer=False):
         d = self.get_parameter_dict(x)
         m6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
                        dtype=num.float)

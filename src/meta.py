@@ -191,6 +191,7 @@ class Parameter(Object):
     scale_unit = Unicode.T(optional=True)
     label = Unicode.T(optional=True)
     optional = Bool.T(default=True, optional=True)
+    optimize = Bool.T(default=True)
 
     def __init__(self, *args, **kwargs):
         if len(args) >= 1:
@@ -266,6 +267,13 @@ class Parameter(Object):
             return list(v*self.scale_factor for v in x)
         else:
             return x*self.scale_factor
+
+    def get_type(self):
+        if self.type == 'float':
+            return float
+        elif self.type == 'int':
+            return int
+        raise AttributeError('unknown type %s' % self.type)
 
 
 class Path(String):

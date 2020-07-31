@@ -101,12 +101,12 @@ class TargetBalancingAnalyser(Analyser):
                 isok_mask = num.logical_not(isbad_mask)
             else:
                 isok_mask = None
-            misfits[iiter, :, :] = wproblem.misfits(x, mask=isok_mask)
+            misfits[iiter, :, :] = wproblem.misfits(
+                x, mask=isok_mask, nthreads=8)
 
             isbad_mask = num.isnan(misfits[iiter, :, 1])
 
         mean_ms = num.mean(misfits[:, :, 0], axis=0)
-
         mean_ps = num.mean(misfits[:, :, 1], axis=0)
 
         weights = 1. / mean_ps

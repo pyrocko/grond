@@ -11,7 +11,7 @@ import os
 import numpy as num
 from contextlib import contextmanager
 
-from pyrocko.guts import Object, String, Float, List, clone
+from pyrocko.guts import Object, String, Float, List
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 

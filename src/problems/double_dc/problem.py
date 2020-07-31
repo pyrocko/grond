@@ -113,7 +113,7 @@ class DoubleDCProblem(Problem):
 
         return x.tolist()
 
-    def preconstrain(self, x):
+    def preconstrain(self, x, optimizer=False):
         source = self.get_source(x)
         if any(self.distance_min > source.distance_to(t)
                for t in self.targets):

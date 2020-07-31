@@ -258,11 +258,10 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
         try:
             # TODO:mi Signal handler is not given back to the main task!
             # This is a python3.7 bug
-            logger.warning('Using multi-threading for SatelliteTargets. '
-                           'Python 3.7 is buggy and needs to be killed hard:'
-                           ' `killall grond`')
             from concurrent.futures import ThreadPoolExecutor
             nthreads = os.cpu_count() if not nthreads else nthreads
+            logger.debug('Using %d threads'
+                         ' for bootstrapping SatelliteTargets.', nthreads)
 
             with ThreadPoolExecutor(max_workers=nthreads) as executor:
                 res = executor.map(
