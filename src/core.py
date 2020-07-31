@@ -620,7 +620,8 @@ def process_event(ievent, g_data_id):
                 monitor = GrondMonitor.watch(rundir)
             optimiser.optimise(
                 problem,
-                rundir=rundir)
+                rundir=rundir,
+                history=history)
 
         harvest(rundir, problem, force=True)
 
