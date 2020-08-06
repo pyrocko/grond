@@ -552,7 +552,7 @@ data and (right) the model residual.
 
             ax = axes[1]
 
-            disp_map, norm_pos_ticks, ticks_col = mapDisplacementGrid(stat_obs, scene, 
+            disp_map, norm_pos_ticks, ticks_col = mapDisplacementGrid(stat_syn, scene, 
                                           self.show_topo, 
                                           abs_displ = abs_displ,
                                           tick_step = tick_step)
