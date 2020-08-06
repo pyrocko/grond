@@ -19,100 +19,58 @@ km = 1e3
 d2r = num.pi/180.
 guts_prefix = 'grond'
 
-def PlotAnyColor(col_data, shad_data, cmap_in, shad_lim, tick_step = 500,
-                 contrast = 1., mask = 0, data_limits = (-0.5, 0.5)):
-    '''Plot color on shaded relief.'''
+
+def shaded_displacements(
+        displacement, shad_data,
+        cmap='RdBu', shad_lim=(.4, .98), tick_step=0.01,
+        contrast=1., mask=None, data_limits=(-0.5, 0.5)):
+    '''Map color data (displacement) on shaded relief.'''
     
     from scipy.ndimage import convolve as im_conv
-    cmap = plt.get_cmap(cmap_in)
-    def norm_0_1(data, data_limits = (0, 0)):
-        if num.sum(num.abs(data_limits))==0:
-            data_out = data - num.nanmin(num.nanmin(data))
-            data_out /= float(num.nanmax(num.nanmax(data_out)))
-        else:
-            data_out = num.where(data<data_limits[0], data_limits[0], data)
-            data_out = num.where(data>data_limits[1], data_limits[1], data_out)
-
-            data_out = data_out - data_limits[0]
-            data_out /= (data_limits[1]-data_limits[0])
-            
-        return data_out
-
-    # 1) Creating the shading
     # Light source from somewhere above - psychologically the best choice
     # from upper left
     ramp = num.array([[1, 0], [0, -1.]]) * contrast
 
-    # convolution of two 2-dimensional arrays    
-    shad = im_conv(shad_data*1e-3, ramp.T)
-    shad = -1. * shad
-   
+    # convolution of two 2D arrays    
+    shad = im_conv(shad_data*km, ramp.T)
+    shad *= -1.
+
     # if there are strong artifical edges in the data, shades get
     # dominated by them. Cutting off the largest and smallest 2% of
     # shades helps
     percentile2 = num.quantile(shad, 0.02)
     percentile98 = num.quantile(shad, 0.98)
-    
-    shad = num.where( shad > percentile98, percentile98, shad)
-    shad = num.where( shad < percentile2, percentile2, shad)
+    shad[shad > percentile98] = percentile98
+    shad[shad < percentile2] = percentile2
 
-    #normalize to range [0 1]
+    # normalize shading
+    shad -= num.nanmin(shad)
+    shad /= num.nanmax(shad)
 
-    shad = norm_0_1(shad)
-    shad = num.where(mask == 1., shad, num.nan) 
+    if mask is not None:
+        shad[mask] = num.nan
     
-    # apply reduced range to shad_lim to balance gray color
-    shad *= (shad_lim[1] - shad_lim[0])
+    # reduce range to balance gray color
+    shad *= shad_lim[1] - shad_lim[0]
     shad += shad_lim[0]
-    
-    # 2) Create colormap from data and colormap
-    # normalize
-    norm_col_data =  norm_0_1(col_data, data_limits)
 
     # create ticks for plotting - real values for the labels
     # and their position in normed data for the ticks
-    
-    # range of heights in topo map
-    if  num.sum(num.abs(data_limits))==0:
-        range_col_data = num.nanmax(col_data) - num.nanmin(col_data)
-        n_ticks_col = num.floor(range_col_data / tick_step) + 1
-        ticks_col = num.arange(n_ticks_col) * tick_step + num.nanmin(col_data)
-        if num.nanmin(col_data)<0:
-            min_tick = num.nonzero((ticks_col>=0) & (ticks_col<tick_step))
-            ticks_col_sh = ticks_col[1:] - ticks_col[min_tick[0][0]]
-            ticks_col_shift = num.hstack((ticks_col_sh, ticks_col_sh[-1] + tick_step))
-            ticks_col = ticks_col_shift
-            
-        ticks_col2 = num.hstack((ticks_col, num.nanmax(col_data)))
-        ticks_col = num.hstack((num.nanmin(col_data), ticks_col2))
-    else:
-        range_col_data = data_limits[1] - data_limits[0]
-        
-        n_ticks_col = num.floor(range_col_data / tick_step) + 1
-        ticks_col = num.arange(n_ticks_col) * tick_step + data_limits[0]
-        if data_limits[0]<0:
-            min_tick = num.nonzero((ticks_col>=0) & (ticks_col<tick_step))
-            ticks_col_sh = ticks_col[1:] - ticks_col[min_tick[0][0]]
-            ticks_col_shift = num.hstack((ticks_col_sh, ticks_col_sh[-1] + tick_step))
-            ticks_col = ticks_col_shift
-            
-        ticks_col2 = num.hstack((ticks_col, data_limits[1]))
-        ticks_col = num.hstack((data_limits[0], ticks_col2))
+    if data_limits is None:
+        data_max = num.nanmax(num.abs(displacement))
+        data_limits = (-data_max, data_max)
+    displ_min, displ_max = data_limits
 
-    norm_pos_ticks = norm_0_1(ticks_col)
-    norm_pos_ticks = norm_pos_ticks[1:-1]
-    ticks_col = ticks_col[1:-1]
-    
-    # 3) Combine color and shading 
-    rgb_map = cmap(norm_col_data)
-    for chan in num.arange(3):
-        rgb_map[:,:,chan]= num.where(num.isnan(norm_col_data),1., rgb_map[:,:,chan])
+    # Combine color and shading
+    color_map = cm.ScalarMappable(cmap=cmap)
+    color_map.set_clim(displ_min, displ_max)
 
-    for chan in num.arange(3):
-        rgb_map[:,:,chan] = num.multiply(rgb_map[:,:,chan], shad)
+    rgb_map = color_map.to_rgba(displacement)
+    rgb_map[num.isnan(displacement)] = 1.
+    rgb_map *= shad[:, :, num.newaxis]
 
-        
-    return rgb_map, norm_pos_ticks, ticks_col
+    return rgb_map
+
 
 def scale_axes(axis, scale, offset=0., suffix=''):
     from matplotlib.ticker import ScalarFormatter
@@ -125,6 +83,7 @@ def scale_axes(axis, scale, offset=0., suffix=''):
                 .replace(',', ' ')
 
     axis.set_major_formatter(FormatScaled())
+
 
 class SatelliteTargetDisplacement(PlotConfig):
     ''' Maps showing surface displacements from satellite and modelled data '''
@@ -142,7 +101,7 @@ class SatelliteTargetDisplacement(PlotConfig):
         default='RdBu',
         help='Colormap for the surface displacements')
     relative_coordinates = Bool.T(
-        default=False,
+        default=True,
         help='Show relative coordinates, initial location centered at 0N, 0E')
     fit = StringChoice.T(
         default='best', choices=['best', 'mean'],
@@ -155,28 +114,23 @@ class SatelliteTargetDisplacement(PlotConfig):
     color_tick_step = Float.T(
         default = 10.,
         help='Separation of tick at colorbar in the unit that is to be shown')
-    
+
     show_topo = Bool.T(
-        default=False,
-        help='show topography')
-    
+        default=True,
+        help='Show topography')
     show_leaf_centres = Bool.T(
         default=False,
         help='show the center points of Quadtree leaves')
-    
-    set_map_limits = Tuple.T(
+    map_limits = Tuple.T(
         4, Float.T(),
-        default=(0., 0., 0., 0.))
-    
+        optional=True,)
     common_color_scale = Bool.T(
         default=False,
-        help='Results shown with common color scale for all satellite data sets (based on the data)')
-    
+        help='Results shown with common color scale for all'
+             ' satellite data sets (based on the data)')
     source_outline_color = String.T(
         default='grey',
         help='Choose color of source outline from named matplotlib Colors')
-    
-    
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -224,7 +178,7 @@ edge marking the upper fault edge. Complete data extent is shown.
 
         results = problem.evaluate(model, targets=sat_targets)
 
-        def initAxes(ax, scene, title, last_axes=False):
+        def init_axes(ax, scene, title, last_axes=False):
             ax.set_title(title, fontsize = self.font_size)
             ax.tick_params(length=2)
             
@@ -270,11 +224,8 @@ edge marking the upper fault edge. Complete data extent is shown.
             
             #scale_axes(ax.get_xaxis(), **scale_x)
             #scale_axes(ax.get_yaxis(), **scale_y)
-            
 
-            
-
-        def drawSource(ax, scene):
+        def draw_source(ax, scene):
             if scene.frame.isMeter():
                 fn, fe = source.outline(cs='xy').T
                 fn -= fn.mean()
@@ -284,55 +235,52 @@ edge marking the upper fault edge. Complete data extent is shown.
                 if self.relative_coordinates:
                     fn -= source.effective_lat
                     fe -= source.effective_lon
-            
 
             # source is centered
             if self.relative_coordinates:
-                ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
+                ax.scatter(
+                    0., 0.,
+                    color='black', s=3, alpha=.5, marker='o')
             else:
-                ax.scatter(source.effective_lon, source.effective_lat, color='black', s=3, alpha=.5, marker='o')
-            
+                ax.scatter(
+                    source.effective_lon, source.effective_lat,
+                    color='black', s=3, alpha=.5, marker='o')
+
             if self.source_outline_color in mcolors.cnames:
                 ax.fill(fe, fn,
                     facecolor=self.source_outline_color, alpha=0.7)
             else:
-                #Todo: Logger message "choosen source color not a named matplotlib color
-                # defaulting to grey 
-                ax.fill(fe, fn,
-                    facecolor='gray', alpha=0.7)
-                
+                # Todo: Logger message "choosen source color not a named matplotlib color
+                # defaulting to gray
+                ax.fill(fe, fn, facecolor='gray', alpha=0.7)
+
             ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.)
 
-        def mapDisplacementGrid(displacements, scene, show_topo = False, 
-                                abs_displ = 0., tick_step = 0.01):
+        def get_displacement_grid(displacements, scene):
+
             radar_map = num.full_like(scene.displacement, fill_value=num.nan)
             qt = scene.quadtree
             for syn_v, l in zip(displacements, qt.leaves):
                 radar_map[l._slice_rows, l._slice_cols] = syn_v
 
             radar_map[scene.displacement_mask] = num.nan
-                
-            if show_topo:
-                    
+
+            if self.show_topo:
                 elevation = scene.get_elevation()
-                shad_lim = [0.4, .99]
-                mask = num.where(elevation == 0., 0., 1. )
-              
-                    
-                radar_map, norm_pos_ticks, ticks_col = PlotAnyColor(radar_map, 
-                                                                    elevation,
-                                                                    self.colormap, 
-                                                                    shad_lim, 
-                                                                    tick_step = tick_step,
-                                                                    contrast = 1, 
-                                                                    mask = mask,
-                                                                    data_limits = (-abs_displ, abs_displ))
+                elevation_mask = num.where(elevation == 0., True, False)
 
-                
-            
-            return radar_map, norm_pos_ticks, ticks_col
+                return shaded_displacements(
+                    radar_map, elevation, self.colormap,
+                    shad_lim=(0.4, .99), contrast=1., mask=elevation_mask)
 
-        def drawLeaves(ax, scene, offset_e=0., offset_n=0.):
+            else:
+                color_map = cm.ScalarMappable(cmap=cmap)
+                color_map.set_clim(displ_min, displ_max)
+
+                return color_map.to_rgba(displacement)
+
+
+        def draw_leaves(ax, scene, offset_e=0., offset_n=0.):
             rects = scene.quadtree.getMPLRectangles()
             for r in rects:
                 r.set_edgecolor((.4, .4, .4))
@@ -350,7 +298,7 @@ edge marking the upper fault edge. Complete data extent is shown.
                         scene.quadtree.leaf_coordinates[:, 1] ,
                         s=.25, c='black', alpha=.1)
 
-        def addArrow(ax, scene):
+        def add_arrow(ax, scene):
             phi = num.nanmean(scene.phi)
             los_dx = num.cos(phi + num.pi) * .0625
             los_dy = num.sin(phi + num.pi) * .0625
@@ -386,10 +334,11 @@ edge marking the upper fault edge. Complete data extent is shown.
         
         targets_displ_max = 0.
         targets_displ_min = 0.
+
         for target in sat_targets:
-            if num.sum(self.set_map_limits)==0:
-                        #ToDo: catch lower limit above upper limit
-                        #Todo: catch limits entirely outside of map extent 
+            if self.map_limits is None:
+                # ToDo: catch lower limit above upper limit
+                # Todo: catch limits entirely outside of map extent 
                 if target.scene.frame.isMeter():
                     off_n, off_e = map(float, latlon_to_ne_numpy(
                         target.scene.frame.llLat, target.scene.frame.llLon,
@@ -410,32 +359,33 @@ edge marking the upper fault edge. Complete data extent is shown.
                 urE, urN = map(max, ((turE, urE), (urN, turN)))
                 llE, llN = map(min, ((tllE, llE), (llN, tllN)))
                     
-            elif num.sum(self.set_map_limits)!=0:
+            else:
                 if target.scene.frame.isMeter():
                     off_n, off_e = map(float, latlon_to_ne_numpy(
-                        self.set_map_limits[2], self.set_map_limits[0],
+                        self.map_limits[2], self.map_limits[0],
                         source.effective_lat, source.effective_lon))
                 if target.scene.frame.isDegree():
-                    off_n = source.effective_lat - self.set_map_limits[2]
-                    off_e = source.effective_lon - self.set_map_limits[0]
+                    off_n = source.effective_lat - self.map_limits[2]
+                    off_e = source.effective_lon - self.map_limits[0]
                     
                 if self.relative_coordinates:    
-                    urE = self.set_map_limits[1] - source.effective_lon
-                    urN = self.set_map_limits[3] - source.effective_lat
+                    urE = self.map_limits[1] - source.effective_lon
+                    urN = self.map_limits[3] - source.effective_lat
                     llE = -off_e
                     llN = -off_n
                 else:
-                    urE = self.set_map_limits[1]
-                    urN = self.set_map_limits[3]
-                    llE = self.set_map_limits[0]
-                    llN = self.set_map_limits[2]
+                    urE = self.map_limits[1]
+                    urN = self.map_limits[3]
+                    llE = self.map_limits[0]
+                    llN = self.map_limits[2]
                     
-          
-            if targets_displ_min>num.nanmin(target.scene.displacement):
-                targets_displ_min = num.nanmin(target.scene.displacement)
+            displ_min = num.nanmin(target.scene.displacement)
+            targets_displ_min = displ_min if displ_min < targets_displ_min \
+                else targets_displ_min
                 
-            if targets_displ_max<num.nanmax(target.scene.displacement):
-                targets_displ_max = num.nanmax(target.scene.displacement)  
+            displ_max = num.nanmax(target.scene.displacement)
+            targets_displ_max = displ_max if displ_max < targets_displ_max \
+                else targets_displ_max
                 
  
         def generate_plot(sat_target, result, ifig):
@@ -443,7 +393,6 @@ edge marking the upper fault edge. Complete data extent is shown.
             scene = sat_target.scene
             parameters = {'xtick.labelsize': self.font_size,
                           'ytick.labelsize': self.font_size}
-            
 
             plt.rcParams.update(parameters)
             fig = plt.figure()
@@ -464,12 +413,12 @@ Surface displacements derived from satellite data.
 (Left) the input data, (center) the modelled
 data and (right) the model residual.
 '''.format(meta=scene.meta))
-          if self.shown_disp_unit == 'm':
-              tick_step = self.color_tick_step
-          elif self.shown_disp_unit == 'cm':
-              tick_step = self.color_tick_step / 100.
-          elif self.shown_disp_unit == 'mm':
-              tick_step = self.color_tick_step / 1000.
+            if self.shown_disp_unit == 'm':
+                tick_step = self.color_tick_step
+            elif self.shown_disp_unit == 'cm':
+                tick_step = self.color_tick_step / 100.
+            elif self.shown_disp_unit == 'mm':
+                tick_step = self.color_tick_step / 1000.
 
 
             stat_obs = result.statics_obs
@@ -483,24 +432,33 @@ data and (right) the model residual.
             elif scene.frame.isDegree():
                 offset_n = source.effective_lat - scene.frame.llLat
                 offset_e = source.effective_lon - scene.frame.llLon
+
             if self.relative_coordinates:
-                im_extent = (scene.frame.E.min() - offset_e,
-                            scene.frame.E.max() - offset_e,
-                            scene.frame.N.min() - offset_n,
-                            scene.frame.N.max() - offset_n)
+                im_extent = (
+                    scene.frame.E.min() - offset_e,
+                    scene.frame.N.min() - offset_n,
+                    scene.frame.E.max() - offset_e,
+                    scene.frame.N.max() - offset_n)
             else:
-                im_extent = (scene.frame.E.min() + scene.frame.llLon,
-                            scene.frame.E.max() + scene.frame.llLon,
-                            scene.frame.N.min() + scene.frame.llLat,
-                            scene.frame.N.max() + scene.frame.llLat)
+                im_extent = (
+                    scene.frame.E.min() + scene.frame.llLon,
+                    scene.frame.E.max() + scene.frame.llLon,
+                    scene.frame.N.min() + scene.frame.llLat,
+                    scene.frame.N.max() + scene.frame.llLat)
+
+            print(im_extent)
                 
             if not self.common_color_scale:
-                abs_displ = num.abs([num.nanmin(stat_obs), num.nanmax(stat_obs),
-                                    num.nanmin(stat_syn), num.nanmax(stat_syn),
-                                    num.nanmin(res), num.nanmax(res)]).max()
+                abs_displ = num.abs([
+                    num.nanmin(stat_obs), num.nanmax(stat_obs),
+                    num.nanmin(stat_syn), num.nanmax(stat_syn),
+                    num.nanmin(res), num.nanmax(res)
+                ]).max()
             else:
-                abs_displ = num.max([num.abs(targets_displ_min), 
-                                    num.abs(targets_displ_max)])
+                abs_displ = num.max([
+                    num.abs(targets_displ_min), 
+                    num.abs(targets_displ_max)
+                ])
                 
             if self.shown_disp_unit == 'm':
                 shown_abs_displ = abs_displ
@@ -512,85 +470,71 @@ data and (right) the model residual.
             cmw = cm.ScalarMappable(cmap=self.colormap)
             cmw.set_clim(vmin=-shown_abs_displ, vmax=shown_abs_displ)
             cmw.set_array(stat_obs)
-            print(im_extent)
-            axes = [fig.add_subplot(gs[0, 0]),
+
+            axes = (fig.add_subplot(gs[0, 0]),
                     fig.add_subplot(gs[0, 1]),
-                    fig.add_subplot(gs[0, 2])]
+                    fig.add_subplot(gs[0, 2]))
 
             ax = axes[0]
 
-            disp_map, norm_pos_ticks, ticks_col = mapDisplacementGrid(stat_obs, scene, 
-                                          self.show_topo, 
-                                          abs_displ = abs_displ,
-                                          tick_step = tick_step)
-            ax.imshow(disp_map,
-                      extent=im_extent, cmap=self.colormap,
-                      vmin=-abs_displ, vmax=abs_displ,
-                      origin='lower')
+            disp_map = get_displacement_grid(stat_obs, scene)
+            ax.imshow(disp_map, extent=im_extent, origin='lower')
 
-            drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax, scene)
-            addArrow(ax, scene)
-            
-            
+            draw_leaves(ax, scene, offset_e, offset_n)
+            draw_source(ax, scene)
+            add_arrow(ax, scene)
+
             ax.set_xlim(llE, urE)
             ax.set_ylim(llN, urN)
-            initAxes(ax, scene, 'Observed')
-            
+            init_axes(ax, scene, 'Observed')
+
             # Problems:
             # maybe too many ticks, because the reduction causes trouble
             # the second digit after the comma is needed for small areas
             # but doesn;t show :/
             # these I tried - but they cause the relative coordinates to
             # show up 
-            #ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-            #plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+            # plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
 
-        
             ax.text(.025, .025, 'Scene ID: %s' % scene.meta.scene_id,
                     fontsize=8, alpha=.7,
                     va='bottom', transform=ax.transAxes)
+
             if scene.frame.isMeter():
                 ax.set_ylabel('Northing [km]', fontsize = self.font_size)
 
             ax = axes[1]
+            disp_map = get_displacement_grid(stat_syn, scene)
+            ax.imshow(
+                disp_map,  
+                extent=im_extent, cmap=self.colormap,
+                vmin=-abs_displ, vmax=abs_displ,
+                origin='lower')
+            draw_leaves(ax, scene, offset_e, offset_n)
+            draw_source(ax, scene)
+            add_arrow(ax, scene)
 
-            disp_map, norm_pos_ticks, ticks_col = mapDisplacementGrid(stat_syn, scene, 
-                                          self.show_topo, 
-                                          abs_displ = abs_displ,
-                                          tick_step = tick_step)
-            ax.imshow(disp_map,  
-                      extent=im_extent, 
-                      cmap=self.colormap,
-                      vmin=-abs_displ, vmax=abs_displ,
-                      origin='lower')
-            drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax, scene)
-            addArrow(ax, scene)
             ax.set_xlim(llE, urE)
             ax.set_ylim(llN, urN)
-            initAxes(ax, scene, 'Model')
+            init_axes(ax, scene, 'Model')
             ax.get_yaxis().set_visible(False)
 
             ax = axes[2]
-            disp_map, norm_pos_ticks, ticks_col = mapDisplacementGrid(res, scene, 
-                                          self.show_topo, 
-                                          abs_displ = abs_displ,
-                                          tick_step = tick_step)
-            ax.imshow(disp_map,   
-                      extent=im_extent, cmap=self.colormap,
-                      vmin=-abs_displ, vmax=abs_displ,
-                      origin='lower')
-            drawLeaves(ax, scene, offset_e, offset_n)
+            disp_map = get_displacement_grid(res, scene)
+            ax.imshow(
+                disp_map,
+                extent=im_extent, cmap=self.colormap,
+                vmin=-abs_displ, vmax=abs_displ,
+                origin='lower')
+            draw_leaves(ax, scene, offset_e, offset_n)
 
-
-            drawSource(ax, scene)
-            addArrow(ax, scene)
+            draw_source(ax, scene)
+            add_arrow(ax, scene)
             ax.get_yaxis().set_visible(False)
             ax.set_xlim(llE, urE)
             ax.set_ylim(llN, urN)
-            initAxes(ax, scene, 'Residual', last_axes=True)
-           
+            init_axes(ax, scene, 'Residual', last_axes=True)
 
             if closeup:
                 if scene.frame.isMeter():
@@ -620,26 +564,27 @@ data and (right) the model residual.
 
            
             cax = fig.add_subplot(gs[1, 1])
-            
-            if self.shown_disp_unit == 'mm':
-                ticks_col *= 1e3 
-            cbar = fig.colorbar(cmw, cax=cax, ticks=ticks_col, orientation='horizontal',
-                                use_gridspec=True)
-            cbar.ax.set_xticklabels(ticks_col)
+            cbar = fig.colorbar(
+                cmw, cax=cax, orientation='horizontal',
+                use_gridspec=True)
             
             if self.shown_disp_unit == 'm':
-                cbar.set_label('LOS Displacement [m]', fontsize = self.font_size)
-                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:,.2f}')) # 2 decimal places
+                unit = 'm'
+                formatter = StrMethodFormatter('{x:,.2f}')
 
-            if self.shown_disp_unit == 'cm':
-                cbar.set_label('LOS Displacement [cm]', fontsize = self.font_size)
-                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:,.1f}')) 
+            elif self.shown_disp_unit == 'cm':
+                unit = 'cm'
+                formatter = StrMethodFormatter('{x:,.1f}')
 
-            if self.shown_disp_unit == 'mm':
-                cbar.set_label('LOS Displacement [mm]' , fontsize = self.font_size)
-                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.0f}')) # 2 decimal places
+            elif self.shown_disp_unit == 'mm':
+                unit = 'mm'
+                formatter = StrMethodFormatter('{x:.0f}')
+            else:
+                raise AttributeError('shown_disp_unit is not defined')
 
-                
+            cbar.set_label('LOS Displacement [m]', fontsize=self.font_size)
+            cax.xaxis.set_major_formatter(formatter)
+
             return (item, fig)
 
         for ifig, (sat_target, result) in enumerate(zip(sat_targets, results)):
@@ -686,7 +631,7 @@ class SatelliteTargetDisplacementCloseup(SatelliteTargetDisplacement):
         default=False,
         help='show the center points of Quadtree leaves')
     
-    set_map_limits = Tuple.T(
+    map_limits = Tuple.T(
         4, Float.T(),
         default=(0., 0., 0., 0.))
     

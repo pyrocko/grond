@@ -14,7 +14,7 @@ To do this exercise on your machine, you should first install Grond (see :doc:`/
 
 .. code-block :: sh
 
-    grond init example_insar_insar grond-joint-geodetic/
+    grond init example_insar_gnss grond-joint-geodetic/
 
 The project folder
 ------------------
