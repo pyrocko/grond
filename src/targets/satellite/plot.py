@@ -6,7 +6,7 @@ from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
 from matplotlib import pyplot as plt
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator, FuncFormatter
 from matplotlib import patches
 from pyrocko.guts import Tuple, Float, String, Int, Bool, StringChoice
 
@@ -15,6 +15,46 @@ logger = logging.getLogger('grond.targets.satellite.plot')
 km = 1e3
 d2r = num.pi/180.
 guts_prefix = 'grond'
+
+
+def drape_displacements(
+        displacement, shad_data, mappable,
+        shad_lim=(.4, .98), contrast=1., mask=None):
+    '''Map color data (displacement) on shaded relief.'''
+    
+    from scipy.ndimage import convolve as im_conv
+    # Light source from somewhere above - psychologically the best choice
+    # from upper left
+    ramp = num.array([[1, 0], [0, -1.]]) * contrast
+
+    # convolution of two 2D arrays    
+    shad = im_conv(shad_data*km, ramp.T)
+    shad *= -1.
+
+    # if there are strong artifical edges in the data, shades get
+    # dominated by them. Cutting off the largest and smallest 2% of
+    # shades helps
+    percentile2 = num.quantile(shad, 0.02)
+    percentile98 = num.quantile(shad, 0.98)
+    shad[shad > percentile98] = percentile98
+    shad[shad < percentile2] = percentile2
+
+    # normalize shading
+    shad -= num.nanmin(shad)
+    shad /= num.nanmax(shad)
+
+    if mask is not None:
+        shad[mask] = num.nan
+    
+    # reduce range to balance gray color
+    shad *= shad_lim[1] - shad_lim[0]
+    shad += shad_lim[0]
+
+    rgb_map = mappable.to_rgba(displacement)
+    rgb_map[num.isnan(displacement)] = 1.
+    rgb_map *= shad[:, :, num.newaxis]
+
+    return rgb_map
 
 
 def scale_axes(axis, scale, offset=0., suffix=''):
@@ -49,6 +89,29 @@ class SatelliteTargetDisplacement(PlotConfig):
         default='best', choices=['best', 'mean'],
         help='Show the \'best\' or \'mean\' fits and source model from the'
              ' ensamble.')
+
+    show_topo = Bool.T(
+        default=True,
+        help='Drape displacements over the topography.')
+    displacement_unit = StringChoice.T(
+        default='m',
+        choices=['m', 'mm', 'cm'],
+        help="Show results in 'm', 'cm' or 'mm'")
+    show_leaf_centres = Bool.T(
+        default=True,
+        help='show the center points of Quadtree leaves')
+    source_outline_color = String.T(
+        default='grey',
+        help='Choose color of source outline from named matplotlib Colors')
+    common_color_scale = Bool.T(
+        default=True,
+        help='Results shown with common color scale for all satellite '
+             'data sets (based on the data)')
+    map_limits = Tuple.T(
+        4, Float.T(),
+        optional=True,
+        help='Overwrite map limits in native coordinates. '
+             'Use (xmin, xmax, ymin, ymax)')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -96,37 +159,35 @@ edge marking the upper fault edge. Complete data extent is shown.
 
         results = problem.evaluate(model, targets=sat_targets)
 
-        def initAxes(ax, scene, title, last_axes=False):
-            ax.set_title(title)
+        def init_axes(ax, scene, title, last_axes=False):
+            ax.set_title(title, fontsize=self.font_size)
             ax.tick_params(length=2)
 
             if scene.frame.isMeter():
-                ax.set_xlabel('Easting [km]')
+                import utm
+                ax.set_xlabel('Easting [km]', fontsize=self.font_size)
                 scale_x = dict(scale=1./km)
                 scale_y = dict(scale=1./km)
-                if not self.relative_coordinates:
-                    import utm
-                    utm_E, utm_N, utm_zone, utm_zone_letter =\
-                        utm.from_latlon(source.effective_lat,
-                                        source.effective_lon)
-                    scale_x['offset'] = utm_E
-                    scale_y['offset'] = utm_N
+                utm_E, utm_N, utm_zone, utm_zone_letter =\
+                    utm.from_latlon(source.effective_lat,
+                                    source.effective_lon)
+                scale_x['offset'] = utm_E
+                scale_y['offset'] = utm_N
 
-                    if last_axes:
-                        ax.text(0.975, 0.025,
-                                'UTM Zone %d%s' % (utm_zone, utm_zone_letter),
-                                va='bottom', ha='right',
-                                fontsize=8, alpha=.7,
-                                transform=ax.transAxes)
+                if last_axes:
+                    ax.text(0.975, 0.025,
+                            'UTM Zone %d%s' % (utm_zone, utm_zone_letter),
+                            va='bottom', ha='right',
+                            fontsize=8, alpha=.7,
+                            transform=ax.transAxes)
                 ax.set_aspect('equal')
 
             elif scene.frame.isDegree():
 
                 scale_x = dict(scale=1., suffix='°')
                 scale_y = dict(scale=1., suffix='°')
-                if not self.relative_coordinates:
-                    scale_x['offset'] = source.effective_lon
-                    scale_y['offset'] = source.effective_lat
+                scale_x['offset'] = source.effective_lon
+                scale_y['offset'] = source.effective_lat
                 ax.set_aspect(1./num.cos(source.effective_lat*d2r))
 
             nticks_lon = 4 if abs(scene.frame.llLon) >= 100 else 5
@@ -134,10 +195,13 @@ edge marking the upper fault edge. Complete data extent is shown.
             ax.xaxis.set_major_locator(MaxNLocator(nticks_lon))
             ax.yaxis.set_major_locator(MaxNLocator(5))
 
+            ax.scale_x = scale_x
+            ax.scale_y = scale_y
+
             scale_axes(ax.get_xaxis(), **scale_x)
             scale_axes(ax.get_yaxis(), **scale_y)
 
-        def drawSource(ax, scene):
+        def draw_source(ax, scene):
             if scene.frame.isMeter():
                 fn, fe = source.outline(cs='xy').T
                 fn -= fn.mean()
@@ -151,10 +215,11 @@ edge marking the upper fault edge. Complete data extent is shown.
             ax.scatter(0., 0., color='black', s=3, alpha=.5, marker='o')
             ax.fill(fe, fn,
                     edgecolor=(0., 0., 0.),
-                    facecolor=(.5, .5, .5), alpha=0.7)
+                    facecolor=self.source_outline_color,
+                    alpha=0.7)
             ax.plot(fe[0:2], fn[0:2], 'k', linewidth=1.3)
 
-        def mapDisplacementGrid(displacements, scene):
+        def get_displacement_rgba(displacements, scene, mappable):
             arr = num.full_like(scene.displacement, fill_value=num.nan)
             qt = scene.quadtree
 
@@ -162,9 +227,18 @@ edge marking the upper fault edge. Complete data extent is shown.
                 arr[l._slice_rows, l._slice_cols] = syn_v
 
             arr[scene.displacement_mask] = num.nan
-            return arr
 
-        def drawLeaves(ax, scene, offset_e=0., offset_n=0.):
+            if not self.common_color_scale:
+                abs_displ = num.abs(displacements).max()
+                mappable.set_clim(-abs_displ, abs_displ)
+
+            if self.show_topo:
+                elevation = scene.get_elevation()
+                return drape_displacements(arr, elevation, mappable)
+
+            return mappable.to_rgba(arr)
+
+        def draw_leaves(ax, scene, offset_e=0., offset_n=0.):
             rects = scene.quadtree.getMPLRectangles()
             for r in rects:
                 r.set_edgecolor((.4, .4, .4))
@@ -174,11 +248,12 @@ edge marking the upper fault edge. Complete data extent is shown.
                 r.set_y(r.get_y() - offset_n)
             map(ax.add_artist, rects)
 
-            ax.scatter(scene.quadtree.leaf_coordinates[:, 0] - offset_e,
-                       scene.quadtree.leaf_coordinates[:, 1] - offset_n,
-                       s=.25, c='black', alpha=.1)
+            if self.show_leaf_centres:
+                ax.scatter(scene.quadtree.leaf_coordinates[:, 0] - offset_e,
+                           scene.quadtree.leaf_coordinates[:, 1] - offset_n,
+                           s=.25, c='black', alpha=.1)
 
-        def addArrow(ax, scene):
+        def add_arrow(ax, scene):
             phi = num.nanmean(scene.phi)
             los_dx = num.cos(phi + num.pi) * .0625
             los_dy = num.sin(phi + num.pi) * .0625
@@ -286,41 +361,39 @@ data and (right) the model residual.
                     fig.add_subplot(gs[0, 2])]
 
             ax = axes[0]
-            ax.imshow(mapDisplacementGrid(stat_obs, scene),
-                      extent=im_extent, cmap=self.colormap,
-                      vmin=-abs_displ, vmax=abs_displ,
-                      origin='lower')
-            drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax, scene)
-            addArrow(ax, scene)
-            initAxes(ax, scene, 'Observed')
+            ax.imshow(
+                get_displacement_rgba(stat_obs, scene, cmw),
+                extent=im_extent, origin='lower')
+            draw_leaves(ax, scene, offset_e, offset_n)
+            draw_source(ax, scene)
+            add_arrow(ax, scene)
+            init_axes(ax, scene, 'Observed')
 
             ax.text(.025, .025, 'Scene ID: %s' % scene.meta.scene_id,
                     fontsize=8, alpha=.7,
                     va='bottom', transform=ax.transAxes)
             if scene.frame.isMeter():
-                ax.set_ylabel('Northing [km]')
+                ax.set_ylabel('Northing [km]', fontsize=self.font_size)
 
             ax = axes[1]
-            ax.imshow(mapDisplacementGrid(stat_syn, scene),
-                      extent=im_extent, cmap=self.colormap,
-                      vmin=-abs_displ, vmax=abs_displ,
-                      origin='lower')
-            drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax, scene)
-            addArrow(ax, scene)
-            initAxes(ax, scene, 'Model')
+            ax.imshow(
+                get_displacement_rgba(stat_syn, scene, cmw),
+                extent=im_extent, origin='lower')
+            draw_leaves(ax, scene, offset_e, offset_n)
+            draw_source(ax, scene)
+            add_arrow(ax, scene)
+            init_axes(ax, scene, 'Model')
             ax.get_yaxis().set_visible(False)
 
             ax = axes[2]
-            ax.imshow(mapDisplacementGrid(res, scene),
-                      extent=im_extent, cmap=self.colormap,
-                      vmin=-abs_displ, vmax=abs_displ,
-                      origin='lower')
-            drawLeaves(ax, scene, offset_e, offset_n)
-            drawSource(ax, scene)
-            addArrow(ax, scene)
-            initAxes(ax, scene, 'Residual', last_axes=True)
+            ax.imshow(
+                get_displacement_rgba(res, scene, cmw),
+                extent=im_extent, origin='lower')
+
+            draw_leaves(ax, scene, offset_e, offset_n)
+            draw_source(ax, scene)
+            add_arrow(ax, scene)
+            init_axes(ax, scene, 'Residual', last_axes=True)
             ax.get_yaxis().set_visible(False)
 
             for ax in axes:
@@ -353,11 +426,30 @@ data and (right) the model residual.
                     ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)
                     ax.set_ylim(-fault_size/2 + off_n, fault_size/2 + off_n)
 
-            cax = fig.add_subplot(gs[1, :])
-            cbar = fig.colorbar(cmw, cax=cax, orientation='horizontal',
-                                use_gridspec=True)
+            if self.map_limits is not None:
+                xmin, xmax, ymin, ymax = self.map_limits
 
-            cbar.set_label('LOS Displacement [m]')
+                for ax in axes:
+                    ax.set_xlim(
+                        xmin/ax.scale_x['scale'] - ax.scale_x['offset'],
+                        xmax/ax.scale_x['scale'] - ax.scale_x['offset'],)
+                    ax.set_ylim(
+                        ymin/ax.scale_y['scale'] - ax.scale_y['offset'],
+                        ymax/ax.scale_y['scale'] - ax.scale_y['offset'])
+
+            cax = fig.add_subplot(gs[1, :])
+
+            if self.displacement_unit == 'm':
+                cfmt = lambda x, p: '%.2f' % x
+            elif self.displacement_unit == 'cm':
+                cfmt = lambda x, p: '%.2f' % (x * 1e2)
+            elif self.displacement_unit == 'mm':
+                cfmt = lambda x, p: '%.2f' % (x * 1e3)
+
+            cbar = fig.colorbar(
+                cmw, cax=cax, orientation='horizontal',
+                format=FuncFormatter(cfmt), use_gridspec=True)
+            cbar.set_label('LOS Displacement [%s]' % self.displacement_unit)
 
             return (item, fig)
 
