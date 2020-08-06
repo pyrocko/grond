@@ -437,10 +437,6 @@ edge marking the upper fault edge. Complete data extent is shown.
             if targets_displ_max<num.nanmax(target.scene.displacement):
                 targets_displ_max = num.nanmax(target.scene.displacement)  
                 
-            if self.shown_disp_unit == 'cm':
-                tick_step = self.color_tick_step / 100.
-            if self.shown_disp_unit == 'mm':
-                tick_step = self.color_tick_step / 1000.
  
         def generate_plot(sat_target, result, ifig):
 
@@ -468,6 +464,13 @@ Surface displacements derived from satellite data.
 (Left) the input data, (center) the modelled
 data and (right) the model residual.
 '''.format(meta=scene.meta))
+          if self.shown_disp_unit == 'm':
+              tick_step = self.color_tick_step
+          elif self.shown_disp_unit == 'cm':
+              tick_step = self.color_tick_step / 100.
+          elif self.shown_disp_unit == 'mm':
+              tick_step = self.color_tick_step / 1000.
+
 
             stat_obs = result.statics_obs
             stat_syn = result.statics_syn['displacement.los']
