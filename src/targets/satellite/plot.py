@@ -52,7 +52,7 @@ def drape_displacements(
 
     rgb_map = mappable.to_rgba(displacement)
     rgb_map[num.isnan(displacement)] = 1.
-    rgb_map *= shad[:, :, num.newaxis]
+    rgb_map[:, :, :3] *= shad[:, :, num.newaxis]
 
     return rgb_map
 
@@ -112,6 +112,9 @@ class SatelliteTargetDisplacement(PlotConfig):
         optional=True,
         help='Overwrite map limits in native coordinates. '
              'Use (xmin, xmax, ymin, ymax)')
+    nticks_x = Int.T(
+        optional=True,
+        help='Number of ticks on the x-axis.')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -174,6 +177,7 @@ edge marking the upper fault edge. Complete data extent is shown.
                 scale_x['offset'] = utm_E
                 scale_y['offset'] = utm_N
 
+
                 if last_axes:
                     ax.text(0.975, 0.025,
                             'UTM Zone %d%s' % (utm_zone, utm_zone_letter),
@@ -183,16 +187,20 @@ edge marking the upper fault edge. Complete data extent is shown.
                 ax.set_aspect('equal')
 
             elif scene.frame.isDegree():
-
                 scale_x = dict(scale=1., suffix='°')
                 scale_y = dict(scale=1., suffix='°')
                 scale_x['offset'] = source.effective_lon
                 scale_y['offset'] = source.effective_lat
+
                 ax.set_aspect(1./num.cos(source.effective_lat*d2r))
 
-            nticks_lon = 4 if abs(scene.frame.llLon) >= 100 else 5
+            if self.relative_coordinates:
+                scale_x['offset'] = 0.
+                scale_y['offset'] = 0.
 
-            ax.xaxis.set_major_locator(MaxNLocator(nticks_lon))
+            nticks_x = 4 if abs(scene.frame.llLon) >= 100 else 5
+
+            ax.xaxis.set_major_locator(MaxNLocator(self.nticks_x or nticks_x))
             ax.yaxis.set_major_locator(MaxNLocator(5))
 
             ax.scale_x = scale_x
@@ -233,8 +241,12 @@ edge marking the upper fault edge. Complete data extent is shown.
                 mappable.set_clim(-abs_displ, abs_displ)
 
             if self.show_topo:
-                elevation = scene.get_elevation()
-                return drape_displacements(arr, elevation, mappable)
+                try:
+                    elevation = scene.get_elevation()
+                    return drape_displacements(arr, elevation, mappable)
+                except Exception as e:
+                    logger.warning('could not plot hillshaded topo')
+                    logger.exception(e)
 
             return mappable.to_rgba(arr)
 
@@ -397,8 +409,8 @@ data and (right) the model residual.
             ax.get_yaxis().set_visible(False)
 
             for ax in axes:
-                ax.set_xlim(llE, urE)
-                ax.set_ylim(llN, urN)
+                ax.set_xlim(*im_extent[:2])
+                ax.set_ylim(*im_extent[2:])
 
             if closeup:
                 if scene.frame.isMeter():
@@ -437,19 +449,33 @@ data and (right) the model residual.
                         ymin/ax.scale_y['scale'] - ax.scale_y['offset'],
                         ymax/ax.scale_y['scale'] - ax.scale_y['offset'])
 
-            cax = fig.add_subplot(gs[1, :])
-
             if self.displacement_unit == 'm':
                 cfmt = lambda x, p: '%.2f' % x
             elif self.displacement_unit == 'cm':
-                cfmt = lambda x, p: '%.2f' % (x * 1e2)
+                cfmt = lambda x, p: '%.1f' % (x * 1e2)
             elif self.displacement_unit == 'mm':
-                cfmt = lambda x, p: '%.2f' % (x * 1e3)
+                cfmt = lambda x, p: '%.0f' % (x * 1e3)
 
-            cbar = fig.colorbar(
-                cmw, cax=cax, orientation='horizontal',
-                format=FuncFormatter(cfmt), use_gridspec=True)
-            cbar.set_label('LOS Displacement [%s]' % self.displacement_unit)
+            cbar_args = dict(
+                orientation='horizontal',
+                format=FuncFormatter(cfmt),
+                use_gridspec=True)
+            cbar_label = 'LOS Displacement [%s]' % self.displacement_unit
+
+            if self.common_color_scale:
+                cax = fig.add_subplot(gs[1, 1])
+                cax.set_aspect(.05)
+                cbar = fig.colorbar(cmw, cax=cax, **cbar_args)
+                cbar.set_label(cbar_label)
+            else:
+                for idata, data in enumerate((stat_syn, stat_obs, res)):
+                    cax = fig.add_subplot(gs[1, idata])
+                    cax.set_aspect(.05)
+                    abs_displ = num.abs(data).max()
+                    cmw.set_clim(-abs_displ, abs_displ)
+
+                    cbar = fig.colorbar(cmw, cax=cax, **cbar_args)
+                    cbar.set_label(cbar_label)
 
             return (item, fig)
 
