@@ -15,9 +15,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Support offset coordinates in station and event inputs.
 - lockfile `.running` in rundir during inverion. Fixes timeout for monitor.
 - Support develop mode installation.
+- Satellite Plots: added topology with draped surface displacements.
+- Satellite Plots: added more control through PlotConfig.
+- Satellite Plots: added cyclic radians plots.
 
 ### Fixed
 - Fix search in HTML report.
+- Fix `could not attach to grond environment`.
 - Fixes various plotting issues.
 - Improvements in documentation, examples and defaults.
 - Improvents to error and log messages.

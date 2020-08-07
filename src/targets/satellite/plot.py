@@ -21,13 +21,13 @@ def drape_displacements(
         displacement, shad_data, mappable,
         shad_lim=(.4, .98), contrast=1., mask=None):
     '''Map color data (displacement) on shaded relief.'''
-    
+
     from scipy.ndimage import convolve as im_conv
     # Light source from somewhere above - psychologically the best choice
     # from upper left
     ramp = num.array([[1, 0], [0, -1.]]) * contrast
 
-    # convolution of two 2D arrays    
+    # convolution of two 2D arrays
     shad = im_conv(shad_data*km, ramp.T)
     shad *= -1.
 
@@ -45,7 +45,7 @@ def drape_displacements(
 
     if mask is not None:
         shad[mask] = num.nan
-    
+
     # reduce range to balance gray color
     shad *= shad_lim[1] - shad_lim[0]
     shad += shad_lim[0]
@@ -55,6 +55,10 @@ def drape_displacements(
     rgb_map[:, :, :3] *= shad[:, :, num.newaxis]
 
     return rgb_map
+
+
+def displ2rad(displ, wavelength):
+    return (displ % wavelength) / wavelength * num.pi
 
 
 def scale_axes(axis, scale, offset=0., suffix=''):
@@ -95,8 +99,8 @@ class SatelliteTargetDisplacement(PlotConfig):
         help='Drape displacements over the topography.')
     displacement_unit = StringChoice.T(
         default='m',
-        choices=['m', 'mm', 'cm'],
-        help="Show results in 'm', 'cm' or 'mm'")
+        choices=['m', 'mm', 'cm', 'rad'],
+        help="Show results in 'm', 'cm', 'mm' or 'rad' for radians.")
     show_leaf_centres = Bool.T(
         default=True,
         help='show the center points of Quadtree leaves')
@@ -177,7 +181,6 @@ edge marking the upper fault edge. Complete data extent is shown.
                 scale_x['offset'] = utm_E
                 scale_y['offset'] = utm_N
 
-
                 if last_axes:
                     ax.text(0.975, 0.025,
                             'UTM Zone %d%s' % (utm_zone, utm_zone_letter),
@@ -236,7 +239,8 @@ edge marking the upper fault edge. Complete data extent is shown.
 
             arr[scene.displacement_mask] = num.nan
 
-            if not self.common_color_scale:
+            if not self.common_color_scale \
+                    and not self.displacement_unit == 'rad':
                 abs_displ = num.abs(displacements).max()
                 mappable.set_clim(-abs_displ, abs_displ)
 
@@ -355,17 +359,33 @@ data and (right) the model residual.
                 offset_n = source.effective_lat - scene.frame.llLat
                 offset_e = source.effective_lon - scene.frame.llLon
 
-            im_extent = (scene.frame.E.min() - offset_e,
-                         scene.frame.E.max() - offset_e,
-                         scene.frame.N.min() - offset_n,
-                         scene.frame.N.max() - offset_n)
+            im_extent = (
+                scene.frame.E.min() - offset_e,
+                scene.frame.E.max() - offset_e,
+                scene.frame.N.min() - offset_n,
+                scene.frame.N.max() - offset_n)
 
-            abs_displ = num.abs([stat_obs.min(), stat_obs.max(),
-                                 stat_syn.min(), stat_syn.max(),
-                                 res.min(), res.max()]).max()
+            if self.displacement_unit == 'rad':
+                wavelength = scene.meta.wavelength
+                if wavelength is None:
+                    raise AttributeError(
+                        'The satellite\'s wavelength is not set')
+
+                stat_obs = displ2rad(stat_obs, wavelength)
+                stat_syn = displ2rad(stat_syn, wavelength)
+                res = displ2rad(res, wavelength)
+
+                self.colormap = 'hsv'
+                data_range = (0., num.pi)
+
+            else:
+                abs_displ = num.abs([stat_obs.min(), stat_obs.max(),
+                                     stat_syn.min(), stat_syn.max(),
+                                     res.min(), res.max()]).max()
+                data_range = (-abs_displ, abs_displ)
 
             cmw = cm.ScalarMappable(cmap=self.colormap)
-            cmw.set_clim(vmin=-abs_displ, vmax=abs_displ)
+            cmw.set_clim(*data_range)
             cmw.set_array(stat_obs)
 
             axes = [fig.add_subplot(gs[0, 0]),
@@ -450,11 +470,20 @@ data and (right) the model residual.
                         ymax/ax.scale_y['scale'] - ax.scale_y['offset'])
 
             if self.displacement_unit == 'm':
-                cfmt = lambda x, p: '%.2f' % x
+                def cfmt(x, p):
+                    return '%.2f' % x
             elif self.displacement_unit == 'cm':
-                cfmt = lambda x, p: '%.1f' % (x * 1e2)
+                def cfmt(x, p):
+                    return '%.1f' % (x * 1e2)
             elif self.displacement_unit == 'mm':
-                cfmt = lambda x, p: '%.0f' % (x * 1e3)
+                def cfmt(x, p):
+                    return '%.0f' % (x * 1e3)
+            elif self.displacement_unit == 'rad':
+                def cfmt(x, p):
+                    return '%.2f' % x
+            else:
+                raise AttributeError(
+                    'unknown displacement unit %s' % self.displacement_unit)
 
             cbar_args = dict(
                 orientation='horizontal',
@@ -471,8 +500,10 @@ data and (right) the model residual.
                 for idata, data in enumerate((stat_syn, stat_obs, res)):
                     cax = fig.add_subplot(gs[1, idata])
                     cax.set_aspect(.05)
-                    abs_displ = num.abs(data).max()
-                    cmw.set_clim(-abs_displ, abs_displ)
+
+                    if not self.displacement_unit == 'rad':
+                        abs_displ = num.abs(data).max()
+                        cmw.set_clim(-abs_displ, abs_displ)
 
                     cbar = fig.colorbar(cmw, cax=cax, **cbar_args)
                     cbar.set_label(cbar_label)
