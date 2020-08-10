@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 import time
+import os
 import os.path as op
 
 from setuptools import setup
 from setuptools.command.install import install
 from setuptools.command.build_py import build_py
+from setuptools.command.develop import develop
 
 version = '1.3.1'
 
@@ -19,71 +21,89 @@ class NotInAGitRepos(Exception):
     pass
 
 
-class CustomBuildPyCommand(build_py):
+def git_infos():
+    '''Query git about sha1 of last commit and check if there are local \
+       modifications.'''
 
-    def git_infos(self):
-        '''Query git about sha1 of last commit and check if there are local \
-           modifications.'''
+    from subprocess import Popen, PIPE
+    import re
 
-        from subprocess import Popen, PIPE
-        import re
+    def q(c):
+        return Popen(c, stdout=PIPE).communicate()[0]
 
-        def q(c):
-            return Popen(c, stdout=PIPE).communicate()[0]
+    if not op.exists('.git'):
+        raise NotInAGitRepos()
 
-        if not op.exists('.git'):
-            raise NotInAGitRepos()
+    sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
+    sha1 = re.sub(br'[^0-9a-f]', '', sha1)
+    sha1 = str(sha1.decode('ascii'))
+    sstatus = q(['git', 'status', '--porcelain', '-uno'])
+    local_modifications = bool(sstatus.strip())
+    return sha1, local_modifications
 
-        sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
-        sha1 = re.sub(br'[^0-9a-f]', '', sha1)
-        sha1 = str(sha1.decode('ascii'))
-        sstatus = q(['git', 'status', '--porcelain', '-uno'])
-        local_modifications = bool(sstatus.strip())
-        return sha1, local_modifications
 
-    def make_info_module(self, packname, version):
-        '''Put version and revision information into file src/setup_info.py.'''
+def make_info_module(packname, version, outfile):
+    '''Put version and revision information into file src/setup_info.py.'''
 
-        sha1, local_modifications = None, None
-        combi = '%s_%s' % (packname, version)
-        try:
-            sha1, local_modifications = self.git_infos()
-            combi += '_%s' % sha1
-            if local_modifications:
-                combi += '_modified'
+    sha1, local_modifications = None, None
+    combi = '%s_%s' % (packname, version)
+    try:
+        sha1, local_modifications = git_infos()
+        combi += '_%s' % sha1
+        if local_modifications:
+            combi += '_modified'
 
-        except (OSError, NotInAGitRepos):
-            pass
+    except (OSError, NotInAGitRepos):
+        pass
 
-        datestr = time.strftime('%Y-%m-%d_%H:%M:%S')
-        combi += '_%s' % datestr
+    datestr = time.strftime('%Y-%m-%d_%H:%M:%S')
+    combi += '_%s' % datestr
 
-        module_code = '''# This module is automatically created from setup.py
+    module_code = '''# This module is automatically created from setup.py
 git_sha1 = %s
 local_modifications = %s
 version = %s
 long_version = %s  # noqa
 installed_date = %s
 ''' % tuple([repr(x) for x in (
-            sha1, local_modifications, version, combi, datestr)])
+        sha1, local_modifications, version, combi, datestr)])
 
-        outfile = self.get_module_outfile(
-            self.build_lib, ['grond'], 'setup_info')
+    with open(outfile, 'w') as f:
+        f.write(module_code)
 
-        dir = op.dirname(outfile)
-        self.mkpath(dir)
-        with open(outfile, 'w') as f:
-            f.write(module_code)
+class CustomBuildPyCommand(build_py):
 
     def run(self):
-        self.make_info_module('grond', version)
+        outfile = self.get_module_outfile(
+            self.build_lib, ['grond'], 'setup_info')
+        dir_ = op.dirname(outfile)
+        self.mkpath(dir_)
+        make_info_module('grond', version, outfile)
         build_py.run(self)
 
+
+class CustomDevelopCommand(develop):
+
+    def run(self):
+        """
+        Create symlink grond -> src and write setup_info.py file inside
+        src directory
+
+        See https://github.com/pypa/setuptools/issues/230.
+        """
+        dir_ = op.dirname(op.abspath(__file__))
+        outfile = op.join(dir_, 'src', 'setup_info.py')
+        dest = op.join(dir_, 'grond')
+        if not op.exists(dest):
+            os.symlink('src', dest)
+        make_info_module('grond', version, outfile)
+        super().run()
 
 setup(
     cmdclass={
         'build_py': CustomBuildPyCommand,
         'install': CustomInstallCommand,
+        'develop': CustomDevelopCommand,
     },
 
     name='grond',
