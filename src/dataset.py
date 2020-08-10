@@ -914,6 +914,9 @@ class Dataset(object):
                     names.add(name)
                     hash_to_name[marker.get_event_hash()] = name
 
+            for ev in self.events:
+                hash_to_name[ev.get_hash()] = ev.name
+
             picks = {}
             for marker in self.pick_markers:
                 if isinstance(marker, pmarker.PhaseMarker):
