@@ -460,6 +460,8 @@ data and (right) the model residual.
 
             if self.map_limits is not None:
                 xmin, xmax, ymin, ymax = self.map_limits
+                assert xmin < xmax, 'bad map_limits xmin > xmax'
+                assert ymin < ymax, 'bad map_limits ymin > ymax'
 
                 for ax in axes:
                     ax.set_xlim(
