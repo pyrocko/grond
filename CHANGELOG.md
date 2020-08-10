@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Improvements in documentation, examples and defaults.
 - Improvents to error and log messages.
 - `satellite.plot` degree axis offset and close-up scaling for point sources.
+- Improved event/pick association.
 
 ## [1.3.2] 2019-07-03
 
