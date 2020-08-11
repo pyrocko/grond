@@ -13,4 +13,5 @@
 * Enrico Baglione
 * Fabian Schulze
 * Simone Cesca
+* Tom Eulenfeld
 * Torsten Dahm
