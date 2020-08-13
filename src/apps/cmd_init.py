@@ -34,7 +34,8 @@ class GrondInit(object):
 
     @property
     def example_dirs(self):
-        return glob.glob(op.join(self.example_path, '*'))
+        return [path for path in glob.glob(op.join(self.example_path, '*'))
+                if op.isdir(path)]
 
     @property
     def section_files(self):
