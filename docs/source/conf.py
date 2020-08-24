@@ -30,6 +30,7 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+from datetime import datetime as dt
 import grond
 import sphinx_sleekcat_theme
 
@@ -58,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Grond'
-copyright = u'2017, The Grond Developers'
+copyright = u'%d, The Grond Developers' % dt.now().year
 author = u'The Grond Developers'
 
 # The version info for the project you're documenting, acts as replacement for
