@@ -145,7 +145,7 @@ steps:
   - test-mixed
 
 - name: upload-testing
-  image: pyrocko-aux
+  image: grond-nest
   pull: never
   when:
     branch:
@@ -158,9 +158,11 @@ steps:
       from_secret: pypi-username
     PYPI_PASSWORD:
       from_secret: pypi-password
+  depends_on:
+  - stage
 
 - name: upload
-  image: pyrocko-aux
+  image: grond-nest
   pull: never
   when:
     branch:
@@ -172,6 +174,8 @@ steps:
       from_secret: pypi-username
     PYPI_PASSWORD:
       from_secret: pypi-password
+  depends_on:
+  - stage
 
 ---
 
