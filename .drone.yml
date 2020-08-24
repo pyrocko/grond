@@ -89,13 +89,13 @@ trigger:
 
 steps:
 
-- name: sdist-pip
+- name: sdist
   image: grond-nest
   pull: never
   commands:
   - python3 setup.py sdist
 
-- name: test-pure-pip
+- name: test-pure
   image: grond-fat-aux
   pull: never
   when:
@@ -111,7 +111,7 @@ steps:
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
 
-- name: test-mixed-pip
+- name: test-mixed
   image: grond-fat-nest
   pull: never
   when:
