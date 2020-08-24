@@ -90,7 +90,7 @@ trigger:
 steps:
 
 - name: sdist-pip
-  image: grond-nest
+  image: grond-fat-aux
   pull: never
   commands:
   - python setup.py sdist
@@ -103,20 +103,24 @@ steps:
       exclude:
       - release
   commands:
+  - rm -f test/data
+  - ln -s /grond-test-data test/data
   - pip3 install pyrocko nose
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
 
-- name: test-mixed-pip-manylinux1_x86_64
-  image: grond-nest
+- name: test-mixed-pip
+  image: grond-fat-nest
   pull: never
   when:
     branch:
       exclude:
       - release
   commands:
+  - rm -f test/data
+  - ln -s /grond-test-data test/data
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
 
@@ -170,9 +174,10 @@ name: tests-base
 
 steps:
 - name: tests-base
-  image: grond-nest
+  image: grond-fat-nest
   pull: never
   commands:
+  - ln -s /grond-test-data test/data
   - python3 setup.py install
   - python3 -m coverage run --parallel-mode -m nose test
   - for x in .coverage.* ; do mv $x $${x#.} ; done
