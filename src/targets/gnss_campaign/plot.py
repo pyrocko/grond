@@ -8,7 +8,7 @@ from pyrocko import orthodrome as od
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 from grond.problems import CMTProblem, RectangularProblem, \
-    VolumePointProblem, VLVDProblem
+    VLVDProblem
 
 from ..plot import StationDistributionPlot
 

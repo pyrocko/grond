@@ -71,6 +71,7 @@ installed_date = %s
     with open(outfile, 'w') as f:
         f.write(module_code)
 
+
 class CustomBuildPyCommand(build_py):
 
     def run(self):
@@ -99,6 +100,7 @@ class CustomDevelopCommand(develop):
         make_info_module('grond', version, outfile)
         super().run()
 
+
 setup(
     cmdclass={
         'build_py': CustomBuildPyCommand,
@@ -110,6 +112,12 @@ setup(
 
     description='A probabilistic earthquake source inversion framework. '
                 'Designed and crafted in Mordor.',
+
+    long_description=open(
+        'maintenance/pip/readme.rst', 'rb').read().decode('utf8'),
+    long_description_content_type='text/x-rst',
+
+    url='https://pyrocko.org/grond/',
 
     version=version,
 

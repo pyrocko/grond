@@ -61,9 +61,9 @@ def nextpow2(i):
     return 2**int(math.ceil(math.log(i) / math.log(2.)))
 
 
-def gather(l, key, sort=None, filter=None):
+def gather(seq, key, sort=None, filter=None):
     d = {}
-    for x in l:
+    for x in seq:
         if filter is not None and not filter(x):
             continue
 
@@ -316,8 +316,8 @@ def nslc_to_pattern(s):
         raise GrondError('Invalid net.sta.loc.cha pattern: %s' % s)
 
 
-def nslcs_to_patterns(l):
-    return [nslc_to_pattern(s) for s in l]
+def nslcs_to_patterns(seq):
+    return [nslc_to_pattern(s) for s in seq]
 
 
 class SelectionError(GrondError):

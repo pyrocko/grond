@@ -1,3 +1,4 @@
+
 kind: pipeline
 type: docker
 name: flake8
@@ -27,7 +28,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
+  - maintenance/drone/rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -46,7 +47,7 @@ steps:
     - deploy-docs
 
   commands:
-  - maintenance/drone-rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
+  - maintenance/drone/rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
   environment:
     RSYNC_HOST:
       from_secret: www-host
@@ -65,7 +66,7 @@ steps:
     - deploy-docs
 
   commands:
-  - maintenance/drone-deploy-docs.sh
+  - maintenance/drone/deploy-docs.sh
   environment:
     WWW_HOST:
       from_secret: www-host
@@ -88,42 +89,51 @@ trigger:
 
 steps:
 
-- name: sdist-pip
+- name: sdist
   image: grond-nest
   pull: never
   commands:
-  - python setup.py sdist
+  - python3 setup.py sdist
+  - rm -f test/data
+  - ln -s /grond-test-data test/data
+  - ln -s /grond-test-playground test_playground
 
-- name: test-pure-pip
-  image: pyrocko-aux
+- name: test-pure
+  image: grond-fat-aux
   pull: never
   when:
     branch:
       exclude:
       - release
   commands:
+  - mkdir /grond-test-playground
   - pip3 install pyrocko nose
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
+  depends_on:
+  - sdist
 
-- name: test-mixed-pip-manylinux1_x86_64
-  image: grond-nest
+- name: test-mixed
+  image: grond-fat-nest
   pull: never
   when:
     branch:
       exclude:
       - release
   commands:
+  - mkdir /grond-test-playground
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
+  depends_on:
+  - sdist
 
 - name: stage
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/dist/
+  - maintenance/drone/rsync.sh dist/ ${DRONE_COMMIT}/dist/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -131,35 +141,42 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+  depends_on:
+  - test-pure
+  - test-mixed
 
 - name: upload-testing
-  image: pyrocko-aux
+  image: grond-nest
   pull: never
   when:
     branch:
     - candidate
     - pip
   commands:
-  - maintenance/pip/upload_wheels.sh testing
+  - maintenance/pip/upload.sh testing
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
     PYPI_PASSWORD:
       from_secret: pypi-password
+  depends_on:
+  - stage
 
 - name: upload
-  image: pyrocko-aux
+  image: grond-nest
   pull: never
   when:
     branch:
     - release
   commands:
-  - maintenance/pip/upload_wheels.sh live
+  - maintenance/pip/upload.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
     PYPI_PASSWORD:
       from_secret: pypi-password
+  depends_on:
+  - stage
 
 ---
 
@@ -169,9 +186,10 @@ name: tests-base
 
 steps:
 - name: tests-base
-  image: grond-nest
+  image: grond-fat-nest
   pull: never
   commands:
+  - ln -s /grond-test-data test/data
   - python3 setup.py install
   - python3 -m coverage run --parallel-mode -m nose test
   - for x in .coverage.* ; do mv $x $${x#.} ; done
@@ -180,7 +198,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  - maintenance/drone/rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -197,9 +215,6 @@ name: coverage
 
 depends_on:
 - tests-base
-- tests-gf
-- tests-examples
-- tests-gui
 
 steps:
 - name: build
@@ -215,7 +230,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
+  - maintenance/drone/rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -246,7 +261,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-matterpost.py
+  - maintenance/drone/matterpost.py
   environment:
     WEBHOOK:
       from_secret: hive-webhook
