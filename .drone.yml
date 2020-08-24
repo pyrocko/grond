@@ -110,6 +110,8 @@ steps:
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
+  depends_on:
+  - sdist
 
 - name: test-mixed
   image: grond-fat-nest
@@ -123,6 +125,8 @@ steps:
   - ln -s /grond-test-data test/data
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
+  depends_on:
+  - sdist
 
 - name: stage
   image: pyrocko-aux
@@ -136,6 +140,9 @@ steps:
       from_secret: rsync-user
     RSYNC_KEY:
       from_secret: rsync-key
+  depends_on:
+  - test-pure
+  - test-mixed
 
 - name: upload-testing
   image: pyrocko-aux
