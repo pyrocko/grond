@@ -94,6 +94,9 @@ steps:
   pull: never
   commands:
   - python3 setup.py sdist
+  - rm -f test/data
+  - ln -s /grond-test-data test/data
+  - ln -s /grond-test-playground test_playground
 
 - name: test-pure
   image: grond-fat-aux
@@ -103,8 +106,7 @@ steps:
       exclude:
       - release
   commands:
-  - rm -f test/data
-  - ln -s /grond-test-data test/data
+  - mkdir /grond-test-playground
   - pip3 install pyrocko nose
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
@@ -121,8 +123,7 @@ steps:
       exclude:
       - release
   commands:
-  - rm -f test/data
-  - ln -s /grond-test-data test/data
+  - mkdir /grond-test-playground
   - pip3 install -f dist --no-index --no-deps grond
   - python3 -m nose test
   depends_on:
