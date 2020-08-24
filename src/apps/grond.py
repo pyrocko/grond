@@ -551,7 +551,7 @@ def command_init(args):
             sys.stdout.write(config+'\n\n')
 
             logger.info('Hint: To create a project, use: grond init <example> '
-                        '<projectdir>'.format(c=Color, example=args[0]))
+                        '<projectdir>')
 
         elif op.exists(op.abspath(args[1])) and not options.force:
             help_and_die(

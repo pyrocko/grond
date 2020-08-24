@@ -709,8 +709,8 @@ class MTLocationPlot(SectionPlotConfig):
         default='dc')
     normalisation_gamma = Float.T(
         default=3.,
-        help='Normalisation of colors and alpha as :math:`x^\gamma`.'
-             'A linear colormap/alpha with :math:`\gamma=1`.')
+        help='Normalisation of colors and alpha as :math:`x^\\gamma`.'
+             'A linear colormap/alpha with :math:`\\gamma=1`.')
 
     def make(self, environ):
         environ.setup_modelling()

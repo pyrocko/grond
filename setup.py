@@ -71,6 +71,7 @@ installed_date = %s
     with open(outfile, 'w') as f:
         f.write(module_code)
 
+
 class CustomBuildPyCommand(build_py):
 
     def run(self):
@@ -98,6 +99,7 @@ class CustomDevelopCommand(develop):
             os.symlink('src', dest)
         make_info_module('grond', version, outfile)
         super().run()
+
 
 setup(
     cmdclass={

@@ -234,8 +234,8 @@ edge marking the upper fault edge. Complete data extent is shown.
             arr = num.full_like(scene.displacement, fill_value=num.nan)
             qt = scene.quadtree
 
-            for syn_v, l in zip(displacements, qt.leaves):
-                arr[l._slice_rows, l._slice_cols] = syn_v
+            for syn_v, leaf in zip(displacements, qt.leaves):
+                arr[leaf._slice_rows, leaf._slice_cols] = syn_v
 
             arr[scene.displacement_mask] = num.nan
 
@@ -313,11 +313,11 @@ edge marking the upper fault edge. Complete data extent is shown.
                 off_e = source.effective_lon - target.scene.frame.llLon
 
             turE, turN, tllE, tllN = zip(
-                *[(l.gridE.max()-off_e,
-                   l.gridN.max()-off_n,
-                   l.gridE.min()-off_e,
-                   l.gridN.min()-off_n)
-                  for l in target.scene.quadtree.leaves])
+                *[(leaf.gridE.max()-off_e,
+                   leaf.gridN.max()-off_n,
+                   leaf.gridE.min()-off_e,
+                   leaf.gridN.min()-off_n)
+                  for leaf in target.scene.quadtree.leaves])
 
             turE, turN = map(max, (turE, turN))
             tllE, tllN = map(min, (tllE, tllN))
@@ -345,7 +345,7 @@ edge marking the upper fault edge. Complete data extent is shown.
 Surface displacements derived from satellite data.
 (Left) the input data, (center) the modelled
 data and (right) the model residual.
-'''.format(meta=scene.meta))
+''')
 
             stat_obs = result.statics_obs
             stat_syn = result.statics_syn['displacement.los']

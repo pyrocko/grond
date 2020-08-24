@@ -11,8 +11,7 @@ from . import measure as fm
 from grond import dataset
 from grond.meta import has_get_plot_classes
 
-from ..waveform.target import StoreIDSelector, StoreIDSelectorError,\
-        Crust2StoreIDSelector, StationDictStoreIDSelector
+from ..waveform.target import StoreIDSelector
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform_phase_ratio.target')
