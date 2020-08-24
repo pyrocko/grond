@@ -90,13 +90,13 @@ trigger:
 steps:
 
 - name: sdist-pip
-  image: grond-fat-aux
+  image: grond-nest
   pull: never
   commands:
-  - python setup.py sdist
+  - python3 setup.py sdist
 
 - name: test-pure-pip
-  image: pyrocko-aux
+  image: grond-fat-aux
   pull: never
   when:
     branch:
