@@ -9,6 +9,27 @@ Grond is written in the Python programming language (versions ==2.7 and >=3.4).
 Grond uses Setuptools for its installation script. See `setup.py` and
 `setup.cfg` in the project root directory.
 
+## Testing
+
+Nosetests is used for testing. To run all tests, run
+
+```sh
+python -m nose test
+```
+
+## CI
+
+Drone CI tests are run on any commits pushed to the repository. By default,
+flake8 is run, tests are run and test coverage is measured and docs are built.
+Success is reported to the Pyrocko Hive. Pushing to specific branches triggers
+extra pipelines:
+
+* pip: pip sdist is built, tested and uploaded to PyPi-testing
+* deploy-docs: docs are published
+* candidate: same as pip
+* release: same as pip but without pip testing  and upload to PyPi-live +
+  deploy-docs
+
 ## Versioning and releases
 
 Git is used for version control. Use development branches for new features.

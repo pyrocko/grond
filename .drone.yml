@@ -1,0 +1,252 @@
+kind: pipeline
+type: docker
+name: flake8
+
+steps:
+- name: flake8
+  image: grond-nest
+  pull: never
+  commands:
+  - flake8 src test setup.py
+
+---
+
+kind: pipeline
+type: docker
+name: docs
+
+steps:
+- name: build
+  image: grond-docs
+  pull: never
+  commands:
+  - python3 setup.py install && cd docs && make html
+  - grond version --short > build/html/version.txt
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: stage-www
+  image: pyrocko-aux
+  pull: never
+
+  when:
+    branch:
+    - release
+    - deploy-docs
+
+  commands:
+  - maintenance/drone-rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
+  environment:
+    RSYNC_HOST:
+      from_secret: www-host
+    RSYNC_USER:
+      from_secret: www-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: deploy-www
+  image: pyrocko-aux
+  pull: never
+
+  when:
+    branch:
+    - release
+    - deploy-docs
+
+  commands:
+  - maintenance/drone-deploy-docs.sh
+  environment:
+    WWW_HOST:
+      from_secret: www-host
+    WWW_USER:
+      from_secret: www-user
+    WWW_KEY:
+      from_secret: www-key
+
+---
+
+kind: pipeline
+type: docker
+name: pip
+
+trigger:
+  branch:
+  - release
+  - candidate
+  - pip
+
+steps:
+
+- name: sdist-pip
+  image: grond-nest
+  pull: never
+  commands:
+  - python setup.py sdist
+
+- name: test-pure-pip
+  image: pyrocko-aux
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+  commands:
+  - pip3 install pyrocko nose
+  - pip3 install utm
+  - pip3 install git+https://github.com/pyrocko/kite
+  - pip3 install -f dist --no-index --no-deps grond
+  - python3 -m nose test
+
+- name: test-mixed-pip-manylinux1_x86_64
+  image: grond-nest
+  pull: never
+  when:
+    branch:
+      exclude:
+      - release
+  commands:
+  - pip3 install -f dist --no-index --no-deps grond
+  - python3 -m nose test
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/dist/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+- name: upload-testing
+  image: pyrocko-aux
+  pull: never
+  when:
+    branch:
+    - candidate
+    - pip
+  commands:
+  - maintenance/pip/upload_wheels.sh testing
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+- name: upload
+  image: pyrocko-aux
+  pull: never
+  when:
+    branch:
+    - release
+  commands:
+  - maintenance/pip/upload_wheels.sh live
+  environment:
+    PYPI_USERNAME:
+      from_secret: pypi-username
+    PYPI_PASSWORD:
+      from_secret: pypi-password
+
+---
+
+kind: pipeline
+type: docker
+name: tests-base
+
+steps:
+- name: tests-base
+  image: grond-nest
+  pull: never
+  commands:
+  - python3 setup.py install
+  - python3 -m coverage run --parallel-mode -m nose test
+  - for x in .coverage.* ; do mv $x $${x#.} ; done
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: coverage
+
+depends_on:
+- tests-base
+- tests-gf
+- tests-examples
+- tests-gui
+
+steps:
+- name: build
+  image: grond-nest
+  pull: never
+  commands:
+  - python3 setup.py install
+  - wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" https://data.pyrocko.org/builds/${DRONE_COMMIT}/coverage/data/
+  - python3 -m coverage combine coverage/data/coverage.*
+  - python3 -m coverage html
+
+- name: stage
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
+  environment:
+    RSYNC_HOST:
+      from_secret: rsync-host
+    RSYNC_USER:
+      from_secret: rsync-user
+    RSYNC_KEY:
+      from_secret: rsync-key
+
+---
+
+kind: pipeline
+type: docker
+name: notify-hive
+
+depends_on:
+- coverage
+- flake8
+- docs
+- pip
+
+trigger:
+  status:
+  - success
+  - failure
+
+steps:
+- name: post
+  image: pyrocko-aux
+  pull: never
+  commands:
+  - maintenance/drone-matterpost.py
+  environment:
+    WEBHOOK:
+      from_secret: hive-webhook
