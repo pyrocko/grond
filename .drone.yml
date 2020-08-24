@@ -197,9 +197,6 @@ name: coverage
 
 depends_on:
 - tests-base
-- tests-gf
-- tests-examples
-- tests-gui
 
 steps:
 - name: build
