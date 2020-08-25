@@ -116,6 +116,8 @@ setup(
     long_description=open(
         'maintenance/pip/readme.rst', 'rb').read().decode('utf8'),
 
+    url='https://pyrocko.org/grond/',
+
     version=version,
 
     author='The Grond Developers',
