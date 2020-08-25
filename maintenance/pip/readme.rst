@@ -27,7 +27,7 @@ Grond and all its dependencies can be installed by running
 
 .. code-block:: bash
 
-   pip install grond
+   pip install grond  # read below...
 
 **but**, we recommend to make a conscious decision about how its main
 dependency `Pyrocko <https://pyrocko.org/docs>`_ and especially Pyrocko's own
@@ -38,8 +38,7 @@ schemes.
 As a general advice, we recommend to exclusively use either, (1) the system's
 native package manager, (2) Anaconda, or (3) pip only. In (1) and (2), only
 resort to use pip for those few packages which are not available as native
-packages. It is easy to prove that using multiple package managers on one
-system leads to non-deterministic behaviour!
+packages. Otherwise, competing package managers will ruin your day!
 
 To prevent pip from automatically resolving dependencies run
 

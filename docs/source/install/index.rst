@@ -57,22 +57,35 @@ installed with Anaconda's pip into the Anaconda environment.
 .. code-block :: sh
 
     conda install -c pyrocko pyrocko
-    pip install git+https://git.pyrocko.org/pyrocko/grond.git
+    pip install grond
 
 
 Installation with pip
 ---------------------
 
-If you want to install Pyrocko with pip, carefully read the section
-`Installation with pip`_ in the Pyrocko manual first. We do not allow pip to
-resolve its dependencies automatically, therefore you have to install
-`Pyrocko`_ (required) and `Kite`_ (optional) separately.
+Grond and all its dependencies can be installed by running
 
-.. code-block :: sh
+.. code-block:: bash
 
-    pip install git+https://git.pyrocko.org/pyrocko/grond.git
+   pip install grond  # read below...
 
+**but**, we recommend to make a conscious decision about how its main
+dependency `Pyrocko`_ and especially Pyrocko's own dependencies are installed.
+The `Pyrocko Installation Manual <https://pyrocko.org/docs/current/install/>`_
+describes different installation schemes.
+
+As a general advice, we recommend to exclusively use either, (1) the system's
+native package manager, (2) Anaconda, or (3) pip only. In (1) and (2), only
+resort to use pip for those few packages which are not available as native
+packages. Otherwise, competing package managers will ruin your day!
+
+To prevent pip from automatically resolving dependencies run
+
+.. code-block:: bash
+
+   pip install --no-deps grond
+
+This assumes that `Pyrocko`_ and `Kite`_ have been installed beforehand.
 
 .. _kite: https://pyrocko.org/kite/
 .. _pyrocko: https://pyrocko.org/docs/current/install/
-.. _Installation with pip: https://pyrocko.org/docs/current/install/packages/pip.html
