@@ -93,7 +93,7 @@ def sarr(a):
     return ' '.join('%15g' % x for x in a)
 
 
-def forward(env):
+def forward(env, show='filtered'):
     payload = []
     if env.have_rundir():
         env.setup_modelling()
@@ -123,10 +123,18 @@ def forward(env):
 
         for result in results:
             if isinstance(result, WaveformMisfitResult):
-                result.filtered_obs.set_codes(location='ob')
-                result.filtered_syn.set_codes(location='sy')
-                all_trs.append(result.filtered_obs)
-                all_trs.append(result.filtered_syn)
+                if show == 'filtered':
+                    result.filtered_obs.set_codes(location='ob')
+                    result.filtered_syn.set_codes(location='sy')
+                    all_trs.append(result.filtered_obs)
+                    all_trs.append(result.filtered_syn)
+                elif show == 'processed':
+                    result.processed_obs.set_codes(location='ob')
+                    result.processed_syn.set_codes(location='sy')
+                    all_trs.append(result.processed_obs)
+                    all_trs.append(result.processed_syn)
+                else:
+                    raise ValueError('Invalid argument for show: %s' % show)
 
         for station in ds.get_stations():
             stations[station.nsl()] = station

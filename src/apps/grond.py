@@ -768,7 +768,12 @@ def command_forward(args):
     from grond.environment import Environment
 
     def setup(parser):
-        pass
+        parser.add_option(
+            '--show', dest='show', metavar='WHAT',
+            default='filtered',
+            choices=('filtered', 'processed'),
+            help='select whether to show only "filtered" or fully "processed" '
+                 '(i.e. tapered) waveforms (default "%default").')
 
     parser, options, args = cl_parse('forward', args, setup)
     if len(args) < 1:
@@ -776,7 +781,7 @@ def command_forward(args):
 
     try:
         env = Environment(args)
-        grond.forward(env)
+        grond.forward(env, show=options.show)
     except grond.GrondError as e:
         die(str(e))
 
