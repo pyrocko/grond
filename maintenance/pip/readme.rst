@@ -68,8 +68,7 @@ Development
 Grond is open source.
 
 Join us at our `Git repository <https://git.pyrocko.org/pyrocko/grond/>`_ and
-read the `CONTRIBUTING.md
-<https://git.pyrocko.org/pyrocko/grond/src/branch/master/CONTRIBUTING.md>`_
-guide.
+read the `Contribution guide
+<https://git.pyrocko.org/pyrocko/grond/src/branch/master/CONTRIBUTING.md>`_.
 
 -- The Grond Developers
