@@ -3,7 +3,7 @@
 destination=$1
 
 if [ -z "$destination" ] ; then
-    echo "usage: upload_wheels.sh (testing|live)"
+    echo "usage: upload.sh (testing|live)"
 fi
 
 if [ "$destination" == 'live' ] ; then

@@ -153,7 +153,7 @@ steps:
     - candidate
     - pip
   commands:
-  - maintenance/pip/upload_wheels.sh testing
+  - maintenance/pip/upload.sh testing
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
@@ -169,7 +169,7 @@ steps:
     branch:
     - release
   commands:
-  - maintenance/pip/upload_wheels.sh live
+  - maintenance/pip/upload.sh live
   environment:
     PYPI_USERNAME:
       from_secret: pypi-username
