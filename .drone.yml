@@ -28,7 +28,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
+  - maintenance/drone/rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -47,7 +47,7 @@ steps:
     - deploy-docs
 
   commands:
-  - maintenance/drone-rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
+  - maintenance/drone/rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
   environment:
     RSYNC_HOST:
       from_secret: www-host
@@ -66,7 +66,7 @@ steps:
     - deploy-docs
 
   commands:
-  - maintenance/drone-deploy-docs.sh
+  - maintenance/drone/deploy-docs.sh
   environment:
     WWW_HOST:
       from_secret: www-host
@@ -133,7 +133,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh dist/ ${DRONE_COMMIT}/dist/
+  - maintenance/drone/rsync.sh dist/ ${DRONE_COMMIT}/dist/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -198,7 +198,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
+  - maintenance/drone/rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -230,7 +230,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
+  - maintenance/drone/rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
   environment:
     RSYNC_HOST:
       from_secret: rsync-host
@@ -261,7 +261,7 @@ steps:
   image: pyrocko-aux
   pull: never
   commands:
-  - maintenance/drone-matterpost.py
+  - maintenance/drone/matterpost.py
   environment:
     WEBHOOK:
       from_secret: hive-webhook
