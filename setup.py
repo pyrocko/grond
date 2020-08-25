@@ -9,7 +9,7 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 from setuptools.command.develop import develop
 
-version = '1.3.1.post2'
+version = '1.3.1.post3'
 
 
 class CustomInstallCommand(install):
