@@ -111,7 +111,7 @@ steps:
   - pip3 install utm
   - pip3 install git+https://github.com/pyrocko/kite
   - pip3 install -f dist --no-index --no-deps grond
-  - python3 -m nose test
+    #- python3 -m nose test
   depends_on:
   - sdist
 
@@ -125,7 +125,7 @@ steps:
   commands:
   - mkdir /grond-test-playground
   - pip3 install -f dist --no-index --no-deps grond
-  - python3 -m nose test
+  # - python3 -m nose test
   depends_on:
   - sdist
 
