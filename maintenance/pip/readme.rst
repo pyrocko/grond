@@ -28,8 +28,9 @@ Grond and all its dependencies can be installed by running
 
 **but**, we recommend to make a conscious decision about how its main
 dependency `Pyrocko <https://pyrocko.org/docs>`_ and especially Pyrocko's own
-dependencies are installed. The `Pyrocko Installation Manual` describes
-different installation schemes.
+dependencies are installed. The `Pyrocko Installation Manual
+<https://pyrocko.org/docs/current/install/>`_ describes different installation
+schemes.
 
 As a general advice, we recommend to exclusively use either, (1) the system's
 native package manager, (2) Anaconda, or (3) pip only. In (1) and (2), only
@@ -66,7 +67,8 @@ Development
 
 Grond is open source.
 
-Join us at https://git.pyrocko.org/pyrocko/grond/ and read the `CONTRIBUTING.md
+Join us at our `Git repository <https://git.pyrocko.org/pyrocko/grond/>`_ and
+read the `CONTRIBUTING.md
 <https://git.pyrocko.org/pyrocko/grond/src/branch/master/CONTRIBUTING.md>`_
 guide.
 
