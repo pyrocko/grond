@@ -115,6 +115,7 @@ setup(
 
     long_description=open(
         'maintenance/pip/readme.rst', 'rb').read().decode('utf8'),
+    long_description_content_type='text/x-rst',
 
     url='https://pyrocko.org/grond/',
 
