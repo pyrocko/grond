@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## [1.4.0] 2020-08-25
+
 ### Added
 - Possibility to filter runs in report open dialog.
 - `grond go` utilises `--threads` arguments for various tasks.
