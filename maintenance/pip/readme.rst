@@ -44,7 +44,7 @@ To prevent pip from automatically resolving dependencies run
 
    pip install --no-deps grond
 
-This assumes that `Pyrocko <https://pyrocko.org/docs/>`_ and `Kite
+This assumes that `Pyrocko <https://pyrocko.org/docs>`_ and `Kite
 <https://pyrocko.org/kite/>`_ have been installed beforehand.
 
 Documentation
@@ -58,7 +58,7 @@ Community
 
 Meet people from all over the world doing awesome research with Grond in our
 community chat: use the *Grond* channel in the friendly `Pyrocko Hive
-<hive.pyrocko.org>`_. This is the best place to talk about new features,
+<https://hive.pyrocko.org>`_. This is the best place to talk about new features,
 special techniques or to get help on setting up your first inversion with
 Grond.
 
