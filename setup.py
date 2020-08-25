@@ -173,6 +173,8 @@ setup(
 
     data_files=[],
 
+    install_requires=['pyrocko>=2020.03.13'],
+
     license='GPLv3',
 
     classifiers=[
