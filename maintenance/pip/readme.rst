@@ -20,6 +20,9 @@ source models and geometries.
 Installation with pip
 ---------------------
 
+*See also: `Grond Manual: Installation
+<https://pyrocko.org/grond/docs/current/install>`_.*
+
 Grond and all its dependencies can be installed by running 
 
 .. code-block:: bash
