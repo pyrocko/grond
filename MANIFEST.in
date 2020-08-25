@@ -1,0 +1,3 @@
+recursive-include maintenance *.rst
+include *.md
+
