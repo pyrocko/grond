@@ -22,7 +22,7 @@ Installation with pip
 
 Grond and all its dependencies can be installed by running 
 
-... code-block:: bash
+.. code-block:: bash
 
    pip install grond
 
@@ -40,7 +40,7 @@ system leads to non-deterministic behaviour!
 
 To prevent pip from automatically resolving dependencies run
 
-... code-block:: bash
+.. code-block:: bash
 
    pip install --no-deps grond
 
