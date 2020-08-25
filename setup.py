@@ -113,6 +113,9 @@ setup(
     description='A probabilistic earthquake source inversion framework. '
                 'Designed and crafted in Mordor.',
 
+    long_description=open(
+        'maintenance/pip/readme.rst', 'rb').read().decode('utf8'),
+
     version=version,
 
     author='The Grond Developers',
