@@ -866,6 +866,11 @@ class MTFuzzyPlot(PlotConfig):
     cluster_attribute = meta.StringID.T(
         optional=True,
         help='name of attribute to use as cluster IDs')
+    beachball_type = StringChoice.T(
+        choices=('dc', 'deviatoric', 'full'),
+        default='full',
+        help='Type of the moment tensor to plot, '
+             'choose from dc, deviatoric and full')
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -916,7 +921,7 @@ best solution (indicated in red).
 
             beachball.plot_fuzzy_beachball_mpl_pixmap(
                 mts, axes, best_mt,
-                beachball_type='full',
+                beachball_type=self.beachball_type,
                 size=8.*math.sqrt(percentage/100.),
                 position=(5., 5.),
                 color_t=color,
