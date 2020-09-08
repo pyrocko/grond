@@ -6,7 +6,7 @@ from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
 
 from matplotlib import pyplot as plt
-from matplotlib.ticker import MaxNLocator, FuncFormatter
+from matplotlib.ticker import MaxNLocator, FuncFormatter, MultipleLocator
 from matplotlib import patches
 from pyrocko.guts import Tuple, Float, String, Int, Bool, StringChoice
 
@@ -15,6 +15,31 @@ logger = logging.getLogger('grond.targets.satellite.plot')
 km = 1e3
 d2r = num.pi/180.
 guts_prefix = 'grond'
+
+
+class MaxNLocatorOffset(MaxNLocator):
+
+    def __init__(self, *args, **kwargs):
+        self._offset = kwargs.pop('offset', None)
+        super().__init__(*args, **kwargs)
+
+    def tick_values(self, vmin, vmax):
+        locs = super().tick_values(vmin, vmax)
+        if self._offset:
+            dloc = locs[1] - locs[0]
+            if dloc < 1.:
+                decimals = 0.1
+            else:
+                decimals = 1.
+
+            offset = self._offset % decimals
+            locs -= offset
+
+        return locs
+
+    def view_limits(self, dmin, dmax):
+        ret = super().view_limits(dmin, dmax)
+        return ret
 
 
 def drape_displacements(
@@ -68,7 +93,7 @@ def scale_axes(axis, scale, offset=0., suffix=''):
 
         @staticmethod
         def __call__(value, pos):
-            return '{:,.1f}{:}'.format((offset + value) * scale, suffix)\
+            return '{:,g}{:}'.format((value + offset) * scale, suffix)\
                 .replace(',', ' ')
 
     axis.set_major_formatter(FormatScaled())
@@ -83,9 +108,14 @@ class SatelliteTargetDisplacement(PlotConfig):
     size_cm = Tuple.T(
         2, Float.T(),
         default=(22., 12.))
+
     colormap = String.T(
         default='RdBu',
         help='Colormap for the surface displacements')
+    cbar_vertical = Bool.T(
+        default=False,
+        help='Orientat the colorbar vertical.')
+
     relative_coordinates = Bool.T(
         default=False,
         help='Show relative coordinates, initial location centered at 0N, 0E')
@@ -97,6 +127,10 @@ class SatelliteTargetDisplacement(PlotConfig):
     show_topo = Bool.T(
         default=True,
         help='Drape displacements over the topography.')
+    topo_contrast = Float.T(
+        default=1.,
+        help='Contrast for the topography.')
+
     displacement_unit = StringChoice.T(
         default='m',
         choices=['m', 'mm', 'cm', 'rad'],
@@ -119,6 +153,7 @@ class SatelliteTargetDisplacement(PlotConfig):
     nticks_x = Int.T(
         optional=True,
         help='Number of ticks on the x-axis.')
+
 
     def make(self, environ):
         cm = environ.get_plot_collection_manager()
@@ -185,7 +220,7 @@ edge marking the upper fault edge. Complete data extent is shown.
                     ax.text(0.975, 0.025,
                             'UTM Zone %d%s' % (utm_zone, utm_zone_letter),
                             va='bottom', ha='right',
-                            fontsize=8, alpha=.7,
+                            fontsize=self.font_size, alpha=.7,
                             transform=ax.transAxes)
                 ax.set_aspect('equal')
 
@@ -201,11 +236,11 @@ edge marking the upper fault edge. Complete data extent is shown.
                 scale_x['offset'] = 0.
                 scale_y['offset'] = 0.
 
-            nticks_x = 4 if abs(scene.frame.llLon) >= 100 else 5
-
-            ax.xaxis.set_major_locator(MaxNLocator(self.nticks_x or nticks_x))
-            ax.yaxis.set_major_locator(MaxNLocator(5))
-
+            nticks_x = 4
+            ax.xaxis.set_major_locator(MaxNLocatorOffset(
+                self.nticks_x or nticks_x, offset=scale_x['offset']))
+            ax.yaxis.set_major_locator(MaxNLocatorOffset(
+                5, offset=scale_y['offset']))
             ax.scale_x = scale_x
             ax.scale_y = scale_y
 
@@ -247,7 +282,9 @@ edge marking the upper fault edge. Complete data extent is shown.
             if self.show_topo:
                 try:
                     elevation = scene.get_elevation()
-                    return drape_displacements(arr, elevation, mappable)
+                    return drape_displacements(
+                        arr, elevation, mappable,
+                        contrast=self.topo_contrast)
                 except Exception as e:
                     logger.warning('could not plot hillshaded topo')
                     logger.exception(e)
@@ -330,11 +367,22 @@ edge marking the upper fault edge. Complete data extent is shown.
 
             fig = plt.figure()
             fig.set_size_inches(*self.size_inch)
+
+            if self.cbar_vertical:
+                grid = (1, 4)
+                height_ratios = None
+                width_ratios = (12, 12, 12, 1)
+            else:
+                grid = (2, 3)
+                height_ratios = (12, 1)
+                width_ratios = None
+
             gs = gridspec.GridSpec(
-                2, 3,
-                wspace=.15, hspace=.2,
-                left=.1, right=.975, top=.95,
-                height_ratios=[12, 1])
+                *grid,
+                wspace=.1, hspace=.15,
+                left=.075, right=.925, top=.95,
+                height_ratios=height_ratios,
+                width_ratios=width_ratios)
 
             item = PlotItem(
                 name='fig_%i' % ifig,
@@ -458,6 +506,10 @@ data and (right) the model residual.
                     ax.set_xlim(-fault_size/2 + off_e, fault_size/2 + off_e)
                     ax.set_ylim(-fault_size/2 + off_n, fault_size/2 + off_n)
 
+                for tick in ax.xaxis.get_major_ticks() + \
+                        ax.yaxis.get_major_ticks():
+                    tick.label.set_fontsize(self.font_size)
+
             if self.map_limits is not None:
                 xmin, xmax, ymin, ymax = self.map_limits
                 assert xmin < xmax, 'bad map_limits xmin > xmax'
@@ -487,17 +539,22 @@ data and (right) the model residual.
                 raise AttributeError(
                     'unknown displacement unit %s' % self.displacement_unit)
 
-            cbar_args = dict(
-                orientation='horizontal',
-                format=FuncFormatter(cfmt),
-                use_gridspec=True)
             cbar_label = 'LOS Displacement [%s]' % self.displacement_unit
+            cbar_args = dict(
+                orientation='vertical' if self.cbar_vertical else 'horizontal',
+                format=FuncFormatter(cfmt), label=cbar_label, shrink=.1,
+                use_gridspec=False)
 
             if self.common_color_scale:
-                cax = fig.add_subplot(gs[1, 1])
-                cax.set_aspect(.05)
+                if self.cbar_vertical:
+                    cax = fig.add_subplot(gs[0, 3])
+                else:
+                    cax = fig.add_subplot(gs[1, :])
+
+                if not self.cbar_vertical:
+                    cax.set_aspect(.05)
+
                 cbar = fig.colorbar(cmw, cax=cax, **cbar_args)
-                cbar.set_label(cbar_label)
             else:
                 for idata, data in enumerate((stat_syn, stat_obs, res)):
                     cax = fig.add_subplot(gs[1, idata])
@@ -508,7 +565,6 @@ data and (right) the model residual.
                         cmw.set_clim(-abs_displ, abs_displ)
 
                     cbar = fig.colorbar(cmw, cax=cax, **cbar_args)
-                    cbar.set_label(cbar_label)
 
             return (item, fig)
 
