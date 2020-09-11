@@ -32,10 +32,17 @@
 
         <div class="container" id="browser-warning" ng-cloak>
             <div class="alert alert-warning" role="alert">
-                <h4 class="alert-heading">Template Error</h4>
+                <h4 class="alert-heading">Cannot access local files</h4>
                 <p>
-                    We could not load the template file, probably due to browser security measures.<br />
-                    Please use <b>Mozilla Firefox</b> or start Chrome with <code>--allow-file-access-from-files</code> to view <code>reports/index.html</code>.
+                    We could not load the template files, probably due to browser security measures.
+                </p>
+                <hr />
+                <p>
+                    To view the the file <code>report/index.html</code> locally:
+                    <ul>
+                        <li>If you are using <b>Firefox</b> disable <code>privacy.file_unique_origin</code> in <code>about:config</code>.</li>
+                        <li>If you are using <b>Chrome</b>, start it with <code>--allow-file-access-from-files</code>.</li>
+                    </ul>
                 </p>
                 <hr />
                 <p class="mb-0">
