@@ -53,9 +53,14 @@ Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Branching policy
 
-* The `master` branch should point to a stable, tagged version of Grond.
-* The `dev` branch is used to aggregate new features before releasing.
 * Use topic branches to develop new features.
+* Open a pull request and use the Gitea-tags `Want Review`, `Need Revision`, to
+  signal its state.
+* When a topic is complete, all tests pass and it is rebased to current master:
+  merge with `--ff-only` and don't forget to update the changelog.
+* The `master` branch should always point to a stable version.
+* Extra CI pipelines are run on branches named `release`, `candidate`,
+  `pip-wheels`, `deploy-docs`, and `hptime`. See also release protocol.
 
 ### Rebase small changes before pushing
 
@@ -85,8 +90,8 @@ git checkout feature
 git fetch origin
 git rebase origin/master
 git checkout master
-git merge origin/master
-git merge feature    # should now be fast forward...
+git merge origin/master --ff-only
+git merge feature --ff-only
 git push origin master
 ```
 
@@ -115,7 +120,9 @@ Additionally,
   - Progress actions should end with `...`, e.g. `Generating report's archive...`
   - e.g. `raise ProblemDataNotAvailable('No problem data available (%s).' % dirname)`
   - in-text names must be quoted; not needed after colons
-* docstrings: TODO
+* docstrings:
+  - Docs are built with Sphinx, use rst syntax.
+  - Follow the usual convention 1 line summary, blank line, description.
 
 ## Documentation
 
