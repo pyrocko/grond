@@ -745,7 +745,7 @@ def _process(tr, tmin, tmax, taper, domain, freqlimits):
 
     if domain == 'envelope':
         fmax = freqlimits[3]
-        smooth_factor = 0.7
+        smooth_factor = 0.7  # ToDo in config!
         # tr_proc = tr_proc.envelope(inplace=False)
         # tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
         tr_proc = smoothed_envelope(tr_proc, fmax, smooth_factor)
