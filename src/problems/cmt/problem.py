@@ -122,9 +122,29 @@ class CMTProblem(Problem):
         return self._base_stf.clone(**d_stf)
 
     def get_source(self, x):
+        # ToDo adjust m6 to given ranges
+        m6_base = self.base_source.m6
+        mt_base = self.base_source.pyrocko_moment_tensor()
+        rm6_base = m6_base / mt_base.scalar_moment()
+        d_base = dict(
+            rmnn=rm6_base[0],
+            rmee=rm6_base[1],
+            rmdd=rm6_base[2],
+            rmne=rm6_base[3],
+            rmnd=rm6_base[4],
+            rmed=rm6_base[5])
+
         d = self.get_parameter_dict(x)
-        rm6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
-                        dtype=num.float)
+        p = {}
+        for k in d_base.keys():
+            if k in d:
+                p[k] = float(self.ranges[k].make_relative(d_base[k], d[k]))
+
+        rm6 = num.array(
+            [p['rmnn'], p['rmee'], p['rmdd'], p['rmne'], p['rmnd'], p['rmed']],
+            dtype=num.float)
+        # rm6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
+        #                 dtype=num.float)
 
         m0 = mtm.magnitude_to_moment(d.magnitude)
         m6 = rm6 * m0
@@ -207,15 +227,39 @@ class CMTProblem(Problem):
         if fixed_magnitude is not None:
             x[4] = fixed_magnitude
 
+        # ToDo UniformSampling within Ranges of MT components?
         x[5:11] = mtm.random_m6(x=rstate.random_sample(6))
 
         return x.tolist()
 
     def preconstrain(self, x):
-        d = self.get_parameter_dict(x)
-        m6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
-                       dtype=num.float)
+        # ToDo adjust m6 to given ranges
+        m6_base = self.base_source.m6
+        mt_base = self.base_source.pyrocko_moment_tensor()
+        rm6_base = m6_base / mt_base.scalar_moment()
+        d_base = dict(
+            rmnn=rm6_base[0],
+            rmee=rm6_base[1],
+            rmdd=rm6_base[2],
+            rmne=rm6_base[3],
+            rmnd=rm6_base[4],
+            rmed=rm6_base[5])
 
+        d = self.get_parameter_dict(x)
+        p = {}
+        for k in d_base.keys():
+            if k in d:
+                p[k] = float(self.ranges[k].make_relative(d_base[k], d[k]))
+
+        m6 = num.array(
+            [p['rmnn'], p['rmee'], p['rmdd'], p['rmne'], p['rmnd'], p['rmed']],
+            dtype=num.float)
+
+        # d = self.get_parameter_dict(x)
+        # m6 = num.array([d.rmnn, d.rmee, d.rmdd, d.rmne, d.rmnd, d.rmed],
+        #                dtype=num.float)
+
+        # ToDo adjust mt component ratios depending on given ranges
         m9 = mtm.symmat6(*m6)
         if self.mt_type == 'deviatoric':
             trace_m = num.trace(m9)
