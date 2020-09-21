@@ -59,7 +59,7 @@ class StationDictStoreIDSelector(StoreIDSelector):
     '''
 
     mapping = Dict.T(
-        String.T(), String.T(),
+        String.T(), gf.StringID.T(),
         help='Dictionary with station to store ID pairs, keys are NET.STA. '
              "Add a fallback store ID under the key ``'others'``.")
 
@@ -75,6 +75,29 @@ class StationDictStoreIDSelector(StoreIDSelector):
                         st.network, st.station))
 
         return store_id
+
+
+class DepthRangeToStoreID(Object):
+    depth_min = Float.T()
+    depth_max = Float.T()
+    store_id = gf.StringID.T()
+
+
+class StationDepthStoreIDSelector(StoreIDSelector):
+    '''
+    Store ID selector using a mapping from station depth range to store ID.
+    '''
+
+    depth_ranges = List.T(DepthRangeToStoreID.T())
+
+    def get_store_id(self, event, st, cha):
+        for r in self.depth_ranges:
+            if r.depth_min <= st.depth < r.depth_max:
+                return r.store_id
+
+        raise StoreIDSelectorError(
+            'No store ID found for station "%s.%s" at %g m depth.' % (
+                st.network, st.station, st.depth))
 
 
 class DomainChoice(StringChoice):
@@ -778,6 +801,8 @@ __all__ = '''
     StoreIDSelector
     Crust2StoreIDSelector
     StationDictStoreIDSelector
+    DepthRangeToStoreID
+    StationDepthStoreIDSelector
     WaveformTargetGroup
     WaveformMisfitConfig
     WaveformMisfitTarget
