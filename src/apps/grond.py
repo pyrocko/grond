@@ -52,6 +52,7 @@ subcommand_descriptions = {
     'plot': 'plot optimisation result',
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
+    'fits': 'export station corrections and waveform target misfits from run directory',
     'tag': 'add user-defined label to run directories',
     'report': 'create result report',
     'diff': 'compare two configs or other normalized Grond YAML files',
@@ -84,6 +85,7 @@ subcommand_usages = {
         'plot config ( <rundir> | <configfile> <eventname> ) [options]'),
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
+    'fits': 'fits <rundir> [options]',
     'tag': (
         'tag add <tag> <rundir>',
         'tag remove <tag> <rundir>',
@@ -126,6 +128,7 @@ Subcommands:
     plot            %(plot)s
     movie           %(movie)s
     export          %(export)s
+    fits            %(fits)s
     tag             %(tag)s
     report          %(report)s
     diff            %(diff)s
@@ -1027,6 +1030,25 @@ def command_export(args):
             type=options.type,
             pnames=pnames,
             selection=options.selection)
+
+    except grond.GrondError as e:
+        die(str(e))
+
+
+def command_fits(args):
+
+    from grond.environment import Environment
+
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('fits', args, setup)
+    if len(args) < 1:
+        help_and_die(parser, 'missing arguments')
+
+    try:
+        env = Environment(args)
+        grond.fits(env)
 
     except grond.GrondError as e:
         die(str(e))

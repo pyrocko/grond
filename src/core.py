@@ -15,7 +15,8 @@ from pyrocko.guts import Object, String, Float, List
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import NotFound, InvalidObject
+from .dataset import NotFound, InvalidObject, StationCorrection, \
+    dump_station_corrections, WFTargetMisfit, dump_wftarget_misfits
 from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data, ProblemDataNotAvailable
 
@@ -798,6 +799,53 @@ def export(
         out.close()
 
 
+def fits(env):
+
+    env.setup_modelling()
+
+    problem = env.get_problem()
+    history = env.get_history()
+    logger.info(
+        'Number of targets (selected): %i' % len(problem.targets))
+
+    #_, xs, misfits, _, _ = load_problem_info_and_data(
+    #    env.get_rundir_path(), subset='harvest')
+
+    #gms = problem.combine_misfits(misfits)
+    #ibest = num.argmin(gms)
+    #xbest = xs[ibest, :]
+    xbest = history.get_best_model()
+    ws = problem.get_target_weights()
+    scs = []
+    wftm = []
+    for x in [xbest]:
+        results = problem.evaluate(x)
+
+        for target, result, w in zip(problem.targets, results, ws):
+            if isinstance(result, WaveformMisfitResult):
+
+                wftm.append(WFTargetMisfit(
+                    codes=target.codes,
+                    misfit=float(result.misfits[0][0]),
+                    norm=result.misfits[0][1],
+		    weight=w))
+
+            if isinstance(result, WaveformMisfitResult) \
+                    and result.tshift is not None:
+
+                if target.get_combined_weight() > 0.0 \
+                        and result.tshift is not None:
+                    scs.append(StationCorrection(
+                        codes=target.codes,
+                        delay=float(result.tshift),
+                        factor=1.0))
+
+    dump_station_corrections(scs, filename='%s/StationCorrections.yaml'
+                             % env.get_rundir_path())
+    dump_wftarget_misfits(wftm, filename='%s/WFTargetMisfits.yaml'
+                          % env.get_rundir_path())
+
+
 __all__ = '''
     forward
     harvest
@@ -806,4 +854,5 @@ __all__ = '''
     get_event_names
     check
     export
+    fits
 '''.split()
