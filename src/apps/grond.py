@@ -807,17 +807,35 @@ def command_harvest(args):
                  'average misfit of all NEACH best in all chains, '
                  '3: harvesting is done on the global chain only, bootstrap '
                  'chains are excluded')
+        parser.add_option(
+            '--export-fits', dest='export_fits', default='',
+            help='additionally export details about the fit of individual '
+                 'targets. "best" - export fits of best model, "mean" - '
+                 'export fits of ensemble mean model, "ensemble" - export '
+                 'fits of all models in harvest ensemble.')
 
     parser, options, args = cl_parse('harvest', args, setup)
-    if len(args) != 1:
+    if len(args) < 1:
         help_and_die(parser, 'no rundir')
 
-    run_path, = args
-    grond.harvest(
-        run_path,
-        force=options.force,
-        nbest=options.neach,
-        weed=options.weed)
+    export_fits = []
+    if options.export_fits.strip():
+        export_fits = [x.strip() for x in options.export_fits.split(',')]
+
+    for run_path in args:
+        try:
+            grond.harvest(
+                run_path,
+                force=options.force,
+                nbest=options.neach,
+                weed=options.weed,
+                export_fits=export_fits)
+
+        except grond.DirectoryAlreadyExists as e:
+            die(str(e) + '\n    Use --force to overwrite.')
+
+        except grond.GrondError as e:
+            die(str(e))
 
 
 def command_cluster(args):

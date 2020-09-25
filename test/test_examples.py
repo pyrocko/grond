@@ -87,5 +87,6 @@ def run_example(project_name, config_path, quick_config_path, event_name):
         mod_conf.set_basepath(conf.get_basepath())
         config.write_config(mod_conf, quick_config_path)
         grond('go', quick_config_path, event_name)
+        grond('harvest', '--force', '--export-fits=best,mean', rundir_path)
         grond('report', rundir_path)
         # assert os.path.isdir(os.path.join('report', event_name))

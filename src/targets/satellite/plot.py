@@ -347,7 +347,7 @@ Surface displacements derived from satellite data.
 data and (right) the model residual.
 ''')
 
-            stat_obs = result.statics_obs
+            stat_obs = result.statics_obs['displacement.los']
             stat_syn = result.statics_syn['displacement.los']
             res = stat_obs - stat_syn
 

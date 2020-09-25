@@ -4,10 +4,10 @@ import numpy as num
 
 from pyrocko import gf
 from pyrocko.guts_array import Array
-from pyrocko.guts import Object, Float, Dict
+from pyrocko.guts import Object, Float, String, Dict, List, Choice, load, dump
 
 from grond.analysers.base import AnalyserResult
-from grond.meta import has_get_plot_classes
+from grond.meta import has_get_plot_classes, GrondError
 
 
 guts_prefix = 'grond'
@@ -188,8 +188,41 @@ class MisfitTarget(Object):
         return modelling_results[0]
 
 
+class MisfitResultError(Object):
+    message = String.T()
+
+
+class MisfitResultCollection(Object):
+    results = List.T(List.T(
+        Choice.T([MisfitResult.T(), MisfitResultError.T()])))
+
+
+def dump_misfit_result_collection(misfit_result_collection, path):
+    dump(misfit_result_collection, filename=path)
+
+
+def load_misfit_result_collection(path):
+    try:
+        obj = load(filename=path)
+
+    except OSError as e:
+        raise GrondError(
+            'Failed to read ensemble misfit results from file "%s" (%s)' % (
+                path, e))
+
+    if not isinstance(obj, MisfitResultCollection):
+        raise GrondError(
+            'File "%s" does not contain any misfit result collection.' % path)
+
+    return obj
+
+
 __all__ = '''
     TargetGroup
     MisfitTarget
     MisfitResult
+    MisfitResultError
+    dump_misfit_result_collection
+    load_misfit_result_collection
+    MisfitResultCollection
 '''.split()
