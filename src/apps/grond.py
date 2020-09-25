@@ -52,7 +52,6 @@ subcommand_descriptions = {
     'plot': 'plot optimisation result',
     'movie': 'visualize optimiser evolution',
     'export': 'export results',
-    'fits': 'export station corrections and waveform target misfits from run directory',
     'tag': 'add user-defined label to run directories',
     'report': 'create result report',
     'diff': 'compare two configs or other normalized Grond YAML files',
@@ -85,7 +84,6 @@ subcommand_usages = {
         'plot config ( <rundir> | <configfile> <eventname> ) [options]'),
     'movie': 'movie <rundir> <xpar> <ypar> <filetemplate> [options]',
     'export': 'export (best|mean|ensemble|stats) <rundirs> ... [options]',
-    'fits': 'fits <rundir> [options]',
     'tag': (
         'tag add <tag> <rundir>',
         'tag remove <tag> <rundir>',
@@ -128,7 +126,6 @@ Subcommands:
     plot            %(plot)s
     movie           %(movie)s
     export          %(export)s
-    fits            %(fits)s
     tag             %(tag)s
     report          %(report)s
     diff            %(diff)s
@@ -810,17 +807,35 @@ def command_harvest(args):
                  'average misfit of all NEACH best in all chains, '
                  '3: harvesting is done on the global chain only, bootstrap '
                  'chains are excluded')
+        parser.add_option(
+            '--export-fits', dest='export_fits', default='',
+            help='additionally export details about the fit of individual '
+                 'targets. "best" - export fits of best model, "mean" - '
+                 'export fits of ensemble mean model, "ensemble" - export '
+                 'fits of all models in harvest ensemble.')
 
     parser, options, args = cl_parse('harvest', args, setup)
-    if len(args) != 1:
+    if len(args) < 1:
         help_and_die(parser, 'no rundir')
 
-    run_path, = args
-    grond.harvest(
-        run_path,
-        force=options.force,
-        nbest=options.neach,
-        weed=options.weed)
+    export_fits = []
+    if options.export_fits.strip():
+        export_fits = [x.strip() for x in options.export_fits.split(',')]
+
+    for run_path in args:
+        try:
+            grond.harvest(
+                run_path,
+                force=options.force,
+                nbest=options.neach,
+                weed=options.weed,
+                export_fits=export_fits)
+
+        except grond.DirectoryAlreadyExists as e:
+            die(str(e) + '\n    Use --force to overwrite.')
+
+        except grond.GrondError as e:
+            die(str(e))
 
 
 def command_cluster(args):
@@ -1030,25 +1045,6 @@ def command_export(args):
             type=options.type,
             pnames=pnames,
             selection=options.selection)
-
-    except grond.GrondError as e:
-        die(str(e))
-
-
-def command_fits(args):
-
-    from grond.environment import Environment
-
-    def setup(parser):
-        pass
-
-    parser, options, args = cl_parse('fits', args, setup)
-    if len(args) < 1:
-        help_and_die(parser, 'missing arguments')
-
-    try:
-        env = Environment(args)
-        grond.fits(env)
 
     except grond.GrondError as e:
         die(str(e))

@@ -15,13 +15,14 @@ from pyrocko.guts import Object, String, Float, List
 from pyrocko import gf, trace, guts, util, weeding
 from pyrocko import parimap, model, marker as pmarker
 
-from .dataset import NotFound, InvalidObject, StationCorrection, \
-    dump_station_corrections, WFTargetMisfit, dump_wftarget_misfits
+from .dataset import NotFound, InvalidObject
 from .problems.base import Problem, load_problem_info_and_data, \
     load_problem_data, ProblemDataNotAvailable
 
 from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
+from .targets.base import dump_misfit_result_collection, \
+    MisfitResultCollection, MisfitResult, MisfitResultError
 from .meta import expand_template, GrondError, selected
 from .environment import Environment
 from .monitor import GrondMonitor
@@ -66,7 +67,7 @@ def lock_rundir(rundir):
         os.remove(statefn)
 
 
-class DirectoryAlreadyExists(Exception):
+class DirectoryAlreadyExists(GrondError):
     pass
 
 
@@ -147,7 +148,9 @@ def forward(env, show='filtered'):
     trace.snuffle(all_trs, markers=markers, stations=list(stations.values()))
 
 
-def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
+def harvest(
+        rundir, problem=None, nbest=10, force=False, weed=0,
+        export_fits=[]):
 
     env = Environment([rundir])
     optimiser = env.get_optimiser()
@@ -167,7 +170,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         if force:
             shutil.rmtree(dumpdir)
         else:
-            raise DirectoryAlreadyExists(dumpdir)
+            raise DirectoryAlreadyExists(
+                'Harvest directory already exists: %s' % dumpdir)
 
     util.ensuredir(dumpdir)
 
@@ -205,6 +209,36 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+
+    if export_fits:
+        env.setup_modelling()
+        problem = env.get_problem()
+        history = env.get_history(subset='harvest')
+
+        for what in export_fits:
+            if what == 'best':
+                models = [history.get_best_model()]
+            elif what == 'mean':
+                models = [history.get_mean_model()]
+            elif what == 'ensemble':
+                models = history.models
+            else:
+                raise GrondError(
+                    'Invalid option for harvest\'s export_fits argument: %s'
+                    % what)
+
+            results = []
+            for x in models:
+                results.append([
+                    (result if isinstance(result, MisfitResult)
+                     else MisfitResultError(message=str(result))) for
+                    result in problem.evaluate(x)])
+
+            emr = MisfitResultCollection(results=results)
+
+            dump_misfit_result_collection(
+                emr,
+                op.join(dumpdir, 'fits-%s.yaml' % what))
 
     logger.info('Done harvesting problem "%s".' % problem.name)
 
@@ -799,54 +833,8 @@ def export(
         out.close()
 
 
-def fits(env):
-
-    env.setup_modelling()
-
-    problem = env.get_problem()
-    history = env.get_history()
-    logger.info(
-        'Number of targets (selected): %i' % len(problem.targets))
-
-    #_, xs, misfits, _, _ = load_problem_info_and_data(
-    #    env.get_rundir_path(), subset='harvest')
-
-    #gms = problem.combine_misfits(misfits)
-    #ibest = num.argmin(gms)
-    #xbest = xs[ibest, :]
-    xbest = history.get_best_model()
-    ws = problem.get_target_weights()
-    scs = []
-    wftm = []
-    for x in [xbest]:
-        results = problem.evaluate(x)
-
-        for target, result, w in zip(problem.targets, results, ws):
-            if isinstance(result, WaveformMisfitResult):
-
-                wftm.append(WFTargetMisfit(
-                    codes=target.codes,
-                    misfit=float(result.misfits[0][0]),
-                    norm=result.misfits[0][1],
-		    weight=w))
-
-            if isinstance(result, WaveformMisfitResult) \
-                    and result.tshift is not None:
-
-                if target.get_combined_weight() > 0.0 \
-                        and result.tshift is not None:
-                    scs.append(StationCorrection(
-                        codes=target.codes,
-                        delay=float(result.tshift),
-                        factor=1.0))
-
-    dump_station_corrections(scs, filename='%s/StationCorrections.yaml'
-                             % env.get_rundir_path())
-    dump_wftarget_misfits(wftm, filename='%s/WFTargetMisfits.yaml'
-                          % env.get_rundir_path())
-
-
 __all__ = '''
+    DirectoryAlreadyExists
     forward
     harvest
     cluster
@@ -854,5 +842,4 @@ __all__ = '''
     get_event_names
     check
     export
-    fits
 '''.split()
