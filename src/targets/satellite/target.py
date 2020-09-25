@@ -4,6 +4,7 @@ from scipy import linalg as splinalg
 
 from pyrocko import gf
 from pyrocko.guts import String, Bool, Dict, List
+from pyrocko.guts_array import Array
 
 import os
 
@@ -107,9 +108,13 @@ class SatelliteTargetGroup(TargetGroup):
 class SatelliteMisfitResult(gf.Result, MisfitResult):
     """Carries the observations for a target and corresponding synthetics."""
     statics_syn = Dict.T(
+        String.T(),
+        Array.T(dtype=num.float, shape=(None,), serialize_as='base64'),
         optional=True,
         help='Predicted static displacements for a target (synthetics).')
     statics_obs = Dict.T(
+        String.T(),
+        Array.T(dtype=num.float, shape=(None,), serialize_as='base64'),
         optional=True,
         help='Observed static displacement for a target.')
 
@@ -218,7 +223,7 @@ class SatelliteMisfitTarget(gf.SatelliteTarget, MisfitTarget):
 
         if self._result_mode == 'full':
             result.statics_syn = statics
-            result.statics_obs = quadtree.leaf_medians
+            result.statics_obs = {'displacement.los': obs}
 
         return result
 

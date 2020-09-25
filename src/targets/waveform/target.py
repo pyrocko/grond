@@ -110,10 +110,6 @@ class DomainChoice(StringChoice):
         'cc_max_norm']
 
 
-class Trace(Object):
-    pass
-
-
 class WaveformMisfitConfig(MisfitConfig):
     quantity = gf.QuantityType.T(default='displacement')
     fmin = Float.T(default=0.0, help='minimum frequency of bandpass filter')
@@ -359,10 +355,10 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
 
     A number of different waveform  or phase representations are possible.
     '''
-    processed_obs = Trace.T(optional=True)
-    processed_syn = Trace.T(optional=True)
-    filtered_obs = Trace.T(optional=True)
-    filtered_syn = Trace.T(optional=True)
+    processed_obs = trace.Trace.T(optional=True)
+    processed_syn = trace.Trace.T(optional=True)
+    filtered_obs = trace.Trace.T(optional=True)
+    filtered_syn = trace.Trace.T(optional=True)
     spectrum_obs = TraceSpectrum.T(optional=True)
     spectrum_syn = TraceSpectrum.T(optional=True)
 
@@ -370,7 +366,7 @@ class WaveformMisfitResult(gf.Result, MisfitResult):
     tobs_shift = Float.T(optional=True)
     tsyn_pick = Timestamp.T(optional=True)
     tshift = Float.T(optional=True)
-    cc = Trace.T(optional=True)
+    cc = trace.Trace.T(optional=True)
 
     piggyback_subresults = List.T(WaveformPiggybackSubresult.T())
 

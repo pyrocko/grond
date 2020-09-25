@@ -21,6 +21,8 @@ from .problems.base import Problem, load_problem_info_and_data, \
 
 from .optimisers.base import BadProblem
 from .targets.waveform.target import WaveformMisfitResult
+from .targets.base import dump_misfit_result_collection, \
+    MisfitResultCollection, MisfitResult, MisfitResultError
 from .meta import expand_template, GrondError, selected
 from .environment import Environment
 from .monitor import GrondMonitor
@@ -65,7 +67,7 @@ def lock_rundir(rundir):
         os.remove(statefn)
 
 
-class DirectoryAlreadyExists(Exception):
+class DirectoryAlreadyExists(GrondError):
     pass
 
 
@@ -146,7 +148,9 @@ def forward(env, show='filtered'):
     trace.snuffle(all_trs, markers=markers, stations=list(stations.values()))
 
 
-def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
+def harvest(
+        rundir, problem=None, nbest=10, force=False, weed=0,
+        export_fits=[]):
 
     env = Environment([rundir])
     optimiser = env.get_optimiser()
@@ -166,7 +170,8 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
         if force:
             shutil.rmtree(dumpdir)
         else:
-            raise DirectoryAlreadyExists(dumpdir)
+            raise DirectoryAlreadyExists(
+                'Harvest directory already exists: %s' % dumpdir)
 
     util.ensuredir(dumpdir)
 
@@ -204,6 +209,36 @@ def harvest(rundir, problem=None, nbest=10, force=False, weed=0):
 
     for i in ibests:
         problem.dump_problem_data(dumpdir, xs[i], misfits[i, :, :])
+
+    if export_fits:
+        env.setup_modelling()
+        problem = env.get_problem()
+        history = env.get_history(subset='harvest')
+
+        for what in export_fits:
+            if what == 'best':
+                models = [history.get_best_model()]
+            elif what == 'mean':
+                models = [history.get_mean_model()]
+            elif what == 'ensemble':
+                models = history.models
+            else:
+                raise GrondError(
+                    'Invalid option for harvest\'s export_fits argument: %s'
+                    % what)
+
+            results = []
+            for x in models:
+                results.append([
+                    (result if isinstance(result, MisfitResult)
+                     else MisfitResultError(message=str(result))) for
+                    result in problem.evaluate(x)])
+
+            emr = MisfitResultCollection(results=results)
+
+            dump_misfit_result_collection(
+                emr,
+                op.join(dumpdir, 'fits-%s.yaml' % what))
 
     logger.info('Done harvesting problem "%s".' % problem.name)
 
@@ -799,6 +834,7 @@ def export(
 
 
 __all__ = '''
+    DirectoryAlreadyExists
     forward
     harvest
     cluster
