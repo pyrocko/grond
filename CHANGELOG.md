@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+
+- Added optional keyword for `Parameters`, defaults to `optional=True`.
+- `RectangularSource` now has a `velocity` parameter.
+- Possibility to select different GF stores for different sensor depth
+  intervals in a single target group with StationDepthStoreIDSelector.
+- Export complete modelling results and fit characteristics with `grond harvest
+  --export-fits`.
 
 ## [1.4.0] 2020-08-25
 
@@ -24,8 +31,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Satellite Plots: added cyclic radians plots.
 - Option to switch between showing filtered or processed waveforms in
   `grond forward`.
-- Added optional keyword for `Parameters`, defaults to `optional=True`
-- `RectangularSource` now has a `velocity` parameter
 
 ### Fixed
 - Fix search in HTML report.
