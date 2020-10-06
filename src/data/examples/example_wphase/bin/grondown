@@ -625,7 +625,7 @@ if __name__ == '__main__':
                     longitude=lon,
                     minradius=options.radius_min*km*cake.m2d,
                     maxradius=radius_max*cake.m2d,
-                    channel=','.join('?%s?' % s for s in priority_band_code))
+                    channel=','.join('%s??' % s for s in priority_band_code))
 
                 if site == 'geonet':
                     extra_args.update(
