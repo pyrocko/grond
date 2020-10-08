@@ -424,7 +424,8 @@ represent different sampler phases.
 
         imodels_rate2 = imodels[nwindow2-1:]
 
-        _pcolormesh_same_dim(axes,
+        _pcolormesh_same_dim(
+            axes,
             imodels_rate2,
             num.arange(history.nchains),
             num.log(0.01+acceptance_rate2),
