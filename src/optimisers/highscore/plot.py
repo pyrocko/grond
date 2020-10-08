@@ -17,6 +17,15 @@ logger = logging.getLogger('grond.optimiser.highscore.plot')
 guts_prefix = 'grond'
 
 
+def _pcolormesh_same_dim(ax, x, y, v, **kwargs):
+    # x, y, v must have the same dimension
+    try:
+        return ax.pcolormesh(x, y, v, shading='nearest', **kwargs)
+    except TypeError:
+        # matplotlib versions < 3.3
+        return ax.pcolormesh(x, y, v[:-1, :-1], **kwargs)
+
+
 class HighScoreOptimiserPlot(object):
 
     def __init__(
@@ -415,7 +424,7 @@ represent different sampler phases.
 
         imodels_rate2 = imodels[nwindow2-1:]
 
-        axes.pcolormesh(
+        _pcolormesh_same_dim(axes,
             imodels_rate2,
             num.arange(history.nchains),
             num.log(0.01+acceptance_rate2),
