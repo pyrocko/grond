@@ -15,6 +15,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Export complete modelling results and fit characteristics with `grond harvest
   --export-fits`.
 
+### Fixed
+
+- Corrected handling of band codes in `grondown` script in the examples: In the
+  FDSN query arguments for `channel` the band codes were mistakenly inserted as
+  instrument code (`?H?,?B?,?S?` instead of `H??,B??,S??`).
+
 ## [1.4.0] 2020-08-25
 
 ### Added
