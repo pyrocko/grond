@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+*empty*
+
+## [1.5.0] 2020-10-09
+
 ### Added
 
 - Added optional keyword for `Parameters`, defaults to `optional=True`.

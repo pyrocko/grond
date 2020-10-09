@@ -9,7 +9,7 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 from setuptools.command.develop import develop
 
-version = '1.4.0'
+version = '1.5.0'
 
 
 class CustomInstallCommand(install):
@@ -173,7 +173,7 @@ setup(
 
     data_files=[],
 
-    install_requires=['pyrocko>=2020.03.13'],
+    install_requires=['pyrocko>=2020.10.08'],
 
     license='GPLv3',
 
