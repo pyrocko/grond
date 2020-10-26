@@ -609,7 +609,7 @@ class Dataset(object):
                 trs_restituted.append(
                     tr.transfer(
                         tfade=tfade, freqlimits=freqlimits,
-                        transfer_function=resp, invert=True))
+                        transfer_function=resp, invert=True, demean=True))
 
             except trace.InfiniteResponse:
                 raise NotFound(
