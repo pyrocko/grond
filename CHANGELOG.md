@@ -8,10 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 *empty*
 
+## [1.5.1] 2020-10-26
+
+### Fixed
+- Always request that traces should be demeaned before restitution (default has
+  changed from Pyrocko v2020.10.08 to v2020.10.26).
+
 ## [1.5.0] 2020-10-09
 
 ### Added
-
 - Added optional keyword for `Parameters`, defaults to `optional=True`.
 - `RectangularSource` now has a `velocity` parameter.
 - Possibility to select different GF stores for different sensor depth
@@ -20,7 +25,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   --export-fits`.
 
 ### Fixed
-
 - Corrected handling of band codes in `grondown` script in the examples: In the
   FDSN query arguments for `channel` the band codes were mistakenly inserted as
   instrument code (`?H?,?B?,?S?` instead of `H??,B??,S??`).
