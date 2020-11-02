@@ -6,7 +6,7 @@ Grond is an open source software tool for robust characterization of earthquake 
 
 ## Documentation and installation
 
-Find the documentation and install instructions at https://pyrocko.org/grond/.
+Find the documentation and detailed install instructions at https://pyrocko.org/grond/.
 
 ## Community and support
 
