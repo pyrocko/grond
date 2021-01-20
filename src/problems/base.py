@@ -298,11 +298,13 @@ class Problem(Object):
 
     def source_to_x(self, source):
         bs = self.base_source
-        n, e = pod.latlon_to_ne_numpy(bs.lat, bs.lon, source.lat, source.lon)
+        n, e = pod.latlon_to_ne_numpy(
+            bs.lat, bs.lon,
+            source.effective_lat, source.effective_lon)
 
         source.lat, source.lon = bs.lat, bs.lon
-        source.north_shift += n - bs.north_shift
-        source.east_shift += e - bs.east_shift
+        source.north_shift = n
+        source.east_shift = e
 
         tmin, tmax = self.ranges['time'].start, self.ranges['time'].stop
 

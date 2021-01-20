@@ -7,7 +7,7 @@ import time
 import numpy as num
 from collections import OrderedDict
 
-from pyrocko.guts import StringChoice, Int, Float, Object, List, load
+from pyrocko.guts import StringChoice, Int, Float, Object, List, load_all
 from pyrocko.guts_array import Array
 
 from grond.meta import GrondError, Forbidden, has_get_plot_classes, Path
@@ -192,7 +192,7 @@ class InjectionSamplerPhase(SamplerPhase):
         help='File with events to be injected as models')
 
     def _xs_inject_from_sources(self, problem):
-        sources = load(filename=self.sources_path)
+        sources = load_all(filename=self.sources_path)
 
         if len(sources) == 0:
             raise InjectionError('No sources found in the given sources_path.')

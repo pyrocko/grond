@@ -273,7 +273,7 @@ You find detailed information on the misfit configuration and model space sampli
     An interrupted optimisation can be prolonged and continued with:
 
     ::
-            
+
         grond continue <configfile> [eventname]
 
 
@@ -335,7 +335,7 @@ See the command reference of :option:`grond export` for more details.
     or a ``SamplerPhase`` in the corresponding configuration file (for details, please check the sections :doc:`/config/optimisers/index` and :doc:`/config/index`) and use:
 
     ::
-            
+
         grond continue <configfile> [eventname]
 
 

@@ -64,6 +64,10 @@ class TargetBalancingAnalyser(Analyser):
             wtargets.append(wtarget)
 
         wproblem = problem.copy()
+        if hasattr(problem, 'cmt_problem'):
+            if problem.cmt_problem is not None:
+                wproblem = problem.cmt_problem.copy()
+
         wproblem.targets = wtargets
 
         xbounds = wproblem.get_parameter_bounds()

@@ -4,8 +4,9 @@ from matplotlib.ticker import FuncFormatter
 from matplotlib import colors, patheffects
 
 from pyrocko.guts import Tuple, Float, Bool
+from pyrocko.gf.seismosizer import map_anchor
 from pyrocko.plot import mpl_init, mpl_graph_color, mpl_color
-from pyrocko.plot.dynamic_rupture import RuptureMap
+from pyrocko.plot.dynamic_rupture import RuptureMap, clear_temp
 
 from grond.plot.config import PlotConfig
 from grond.plot.collection import PlotItem
@@ -64,13 +65,14 @@ evolution in %.1f s intervals.
 
         for i, plabel in enumerate(('best', 'mean')):
             source = get_source(history, source_type=plabel)
+            anchor_x, anchor_y = map_anchor[source.anchor]
 
             fig, ax = plt.subplots(1, 1)
 
             # ToDo in function with "mean", "best" as arg
             source.discretize_patches(store, interpolation)
             patches = source.patches
-            dislocations = source.get_okada_slip(scale_slip=True)
+            dislocations = source.get_slip(scale_slip=True)
 
             patches_x = num.array([p.ix for p in patches])\
                 .reshape(source.nx, source.ny)
@@ -78,6 +80,9 @@ evolution in %.1f s intervals.
                 .reshape(source.nx, source.ny)
             patches_t = num.array([p.time for p in patches])\
                 .reshape(source.nx, source.ny)
+
+            patches_x += (anchor_x + 1.) / 2. * source.length
+            patches_y += (anchor_y + 1.) / 2. * source.width
 
             abs_disloc = num.linalg.norm(dislocations, axis=1)
             abs_disloc = abs_disloc.reshape(source.nx, source.ny)
@@ -104,7 +109,7 @@ evolution in %.1f s intervals.
             cmap = truncate_colormap(plt.get_cmap('winter'), 0., 0.8)
 
             contour = ax.contour(
-                patches_x + source.length/2, patches_y, patches_t,
+                patches_x, patches_y, patches_t,
                 levels=contours, alpha=.8, colors='k')
 
             labels = ax.clabel(
@@ -197,36 +202,36 @@ The moment rate function is sampled in %.1f s intervals.
         store_ids = problem.get_gf_store_ids()
         store = problem.get_gf_store(store_ids[0])
 
-        interpolation = 'nearest_neighbor'
-
         for i, plabel in enumerate(('best', 'mean')):
             source = get_source(history, source_type=plabel)
 
             fig, ax = plt.subplots(1, 1)
 
-            source.discretize_patches(store, interpolation)
-
             mrate, times = source.get_moment_rate(
                 store=store, deltat=self.dt_sampling)
 
-            mrate_max = mrate.max()
+            try:
+                mrate_max = mrate.max()
 
-            ax.fill_between(
-                times,
-                mrate / mrate_max,
-                color=mpl_color(x='aluminium2'),
-                alpha=0.7)
+                ax.fill_between(
+                    times,
+                    mrate / mrate_max,
+                    color=mpl_color(x='aluminium2'),
+                    alpha=0.7)
 
-            ax.scatter(
-                times,
-                mrate / mrate_max,
-                c=mpl_graph_color(0))
+                ax.scatter(
+                    times,
+                    mrate / mrate_max,
+                    c=mpl_graph_color(0))
 
-            ax.set_xlabel('Time [s]')
-            ax.set_ylabel(r'$\dot{M}$ / %.2e Nm/s' % mrate_max)
+                ax.set_xlabel('Time [s]')
+                ax.set_ylabel(r'$\dot{M}$ / %.2e Nm/s' % mrate_max)
 
-            ax.set_xlim([0, times.max() + self.dt_sampling])
-            ax.grid(True)
+                ax.set_xlim([0, times.max() + self.dt_sampling])
+                ax.grid(True)
+
+            except ValueError:
+                pass
 
             item = PlotItem(
                 name='_'.join(['ensemble', plabel.lower()]),
@@ -296,8 +301,8 @@ Static rupture dislocation from %s model.''' % model_name)
                 source.east_shift)
 
             map_kwargs = dict(
-                lat=source.lat,
-                lon=source.lon,
+                lat=lat,
+                lon=lon,
                 radius=self.radius or source.length,
                 width=self.size_cm[0],
                 height=self.size_cm[1],
@@ -310,11 +315,15 @@ Static rupture dislocation from %s model.''' % model_name)
 
             source.discretize_patches(store, interpolation='nearest_neighbor')
 
+            cmap = 'summer'
+
             m = RuptureMap(**map_kwargs)
-            m.draw_dislocation(cmap='summer')
+            m.draw_dislocation(cmap=cmap)
             m.draw_time_contour(store)
             m.draw_nucleation_point()
             m.draw_top_edge()
+
+            clear_temp(cpts=[cmap])
 
             return (item, m)
 

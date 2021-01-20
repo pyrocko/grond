@@ -4,6 +4,7 @@ from scipy import linalg as splinalg
 
 from pyrocko import gf
 from pyrocko.guts import String, Dict, List, Int
+from pyrocko.guts_array import Array
 
 from ..base import MisfitConfig, MisfitTarget, MisfitResult, TargetGroup
 from grond.meta import has_get_plot_classes
@@ -14,10 +15,15 @@ logger = logging.getLogger('grond.target').getChild('gnss_campaign')
 
 class GNSSCampaignMisfitResult(MisfitResult):
     """Carries the observations for a target and corresponding synthetics. """
-    statics_syn = Dict.T(optional=True,
-                         help='Synthetic gnss surface displacements')
-    statics_obs = Dict.T(optional=True,
-                         help='Observed gnss surface displacements')
+    statics_syn = Dict.T(
+            String.T(),
+            Array.T(dtype=num.float, shape=(None,), serialize_as='list'),
+            optional=True,
+            help='Synthetic gnss surface displacements')
+    statics_obs = Array.T(
+            dtype=num.float, shape=(None,), serialize_as='list',
+            optional=True,
+            help='Observed gnss surface displacements')
 
 
 class GNSSCampaignMisfitConfig(MisfitConfig):

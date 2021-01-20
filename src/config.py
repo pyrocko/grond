@@ -102,7 +102,7 @@ class Config(HasPaths):
 
     @property
     def nevents(self):
-        return len(self.dataset_config.get_events())
+        return len(self.dataset_config.get_event_names())
 
     def get_dataset(self, event_name):
         return self.dataset_config.get_dataset(event_name)
