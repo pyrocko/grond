@@ -753,7 +753,8 @@ class HighScoreOptimiser(Optimiser):
                 isok_mask = None
 
             misfits = problem.misfits(
-                sample.model, mask=isok_mask, nthreads=self._nthreads)
+                sample.model, mask=isok_mask, nthreads=self._nthreads,
+                raise_bad=True)
 
             bootstrap_misfits = problem.combine_misfits(
                 misfits,

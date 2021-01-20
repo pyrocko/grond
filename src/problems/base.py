@@ -629,7 +629,7 @@ class Problem(Object):
 
         return results
 
-    def misfits(self, x, mask=None, nthreads=1):
+    def misfits(self, x, mask=None, nthreads=1, raise_bad=False):
         results = self.evaluate(
             x, mask=mask, result_mode='sparse', nthreads=nthreads)
         misfits = num.full((self.nmisfits, 2), num.nan)
@@ -638,6 +638,8 @@ class Problem(Object):
         for target, result in zip(self.targets, results):
             if isinstance(result, MisfitResult):
                 misfits[imisfit:imisfit + target.nmisfits, :] = result.misfits
+            elif raise_bad:
+                logger.error(result)
 
             imisfit += target.nmisfits
 
