@@ -45,6 +45,7 @@ class CMTProblemConfig(ProblemConfig):
             event.depth = 0.
 
         base_source = gf.MTSource.from_pyrocko_event(event)
+        base_source.stf_mode = 'pre'
 
         stf = STFType.base_stf(self.stf_type)
         stf.duration = event.duration or 0.0

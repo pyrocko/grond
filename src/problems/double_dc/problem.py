@@ -28,6 +28,7 @@ class DoubleDCProblemConfig(ProblemConfig):
 
         base_source = gf.DoubleDCSource.from_pyrocko_event(event)
         base_source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
+        base_source.stf_mode = 'pre'
 
         subs = dict(
             event_name=event.name,
