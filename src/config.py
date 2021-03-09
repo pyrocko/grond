@@ -1,7 +1,7 @@
 import re
 import os.path as op
 from pyrocko import guts, gf
-from pyrocko.guts import Bool, List
+from pyrocko.guts import Bool, List, String
 
 from .meta import Path, HasPaths, GrondError
 from .dataset import DatasetConfig
@@ -82,11 +82,11 @@ class Config(HasPaths):
         default=EngineConfig.D(),
         help=':class:`pyrocko.gf.LocalEngine` configuration')
     event_names = List.T(
-        gf.StringID.T(),
+        String.T(),
         help='Restrict application to given event names. If empty, all events '
              'found through the dataset configuration are considered.')
     event_names_exclude = List.T(
-        gf.StringID.T(),
+        String.T(),
         help='Event names to be excluded')
 
     def __init__(self, *args, **kwargs):
