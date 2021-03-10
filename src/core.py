@@ -688,7 +688,8 @@ def format_stats(rs, fmt):
 
 
 def export(
-        what, rundirs, type=None, pnames=None, filename=None, selection=None):
+        what, rundirs, type=None, pnames=None, filename=None, selection=None,
+        effective_lat_lon=False):
 
     if pnames is not None:
         pnames_clean = [pname.split('.')[0] for pname in pnames]
@@ -729,14 +730,21 @@ def export(
 
         elif type == 'source':
             source = problem.get_source(x)
+            if effective_lat_lon:
+                source.set_origin(*source.effective_latlon)
             guts.dump(source, stream=out)
 
         elif type == 'event':
             ev = problem.get_source(x).pyrocko_event()
+            if effective_lat_lon:
+                ev.set_origin(*ev.effective_latlon)
+
             model.dump_events([ev], stream=out)
 
         elif type == 'event-yaml':
             ev = problem.get_source(x).pyrocko_event()
+            if effective_lat_lon:
+                ev.set_origin(*ev.effective_latlon)
             guts.dump_all([ev], stream=out)
 
         else:

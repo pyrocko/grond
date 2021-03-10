@@ -1023,6 +1023,12 @@ def command_export(args):
             '--output', dest='filename', metavar='FILE',
             help='write output to FILE')
 
+        parser.add_option(
+            '--effective-lat-lon', dest='effective_lat_lon',
+            action='store_true',
+            help='convert north_shift/east_shift offsets to true lat/lon '
+                 'coordinates (when outputting event objects).')
+
     parser, options, args = cl_parse('export', args, setup)
     if len(args) < 2:
         help_and_die(parser, 'arguments required')
@@ -1051,7 +1057,8 @@ def command_export(args):
             filename=options.filename,
             type=options.type,
             pnames=pnames,
-            selection=options.selection)
+            selection=options.selection,
+            effective_lat_lon=options.effective_lat_lon)
 
     except grond.GrondError as e:
         die(str(e))
