@@ -6,6 +6,7 @@ guts_prefix = 'grond'
 
 
 inch = 2.54
+points = inch / 72.0
 
 
 class PlotFormat(Object):
@@ -144,6 +145,10 @@ class PlotConfig(Object):
     @property
     def size_inch(self):
         return self.size_cm[0]/inch, self.size_cm[1]/inch
+
+    @property
+    def size_points(self):
+        return self.size_cm[0]/points, self.size_cm[1]/points
 
     def make(self, environ):
         pass

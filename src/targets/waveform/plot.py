@@ -1319,10 +1319,8 @@ location of the source.
                             u'weighting factor of the corresponding target\'s '
                             u'contribution in the misfit function.')
             fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, ws[itargets], labels)
-            legend.set_title(
-                'Weight',
-                prop=dict(size=self.font_size))
+                azimuths, distances, ws[itargets], labels,
+                legend_title='Weight')
 
             yield (item, fig)
 
@@ -1334,10 +1332,8 @@ location of the source.
                                 u'misfit contribution for the globally best '
                                 u'source model.')
                 fig, ax, legend = self.plot_station_distribution(
-                    azimuths, distances, gcms[itargets], labels)
-                legend.set_title(
-                    'Contribution',
-                    prop=dict(size=self.font_size))
+                    azimuths, distances, gcms[itargets], labels,
+                    legend_title='Contribution')
 
                 yield (item, fig)
 

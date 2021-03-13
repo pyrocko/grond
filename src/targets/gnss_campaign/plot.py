@@ -277,22 +277,22 @@ components).
 
             item = PlotItem(name='station_distribution-N-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, ws_n, labels)
-            legend.set_title('Weight, N components')
+                azimuths, distances, ws_n, labels,
+                legend_title='Weight, N components')
 
             yield (item, fig)
 
             item = PlotItem(name='station_distribution-E-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, ws_e, labels)
-            legend.set_title('Weight, E components')
+                azimuths, distances, ws_e, labels,
+                legend_title='Weight, E components')
 
             yield (item, fig)
 
             item = PlotItem(name='station_distribution-U-%s' % target.path)
             fig, ax, legend = self.plot_station_distribution(
-                azimuths, distances, ws_u, labels)
-            legend.set_title('Weight, U components')
+                azimuths, distances, ws_u, labels,
+                legend_title='Weight, U components')
 
             yield (item, fig)
 
