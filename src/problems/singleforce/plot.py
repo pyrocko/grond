@@ -53,7 +53,6 @@ high (blue) misfit.
         color = 'black'
         fontsize = self.font_size
         markersize = fontsize * 1.5
-        size_small = markersize * 0.5
 
         problem = history.problem
         sp = SectionPlot(config=self)
@@ -82,7 +81,7 @@ high (blue) misfit.
             set_lim(xmin, xmax)
 
         def scale_size(source):
-            return size_small
+            return markersize
 
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
@@ -140,11 +139,11 @@ high (blue) misfit.
 
                 axes.scatter(
                     [sx], [sy],
-                    colors=[color],
-                    size=[scale_size(source)],
+                    c=[color],
+                    s=[scale_size(source)],
                     alpha=alpha,
                     zorder=1,
-                    linewidth=0.25)
+                    linewidths=0.25)
 
         item = PlotItem(name='main')
         return [[item, fig]]

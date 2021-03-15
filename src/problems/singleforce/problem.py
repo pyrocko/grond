@@ -141,10 +141,10 @@ class SFProblem(Problem):
         return x.tolist()
 
     def preconstrain(self, x):
-        return x
+        d = self.get_parameter_dict(x)
+        x = self.get_parameter_array(d)
 
-    def get_dependant_bounds(self):
-        pass
+        return x
 
     @classmethod
     def get_plot_classes(cls):

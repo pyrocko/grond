@@ -147,6 +147,7 @@ setup(
         'grond.problems.rectangular',
         'grond.problems.volume_point',
         'grond.problems.vlvd',
+        'grond.problems.singleforce',
         'grond.optimisers',
         'grond.optimisers.highscore',
         'grond.analysers',
