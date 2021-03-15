@@ -8,6 +8,7 @@ from .cmt.problem import *  # noqa
 from .rectangular.problem import *  # noqa
 from .double_dc.problem import *  # noqa
 from .volume_point.problem import *  # noqa
+from .singleforce.problem import *  # noqa
 
 try:
     from .vlvd.problem import *  # noqa
