@@ -150,7 +150,7 @@ class SFProblem(Problem):
     def get_plot_classes(cls):
         from . import plot
         plots = super(SFProblem, cls).get_plot_classes()
-        plots.extend([plot.SFLocationPlot])
+        plots.extend([plot.SFLocationPlot, plot.SFForcePlot])
         return plots
 
 

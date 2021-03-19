@@ -3,18 +3,22 @@ import logging
 import numpy as num
 from matplotlib import cm, patches
 
-from pyrocko.guts import Float
+from pyrocko import orthodrome as pod
+from pyrocko.guts import Float, Bool, Tuple
 
-from pyrocko.plot import mpl_color, mpl_init
+from pyrocko.plot import mpl_color, mpl_init, automap
 
 from grond.plot.section import SectionPlotConfig, SectionPlot
 from grond.plot.collection import PlotItem
+from grond.plot.config import PlotConfig
 from grond.problems.plot import fixlim
 from matplotlib import pyplot as plt
 
 logger = logging.getLogger('grond.problem.singleforce.plot')
 
 guts_prefix = 'grond'
+
+km = 1e3
 
 
 class SFLocationPlot(SectionPlotConfig):
@@ -41,7 +45,7 @@ class SFLocationPlot(SectionPlotConfig):
 Location plot of the ensemble of best solutions in three cross-sections.
 
 The coordinate range is defined by the search space given in the config file.
-Symbols show best double-couple mechanisms, and colors indicate low (red) and
+Dots show best single force mechanisms, and colors indicate low (red) and
 high (blue) misfit.
 ''')
         for obj in self._to_be_closed:
@@ -81,7 +85,7 @@ high (blue) misfit.
             set_lim(xmin, xmax)
 
         def scale_size(source):
-            return markersize
+            return markersize * 1.5
 
         for axes, xparname, yparname in [
                 (axes_en, 'east_shift', 'north_shift'),
@@ -105,15 +109,10 @@ high (blue) misfit.
             rect = patches.Rectangle(
                 (xmin, ymin), xmax-xmin, ymax-ymin,
                 facecolor=mpl_color('white'),
-                edgecolor=mpl_color('aluminium2'))
+                edgecolor=mpl_color('aluminium2'),
+                zorder=1)
 
             axes.add_patch(rect)
-
-            # fxs = xpar.scaled(problem.extract(models, ixpar))
-            # fys = ypar.scaled(problem.extract(models, iypar))
-
-            # axes.set_xlim(*fixlim(num.min(fxs), num.max(fxs)))
-            # axes.set_ylim(*fixlim(num.min(fys), num.max(fys)))
 
             cmap = cm.ScalarMappable(
                 norm=colors.PowerNorm(
@@ -142,8 +141,154 @@ high (blue) misfit.
                     c=[color],
                     s=[scale_size(source)],
                     alpha=alpha,
-                    zorder=1,
-                    linewidths=0.25)
+                    zorder=2)
 
         item = PlotItem(name='main')
         return [[item, fig]]
+
+
+class SFForcePlot(PlotConfig):
+    ''' Maps showing horizontal and vertical force
+        of the best single force model '''
+
+    name = 'forces_singleforce'
+
+    size_cm = Tuple.T(
+        2, Float.T(),
+        default=(15., 15.),
+        help='width and length of the figure in cm')
+    show_topo = Bool.T(
+        default=False,
+        help='show topography')
+    show_grid = Bool.T(
+        default=True,
+        help='show the lat/lon grid')
+    show_rivers = Bool.T(
+        default=True,
+        help='show rivers on the map')
+    radius = Float.T(
+        optional=True,
+        help='radius of the map around campaign center lat/lon')
+
+    def make(self, environ):
+        cm = environ.get_plot_collection_manager()
+        history = environ.get_history(subset='harvest')
+        optimiser = environ.get_optimiser()
+        ds = environ.get_dataset()
+
+        environ.setup_modelling()
+
+        cm.create_group_automap(
+            self,
+            self.draw_best_sf(ds, history, optimiser),
+            title=u'Single Force Source Forces',
+            section='solution',
+            feather_icon='map',
+            description=u'''
+Maps showing location and force vectors of the best Single Force Source model.
+
+Arrows show the modelled forces (red arrows). The top plot shows the horizontal
+forces and the bottom plot the vertical force. The dot indicates the location
+of the best single force source model.
+''')
+
+    def draw_best_sf(self, ds, history, optimiser, vertical=False):
+        from grond.core import make_stats
+
+        source = history.get_best_source()
+
+        problem = history.problem
+        models = history.models
+
+        stats = make_stats(
+            problem, models, history.get_primary_chain_misfits())
+
+        def plot_sf(source, stats, ifig, vertical=False):
+            orient = 'vertical' if vertical else 'horizontal'
+
+            item = PlotItem(
+                name='fig_%i' % ifig,
+                attributes={},
+                title=u'Best %s single force model force vector' % orient,
+                description=u'''
+Single force source %s force vector for the best model (red). The circle shows
+the 95%% confidence ellipse.
+''' % orient)
+
+            event = source.pyrocko_event()
+
+            radius = self.radius
+            if radius is None or radius < 30.*km:
+                logger.warn(
+                    'Radius too small, defaulting to 30 km')
+                radius = 30*km
+
+            m = automap.Map(
+                width=self.size_cm[0],
+                height=self.size_cm[1],
+                lat=event.lat,
+                lon=event.lon,
+                radius=radius,
+                show_topo=self.show_topo,
+                show_grid=self.show_grid,
+                show_rivers=self.show_rivers,
+                color_wet=(216, 242, 254),
+                color_dry=(238, 236, 230))
+
+            offset_scale = num.abs([source.fn, source.fe, source.fd]).sum()
+            size = num.linalg.norm(self.size_cm)
+
+            scale = (size / 5.) / offset_scale
+
+            lat, lon = pod.ne_to_latlon(
+                event.lat,
+                event.lon,
+                source.north_shift,
+                source.east_shift)
+
+            stats_dict = stats.get_values_dict()
+
+            if vertical:
+                rows = [lon, lat,
+                        0., -source.fd * scale,
+                        (stats_dict['fn.std'] + stats_dict['fe.std']) * scale,
+                        stats_dict['fd.std'] * scale,
+                        0.]
+
+            else:
+                rows = [lon, lat,
+                        source.fe * scale, source.fn * scale,
+                        stats_dict['fe.std'] * scale,
+                        stats_dict['fn.std'] * scale,
+                        0.]
+
+            fontsize = 10.
+
+            default_psxy_style = {
+                'h': 0,
+                'W': '2.0p,red',
+                'A': '+p4p,black+e+a40',
+                'G': 'red',
+                't': 30,
+                'L': True,
+                'S': 'e1c/0.95/%d' % fontsize,
+            }
+
+            m.gmt.psvelo(
+                in_rows=[rows],
+                *m.jxyr,
+                **default_psxy_style)
+
+            m.gmt.psxy(
+                S='c10p',
+                in_rows=[[lon, lat]],
+                W='1p,black',
+                G='orange3',
+                *m.jxyr)
+
+            return (item, m)
+
+        ifig = 0
+        for vertical in (False, True):
+            yield plot_sf(source, stats, ifig, vertical)
+            ifig += 1
