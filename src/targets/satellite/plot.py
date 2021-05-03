@@ -254,7 +254,7 @@ edge marking the upper fault edge. Complete data extent is shown.
             rgb_arr = mappable.to_rgba(arr)
             rgb_arr[num.isnan(arr)] = 1.
             rgb_arr[scene.displacement_mask] = 1.
-            
+
             return rgb_arr
 
         def draw_leaves(ax, scene, offset_e=0., offset_n=0.):
