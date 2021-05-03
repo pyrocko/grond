@@ -268,7 +268,16 @@ def report_index(report_config=None):
 
     app_dir = op.join(op.split(__file__)[0], 'app')
     copytree(app_dir, report_base_path)
+    update_guts_registry(op.join(report_base_path, 'js', 'guts_registry.js'))
+
     logger.info('Created report in %s/index.html' % report_base_path)
+
+
+def update_guts_registry(path):
+    tags = ['!' + s for s in guts.g_tagname_to_class.keys()]
+    js_data = 'GUTS_TYPES = [%s];\n' % ', '.join("'%s'" % tag for tag in tags)
+    with open(path, 'w') as out:
+        out.write(js_data)
 
 
 def report_archive(report_config):

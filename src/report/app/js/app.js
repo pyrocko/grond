@@ -92,46 +92,23 @@ function ReportIndexEntry(obj) {
 }
 
 var yaml_type_map = [
-    ['!grond.ReportInfo', Dummy],
     ['!grond.ReportIndexEntry', ReportIndexEntry],
-    ['!pf.Event', Dummy],
-    ['!pf.MomentTensor', Dummy],
-    ['!grond.ParameterStats', Dummy],
-    ['!grond.TargetBalancingAnalyserResult', Dummy],
-    ['!grond.NoiseAnalyserResult', Dummy],
-    ['!grond.ResultStats', Dummy],
-    ['!grond.MisfitConfig', Dummy],
-    ['!grond.WaveformMisfitTarget', Dummy],
-    ['!grond.WaveformMisfitConfig', Dummy],
-    ['!grond.WaveformTargetGroup', Dummy],
-    ['!grond.GNSSCampaignMisfitTarget', Dummy],
-    ['!grond.GNSSCampaignMisfitConfig', Dummy],
-    ['!grond.GNSSCampaignTargetGroup', Dummy],
-    ['!grond.SatelliteMisfitTarget', Dummy],
-    ['!grond.SatelliteMisfitConfig', Dummy],
-    ['!grond.SatelliteTargetGroup', Dummy],
-    ['!grond.PhaseRatioTarget', Dummy],
-    ['!grond.PhaseRatioTargetGroup', Dummy],
-    ['!grond.FeatureMeasure', Dummy],
-    ['!grond.CMTProblem', Dummy],
-    ['!grond.DoubleDCProblem', Dummy],
-    ['!grond.RectangularProblem', Dummy],
-    ['!grond.VolumePointProblem', Dummy],
-    ['!grond.VLVDProblem', Dummy],
-    ['!pf.MTSource', Dummy],
-    ['!pf.RectangularSource', Dummy],
-    ['!pf.DoubleDCSource', Dummy],
-    ['!pf.ExplosionSource', Dummy],
-    ['!pf.VLVDSource', Dummy],
-    ['!pf.HalfSinusoidSTF', Dummy],
-    ['!grond.PlotCollection', Dummy],
-    ['!grond.PlotGroup', Dummy],
-    ['!grond.PlotItem', Dummy],
-    ['!grond.PNG', Dummy],
-    ['!grond.PDF', Dummy],
-    ['!grond.VersionInfo', Dummy],
-    ['!grond.RunInfo', Dummy],
 ];
+
+function have_type(type_map, name) {
+    for (var i=0; i<type_map.length; i++) {
+        if (type_map[i][0] == name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+for (var i=0; i<GUTS_TYPES.length; i++) {
+    if (!have_type(yaml_type_map, GUTS_TYPES[i])) {
+        yaml_type_map.push([GUTS_TYPES[i], Dummy]);
+    }
+}
 
 function make_constructor(type) {
     var type = type;
