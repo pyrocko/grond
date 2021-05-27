@@ -153,6 +153,9 @@ class Problem(Object):
                 arr[ip] = d[p.name]
         return arr
 
+    def get_parameter_index(self, param_name):
+        return {k.name: ik for ik, k in enumerate(self.parameters)}[param_name]
+
     def dump_problem_info(self, dirname):
         fn = op.join(dirname, 'problem.yaml')
         util.ensuredirs(fn)

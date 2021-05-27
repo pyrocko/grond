@@ -148,6 +148,7 @@ setup(
         'grond.problems.volume_point',
         'grond.problems.vlvd',
         'grond.problems.singleforce',
+        'grond.problems.double_sf',
         'grond.optimisers',
         'grond.optimisers.highscore',
         'grond.analysers',
