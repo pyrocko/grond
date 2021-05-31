@@ -2,7 +2,6 @@ import logging
 
 import numpy as num
 
-from pyrocko import orthodrome as pod
 from pyrocko.guts import Float, Bool, Tuple
 
 from pyrocko.plot import automap
@@ -111,13 +110,7 @@ shows the 95%% confidence ellipse.
 
             scale = (size / 5.) / offset_scale
 
-            lat, lon = pod.ne_to_latlon(
-                event.lat,
-                event.lon,
-                source.north_shift,
-                source.east_shift)
-
-            source.lat, source.lon = lat, lon
+            source.lat, source.lon = event.effective_lat, event.effective_lon
             sf1, sf2 = source.split()
 
             stats_dict = stats.get_values_dict()
@@ -171,7 +164,7 @@ shows the 95%% confidence ellipse.
 
             m.gmt.psxy(
                 S='c10p',
-                in_rows=[[lon, lat]],
+                in_rows=[[source.effective_lon, source.effective_lat]],
                 W='1p,black',
                 G='orange3',
                 *m.jxyr)

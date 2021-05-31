@@ -74,10 +74,20 @@ class DoubleSFProblem(Problem):
         Parameter('duration1', 's', label='Duration 1'),
         Parameter('duration2', 's', label='Duration 2')]
 
-    dependants = []
+    dependants = [
+        Parameter('fn1', 'N', label='$F_{n1}$'),
+        Parameter('fe1', 'N', label='$F_{e1}$'),
+        Parameter('fd1', 'N', label='$F_{d1}$'),
+        Parameter('fn2', 'N', label='$F_{n2}$'),
+        Parameter('fe2', 'N', label='$F_{e2}$'),
+        Parameter('fd2', 'N', label='$F_{d2}$')]
 
     distance_min = Float.T(default=0.0)
     force_directions = String.T()
+
+    def __init__(self, **kwargs):
+        Problem.__init__(self, **kwargs)
+        self.deps_cache = {}
 
     def get_source(self, x):
         d = self.get_parameter_dict(x)
@@ -95,7 +105,25 @@ class DoubleSFProblem(Problem):
         return source
 
     def make_dependant(self, xs, pname):
-        pass
+        cache = self.deps_cache
+        if xs.ndim == 1:
+            return self.make_dependant(xs[num.newaxis, :], pname)[0]
+
+        if pname not in self.dependant_names:
+            raise KeyError(pname)
+
+        y = num.zeros(xs.shape[0])
+        for i, x in enumerate(xs):
+            k = tuple(x.tolist())
+            if k not in cache:
+                source = self.get_source(x)
+                cache[k] = source
+
+            source = cache[k]
+
+            y[i] = getattr(source, pname)
+
+        return y
 
     def pack(self, source):
         arr = self.get_parameter_array(source)
@@ -141,6 +169,18 @@ class DoubleSFProblem(Problem):
             x[idx_rfd2] = -source.rfd1
 
         return num.array(x, dtype=num.float)
+
+    def get_dependant_bounds(self):
+        range_force = self.ranges['force']
+        out = [
+            (-range_force.stop, range_force.stop),
+            (-range_force.stop, range_force.stop),
+            (-range_force.stop, range_force.stop),
+            (-range_force.stop, range_force.stop),
+            (-range_force.stop, range_force.stop),
+            (-range_force.stop, range_force.stop)]
+
+        return out
 
     @classmethod
     def get_plot_classes(cls):
