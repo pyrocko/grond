@@ -18,6 +18,8 @@ from grond.meta import has_get_plot_classes
 from pyrocko import crust2x2
 from string import Template
 
+from scipy.signal import fftconvolve
+
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.waveform.target')
 
@@ -106,6 +108,7 @@ class DomainChoice(StringChoice):
         'frequency_domain',
         'log_frequency_domain',
         'envelope',
+        'smoothed_envelope',
         'absolute',
         'cc_max_norm']
 
@@ -531,6 +534,7 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
 
             mr = misfit(
                 tr_obs, tr_syn,
+                freqlimits,
                 taper=trace.CosTaper(
                     tmin_fit - tfade_taper,
                     tmin_fit,
@@ -564,8 +568,35 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
         self._piggyback_subtargets.append(subtarget)
 
 
+def smoothed_envelope(tr, fmax, smooth_factor):                                 
+    fsmooth = fmax * smooth_factor                                              
+    deltat = tr.deltat                                                          
+    max_y = max(tr.ydata)                                                       
+    #print('before taper:', len(tr.ydata))                                      
+    tr.ydata = tr.ydata**2                                                      
+    n = int(num.round(1./fsmooth / deltat))                                     
+    #print(n, 'input')                                                          
+    #input()                                                                    
+    taper = num.hanning(n)                                                      
+    #print('after taper', len(tr.ydata))                                        
+    tr.set_ydata(fftconvolve(tr.get_ydata(), taper))                            
+    #print('after fftconvolve', len(tr.ydata))                                  
+    tr.set_ydata(num.maximum(tr.ydata, 0.0))                                    
+    tr.shift(-(n/2. *tr.deltat))                                                
+    tr.ydata = num.sqrt(tr.ydata)                                               
+    #print(tr.ydata)                                                            
+    max_newy = max(tr.ydata)                                                    
+    tr.ydata = tr.ydata/max_newy * max_y                                        
+    #tr.set_ydata(num.abs(tr.get_ydata()))                                      
+    #tr.downsample_to(deltat, demean=False, snap=True)                          
+    #print(len(tr.ydata))                                                       
+    #input()                                                                    
+    return tr
+
+
+
 def misfit(
-        tr_obs, tr_syn, taper, domain, exponent, tautoshift_max,
+        tr_obs, tr_syn, freqlimits, taper, domain, exponent, tautoshift_max,
         autoshift_penalty_max, flip, result_mode='sparse', subtargets=[]):
 
     '''
@@ -595,8 +626,8 @@ tautoshift**2 / tautoshift_max**2``
     deltat = tr_obs.deltat
     tmin, tmax = taper.time_span()
 
-    tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain)
-    tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain)
+    tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain, freqlimits)
+    tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain, freqlimits)
 
     piggyback_results = []
     for subtarget in subtargets:
@@ -607,7 +638,7 @@ tautoshift**2 / tautoshift_max**2``
     tshift = None
     ctr = None
     deltat = tr_proc_obs.deltat
-    if domain in ('time_domain', 'envelope', 'absolute'):
+    if domain in ('time_domain', 'envelope', 'absolute', 'smoothed_envelope'):
         a, b = tr_proc_syn.ydata, tr_proc_obs.ydata
         if flip:
             b, a = a, b
@@ -722,21 +753,33 @@ def _extend_extract(tr, tmin, tmax):
     return tr
 
 
-def _process(tr, tmin, tmax, taper, domain):
+def _process(tr, tmin, tmax, taper, domain, freqlimits):
     tr_proc = _extend_extract(tr, tmin, tmax)
-    tr_proc.taper(taper)
+    #tr_proc.taper(taper)
 
     df = None
     trspec_proc = None
 
     if domain == 'envelope':
+        tr_proc.taper(taper)
         tr_proc = tr_proc.envelope(inplace=False)
         tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
 
+
+    elif domain == 'smoothed_envelope':
+        fmax = freqlimits[3]                                                    
+        smooth_factor = 0.7                                                     
+        #tr_proc = tr_proc.envelope(inplace=False)                              
+        #tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))                        
+        #print('old approach', len(tr_proc.ydata))                              
+        tr_proc = smoothed_envelope(tr_proc, fmax, smooth_factor)
+
     elif domain == 'absolute':
+        tr_proc.taper(taper)
         tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))
 
     elif domain in ('frequency_domain', 'log_frequency_domain'):
+        tr_proc.taper(taper)
         ndata = tr_proc.ydata.size
         nfft = trace.nextpow2(ndata)
         padded = num.zeros(nfft, dtype=num.float)
