@@ -155,6 +155,13 @@ class WaveformMisfitConfig(MisfitConfig):
              '``autoshift_penalty_max * normalization_factor * tautoshift**2 '
              '/ tautoshift_max**2``')
 
+    envelope_smoothing_factor = Float.T(
+        default=0.7,
+        optional=True,
+        help='Smoothing factor helping to define the length of the applied '
+         'hanning taper. Larger values lead to a narrower hanning taper. '
+         'The taper is applied on the squared trace amplitudes.')
+
     ranges = {}
 
     def get_full_frequency_range(self):
@@ -546,7 +553,8 @@ class WaveformMisfitTarget(gf.Target, MisfitTarget):
                 result_mode=self._result_mode,
                 tautoshift_max=config.tautoshift_max,
                 autoshift_penalty_max=config.autoshift_penalty_max,
-                subtargets=self._piggyback_subtargets)
+                subtargets=self._piggyback_subtargets,
+                envelope_smoothing=config.envelope_smoothing_factor)
 
             self._piggyback_subtargets = []
 
@@ -597,7 +605,8 @@ def smoothed_envelope(tr, fmax, smooth_factor):
 
 def misfit(
         tr_obs, tr_syn, freqlimits, taper, domain, exponent, tautoshift_max,
-        autoshift_penalty_max, flip, result_mode='sparse', subtargets=[]):
+        autoshift_penalty_max, flip, result_mode='sparse', subtargets=[],
+        envelope_smoothing=None):
 
     '''
     Calculate misfit between observed and synthetic trace.
@@ -626,8 +635,8 @@ tautoshift**2 / tautoshift_max**2``
     deltat = tr_obs.deltat
     tmin, tmax = taper.time_span()
 
-    tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain, freqlimits)
-    tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain, freqlimits)
+    tr_proc_obs, trspec_proc_obs = _process(tr_obs, tmin, tmax, taper, domain, freqlimits, envelope_smoothing)
+    tr_proc_syn, trspec_proc_syn = _process(tr_syn, tmin, tmax, taper, domain, freqlimits, envelope_smoothing)
 
     piggyback_results = []
     for subtarget in subtargets:
@@ -753,7 +762,7 @@ def _extend_extract(tr, tmin, tmax):
     return tr
 
 
-def _process(tr, tmin, tmax, taper, domain, freqlimits):
+def _process(tr, tmin, tmax, taper, domain, freqlimits, envelope_smoothing):
     tr_proc = _extend_extract(tr, tmin, tmax)
     #tr_proc.taper(taper)
 
@@ -768,11 +777,11 @@ def _process(tr, tmin, tmax, taper, domain, freqlimits):
 
     elif domain == 'smoothed_envelope':
         fmax = freqlimits[3]                                                    
-        smooth_factor = 0.7                                                     
+        # smooth_factor = 0.7                                                     
         #tr_proc = tr_proc.envelope(inplace=False)                              
         #tr_proc.set_ydata(num.abs(tr_proc.get_ydata()))                        
         #print('old approach', len(tr_proc.ydata))                              
-        tr_proc = smoothed_envelope(tr_proc, fmax, smooth_factor)
+        tr_proc = smoothed_envelope(tr_proc, fmax, envelope_smoothing)
 
     elif domain == 'absolute':
         tr_proc.taper(taper)
