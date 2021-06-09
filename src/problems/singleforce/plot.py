@@ -292,3 +292,5 @@ the 95%% confidence ellipse.
         for vertical in (False, True):
             yield plot_sf(source, stats, ifig, vertical)
             ifig += 1
+
+# TODO Fuzzy Single Force Plot

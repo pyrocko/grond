@@ -187,7 +187,10 @@ class DoubleSFProblem(Problem):
         from . import plot
         from ..singleforce import plot as sfplot
         plots = super(DoubleSFProblem, cls).get_plot_classes()
-        plots.extend([sfplot.SFLocationPlot, plot.SFForcePlot])
+        plots.extend([
+            sfplot.SFLocationPlot,
+            plot.SFForcePlot,
+            plot.DoubleSFDecompositionPlot])
         return plots
 
 
