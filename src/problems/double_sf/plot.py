@@ -6,7 +6,7 @@ import numpy as num
 from matplotlib import pyplot as plt
 
 from pyrocko.guts import Float, Bool, Tuple
-
+from pyrocko import gf
 from pyrocko.plot import automap, mpl_init, beachball, mpl_color
 
 from grond import stats
@@ -110,13 +110,20 @@ individual single force, while the square shows the combined centroid location.
                 color_wet=(216, 242, 254),
                 color_dry=(238, 236, 230))
 
-            offset_scale = source.force
+            source.lat, source.lon = event.effective_lat, event.effective_lon
+
+            if isinstance(source, gf.DoubleSFSource):
+                sf1, sf2 = source.split()
+                offset_scale = source.force
+                f = 'r'
+            elif isinstance(source, gf.CombiSource):
+                sf1, sf2 = source.subsources
+                offset_scale = num.max((sf1.force, sf2.force))
+                f = ''
+
             size = num.linalg.norm(self.size_cm)
 
             scale = (size / 5.) / offset_scale
-
-            source.lat, source.lon = event.effective_lat, event.effective_lon
-            sf1, sf2 = source.split()
 
             stats_dict = stats.get_values_dict()
 
@@ -124,30 +131,30 @@ individual single force, while the square shows the combined centroid location.
                 rows = [[
                     sf1.effective_lon, sf1.effective_lat,
                     0., -sf1.fd * scale,
-                    (stats_dict['rfn1.std'] + stats_dict['rfe1.std']),
-                    stats_dict['rfd1.std'],
+                    (stats_dict[f + 'fn1.std'] + stats_dict[f + 'fe1.std']),
+                    stats_dict[f + 'fd1.std'],
                     0.]]
 
                 rows.append([
                     sf2.effective_lon, sf2.effective_lat,
                     0., -sf2.fd * scale,
-                    (stats_dict['rfn2.std'] + stats_dict['rfe2.std']),
-                    stats_dict['rfd2.std'],
+                    (stats_dict[f + 'fn2.std'] + stats_dict[f + 'fe2.std']),
+                    stats_dict[f + 'fd2.std'],
                     0.])
 
             else:
                 rows = [[
                     sf1.effective_lon, sf1.effective_lat,
                     sf1.fe * scale, sf1.fn * scale,
-                    stats_dict['rfe1.std'],
-                    stats_dict['rfn1.std'],
+                    stats_dict[f + 'fe1.std'],
+                    stats_dict[f + 'fn1.std'],
                     0.]]
 
                 rows.append([
                     sf2.effective_lon, sf2.effective_lat,
                     sf2.fe * scale, sf2.fn * scale,
-                    stats_dict['rfe2.std'],
-                    stats_dict['rfn2.std'],
+                    stats_dict[f + 'fe2.std'],
+                    stats_dict[f + 'fn2.std'],
                     0.])
 
             fontsize = 10.
@@ -243,7 +250,28 @@ best have similar symbol size and patterns.
         nlines_max = int(round(self.size_cm[1] / 5. * 4. - 1.0))
 
         def get_deco(source):
-            return [source] + source.split()
+            if isinstance(source, gf.DoubleSFSource):
+                return [source] + source.split()
+            elif isinstance(source, gf.CombiSource):
+                sf1, sf2 = source.subsources
+                f1 = num.array([sf1.fn, sf1.fe, sf1.fd])
+                f2 = num.array([sf2.fn, sf2.fe, sf2.fd])
+
+                force = num.linalg.norm([f1 + f2])
+
+                mix = sf2.force / force
+
+                source = gf.DoubleSFSource(
+                    force=force,
+                    rfn1=sf1.fn / force,
+                    rfe1=sf1.fe / force,
+                    rfd1=sf1.fd / force,
+                    rfn2=sf2.fn / force,
+                    rfe2=sf2.fe / force,
+                    rfd2=sf2.fd / force,
+                    mix=mix)
+
+                return [source, sf1, sf2]
 
         lines = []
         lines.append(
