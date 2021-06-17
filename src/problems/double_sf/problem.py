@@ -210,9 +210,13 @@ class IndependentDoubleSFProblemConfig(ProblemConfig):
         source = gf.SFSource.from_pyrocko_event(event)
         source.stf = gf.HalfSinusoidSTF(duration=event.duration or 0.0)
 
-        base_source = gf.CombiSource(subsources=[
-            source.clone,
-            source.clone])
+        base_source = gf.CombiSFSource(
+            name=source.name,
+            subsources=[
+                source.clone(name=''),
+                source.clone(name='')])
+
+        source.lat, source.lon = event.effective_latlon
 
         subs = dict(
             event_name=event.name,
@@ -269,8 +273,7 @@ class IndependentDoubleSFProblem(Problem):
 
         sources = []
 
-        for i in range(len(self.base_source)):
-            subsource = self.base_source.subsources[i]
+        for i, subsource in enumerate(self.base_source.subsources):
             p = {}
 
             for k in subsource.keys():
@@ -281,8 +284,8 @@ class IndependentDoubleSFProblem(Problem):
 
             sources.append(self.base_source.subsources[i].clone(**p))
 
-        sources[0] = gf.HalfSinusoidSTF(duration=float(d.duration1))
-        sources[1] = gf.HalfSinusoidSTF(duration=float(d.duration2))
+        sources[0].stf = gf.HalfSinusoidSTF(duration=float(d.duration1))
+        sources[1].stf = gf.HalfSinusoidSTF(duration=float(d.duration2))
 
         return self.base_source.clone(subsources=sources)
 
@@ -303,19 +306,20 @@ class IndependentDoubleSFProblem(Problem):
 
             source = cache[k]
 
-            y[i] = getattr(source, pname)
+            y[i] = getattr(source.subsources[int(pname[-1]) - 1], pname[:-1])
 
         return y
 
     def pack(self, source):
         arr = self.get_parameter_array(source)
+        subsrcs = source.subsources
         for ip, p in enumerate(self.parameters):
-            if p.name == 'time':
-                arr[ip] -= self.base_source.time
+            # if p.name == 'time':
+            #     arr[ip] -= self.base_source.time
             if p.name == 'duration1':
-                arr[ip] = source.stf1.duration if source.stf1 else 0.0
+                arr[ip] = subsrcs[0].stf.duration if subsrcs[0].stf else 0.0
             if p.name == 'duration2':
-                arr[ip] = source.stf2.duration if source.stf2 else 0.0
+                arr[ip] = subsrcs[1].stf.duration if subsrcs[1].stf else 0.0
         return arr
 
     def random_uniform(self, xbounds, rstate, fixed_magnitude=None):
@@ -342,9 +346,9 @@ class IndependentDoubleSFProblem(Problem):
             idx_fe2 = self.get_parameter_index('fe2')
             idx_fd2 = self.get_parameter_index('fd2')
 
-            x[idx_fn2] = source.fn1 * ratio
-            x[idx_fe2] = source.fe1 * ratio
-            x[idx_fd2] = source.fd1 * ratio
+            x[idx_fn2] = source.subsources[0].fn * ratio
+            x[idx_fe2] = source.subsources[0].fe * ratio
+            x[idx_fd2] = source.subsources[0].fd * ratio
 
         elif self.force_directions == 'counterdirectional':
             force1 = source.subsources[0].force
@@ -356,9 +360,9 @@ class IndependentDoubleSFProblem(Problem):
             idx_fe2 = self.get_parameter_index('fe2')
             idx_fd2 = self.get_parameter_index('fd2')
 
-            x[idx_fn2] = -source.fn1 * ratio
-            x[idx_fe2] = -source.fe1 * ratio
-            x[idx_fd2] = -source.fd1 * ratio
+            x[idx_fn2] = -source.subsources[0].fn * ratio
+            x[idx_fe2] = -source.subsources[0].fe * ratio
+            x[idx_fd2] = -source.subsources[0].fd * ratio
 
         return num.array(x, dtype=num.float)
 
@@ -373,8 +377,9 @@ class IndependentDoubleSFProblem(Problem):
              self.ranges['f{}2'.format(f)].stop) for f in 'n e d'.split()],
             axis=0)
 
-        force_range = tuple([
-            num.linalg.norm(r) for r in (range_start, range_stop)])
+        force_range = (
+            -num.linalg.norm(range_start),
+            num.linalg.norm(range_stop))
 
         out = [force_range, force_range]
 
@@ -383,10 +388,8 @@ class IndependentDoubleSFProblem(Problem):
     @classmethod
     def get_plot_classes(cls):
         from . import plot
-        from ..singleforce import plot as sfplot
-        plots = super(DoubleSFProblem, cls).get_plot_classes()
+        plots = super(IndependentDoubleSFProblem, cls).get_plot_classes()
         plots.extend([
-            sfplot.SFLocationPlot,
             plot.SFForcePlot,
             plot.DoubleSFDecompositionPlot])
         return plots

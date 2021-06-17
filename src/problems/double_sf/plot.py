@@ -116,8 +116,12 @@ individual single force, while the square shows the combined centroid location.
                 sf1, sf2 = source.split()
                 offset_scale = source.force
                 f = 'r'
-            elif isinstance(source, gf.CombiSource):
+            elif isinstance(source, gf.CombiSFSource):
                 sf1, sf2 = source.subsources
+
+                sf1.lat, sf1.lon = source.lat, source.lon
+                sf2.lat, sf2.lon = source.lat, source.lon
+
                 offset_scale = num.max((sf1.force, sf2.force))
                 f = ''
 
@@ -252,7 +256,7 @@ best have similar symbol size and patterns.
         def get_deco(source):
             if isinstance(source, gf.DoubleSFSource):
                 return [source] + source.split()
-            elif isinstance(source, gf.CombiSource):
+            elif isinstance(source, gf.CombiSFSource):
                 sf1, sf2 = source.subsources
                 f1 = num.array([sf1.fn, sf1.fe, sf1.fd])
                 f2 = num.array([sf2.fn, sf2.fe, sf2.fd])
