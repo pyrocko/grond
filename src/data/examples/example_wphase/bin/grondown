@@ -8,7 +8,7 @@ import os.path as op
 import shutil
 try:
     from urllib.error import HTTPError
-except:
+except ImportError:
     from urllib2 import HTTPError
 import glob
 import pipes
@@ -318,6 +318,12 @@ if __name__ == '__main__':
         % ', '.join(g_sites_available))
 
     parser.add_option(
+        '--network',
+        dest='network',
+        metavar='NET1,NET2,...',
+        help='networks to query in the FDSN station queries')
+
+    parser.add_option(
         '--band-codes',
         dest='priority_band_code',
         metavar='V,L,M,B,H,S,E,...',
@@ -387,17 +393,11 @@ if __name__ == '__main__':
         magnitude = None
         depth = None
         mt = None
-        event = None
         if len(args) == 9:
             time = util.str_to_time(args[0] + ' ' + args[1])
             lat = float(args[2])
             lon = float(args[3])
             depth = float(args[4])*km
-            event = model.Event(
-                time=time,
-                lat=lat,
-                lon=lon,
-                depth=depth)
             iarg = 5
 
         elif len(args) == 6:
@@ -405,6 +405,7 @@ if __name__ == '__main__':
                 sname_or_date = None
                 lat = float(args[0])
                 lon = float(args[1])
+                event = None
                 time = None
             else:
                 sname_or_date = args[0] + ' ' + args[1]
@@ -458,9 +459,9 @@ if __name__ == '__main__':
         eventname = args[iarg+3]
         event_dir = op.join('data', 'events', eventname)
         output_dir = op.join(event_dir, 'waveforms')
-    except:
-        raise
-        parser.print_help()
+
+    except Exception as e:
+        logger.critical('an error occurred: %s' % e)
         sys.exit(1)
 
     if depth is None:
@@ -645,8 +646,10 @@ if __name__ == '__main__':
 
                 extra_args.update(selection=selection)
 
-            logger.info('downloading channel information (%s)' % site)
+            if options.network:
+                extra_args['network'] = options.network
 
+            logger.info('downloading channel information (%s)' % site)
             sx = fdsn.station(
                 site=site,
                 format='text',
