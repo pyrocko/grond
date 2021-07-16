@@ -679,12 +679,17 @@ def format_stats(rs, fmt):
     values = []
     headers = []
     for x in fmt:
-        pname, qname = x.split('.')
-        pindex = pname_to_pindex[pname]
-        values.append(getattr(rs.parameter_stats_list[pindex], qname))
-        headers.append(x)
+        if x == 'problem.name':
+            headers.append(x)
+            values.append('%-16s' % rs.problem.name)
+        else:
+            pname, qname = x.split('.')
+            pindex = pname_to_pindex[pname]
+            values.append(
+                '%16.7g' % getattr(rs.parameter_stats_list[pindex], qname))
+            headers.append(x)
 
-    return ' '.join('%16.7g' % v for v in values)
+    return ' '.join(values)
 
 
 def export(
@@ -692,7 +697,9 @@ def export(
         effective_lat_lon=False):
 
     if pnames is not None:
-        pnames_clean = [pname.split('.')[0] for pname in pnames]
+        pnames_clean = [
+            pname.split('.')[0] for pname in pnames
+            if not pname.startswith('problem.')]
         shortform = all(len(pname.split('.')) == 2 for pname in pnames)
     else:
         pnames_clean = None
