@@ -32,6 +32,10 @@ class STFType(StringChoice):
         return cls.cls[name]()
 
 
+class SDROrderLike(StringChoice):
+    choices = ['mean_source', 'base_source']
+
+
 class CMTProblemConfig(ProblemConfig):
 
     ranges = Dict.T(String.T(), gf.Range.T())
@@ -94,18 +98,19 @@ class CMTProblem(Problem):
             Parameter('frequency', 'Hz', label='Frequency')]}
 
     dependants = [
-        Parameter('strike1', u'\u00b0', label='Strike 1'),
-        Parameter('dip1', u'\u00b0', label='Dip 1'),
-        Parameter('rake1', u'\u00b0', label='Rake 1'),
-        Parameter('strike2', u'\u00b0', label='Strike 2'),
-        Parameter('dip2', u'\u00b0', label='Dip 2'),
-        Parameter('rake2', u'\u00b0', label='Rake 2'),
+        Parameter('strike1', u'\u00b0', label='Strike 1', is_angle=True),
+        Parameter('dip1', u'\u00b0', label='Dip 1', is_angle=True),
+        Parameter('rake1', u'\u00b0', label='Rake 1', is_angle=True),
+        Parameter('strike2', u'\u00b0', label='Strike 2', is_angle=True),
+        Parameter('dip2', u'\u00b0', label='Dip 2', is_angle=True),
+        Parameter('rake2', u'\u00b0', label='Rake 2', is_angle=True),
         Parameter('rel_moment_iso', label='$M_{0}^{ISO}/M_{0}$'),
         Parameter('rel_moment_clvd', label='$M_{0}^{CLVD}/M_{0}$')]
 
     distance_min = Float.T(default=0.0)
     mt_type = MTType.T(default='full')
     stf_type = STFType.T(default='HalfSinusoidSTF')
+    sdr_order_like = SDROrderLike.T(default='mean_source')
 
     def __init__(self, **kwargs):
         Problem.__init__(self, **kwargs)
@@ -146,20 +151,25 @@ class CMTProblem(Problem):
         if pname not in self.dependant_names:
             raise KeyError(pname)
 
-        mt = self.base_source.pyrocko_moment_tensor()
+        if self.sdr_order_like == 'base_source':
+            mt = self.base_source.pyrocko_moment_tensor()
+            sdrs_ref = mt.both_strike_dip_rake()
 
-        sdrs_ref = mt.both_strike_dip_rake()
+        elif self.sdr_order_like == 'mean_source':
+            x_mean = num.mean(xs, axis=0)
+            source_mean = self.get_source(x_mean)
+            mt = source_mean.pyrocko_moment_tensor()
+            sdrs_ref = mt.both_strike_dip_rake()
 
         y = num.zeros(xs.shape[0])
         for i, x in enumerate(xs):
-            k = tuple(x.tolist())
+            k = tuple(x.tolist() + sdrs_ref)
             if k not in cache:
                 source = self.get_source(x)
                 mt = source.pyrocko_moment_tensor()
                 res = mt.standard_decomposition()
                 sdrs = mt.both_strike_dip_rake()
-                if sdrs_ref:
-                    sdrs = mtm.order_like(sdrs, sdrs_ref)
+                sdrs = mtm.order_like(sdrs, sdrs_ref)
 
                 cache[k] = mt, res, sdrs
 

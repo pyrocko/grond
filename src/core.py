@@ -31,6 +31,9 @@ logger = logging.getLogger('grond.core')
 guts_prefix = 'grond'
 op = os.path
 
+d2r = math.pi / 180.
+r2d = 1.0 / d2r
+
 
 class RingBuffer(num.ndarray):
     def __new__(cls, *args, **kwargs):
@@ -646,15 +649,28 @@ def make_stats(problem, models, gms, pnames=None):
     if pnames is None:
         pnames = problem.parameter_names
 
+    params = problem.combined
     for pname in pnames:
         iparam = problem.name_to_index(pname)
         vs = problem.extract(models, iparam)
-        mi, p5, p16, median, p84, p95, ma = map(float, num.percentile(
-            vs, [0., 5., 16., 50., 84., 95., 100.]))
+        param = params[iparam]
 
-        mean = float(num.mean(vs))
+        if param.is_angle:
+            vs_ = num.exp(1.0J * vs * d2r)
+            shift = float(num.angle(num.mean(vs_)) * r2d)
+            vs -= shift
+            vs = (vs + 180.0) % 360. - 180.
+
+        else:
+            shift = 0.0
+
+        mi, p5, p16, median, p84, p95, ma = map(
+            lambda x: float(x) + shift,
+            num.percentile(vs, [0., 5., 16., 50., 84., 95., 100.]))
+
+        mean = float(num.mean(vs)) + shift
         std = float(num.std(vs))
-        best = float(vs[ibest])
+        best = float(vs[ibest]) + shift
         s = ParameterStats(
             pname, mean, std, best, mi, p5, p16, median, p84, p95, ma)
 

@@ -479,30 +479,37 @@ space.
 
             pstats = rstats.parameter_stats_list[iselected]
 
-            axes.axvspan(
-                par.scaled(pstats.minimum),
-                par.scaled(pstats.maximum),
-                color=stats_color, alpha=0.1)
-            axes.axvspan(
-                par.scaled(pstats.percentile16),
-                par.scaled(pstats.percentile84),
-                color=stats_color, alpha=0.1)
-            axes.axvspan(
-                par.scaled(pstats.percentile5),
-                par.scaled(pstats.percentile95),
-                color=stats_color, alpha=0.1)
+            if par.is_angle:
+                wraps = [-360., 0., 360.]
+            else:
+                wraps = [0.]
 
-            axes.axvline(
-                par.scaled(pstats.median),
-                color=stats_color3, alpha=0.5)
-            axes.axvline(
-                par.scaled(pstats.mean),
-                color=stats_color3, ls=':', alpha=0.5)
+            for wrap in wraps:
 
-            if self.show_reference:
+                axes.axvspan(
+                    par.scaled(pstats.minimum+wrap),
+                    par.scaled(pstats.maximum+wrap),
+                    color=stats_color, alpha=0.1)
+                axes.axvspan(
+                    par.scaled(pstats.percentile16+wrap),
+                    par.scaled(pstats.percentile84+wrap),
+                    color=stats_color, alpha=0.1)
+                axes.axvspan(
+                    par.scaled(pstats.percentile5+wrap),
+                    par.scaled(pstats.percentile95+wrap),
+                    color=stats_color, alpha=0.1)
+
                 axes.axvline(
-                    par.scaled(problem.extract(xref, ipar)),
-                    color=ref_color)
+                    par.scaled(pstats.median+wrap),
+                    color=stats_color3, alpha=0.5)
+                axes.axvline(
+                    par.scaled(pstats.mean+wrap),
+                    color=stats_color3, ls=':', alpha=0.5)
+
+                if self.show_reference:
+                    axes.axvline(
+                        par.scaled(problem.extract(xref, ipar)+wrap),
+                        color=ref_color)
 
             item = PlotItem(name=par.name)
             item.attributes['parameters'] = [par.name]
