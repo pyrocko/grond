@@ -126,8 +126,9 @@
         <main role="main" class="col-10 ml-auto mt-5">
             <div ng-show="groups_selected().length == 0 || all_groups_selected()" ng-controller="InfoController" ng-cloak>
                 <div class="row m-3">
-                    <div class="col">
+                    <div class="col" style="max-width: 50em;">
                         <h1 class="plot-title">{{ get_info().title }}</h1>
+                        <p style="font-weight: bold;">{{ get_info().authors }}</p>
                         <div ng-bind-html="get_info().description | pformat"></div>
                     </div>
                 </div>

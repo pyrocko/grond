@@ -43,6 +43,9 @@ class ReportConfig(HasPaths):
     title = Unicode.T(
         default=u'Grond Report',
         help='Title shown on report overview page.')
+    authors = Unicode.T(
+        optional=True,
+        help='Authors shown on report overview page.')
     description = Unicode.T(
         default=u'This interactive document aggregates earthquake source '
                 u'inversion results from optimisations performed with Grond.',
@@ -56,6 +59,7 @@ class ReportConfig(HasPaths):
 
 class ReportInfo(Object):
     title = Unicode.T(optional=True)
+    authors = Unicode.T(optional=True)
     description = Unicode.T(optional=True)
     version_info = info.VersionInfo.T()
     have_archive = Bool.T(optional=True)
@@ -261,6 +265,7 @@ def report_index(report_config=None):
     guts.dump(
         ReportInfo(
             title=report_config.title,
+            authors=report_config.authors,
             description=report_config.description,
             version_info=info.version_info(),
             have_archive=report_config.make_archive),

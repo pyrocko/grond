@@ -1,6 +1,5 @@
 'use strict';
 
-
 // browser compatibility (IE)
 Math.log10 = Math.log10 || function(x) {
     return Math.log(x) * Math.LOG10E;
@@ -441,7 +440,7 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
             }
 
             if (sel.length == 0) {
-                $scope.open_modal();
+                /* $scope.open_modal(); */
             }
             if (sel.indexOf($scope.primary_problem) == -1) {
                 $scope.primary_problem = null;
@@ -790,12 +789,14 @@ angular.module('reportApp', ['ngRoute', 'ngSanitize'])
 
     .filter('pformat', function() {
         return function(txt) {
-            var pars = txt.split(/\s*\n\s*\n\s*/);
-            var out = '';
-            for (var i=0; i<pars.length; i++) {
-                out += '<p>' + pars[i] + '</p>';
-            }
-            return out;
+            //var pars = txt.split(/\s*\n\s*\n\s*/);
+            //var out = '';
+            //for (var i=0; i<pars.length; i++) {
+            //    out += '<p>' + pars[i] + '</p>';
+            //}
+            //return out;
+            //
+            return marked(txt);
         };
     })
 
