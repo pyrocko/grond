@@ -411,7 +411,7 @@ def command_scenario(args):
         parser.add_option(
             '--stationxml-paths', dest='stationxml_paths', type=str,
             default=None,
-            help='patsh to a Pyrocko station file, seperated by \',\''
+            help='paths to StationXML files, seperated by \',\''
                  '(default: %default)')
         parser.add_option(
             '--gf-waveforms', dest='store_waveforms', type=str,
