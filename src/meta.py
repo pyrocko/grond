@@ -342,7 +342,9 @@ selected_operators_n_1 = {}
 
 selected_operators_n_n = {
     'contains': lambda data, key, values:
-        any(d in values for d in data[key])}
+        any(d in values for d in data[key]),
+    'notcontains': lambda data, key, values:
+        not any(d in values for d in data[key])}
 
 
 selected_operators = set()
