@@ -497,7 +497,7 @@ def command_scenario(args):
         if options.problem == 'cmt':
             problem = grond_scenario.DCSourceProblem(
                 nevents=options.nevents,
-                radius=options.source_radius,
+                radius=options.source_radius*km,
                 magnitude_min=options.magnitude_range[0],
                 magnitude_max=options.magnitude_range[1])
         elif options.problem == 'rectangular':
