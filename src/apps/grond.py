@@ -1256,10 +1256,10 @@ def command_report(args):
             help='set number of threads per process (default: 1).'
                  'Set to 0 to use all available cores.')
         parser.add_option(
-            '--no-archive',
-            dest='no_archive',
+            '--make-archive',
+            dest='make_archive',
             action='store_true',
-            help='don\'t create archive file.')
+            help='create archive file.')
 
     parser, options, args = cl_parse('report', args, setup)
 
@@ -1286,7 +1286,7 @@ def command_report(args):
             die(str(e))
 
     # commandline options that can override config values
-    if options.no_archive:
+    if not options.make_archive:
         conf.make_archive = False
 
     if len(args) == 1 and op.exists(op.join(args[0], 'index.html')):
