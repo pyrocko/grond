@@ -11,6 +11,15 @@ from .volume_point.problem import *  # noqa
 
 try:
     from .vlvd.problem import *  # noqa
+
+except ImportError:
+    warnings.warn(
+        'could not import pyrocko.gf.VLVDSource. Update pyrocko to enable'
+        ' inversion of VLVDProblem.', ImportWarning)
+
+try:
+    from .explosion_line.problem import *  # noqa
+
 except ImportError:
     warnings.warn(
         'could not import pyrocko.gf.VLVDSource. Update pyrocko to enable'

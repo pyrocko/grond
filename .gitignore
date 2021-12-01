@@ -112,3 +112,8 @@ tags
 # Anaconda
 miniconda.sh
 maintenance/anaconda/grond-anaconda-deploy
+
+
+# IDE
+.vscode
+.idea

@@ -2,7 +2,7 @@ import logging
 
 import numpy as num
 
-from pyrocko.guts import Float, Tuple, String
+from pyrocko.guts import Bool, Float, Tuple, String
 from pyrocko import gf
 
 from ..base import (
@@ -31,6 +31,10 @@ class PhasePickTargetGroup(TargetGroup):
     depth_min = Float.T(optional=True)
     depth_max = Float.T(optional=True)
     store_id = gf.StringID.T(optional=True)
+    use_extended_source_model = Bool.T(
+        default=False,
+        help='Use extended source models to compute arrival times.'
+        )
     pick_synthetic_traveltime = gf.Timing.T(
         help='Synthetic phase arrival definition.')
     pick_phasename = String.T(
@@ -54,6 +58,7 @@ class PhasePickTargetGroup(TargetGroup):
                 manual_weight=self.weight,
                 normalisation_family=self.normalisation_family,
                 path=self.path or default_path,
+                use_extended_source_model=self.use_extended_source_model,
                 pick_synthetic_traveltime=self.pick_synthetic_traveltime,
                 pick_phasename=self.pick_phasename)
 
@@ -121,6 +126,11 @@ class PhasePickTarget(gf.Location, MisfitTarget):
     store_id = gf.StringID.T(
         help='ID of Green\'s function store (only used for earth model).')
 
+    use_extended_source_model = Bool.T(
+        default=False,
+        help='Use extended source models to compute arrival times.'
+    )
+
     pick_synthetic_traveltime = gf.Timing.T(
         help='Synthetic phase arrival definition.')
 
@@ -174,8 +184,16 @@ class PhasePickTarget(gf.Location, MisfitTarget):
         tobs = self._tobs_cache[k]
 
         store = engine.get_store(self.store_id)
-        tsyn = source.time + store.t(
-            self.pick_synthetic_traveltime, source, self)
+
+        if self.use_extended_source_model:
+            tsyn = store.t(
+                self.pick_synthetic_traveltime,
+                source.discretize_basesource(store),
+                self)
+        else:
+            tsyn = store.t(
+                self.pick_synthetic_traveltime, source, self)
+        tsyn += source.time
 
         return tobs, tsyn
 
