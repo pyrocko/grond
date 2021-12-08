@@ -185,6 +185,11 @@ class PhasePickTarget(gf.Location, MisfitTarget):
 
         store = engine.get_store(self.store_id)
 
+        # with open('/tmp/source', 'w+') as f:
+        #     f.write(str(source))
+        #     f.write('\n---------------\n')
+        #     f.write(str(self))
+
         if self.use_extended_source_model:
             tsyn = store.t(
                 self.pick_synthetic_traveltime,

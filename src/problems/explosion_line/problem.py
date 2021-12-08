@@ -4,11 +4,14 @@ import logging
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int
 
-from grond.meta import expand_template, Parameter, has_get_plot_classes
+from grond.meta import Forbidden, expand_template, Parameter, \
+    has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
 
+guts_prefix = 'grond'
 logger = logging.getLogger(__name__)
+
 km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
@@ -25,6 +28,11 @@ class ExplosionLineProblemConfig(ProblemConfig):
             event,
             subsource_oversampling=self.subsource_oversampling
         )
+
+        base_source.end_north_shift = base_source.north_shift
+        base_source.end_east_shift = base_source.east_shift
+        base_source.end_depth = base_source.depth
+        base_source.end_time = base_source.time
 
         subs = dict(
             event_name=event.name,
@@ -52,29 +60,44 @@ class ExplosionLineProblem(Problem):
         Parameter('north_shift', 'm', label='Northing', **as_km),
         Parameter('depth', 'm', label='Depth', **as_km),
 
-        Parameter('end_time', 's', label='Time'),
-        Parameter('end_east_shift', 'm', label='Easting', **as_km),
-        Parameter('end_north_shift', 'm', label='Northing', **as_km),
-        Parameter('end_depth', 'm', label='Depth', **as_km),
+        Parameter('end_time', 's', label='End Time'),
+        Parameter('end_east_shift', 'm', label='End Easting', **as_km),
+        Parameter('end_north_shift', 'm', label='End Northing', **as_km),
+        Parameter('end_depth', 'm', label='End Depth', **as_km),
     ]
 
     dependants = [
-        Parameter('duration', 's', label='Duration'),
-        Parameter('length', 'm', label='Length', **as_km),
-        Parameter('velocity', 'm', label='Velocity'),
-        Parameter('dip', u'\u00b0', label='Dip'),
-        Parameter('strike', u'\u00b0', label='Strike')
+        # Parameter('duration', 's', label='Duration'),
+        # Parameter('length', 'm', label='Length', **as_km),
+        # Parameter('velocity', 'm', label='Velocity'),
+        # Parameter('strike', u'\u00b0', label='Strike')
+        # Parameter('dip', u'\u00b0', label='Dip'),
     ]
 
     distance_min = Float.T(default=0.0)
 
     def pack(self, source):
         arr = self.get_parameter_array(source)
-        for ip, p in enumerate(self.parameters):
-            if p.name == 'time':
+        for ip, param in enumerate(self.parameters):
+            if param.name == 'time':
                 arr[ip] -= self.base_source.time
+            if param.name == 'end_time':
+                arr[ip] -= self.base_source.end_time
 
         return arr
+
+    def make_dependant(self, xs, pname):
+        if xs.ndim == 1:
+            return self.make_dependant(xs[num.newaxis, :], pname)[0]
+
+        if pname not in self.dependant_names:
+            raise KeyError(pname)
+
+        y = num.zeros(xs.shape[0])
+        for i, x in enumerate(xs):
+            source = self.get_source(x)
+            y[i] = getattr(source, pname)
+        return y
 
     def get_source(self, x):
         d = self.get_parameter_dict(x)
@@ -93,15 +116,14 @@ class ExplosionLineProblem(Problem):
         return x
 
     def preconstrain(self, x):
+        source = self.get_source(x)
+        if source.time > source.end_time:
+            raise Forbidden()
+        if source.depth > source.end_depth:
+            raise Forbidden()
         return x
 
     @classmethod
     def get_plot_classes(cls):
         plots = super().get_plot_classes()
         return plots
-
-
-__all__ = '''
-    ExplosionLineProblem
-    ExplosionLineProblemConfig
-'''

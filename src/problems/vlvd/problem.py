@@ -71,6 +71,8 @@ class VLVDProblem(Problem):
         for ip, p in enumerate(self.parameters):
             if p.name == 'time':
                 arr[ip] -= self.base_source.time
+            if p.name == 'end_time':
+                arr[ip] -= self.base_source.end_time
         return arr
 
     def get_source(self, x):

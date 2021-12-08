@@ -140,6 +140,7 @@ setup(
         'grond.problems.double_dc',
         'grond.problems.rectangular',
         'grond.problems.volume_point',
+        'grond.problems.explosion_line',
         'grond.problems.vlvd',
         'grond.optimisers',
         'grond.optimisers.highscore',
