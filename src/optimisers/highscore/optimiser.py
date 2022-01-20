@@ -271,7 +271,8 @@ class DirectedSamplerPhase(SamplerPhase):
             while True:
                 ntries_sample += 1
                 xcandi = rstate.multivariate_normal(
-                    xchoice, factor**2 * chains.cov(ichain_choice))
+                    xchoice, factor**2 * chains.covariance_models(
+                        ichain_choice))
 
                 ok_mask = num.logical_and(
                     xbounds[:, 0] <= xcandi, xcandi <= xbounds[:, 1])
