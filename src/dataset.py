@@ -150,8 +150,10 @@ class Dataset(object):
                             'Station "%s" has vertical component'
                             ' information only, adding mocked channels.'
                             % station.nsl_string())
-                        station.add_channel(model.Channel('N'))
-                        station.add_channel(model.Channel('E'))
+                        station.add_channel(
+                            model.Channel(channels[0].name[:-1] + 'N'))
+                        station.add_channel(
+                            model.Channel(channels[0].name[:-1] + 'E'))
 
                     self.stations[station.nsl()] = station
 
