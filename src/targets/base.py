@@ -39,6 +39,7 @@ class MisfitResult(Object):
     misfits = Array.T(
         shape=(None, 2),
         dtype=num.float)
+    path = String.T(optional=True)
 
 
 class MisfitConfig(Object):

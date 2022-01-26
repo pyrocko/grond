@@ -1,6 +1,7 @@
 import logging
 
 import numpy as num
+from functools import lru_cache
 
 from pyrocko.guts import Bool, Float, Tuple, String
 from pyrocko import gf
@@ -11,6 +12,8 @@ from grond.meta import has_get_plot_classes
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.targets.phase_pick.target')
+
+rstate = num.random.RandomState(123)
 
 
 def log_exclude(target, reason):
@@ -39,6 +42,7 @@ class PhasePickTargetGroup(TargetGroup):
         help='Synthetic phase arrival definition.')
     pick_phasename = String.T(
         help='Name of phase in pick file.')
+    use_sparse_picks = Float.T(optional=True)
 
     def get_targets(self, ds, event, default_path='none'):
         logger.debug('Selecting phase pick targets...')
@@ -101,6 +105,10 @@ class PhasePickTargetGroup(TargetGroup):
                 log_exclude(target, 'no pick available')
                 continue
 
+            if self.use_sparse_picks is not None \
+                    and self.use_sparse_picks < rstate.uniform(0., 1.):
+                continue
+
             target.set_dataset(ds)
             targets.append(target)
 
@@ -110,6 +118,11 @@ class PhasePickTargetGroup(TargetGroup):
 class PhasePickResult(MisfitResult):
     tobs = Float.T(optional=True)
     tsyn = Float.T(optional=True)
+
+
+@lru_cache
+def get_discretized_source(source, store):
+    return source.discretize_basesource(store)
 
 
 @has_get_plot_classes
@@ -148,7 +161,7 @@ class PhasePickTarget(gf.Location, MisfitTarget):
     def get_plot_classes(cls):
         from . import plot
         plots = super(PhasePickTarget, cls).get_plot_classes()
-        plots.extend(plot.get_plot_classes())
+        # plots.extend(plot.get_plot_classes())
         return plots
 
     def string_id(self):
@@ -185,16 +198,12 @@ class PhasePickTarget(gf.Location, MisfitTarget):
 
         store = engine.get_store(self.store_id)
 
-        # with open('/tmp/source', 'w+') as f:
-        #     f.write(str(source))
-        #     f.write('\n---------------\n')
-        #     f.write(str(self))
-
         if self.use_extended_source_model:
             tsyn = store.t(
                 self.pick_synthetic_traveltime,
-                source.discretize_basesource(store),
+                get_discretized_source(source, store),
                 self)
+            tsyn = tsyn.squeeze()
         else:
             tsyn = store.t(
                 self.pick_synthetic_traveltime, source, self)
@@ -217,6 +226,7 @@ class PhasePickTarget(gf.Location, MisfitTarget):
         result = PhasePickResult(
             tobs=tobs,
             tsyn=tsyn,
+            path=self.path,
             misfits=num.array([[misfit, norm]], dtype=num.float))
 
         return result

@@ -14,8 +14,12 @@ from grond.plot.collection import PlotItem
 from .target import PhasePickTarget
 from ..plot import StationDistributionPlot
 
+import cProfile
+
 km = 1000.
 d2r = math.pi / 180.
+
+p = cProfile.Profile()
 
 
 class PickResidualsPlot(PlotConfig):
@@ -125,7 +129,7 @@ the classical best model.
         ntargets_page = (ntargets-1) // npages + 1
 
         for ipage in range(npages):
-
+            p.enable()
             ilo, ihi = ipage*ntargets_page, (ipage+1)*ntargets_page
             ihi = min(len(targets), ihi)
 
@@ -183,26 +187,30 @@ the classical best model.
                         color='none',
                         mec='black')
 
+                sparse = 50
                 axes1.scatter(
-                    residuals[::10, itarget],
-                    util.num_full(icolor[::10].size, ipos, dtype=num.float),
-                    c=icolor[::10],
+                    residuals[::sparse, itarget],
+                    util.num_full(
+                        icolor[::sparse].size, ipos, dtype=num.float),
+                    c=icolor[::sparse],
                     cmap=cmap,
                     norm=norm,
                     alpha=0.5)
 
                 axes2.scatter(
-                    distances[::10, itarget]/km,
-                    util.num_full(icolor[::10].size, ipos, dtype=num.float),
-                    c=icolor[::10],
+                    distances[::sparse, itarget]/km,
+                    util.num_full(
+                        icolor[::sparse].size, ipos, dtype=num.float),
+                    c=icolor[::sparse],
                     cmap=cmap,
                     norm=norm,
                     alpha=0.5)
 
                 axes3.scatter(
-                    azimuths[::10, itarget],
-                    util.num_full(icolor[::10].size, ipos, dtype=num.float),
-                    c=icolor[::10],
+                    azimuths[::sparse, itarget],
+                    util.num_full(
+                        icolor[::sparse].size, ipos, dtype=num.float),
+                    c=icolor[::sparse],
                     cmap=cmap,
                     norm=norm,
                     alpha=0.5)
@@ -225,6 +233,8 @@ the classical best model.
             axes3.get_yaxis().set_ticks([])
 
             yield item, fig
+            p.disable()
+            p.dump_stats('/tmp/profile.prof')
 
 
 class PickResidualsStationDistribution(StationDistributionPlot):
