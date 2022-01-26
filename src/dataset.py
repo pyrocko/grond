@@ -907,7 +907,8 @@ class Dataset(object):
             for marker in self.pick_markers:
                 if isinstance(marker, pmarker.EventMarker):
                     name = marker.get_event().name
-                    if name in names:
+                    if name in names and \
+                            marker.get_event_hash() not in hash_to_name:
                         raise DatasetError(
                             'Duplicate event name "%s" in picks.' % name)
 
@@ -949,9 +950,13 @@ class Dataset(object):
 
 
 class DatasetConfig(HasPaths):
-    ''' Configuration for a Grond `Dataset`  object. '''
+    ''' Configuration for a Grond `Dataset` object. '''
 
     stations_path = Path.T(
+        optional=True,
+        help='File with station coordinates in Pyrocko format.')
+    stations_paths = List.T(
+        Path.T(),
         optional=True,
         help='List of files with station coordinates in Pyrocko format.')
     stations_stationxml_paths = List.T(
@@ -1099,6 +1104,11 @@ class DatasetConfig(HasPaths):
                 ds.add_stations(
                     pyrocko_stations_filename=fp(self.stations_path),
                     stationxml_filenames=fp(self.stations_stationxml_paths))
+
+                if self.stations_paths:
+                    for stations_path in self.stations_paths:
+                        ds.add_stations(
+                            pyrocko_stations_filename=fp(stations_path))
 
                 if self.waveform_paths:
                     ds.add_waveforms(paths=fp(self.waveform_paths))
