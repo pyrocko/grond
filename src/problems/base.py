@@ -298,7 +298,8 @@ class Problem(Object):
 
     def source_to_x(self, source):
         bs = self.base_source
-        n, e = pod.latlon_to_ne_numpy(
+
+        n, e = pod.latlon_to_ne(
             bs.lat, bs.lon,
             source.effective_lat, source.effective_lon)
 
@@ -314,6 +315,26 @@ class Problem(Object):
 
             source.time = bs.time
             source.time += rstate.uniform(low=tmin, high=tmax, size=1)
+
+        p = {}
+        for k in self.base_source.keys():
+            val = source[k]
+            if k == 'time':
+                p[k] = float(val)
+
+            elif k in self.ranges:
+                val = source[k]
+
+                if self.ranges[k].relative == 'add':
+                    val = self.ranges[k].make_relative(
+                        -self.base_source[k], source[k])
+                elif self.ranges[k].relative == 'mult':
+                    val = self.ranges[k].make_relative(
+                        1./self.base_source[k], source[k])
+
+                p[k] = float(val)
+
+        source = source.clone(**p)
 
         return self.pack(source)
 
