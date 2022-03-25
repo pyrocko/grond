@@ -1,16 +1,13 @@
 import numpy as num
 import logging
 
-from scipy.interpolate import RegularGridInterpolator
-
 from pyrocko import gf, util
 from pyrocko.guts import String, Float, Dict, Int, Bool, StringChoice
 from pyrocko.guts_array import Array
 from pyrocko.gf.seismosizer import map_anchor
-from pyrocko.gf.tractions import TractionField
 
 from grond.meta import expand_template, Parameter, has_get_plot_classes, \
-    GrondError, Path
+    GrondError
 
 from ..base import Problem, ProblemConfig
 from .. import CMTProblem
@@ -498,12 +495,8 @@ class DoublePDRProblem(Problem):
 
     @classmethod
     def get_plot_classes(cls):
-        from . import plot
         plots = super(DoublePDRProblem, cls).get_plot_classes()
-        # plots.extend([
-        #     plot.DynamicRuptureSlipMap,
-        #     plot.DynamicRuptureSTF,
-        #     plot.DynamicRuptureMap])
+
         return plots
 
 

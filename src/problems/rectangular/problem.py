@@ -2,11 +2,12 @@ import numpy as num
 import logging
 
 from pyrocko import gf, util
-from pyrocko.guts import String, Float, Dict, Int
+from pyrocko.guts import String, Float, Dict, Int, Bool
 
 from grond.meta import expand_template, Parameter, has_get_plot_classes
 
 from ..base import Problem, ProblemConfig
+from .. import CMTProblem
 
 guts_prefix = 'grond'
 logger = logging.getLogger('grond.problems.rectangular.problem')
@@ -20,6 +21,12 @@ class RectangularProblemConfig(ProblemConfig):
     decimation_factor = Int.T(default=1)
     distance_min = Float.T(default=0.)
     nthreads = Int.T(default=4)
+    point_source_target_balancing = Bool.T(
+        default=False,
+        help='If ``True``, target balancing (if used) is performed on a '
+             'moment tensor point source at the events location. It increases '
+             'the speed, but might lead to not fully optimized target weights.'
+        )
 
     def get_problem(self, event, target_groups, targets):
         if self.decimation_factor != 1:
@@ -36,6 +43,43 @@ class RectangularProblemConfig(ProblemConfig):
             event_name=event.name,
             event_time=util.time_to_str(event.time))
 
+        cmt_problem = None
+        if self.point_source_target_balancing:
+            ranges = dict(
+                time=self.ranges['time'],
+                north_shift=self.ranges['north_shift'],
+                east_shift=self.ranges['east_shift'],
+                depth=self.ranges['depth'],
+                magnitude=gf.Range(
+                    start=event.magnitude - 1.,
+                    stop=event.magnitude + 1.),
+                duration=gf.Range(start=0., stop=event.duration * 2. or 0.),
+                rmnn=gf.Range(start=-1.41421, stop=1.41421),
+                rmee=gf.Range(start=-1.41421, stop=1.41421),
+                rmdd=gf.Range(start=-1.41421, stop=1.41421),
+                rmne=gf.Range(start=-1., stop=1.),
+                rmnd=gf.Range(start=-1., stop=1.),
+                rmed=gf.Range(start=-1., stop=1.))
+
+            base_source_cmt = gf.MTSource.from_pyrocko_event(event)
+
+            stf = gf.HalfSinusoidSTF()
+            stf.duration = event.duration or 0.0
+
+            base_source_cmt.stf = stf
+
+            cmt_problem = CMTProblem(
+                name=expand_template(self.name_template, subs),
+                base_source=base_source_cmt,
+                distance_min=self.distance_min,
+                target_groups=target_groups,
+                targets=targets,
+                ranges=ranges,
+                mt_type='dc',
+                stf_type='HalfSinusoidSTF',
+                norm_exponent=self.norm_exponent,
+                nthreads=self.nthreads)
+
         problem = RectangularProblem(
             name=expand_template(self.name_template, subs),
             base_source=base_source,
@@ -44,7 +88,8 @@ class RectangularProblemConfig(ProblemConfig):
             targets=targets,
             ranges=self.ranges,
             norm_exponent=self.norm_exponent,
-            nthreads=self.nthreads)
+            nthreads=self.nthreads,
+            cmt_problem=cmt_problem)
 
         return problem
 
@@ -74,6 +119,14 @@ class RectangularProblem(Problem):
     dependants = []
 
     distance_min = Float.T(default=0.0)
+
+    cmt_problem = Problem.T(optional=True)
+
+    def set_engine(self, engine):
+        self._engine = engine
+
+        if self.cmt_problem is not None:
+            self.cmt_problem.set_engine(engine)
 
     def pack(self, source):
         arr = self.get_parameter_array(source)
