@@ -10,3 +10,4 @@ The :mod:`problems` module
     cmt <cmt>
     rectangular <rectangular>
     double_dc <double_dc>
+    singleforce <singleforce>
