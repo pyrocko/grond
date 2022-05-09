@@ -178,7 +178,7 @@ class Dataset(object):
         cachedirname = config.config().cache_dir
 
         logger.debug('Selecting waveform files %s...' % quote_paths(paths))
-        fns = util.select_files(paths, regex=regex,
+        fns = util.select_files(paths, include=regex,
                                 show_progress=show_progress)
         cache = pile.get_cache(cachedirname)
         logger.debug('Scanning waveform files %s...' % quote_paths(paths))
@@ -279,7 +279,7 @@ class Dataset(object):
     def add_gnss_campaigns(self, paths):
         paths = util.select_files(
             paths,
-            regex=r'\.yml|\.yaml',
+            include=r'\.yml|\.yaml',
             show_progress=False)
 
         for path in paths:
@@ -300,7 +300,7 @@ class Dataset(object):
         logger.info('Loading kite InSAR scenes...')
         paths = util.select_files(
             paths,
-            regex=r'\.npz',
+            include=r'\.npz',
             show_progress=False)
 
         for path in paths:
