@@ -202,8 +202,6 @@ class GrondScenario(object):
 
         logger.info('Building scenario...')
 
-        self.create_project_dir(force)
-
         self.create_scenario(
             force=force,
             interactive=interactive,
@@ -332,8 +330,8 @@ class GNSSCampaignObservation(Observation):
 
     def get_scenario_target_generator(self):
         return scenario.targets.GNSSCampaignGenerator(
-            station_generator=scenario.targets.RandomStationGenerator(
-                nstations=self.nstations),
+            station_generators=[scenario.targets.RandomStationGenerator(
+                nstations=self.nstations)],
             store_id=self.store_id)
 
     def get_grond_target_group(self):
