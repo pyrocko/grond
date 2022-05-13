@@ -25,7 +25,7 @@ steps:
   - grond version --short > build/html/version.txt
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone/rsync.sh docs/build/html/ ${DRONE_COMMIT}/docs/
@@ -38,7 +38,7 @@ steps:
       from_secret: rsync-key
 
 - name: stage-www
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
 
   when:
@@ -57,7 +57,7 @@ steps:
       from_secret: rsync-key
 
 - name: deploy-www
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
 
   when:
@@ -99,7 +99,7 @@ steps:
   - ln -s /grond-test-playground test_playground
 
 - name: test-pure
-  image: grond-fat-aux
+  image: grond-fat-util
   pull: never
   when:
     branch:
@@ -130,7 +130,7 @@ steps:
   - sdist
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone/rsync.sh dist/ ${DRONE_COMMIT}/dist/
@@ -195,7 +195,7 @@ steps:
   - for x in .coverage.* ; do mv $x $${x#.} ; done
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone/rsync.sh coverage.*  ${DRONE_COMMIT}/coverage/data/
@@ -227,7 +227,7 @@ steps:
   - python3 -m coverage html
 
 - name: stage
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone/rsync.sh htmlcov/ ${DRONE_COMMIT}/coverage/
@@ -258,7 +258,7 @@ trigger:
 
 steps:
 - name: post
-  image: pyrocko-aux
+  image: pyrocko-util
   pull: never
   commands:
   - maintenance/drone/matterpost.py
