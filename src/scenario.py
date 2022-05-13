@@ -258,7 +258,7 @@ class WaveformObservation(Observation):
             station_generator = scenario.station.RandomStationGenerator(
                     nstations=self.nstations)
         return scenario.targets.WaveformGenerator(
-            station_generator=station_generator,
+            station_generators=[station_generator],
             store_id=self.store_id,
             tabulated_phases_from_store=True,
             tabulated_phases_noise_scale=0.3,
