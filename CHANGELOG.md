@@ -6,7 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-*empty*
+### Added
+- Scenario:
+  - add option to rebuild the scenario
+  - add separate source radius
+  - add option to use user stations
+- Possibility to fit travel times with picks.
+
+### Fixed
+- Various minor bug fixes and improved compatibility.
 
 ## [1.5.1] 2020-10-26
 
