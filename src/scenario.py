@@ -244,9 +244,10 @@ class WaveformObservation(Observation):
     def update_dataset_config(self, dataset_config, data_dir):
         ds = dataset_config
         ds.waveform_paths = [op.join(data_dir, 'waveforms')]
-        ds.stations_path = op.join(data_dir, 'meta', 'stations.txt')
+        ds.stations_stationxml_paths = [
+            op.join(data_dir, 'meta', 'waveform_response.xml')]
         ds.responses_stationxml_paths = [
-            op.join(data_dir, 'meta', 'stations.xml')]
+            op.join(data_dir, 'meta', 'waveform_response.xml')]
         return ds
 
     def get_scenario_target_generator(self):
