@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import time
 import os
 import os.path as op
@@ -8,6 +9,9 @@ from setuptools import setup
 from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 from setuptools.command.develop import develop
+
+if sys.version_info < (3,5):
+    sys.exit('Sorry, Python < 3.5 is not supported.')
 
 version = '1.5.1'
 
@@ -119,6 +123,8 @@ setup(
 
     url='https://pyrocko.org/grond/',
 
+    python_requires='>=3.5, <4',
+
     version=version,
 
     author='The Grond Developers',
@@ -174,7 +180,7 @@ setup(
 
     data_files=[],
 
-    install_requires=['pyrocko>=2020.10.08'],
+    install_requires=['pyrocko>=2022.04.28'],
 
     license='GPLv3',
 
@@ -182,7 +188,6 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Science/Research',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: Implementation :: CPython',
         'Operating System :: POSIX',
