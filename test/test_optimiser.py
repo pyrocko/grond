@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import glob
 
 from .common import grond, run_in_project
-from grond import config, check
+from grond import config
 
 
 def test_starting_point():
