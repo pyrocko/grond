@@ -1,9 +1,8 @@
 FROM grond-nest
 
 # docs requirements
-RUN apt-get install -y python3-sphinx \
+RUN apt-get update
+RUN apt-get install -y \
     texlive-fonts-recommended texlive-latex-extra \
-    texlive-latex-recommended texlive-generic-extra \
-    python3-sphinxcontrib.programoutput
-
-RUN pip3 install git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-theme.git
+    texlive-latex-recommendedt exlive-generic-extra
+RUN pip3 install sphinx sphinxcontrib-programoutput git+https://git.pyrocko.org/pyrocko/sphinx-sleekcat-theme.git
