@@ -16,6 +16,13 @@ km = 1e3
 as_km = dict(scale_factor=km, scale_unit='km')
 
 
+def as_arr(mat_or_arr):
+    try:
+        return mat_or_arr.A
+    except AttributeError:
+        return mat_or_arr
+
+
 class MTType(StringChoice):
     choices = ['full', 'deviatoric', 'dc']
 
@@ -226,7 +233,7 @@ class CMTProblem(Problem):
             mt = mtm.MomentTensor(m=m9)
             m9 = mt.standard_decomposition()[1][2]
 
-        m0_unscaled = math.sqrt(num.sum(m9.A**2)) / math.sqrt(2.)
+        m0_unscaled = math.sqrt(num.sum(as_arr(m9)**2)) / math.sqrt(2.)
 
         m9 /= m0_unscaled
         m6 = mtm.to6(m9)
