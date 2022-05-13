@@ -10,7 +10,7 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 from setuptools.command.develop import develop
 
-if sys.version_info < (3,5):
+if sys.version_info < (3, 5):
     sys.exit('Sorry, Python < 3.5 is not supported.')
 
 version = '1.5.1'
