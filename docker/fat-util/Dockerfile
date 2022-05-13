@@ -1,6 +1,7 @@
-FROM pyrocko-aux
+FROM pyrocko-util
 
 # additional runtime requirements for gmt
+RUN apt-get update
 RUN apt-get install -y \
         gmt gmt-gshhg poppler-utils imagemagick
 

@@ -10,9 +10,9 @@ if [ ! -d "fat-nest/grond-test-data" ] ; then
     fi
 
     rsync -av "../test/data/" "fat-nest/grond-test-data/"
-    rsync -av "../test/data/" "fat-aux/grond-test-data/"
+    rsync -av "../test/data/" "fat-util/grond-test-data/"
 
 fi
 
 docker build fat-nest -t grond-fat-nest
-docker build fat-aux -t grond-fat-aux
+docker build fat-util -t grond-fat-util
