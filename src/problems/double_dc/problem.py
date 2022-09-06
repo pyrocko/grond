@@ -123,10 +123,13 @@ class DoubleDCProblem(Problem):
 
     @classmethod
     def get_plot_classes(cls):
+        from . import plot as ddcplot
         from .. import plot
+
         plots = super(DoubleDCProblem, cls).get_plot_classes()
         plots.extend([plot.HudsonPlot, plot.MTDecompositionPlot,
-                      plot.MTLocationPlot, plot.MTFuzzyPlot])
+                      plot.MTLocationPlot, plot.MTFuzzyPlot,
+                      ddcplot.DoubleDCDecompositionPlot])
         return plots
 
 
