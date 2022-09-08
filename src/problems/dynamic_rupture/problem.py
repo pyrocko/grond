@@ -82,6 +82,13 @@ class DynamicRuptureProblemConfig(ProblemConfig):
 
         cmt_problem = None
         if self.point_source_target_balancing:
+            base_source_cmt = gf.MTSource.from_pyrocko_event(event)
+
+            stf = gf.HalfSinusoidSTF()
+            stf.duration = event.duration or 0.0
+
+            base_source_cmt.stf = stf
+
             ranges = dict(
                 time=self.ranges['time'],
                 north_shift=self.ranges['north_shift'],
@@ -90,20 +97,13 @@ class DynamicRuptureProblemConfig(ProblemConfig):
                 magnitude=gf.Range(
                     start=event.magnitude - 1.,
                     stop=event.magnitude + 1.),
-                duration=gf.Range(start=0., stop=event.duration * 2. or 0.),
+                duration=gf.Range(start=0., stop=stf.duration * 2.),
                 rmnn=gf.Range(start=-1.41421, stop=1.41421),
                 rmee=gf.Range(start=-1.41421, stop=1.41421),
                 rmdd=gf.Range(start=-1.41421, stop=1.41421),
                 rmne=gf.Range(start=-1., stop=1.),
                 rmnd=gf.Range(start=-1., stop=1.),
                 rmed=gf.Range(start=-1., stop=1.))
-
-            base_source_cmt = gf.MTSource.from_pyrocko_event(event)
-
-            stf = gf.HalfSinusoidSTF()
-            stf.duration = event.duration or 0.0
-
-            base_source_cmt.stf = stf
 
             cmt_problem = CMTProblem(
                 name=expand_template(self.name_template, subs),
@@ -300,6 +300,13 @@ class DoublePDRProblemConfig(ProblemConfig):
 
         cmt_problem = None
         if self.point_source_target_balancing:
+            base_source_cmt = gf.MTSource.from_pyrocko_event(event)
+
+            stf = gf.HalfSinusoidSTF()
+            stf.duration = event.duration or 0.0
+
+            base_source_cmt.stf = stf
+
             ranges = dict(
                 time=self.ranges['time'],
                 north_shift=self.ranges['north_shift'],
@@ -308,20 +315,13 @@ class DoublePDRProblemConfig(ProblemConfig):
                 magnitude=gf.Range(
                     start=event.magnitude - 1.,
                     stop=event.magnitude + 1.),
-                duration=gf.Range(start=0., stop=event.duration * 2. or 0.),
+                duration=gf.Range(start=0., stop=stf.duration * 2.),
                 rmnn=gf.Range(start=-1.41421, stop=1.41421),
                 rmee=gf.Range(start=-1.41421, stop=1.41421),
                 rmdd=gf.Range(start=-1.41421, stop=1.41421),
                 rmne=gf.Range(start=-1., stop=1.),
                 rmnd=gf.Range(start=-1., stop=1.),
                 rmed=gf.Range(start=-1., stop=1.))
-
-            base_source_cmt = gf.MTSource.from_pyrocko_event(event)
-
-            stf = gf.HalfSinusoidSTF()
-            stf.duration = event.duration or 0.0
-
-            base_source_cmt.stf = stf
 
             cmt_problem = CMTProblem(
                 name=expand_template(self.name_template, subs),
