@@ -116,7 +116,7 @@ class DoubleDCProblem(Problem):
     def preconstrain(self, x):
         source = self.get_source(x)
         if any(self.distance_min > source.distance_to(t)
-               for t in self.targets):
+               for t in self.waveform_targets):
             raise Forbidden()
 
         return num.array(x, dtype=num.float)
